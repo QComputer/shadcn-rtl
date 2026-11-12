@@ -78,7 +78,7 @@ export class HotelOperationalPaymentService {
       if (!owned) throw new ApiError(404, "Reservation not found");
     }
     const rows = await this.db.paymentRequest.findMany({ where: { organizationId, orderId: null, appointmentId: null, metadata: { path: ["hotelReservationId"], equals: reservationId } }, orderBy: { createdAt: "desc" }, select: { publicId: true, purpose: true, status: true, amountToman: true, currency: true, createdAt: true, expiresAt: true, paidAt: true, metadata: true, attempts: { select: { id: true }, take: 1 } } });
-    return { requests: rows.filter(row => jsonObject(row.metadata).hotelPropertyId === propertyId).map(({ publicId, purpose, status, amountToman, currency, createdAt, expiresAt, paidAt, metadata, attempts }) => ({ publicId, purpose, status, amountToman: amountToman.toString(), currency, createdAt, expiresAt, paidAt, simulated: jsonObject(metadata).simulated === true, reconcilable: attempts.length > 0 })) };
+    return { requests: rows.filter(row => jsonObject(row.metadata).hotelPropertyId === propertyId).map(({ publicId, purpose, status, amountToman, currency, createdAt, expiresAt, paidAt, metadata, attempts }) => { const values = jsonObject(metadata); return { publicId, purpose, status, amountToman: amountToman.toString(), currency, createdAt, expiresAt, paidAt, simulated: values.simulated === true, settlementStatus: typeof values.hotelSettlementStatus === "string" ? values.hotelSettlementStatus : null, reconciliationRequired: values.hotelSettlementStatus === "UNMATCHED_REQUIRES_RECONCILIATION", reconcilable: attempts.length > 0 }; }) };
   }
 
   async execute(actor: HotelBookingActor, organizationId: string, propertyId: string, input: unknown, idempotencyKey: string) {
@@ -213,6 +213,8 @@ export class HotelOperationalPaymentService {
       if (result.status === "FAILED" && payment.status !== "FAILED") await updatePaymentRequestStatus({ organizationId, paymentRequestId: payment.id, status: "FAILED", db: this.db as never });
       return { status: result.status };
     }
+    const evidence = jsonObject(result.evidence ?? null);
+    if (evidence.simulated === true || evidence.fixture === true) throw new ApiError(409, "Simulated payment evidence cannot settle an operational reservation");
     return this.db.$transaction(async tx => {
       let paymentStatus = payment.status;
       if (paymentStatus === "CREATED") { await updatePaymentRequestStatus({ organizationId, paymentRequestId: payment.id, status: "AWAITING_CUSTOMER", db: tx as never }); paymentStatus = "AWAITING_CUSTOMER"; }
@@ -222,8 +224,13 @@ export class HotelOperationalPaymentService {
       if (attemptStatus === "AWAITING_CUSTOMER") { await updatePaymentAttemptStatus({ organizationId, attemptId: payment.attempts[0].id, status: "PENDING_VERIFICATION", db: tx as never }); attemptStatus = "PENDING_VERIFICATION"; }
       if (attemptStatus !== "VERIFIED") await updatePaymentAttemptStatus({ organizationId, attemptId: payment.attempts[0].id, status: "VERIFIED", verificationEvidence: result.evidence ?? {}, db: tx as never });
       if (paymentStatus !== "PAID") await updatePaymentRequestStatus({ organizationId, paymentRequestId: payment.id, status: "PAID", providerReference: result.providerReference, db: tx as never });
+      if (result.paidAt) await tx.paymentRequest.update({ where: { id: payment.id }, data: { paidAt: result.paidAt } });
       const applied = await createPrismaHotelRepositories(tx as unknown as PrismaClient).applyVerifiedPayment({ scope: { organizationId }, reservationId: reservation.id, paymentRequestPublicId: publicId, paidAt: result.paidAt ?? this.now(), amountToman: payment.amountToman, now: this.now() }, tx as never);
-      if (!applied.isApplied) throw new ApiError(409, `Verified payment could not be applied: ${applied.reason}`);
+      if (!applied.isApplied) {
+        const settlementDetectedAt = this.now();
+        await tx.paymentRequest.update({ where: { id: payment.id }, data: { metadata: { ...metadata, hotelSettlementStatus: "UNMATCHED_REQUIRES_RECONCILIATION", hotelSettlementReason: applied.reason, hotelSettlementDetectedAt: settlementDetectedAt.toISOString() } } });
+        return { status: "UNMATCHED_REQUIRES_RECONCILIATION", isApplied: false, paymentRequestPublicId: payment.publicId, reason: applied.reason };
+      }
       return { status: "PAID", isApplied: true, isIdempotentReplay: applied.isIdempotentReplay, paymentRequestPublicId: payment.publicId, reservation: applied.reservation };
     });
   }

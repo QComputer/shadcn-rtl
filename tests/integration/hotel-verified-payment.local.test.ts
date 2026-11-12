@@ -6,11 +6,22 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaHotelRepositories } from "../../lib/hotel/persistence/prisma-hotel-repositories";
 import type { ReservationRecord } from "../../lib/hotel/persistence/hotel-repositories";
 import { reconcileVerifiedPayment } from "../../lib/hotel/services/hotel-booking.service";
+import { HotelOperationalPaymentService } from "../../lib/hotel/services/hotel-operational-payment.service";
 
 const enabled = process.env.HOTEL_VERIFIED_PAYMENT_ACCEPTANCE === "1";
 const stayNights = ["2027-12-10", "2027-12-11"] as const;
 const day = (value: string) => new Date(`${value}T00:00:00.000Z`);
 const amount = BigInt(255000);
+
+async function waitForHotelReservationLock(db: PrismaClient) {
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    const rows = await db.$queryRaw<Array<{ waiters: number }>>`SELECT count(*)::int AS waiters FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query ILIKE '%HotelReservation%'`;
+    if ((rows[0]?.waiters ?? 0) > 0) return;
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  assert.fail("timed out waiting for the competing HotelReservation row lock");
+}
 
 function guardedConnection() {
   assert.notEqual(process.env.NODE_ENV, "production");
@@ -50,6 +61,7 @@ test("verified Hotel balance settlement is tenant-bound, atomic, and idempotent 
   const attemptIds: string[] = [];
   const integrationIds: string[] = [];
   const guestIds: string[] = [];
+  const userIds: string[] = [];
   const repo = new PrismaHotelRepositories(db);
 
   try {
@@ -57,9 +69,13 @@ test("verified Hotel balance settlement is tenant-bound, atomic, and idempotent 
       SELECT current_database()::text AS database, current_user::text AS role, inet_server_port() AS port`;
     assert.deepEqual(identity, [{ database: "retail_hero_test", role: "hero_test", port: 5432 }]);
 
+    const now = new Date();
     const orgA = await db.organization.create({ data: { type: "SHOP", vertical: "HOTEL", name: `Verified payment A ${token}`, slug: `hotel-vpay-a-${token}` } }); orgIds.push(orgA.id);
     const orgB = await db.organization.create({ data: { type: "SHOP", vertical: "HOTEL", name: `Verified payment B ${token}`, slug: `hotel-vpay-b-${token}` } }); orgIds.push(orgB.id);
-    const property = await db.hotelProperty.create({ data: { organizationId: orgA.id, organizationSlug: orgA.slug, slug: `verified-${token}`, name: "Synthetic payment hotel" } }); propertyIds.push(property.id);
+    await db.organizationCapability.create({ data: { organizationId: orgA.id, key: "HOTEL_BOOKING", status: "ACTIVE", enabledAt: now } });
+    const staff = await db.user.create({ data: { name: `vpay-staff-${token}`, password: "fixture-only", role: "STAFF" } }); userIds.push(staff.id);
+    await db.organizationMember.create({ data: { organizationId: orgA.id, organizationSlug: orgA.slug, userId: staff.id, role: "STAFF" } });
+    const property = await db.hotelProperty.create({ data: { organizationId: orgA.id, organizationSlug: orgA.slug, slug: `verified-${token}`, name: "Synthetic payment hotel", operationalMode: "RESERVATION" } }); propertyIds.push(property.id);
     const foreignProperty = await db.hotelProperty.create({ data: { organizationId: orgB.id, organizationSlug: orgB.slug, slug: `foreign-${token}`, name: "Synthetic foreign hotel" } }); propertyIds.push(foreignProperty.id);
     const roomType = await db.hotelRoomType.create({ data: { organizationId: orgA.id, propertyId: property.id, slug: `room-${token}`, name: "Synthetic room", maxAdults: 2, maxChildren: 0, maxOccupancy: 2, beds: [] } }); roomTypeIds.push(roomType.id);
     const foreignRoomType = await db.hotelRoomType.create({ data: { organizationId: orgB.id, propertyId: foreignProperty.id, slug: `foreign-room-${token}`, name: "Synthetic foreign room", maxAdults: 2, maxChildren: 0, maxOccupancy: 2, beds: [] } }); roomTypeIds.push(foreignRoomType.id);
@@ -78,7 +94,6 @@ test("verified Hotel balance settlement is tenant-bound, atomic, and idempotent 
       credentialProfileKey: `fixture-foreign-credential-${token}`, configuration: { fixtureOnly: true },
     } }); integrationIds.push(foreignIntegration.id);
 
-    const now = new Date();
     await db.hotelInventory.createMany({ data: stayNights.map(date => ({ organizationId: orgA.id, propertyId: property.id, roomTypeId: roomType.id, date: day(date), allotment: 10, held: 10, booked: 0 })) });
     const createReservation = async (label: string) => {
       const holdId = `vpay-hold-${label}-${token}`; holdIds.push(holdId);
@@ -251,6 +266,91 @@ test("verified Hotel balance settlement is tenant-bound, atomic, and idempotent 
     assert.equal(cancelled.status, "CANCELLED");
     assert.equal(cancelled.paidAmount, BigInt(0));
     assert.equal(await db.hotelPaymentAllocation.count({ where: { hotelReservationId: cancelledReservation.id } }), 0);
+
+    // Settlement wins the reservation lock; a concurrent expiry then observes CONFIRMED and releases nothing.
+    const settlementWins = await createReservation("expiry-settlement-wins");
+    const settlementWinsPayment = await makeRequest("expiry-settlement-wins", { metadata: { hotelReservationId: settlementWins.id, hotelPropertyId: property.id } });
+    await verify(settlementWinsPayment, "expiry-settlement-wins");
+    const inventoryBeforeSettlement = await db.hotelInventory.findMany({ where: { organizationId: orgA.id, roomTypeId: roomType.id, date: { in: stayNights.map(day) } }, orderBy: { date: "asc" } });
+    let releaseSettlement!: () => void;
+    let signalSettlement!: () => void;
+    const settlementApplied = new Promise<void>(resolve => { signalSettlement = resolve; });
+    const settlementMayCommit = new Promise<void>(resolve => { releaseSettlement = resolve; });
+    const settlementTx = db.$transaction(async tx => {
+      const applied = await repo.applyVerifiedPayment({ scope: { organizationId: orgA.id }, reservationId: settlementWins.id, paymentRequestPublicId: settlementWinsPayment.publicId, paidAt: settlementWinsPayment.paidAt!, amountToman: amount, now }, tx);
+      assert.equal(applied.isApplied, true);
+      signalSettlement();
+      await settlementMayCommit;
+    });
+    await settlementApplied;
+    let expiryResult: Awaited<ReturnType<typeof repo.cancelReservationAndReleaseInventory>> | null = null;
+    const waitingExpiry = db.$transaction(async tx => {
+      expiryResult = await repo.cancelReservationAndReleaseInventory({ scope: { organizationId: orgA.id }, reservationId: settlementWins.id, expectedStatus: ["PENDING_PAYMENT"], now }, tx);
+      if (expiryResult.isUpdated) await tx.hotelReservation.update({ where: { id: settlementWins.id }, data: { status: "EXPIRED" } });
+    });
+    await waitForHotelReservationLock(db);
+    releaseSettlement();
+    await Promise.all([settlementTx, waitingExpiry]);
+    assert.equal(expiryResult?.isUpdated, false);
+    const settlementWon = await db.hotelReservation.findUniqueOrThrow({ where: { id: settlementWins.id } });
+    assert.equal(settlementWon.status, "CONFIRMED");
+    assert.equal(settlementWon.paidAmount, amount);
+    assert.equal(await db.hotelPaymentAllocation.count({ where: { hotelReservationId: settlementWins.id, kind: "BALANCE" } }), 1);
+    const inventoryAfterSettlement = await db.hotelInventory.findMany({ where: { organizationId: orgA.id, roomTypeId: roomType.id, date: { in: stayNights.map(day) } }, orderBy: { date: "asc" } });
+    assert.deepEqual(inventoryAfterSettlement.map(row => row.booked), inventoryBeforeSettlement.map(row => row.booked), "expiry must not release inventory after payment settlement wins");
+
+    // Expiry holds the row lock while a provider verification is pending. The late verified callback records an unmatched obligation, never reconfirms or allocates.
+    const expiryWins = await createReservation("expiry-wins");
+    const expiredAt = new Date(now.getTime() - 30_000);
+    await db.hotelBookingHold.update({ where: { id: expiryWins.holdId! }, data: { expiresAt: expiredAt } });
+    const latePayment = await makeRequest("expiry-wins", { status: "PENDING_VERIFICATION", paidAt: null, metadata: { hotelReservationId: expiryWins.id, hotelPropertyId: property.id } });
+    const lateAttempt = await verify(latePayment, "expiry-wins", { status: "PENDING_VERIFICATION", verifiedAt: null, verificationEvidence: { providerVerified: false } });
+    const inventoryBeforeExpiry = await db.hotelInventory.findMany({ where: { organizationId: orgA.id, roomTypeId: roomType.id, date: { in: stayNights.map(day) } }, orderBy: { date: "asc" } });
+    let finishProviderVerification!: () => void;
+    let signalProviderCall!: () => void;
+    const providerCallStarted = new Promise<void>(resolve => { signalProviderCall = resolve; });
+    const providerCanReturn = new Promise<void>(resolve => { finishProviderVerification = resolve; });
+    const adapter = {
+      available: () => true,
+      async start() { throw new Error("unexpected provider start in reconciliation test"); },
+      async verify() { signalProviderCall(); await providerCanReturn; return { status: "VERIFIED" as const, paidAt: new Date(expiredAt.getTime() - 1_000), providerReference: `disposable-${token}`, evidence: { source: "isolated-test-adapter" } }; },
+      async refund() { throw new Error("unexpected refund in reconciliation test"); },
+      async verifyRefund() { return { status: "PENDING_VERIFICATION" as const }; },
+    };
+    const paymentService = new HotelOperationalPaymentService(db, () => now, adapter);
+    const staffActor = { userId: staff.id, role: "STAFF", organizationId: orgA.id };
+    const reconciling = paymentService.execute(staffActor, orgA.id, property.id, { action: "reconcile-payment", reservationId: expiryWins.id, paymentRequestPublicId: latePayment.publicId }, `expiry-race-${token}`);
+    await providerCallStarted;
+    let releaseExpiryCommit!: () => void;
+    let signalExpiryStarted!: () => void;
+    const expiryStarted = new Promise<void>(resolve => { signalExpiryStarted = resolve; });
+    const expiryMayCommit = new Promise<void>(resolve => { releaseExpiryCommit = resolve; });
+    const expiryTx = db.$transaction(async tx => {
+      await tx.$queryRaw`SELECT "id" FROM "HotelReservation" WHERE "id"=${expiryWins.id} AND "organizationId"=${orgA.id} FOR UPDATE`;
+      const expired = await repo.cancelReservationAndReleaseInventory({ scope: { organizationId: orgA.id }, reservationId: expiryWins.id, expectedStatus: ["PENDING_PAYMENT"], now }, tx);
+      assert.equal(expired.isUpdated, true);
+      await tx.hotelReservation.update({ where: { id: expiryWins.id }, data: { status: "EXPIRED" } });
+      signalExpiryStarted();
+      await expiryMayCommit;
+    });
+    await expiryStarted;
+    finishProviderVerification();
+    await waitForHotelReservationLock(db);
+    releaseExpiryCommit();
+    const lateResult = await reconciling;
+    await expiryTx;
+    assert.equal(lateResult.status, "UNMATCHED_REQUIRES_RECONCILIATION");
+    const expiredReservation = await db.hotelReservation.findUniqueOrThrow({ where: { id: expiryWins.id } });
+    assert.equal(expiredReservation.status, "EXPIRED");
+    assert.equal(expiredReservation.paidAmount, BigInt(0));
+    assert.equal(await db.hotelPaymentAllocation.count({ where: { hotelReservationId: expiryWins.id } }), 0);
+    const unmatched = await db.paymentRequest.findUniqueOrThrow({ where: { id: latePayment.id } });
+    assert.equal(unmatched.status, "PAID");
+    assert.equal((unmatched.metadata as { hotelSettlementStatus?: string }).hotelSettlementStatus, "UNMATCHED_REQUIRES_RECONCILIATION");
+    assert.equal((await db.paymentProviderAttempt.findUniqueOrThrow({ where: { id: lateAttempt.id } })).status, "VERIFIED");
+    const inventoryAfterExpiry = await db.hotelInventory.findMany({ where: { organizationId: orgA.id, roomTypeId: roomType.id, date: { in: stayNights.map(day) } }, orderBy: { date: "asc" } });
+    assert.equal(inventoryAfterExpiry.length, inventoryBeforeExpiry.length);
+    assert.ok(inventoryAfterExpiry.every((row, index) => row.booked === inventoryBeforeExpiry[index]!.booked - 1), "expiry must release inventory once while a late callback must not book it again");
   } catch (error) {
     const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
     console.error(`HOTEL_VERIFIED_PAYMENT_TEST_FAILURE=${detail.slice(0, 500)}`);
@@ -272,7 +372,9 @@ test("verified Hotel balance settlement is tenant-bound, atomic, and idempotent 
         await db.hotelRatePlan.deleteMany({ where: { id: { in: ratePlanIds } } });
         await db.hotelRoomType.deleteMany({ where: { id: { in: roomTypeIds } } });
         await db.hotelProperty.deleteMany({ where: { id: { in: propertyIds } } });
+        await db.organizationMember.deleteMany({ where: { organizationId: { in: orgIds } } });
         await db.organization.deleteMany({ where: { id: { in: orgIds } } });
+        await db.user.deleteMany({ where: { id: { in: userIds } } });
         assert.equal(await db.hotelReservation.count({ where: { organizationId: { in: orgIds } } }), 0);
         assert.equal(await db.paymentRequest.count({ where: { publicId: { in: paymentPublicIds } } }), 0);
         console.log("HOTEL_VERIFIED_PAYMENT_CLEANUP=PASSED");

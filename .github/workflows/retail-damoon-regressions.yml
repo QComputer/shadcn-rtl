@@ -2,7 +2,7 @@ name: Retail and Damoon focused regressions
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, codex/hotel-operational-reservation-20261111]
     paths:
       - '.github/workflows/retail-damoon-regressions.yml'
       - 'components/retail/**'
@@ -55,6 +55,8 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: TypeScript validation
+        run: pnpm run typecheck
       - run: pnpm exec prisma generate
       - name: Retail cart, checkout and fulfillment units
         run: >-
@@ -112,6 +114,7 @@ jobs:
       LOCAL_PRISMA_EXPECTED_PORT: '55439'
       RETAIL_HERO_EXPECTED_DATABASE: retail_hero_test
       HOTEL_VERIFIED_PAYMENT_ACCEPTANCE: '1'
+      HOTEL_OPERATIONAL_PAYMENT_ACCEPTANCE: '1'
       HOTEL_ATOMIC_CANCELLATION_ACCEPTANCE: '1'
       HOTEL_OPERATIONAL_RESERVATION_ACCEPTANCE: '1'
       HOTEL_GUEST_PORTAL_ENABLED: '1'
@@ -138,4 +141,4 @@ jobs:
       - name: Reconcile trusted synthetic verification and reject tenant/payment conflicts
         run: >-
           pnpm exec node --import tsx --require ./scripts/e2e/register-server-only.cjs
-          --test tests/integration/hotel-verified-payment.local.test.ts tests/integration/hotel-atomic-cancellation.local.test.ts tests/integration/hotel-operational-reservations.local.test.ts
+          --test tests/integration/hotel-operational-payment.local.test.ts tests/integration/hotel-verified-payment.local.test.ts tests/integration/hotel-atomic-cancellation.local.test.ts tests/integration/hotel-operational-reservations.local.test.ts

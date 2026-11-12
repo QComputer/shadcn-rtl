@@ -193,7 +193,7 @@ test("publication requires an immutable revision owned by the tenant and current
   assert.equal(result.revisionId, "r1");
   assert.equal(result.previousRevisionId, null);
   assert.deepEqual(valid.revisionLookups, [{ id: "r1", organizationId: "org-1" }]);
-  assert.deepEqual(valid.imageLookups, [{ where: { organizationId: "org-1", access: "PUBLIC" }, select: { id: true, url: true, filename: true, mimeType: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }] }]);
+  assert.deepEqual(valid.imageLookups, [{ where: { organizationId: "org-1", access: "PUBLIC" }, select: { id: true, url: true, filename: true, mimeType: true, organizationId: true, access: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }] }]);
   assert.equal(valid.audit.length, 1);
   assert.match(valid.sql[0] ?? "", /COALESCE\("OrganizationSettings"\.settings,'\{\}'::jsonb\) \|\| jsonb_build_object\('retailHeroPublication'/);
 });

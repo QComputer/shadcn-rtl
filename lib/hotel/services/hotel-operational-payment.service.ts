@@ -78,7 +78,7 @@ export class HotelOperationalPaymentService {
       if (!owned) throw new ApiError(404, "Reservation not found");
     }
     const rows = await this.db.paymentRequest.findMany({ where: { organizationId, orderId: null, appointmentId: null, metadata: { path: ["hotelReservationId"], equals: reservationId } }, orderBy: { createdAt: "desc" }, select: { publicId: true, purpose: true, status: true, amountToman: true, currency: true, createdAt: true, expiresAt: true, paidAt: true, metadata: true, attempts: { select: { id: true }, take: 1 } } });
-    return { requests: rows.filter(row => jsonObject(row.metadata).hotelPropertyId === propertyId).map(({ publicId, purpose, status, amountToman, currency, createdAt, expiresAt, paidAt, metadata, attempts }) => { const values = jsonObject(metadata); return { publicId, purpose, status, amountToman: amountToman.toString(), currency, createdAt, expiresAt, paidAt, simulated: values.simulated === true, settlementStatus: typeof values.hotelSettlementStatus === "string" ? values.hotelSettlementStatus : null, reconciliationRequired: values.hotelSettlementStatus === "UNMATCHED_REQUIRES_RECONCILIATION", reconcilable: attempts.length > 0 }; }) };
+    return { requests: rows.filter(row => jsonObject(row.metadata).hotelPropertyId === propertyId).map(({ publicId, purpose, status, amountToman, currency, createdAt, expiresAt, paidAt, metadata, attempts }) => { const values = jsonObject(metadata); return { publicId, purpose, status, amountToman: amountToman.toString(), currency, createdAt, expiresAt, paidAt, simulated: values.simulated === true, settlementStatus: typeof values.hotelSettlementStatus === "string" ? values.hotelSettlementStatus : null, settlementReason: typeof values.hotelSettlementReason === "string" ? values.hotelSettlementReason : null, unmatchedResolutionStatus: typeof values.unmatchedResolutionStatus === "string" ? values.unmatchedResolutionStatus : typeof values.unmatchedRefundStatus === "string" ? values.unmatchedRefundStatus : null, reconciliationRequired: values.hotelSettlementStatus === "UNMATCHED_REQUIRES_RECONCILIATION", reconcilable: attempts.length > 0 }; }) };
   }
 
   async execute(actor: HotelBookingActor, organizationId: string, propertyId: string, input: unknown, idempotencyKey: string) {
@@ -141,9 +141,9 @@ export class HotelOperationalPaymentService {
     try {
       let result: Record<string, unknown>;
       if (command.action === "create-payment") result = await this.createPayment(actor, organizationId, propertyId, reservation, identityId, command.integrationId, idempotencyKey);
-      else if (command.action === "reconcile-payment") result = await this.reconcile(organizationId, reservation, command.paymentRequestPublicId);
-      else if (command.action === "reconcile-refund") result = await this.reconcileRefund(organizationId, reservation, command.paymentRequestPublicId);
-      else if (command.action === "request-refund") result = await this.createRefund(organizationId, propertyId, reservation, command.paymentRequestPublicId, idempotencyKey);
+      else if (command.action === "reconcile-payment") result = await this.reconcile(organizationId, reservation, command.paymentRequestPublicId, actor.userId);
+      else if (command.action === "reconcile-refund") result = await this.reconcileRefund(organizationId, reservation, command.paymentRequestPublicId, actor.userId);
+      else if (command.action === "request-refund") result = await this.createRefund(organizationId, propertyId, reservation, command.paymentRequestPublicId, idempotencyKey, actor.userId);
       else {
         if (!await simulatorAllowed(this.db)) throw new ApiError(403, "Hotel payment simulator is unavailable");
         result = await this.simulate(organizationId, propertyId, reservation, command, idempotencyKey);
@@ -201,7 +201,7 @@ export class HotelOperationalPaymentService {
     return { paymentRequestPublicId: created.publicId, status: "AWAITING_CUSTOMER", amountToman: created.amountToman.toString(), attemptId: intent.attempt.id, providerReference: started.providerReference ?? null };
   }
 
-  private async reconcile(organizationId: string, reservation: { id: string; propertyId: string }, publicId: string) {
+  private async reconcile(organizationId: string, reservation: { id: string; propertyId: string }, publicId: string, actorUserId: string) {
     const payment = await this.db.paymentRequest.findFirst({ where: { publicId, organizationId, purpose: "RESERVATION_BALANCE" }, include: { attempts: { orderBy: { createdAt: "desc" }, take: 1 } } });
     const metadata = jsonObject(payment?.metadata ?? null);
     if (!payment || metadata.hotelReservationId !== reservation.id || metadata.hotelPropertyId !== reservation.propertyId || !payment.providerIntegrationId || !payment.merchantAccountKey || !payment.credentialProfileKeySnapshot || !payment.attempts[0]) throw new ApiError(404, "Payment request not found");
@@ -228,17 +228,42 @@ export class HotelOperationalPaymentService {
       const applied = await createPrismaHotelRepositories(tx as unknown as PrismaClient).applyVerifiedPayment({ scope: { organizationId }, reservationId: reservation.id, paymentRequestPublicId: publicId, paidAt: result.paidAt ?? this.now(), amountToman: payment.amountToman, now: this.now() }, tx as never);
       if (!applied.isApplied) {
         const settlementDetectedAt = this.now();
-        await tx.paymentRequest.update({ where: { id: payment.id }, data: { metadata: { ...metadata, hotelSettlementStatus: "UNMATCHED_REQUIRES_RECONCILIATION", hotelSettlementReason: applied.reason, hotelSettlementDetectedAt: settlementDetectedAt.toISOString() } } });
+        const firstCase = metadata.hotelSettlementStatus !== "UNMATCHED_REQUIRES_RECONCILIATION";
+        const detectedAt = firstCase || typeof metadata.hotelSettlementDetectedAt !== "string" ? settlementDetectedAt.toISOString() : metadata.hotelSettlementDetectedAt;
+        await tx.paymentRequest.update({ where: { id: payment.id }, data: { metadata: { ...metadata, hotelSettlementStatus: "UNMATCHED_REQUIRES_RECONCILIATION", hotelSettlementReason: applied.reason, hotelSettlementDetectedAt: detectedAt } } });
+        if (firstCase) {
+          const org = await tx.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { slug: true } });
+          await tx.auditLog.create({ data: { action: "CREATE", entityType: "HotelUnmatchedPayment", entityId: payment.publicId, userId: actorUserId, organizationId, organizationSlug: org.slug, description: "Provider-verified payment could not be allocated to its reservation", newValue: { reservationId: reservation.id, amountToman: payment.amountToman.toString(), currency: payment.currency, providerIntegrationId: payment.providerIntegrationId, reason: applied.reason, providerAttemptId: payment.attempts[0].id } } });
+        }
         return { status: "UNMATCHED_REQUIRES_RECONCILIATION", isApplied: false, paymentRequestPublicId: payment.publicId, reason: applied.reason };
       }
       return { status: "PAID", isApplied: true, isIdempotentReplay: applied.isIdempotentReplay, paymentRequestPublicId: payment.publicId, reservation: applied.reservation };
     });
   }
 
-  private async reconcileRefund(organizationId: string, reservation: { id: string; propertyId: string }, publicId: string) {
+  private async reconcileRefund(organizationId: string, reservation: { id: string; propertyId: string }, publicId: string, actorUserId: string) {
     const refund = await this.db.paymentRequest.findFirst({ where: { publicId, organizationId, purpose: "RESERVATION_REFUND" }, include: { attempts: { orderBy: { createdAt: "desc" }, take: 1 } } });
     const metadata = jsonObject(refund?.metadata ?? null);
-    if (!refund || metadata.hotelReservationId !== reservation.id || metadata.hotelPropertyId !== reservation.propertyId || !refund.providerIntegrationId || !refund.attempts[0]) throw new ApiError(404, "Refund request not found");
+    if (!refund || metadata.hotelReservationId !== reservation.id || metadata.hotelPropertyId !== reservation.propertyId || !refund.providerIntegrationId) throw new ApiError(404, "Refund request not found");
+    if (metadata.hotelUnmatchedRefund === true) {
+      if (!refund.attempts[0]) return { status: "MANUAL_INTERVENTION_REQUIRED", refundRequestPublicId: refund.publicId, amountToman: refund.amountToman.toString() };
+      if (refund.status === "PAID" && metadata.unmatchedRefundVerified === true) return { status: "VERIFIED_REFUNDED", refundRequestPublicId: refund.publicId, amountToman: refund.amountToman.toString(), isIdempotentReplay: true };
+      if (!this.adapter.verifyRefund) return { status: "MANUAL_INTERVENTION_REQUIRED", refundRequestPublicId: refund.publicId, amountToman: refund.amountToman.toString() };
+      const verified = await this.adapter.verifyRefund({ organizationId, paymentRequestId: refund.id, attemptId: refund.attempts[0].id, originalPaymentRequestPublicId: String(metadata.originalPaymentRequestPublicId) });
+      if (verified.status !== "VERIFIED") {
+        const state = verified.status === "FAILED" ? "UNMATCHED_MANUAL_INTERVENTION_REQUIRED" : "UNMATCHED_REFUND_OUTCOME_UNKNOWN";
+        await this.recordUnmatchedRefundState(organizationId, actorUserId, metadata.originalPaymentRequestPublicId as string, refund, state, verified.evidence ?? {}, verified.providerReference);
+        await updatePaymentAttemptStatus({ organizationId, attemptId: refund.attempts[0].id, status: verified.status as PaymentProviderAttemptStatus, verificationEvidence: verified.evidence ?? {}, db: this.db as never });
+        if (verified.status === "FAILED") await updatePaymentRequestStatus({ organizationId, paymentRequestId: refund.id, status: "FAILED", db: this.db as never });
+        return { status: verified.status === "FAILED" ? "MANUAL_INTERVENTION_REQUIRED" : "OUTCOME_UNKNOWN", refundRequestPublicId: refund.publicId, amountToman: refund.amountToman.toString() };
+      }
+      if (jsonObject(verified.evidence ?? null).simulated === true || jsonObject(verified.evidence ?? null).fixture === true) {
+        await this.recordUnmatchedRefundState(organizationId, actorUserId, metadata.originalPaymentRequestPublicId as string, refund, "UNMATCHED_MANUAL_INTERVENTION_REQUIRED", verified.evidence ?? {});
+        throw new ApiError(409, "Simulated refund evidence cannot settle a refund");
+      }
+      return this.finalizeUnmatchedRefund(organizationId, actorUserId, refund, metadata, verified.providerReference, verified.evidence ?? {});
+    }
+    if (!refund.attempts[0]) throw new ApiError(404, "Refund request not found");
     const existingAllocation = await this.db.hotelPaymentAllocation.findUnique({ where: { paymentRequestPublicId: refund.publicId } });
     if (refund.status === "PAID" && existingAllocation?.kind === "REFUND" && existingAllocation.hotelReservationId === reservation.id) return { status: "PAID", refundRequestPublicId: refund.publicId, amountToman: refund.amountToman.toString(), isIdempotentReplay: true };
     if (!this.adapter.verifyRefund) throw new ApiError(503, "Refund status verification is unavailable; manual reconciliation required");
@@ -270,7 +295,12 @@ export class HotelOperationalPaymentService {
     return { status: "PAID", refundRequestPublicId: refund.publicId, amountToman: refund.amountToman.toString() };
   }
 
-  private async createRefund(organizationId: string, propertyId: string, reservation: { id: string; guestCustomerId: string | null; totalAmount: bigint; paidAmount: bigint; refundedAmount: bigint; currency: string; status: string; cancellationPolicySnapshot: Prisma.JsonValue; checkIn: Date; cancelledAt: Date | null; nights: Array<{ rate: bigint }> }, originalPublicId: string, key: string) {
+  private async createRefund(organizationId: string, propertyId: string, reservation: { id: string; guestCustomerId: string | null; totalAmount: bigint; paidAmount: bigint; refundedAmount: bigint; currency: string; status: string; cancellationPolicySnapshot: Prisma.JsonValue; checkIn: Date; cancelledAt: Date | null; nights: Array<{ rate: bigint }> }, originalPublicId: string, key: string, actorUserId: string) {
+    const candidate = await this.db.paymentRequest.findFirst({ where: { publicId: originalPublicId, organizationId, purpose: "RESERVATION_BALANCE" }, include: { attempts: true } });
+    const candidateMetadata = jsonObject(candidate?.metadata ?? null);
+    if (candidate && candidateMetadata.hotelReservationId === reservation.id && candidateMetadata.hotelPropertyId === propertyId && candidateMetadata.hotelSettlementStatus === "UNMATCHED_REQUIRES_RECONCILIATION") {
+      return this.createUnmatchedRefund(organizationId, propertyId, reservation, candidate, candidateMetadata, key, actorUserId);
+    }
     if (!(["CANCELLED", "NO_SHOW"].includes(reservation.status)) || reservation.paidAmount <= reservation.refundedAmount) throw new ApiError(409, "Reservation has no refundable settled balance");
     const original = await this.db.paymentRequest.findFirst({ where: { publicId: originalPublicId, organizationId, status: "PAID", purpose: "RESERVATION_BALANCE" }, include: { attempts: true } });
     const originalMetadata = jsonObject(original?.metadata ?? null);
@@ -325,6 +355,88 @@ export class HotelOperationalPaymentService {
       await updatePaymentRequestStatus({ organizationId, paymentRequestId: refund.id, status: "FAILED", providerReference: result.providerReference, db: this.db as never });
     }
     return { refundRequestPublicId: refund.publicId, status: result.status, amountToman: refund.amountToman.toString() };
+  }
+
+  private async createUnmatchedRefund(organizationId: string, propertyId: string, reservation: { id: string; guestCustomerId: string | null; currency: string; status: string }, original: Prisma.PaymentRequestGetPayload<{ include: { attempts: true } }>, metadata: Record<string, unknown>, key: string, actorUserId: string) {
+    const originalAttempt = original.attempts.find(attempt => attempt.status === "VERIFIED" && attempt.organizationId === organizationId && attempt.amountToman === original.amountToman && attempt.merchantAccountKey === original.merchantAccountKey && attempt.credentialProfileKeySnapshot === original.credentialProfileKeySnapshot && jsonObject(attempt.verificationEvidence).simulated !== true && jsonObject(attempt.verificationEvidence).fixture !== true);
+    if (original.status !== "PAID" || reservation.status !== "EXPIRED" || original.currency !== "TOMAN" || original.currency !== reservation.currency || original.amountToman <= BigInt(0) || original.guestCustomerId !== reservation.guestCustomerId || !original.providerIntegrationId || !original.merchantAccountKey || !original.credentialProfileKeySnapshot || !originalAttempt || metadata.simulated === true) throw new ApiError(409, "Verified unmatched payment is not eligible for refund resolution");
+    const providerRow = await this.db.organizationIntegration.findFirst({ where: { id: original.providerIntegrationId, organizationId, status: "ACTIVE", disabledAt: null, revokedAt: null }, select: { provider: true } });
+    if (!providerRow || providerRow.provider !== originalAttempt.provider) throw new ApiError(409, "Original payment provider binding is unavailable");
+    const intent = await this.db.$transaction(async tx => {
+      await tx.$queryRaw`SELECT "id" FROM "HotelReservation" WHERE "id"=${reservation.id} AND "organizationId"=${organizationId} FOR UPDATE`;
+      const current = await tx.hotelReservation.findFirst({ where: { id: reservation.id, organizationId, propertyId }, select: { status: true, paidAmount: true, refundedAmount: true } });
+      const currentOriginal = await tx.paymentRequest.findFirst({ where: { id: original.id, organizationId }, select: { metadata: true, status: true } });
+      if (!current || current.status !== "EXPIRED" || current.paidAmount !== BigInt(0) || !currentOriginal || currentOriginal.status !== "PAID") throw new ApiError(409, "Unmatched payment case changed");
+      const existing = await tx.paymentRequest.findFirst({ where: { organizationId, purpose: "RESERVATION_REFUND", metadata: { path: ["originalPaymentRequestPublicId"], equals: original.publicId } }, include: { attempts: { take: 1 } } });
+      if (existing) return { refund: existing, created: false };
+      const org = await tx.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { slug: true } });
+      const created = await createPaymentRequest({ organizationId, guestCustomerId: original.guestCustomerId, providerIntegrationId: original.providerIntegrationId, amountToman: original.amountToman, purpose: "RESERVATION_REFUND", metadata: { requestType: "HOTEL_UNMATCHED_PAYMENT_REFUND", hotelUnmatchedRefund: true, originalPaymentRequestPublicId: original.publicId, originalProviderAttemptId: originalAttempt.id, hotelReservationId: reservation.id, hotelPropertyId: propertyId, hotelUnmatchedReason: metadata.hotelSettlementReason, unmatchedRefundStatus: this.adapter.available() ? "REFUND_REQUESTED" : "MANUAL_INTERVENTION_REQUIRED" }, db: tx });
+      let attempt = null;
+      if (this.adapter.available()) {
+        attempt = await tx.paymentProviderAttempt.create({ data: { organizationId, paymentRequestId: created.id, providerIntegrationId: original.providerIntegrationId, merchantAccountKey: original.merchantAccountKey, credentialProfileKeySnapshot: original.credentialProfileKeySnapshot, merchantCodeName: original.merchantCodeName, provider: providerRow.provider, amountToman: created.amountToman, idempotencyKey: key, status: "PENDING_VERIFICATION" } });
+        await tx.paymentRequest.update({ where: { id: created.id }, data: { status: "PENDING_VERIFICATION" } });
+      }
+      await tx.paymentRequest.update({ where: { id: original.id }, data: { metadata: { ...jsonObject(currentOriginal.metadata), unmatchedResolutionStatus: this.adapter.available() ? "UNMATCHED_REFUND_REQUESTED" : "UNMATCHED_MANUAL_INTERVENTION_REQUIRED", unmatchedRefundRequestPublicId: created.publicId, unmatchedResolutionUpdatedAt: this.now().toISOString() } } });
+      await tx.auditLog.create({ data: { action: "UPDATE", entityType: "HotelUnmatchedPayment", entityId: original.publicId, userId: actorUserId, organizationId, organizationSlug: org.slug, description: "Unmatched payment refund resolution requested", previousValue: { status: "UNMATCHED_REQUIRES_RECONCILIATION" }, newValue: { status: this.adapter.available() ? "UNMATCHED_REFUND_REQUESTED" : "UNMATCHED_MANUAL_INTERVENTION_REQUIRED", refundRequestPublicId: created.publicId, amountToman: created.amountToman.toString() } } });
+      return { refund: { ...created, attempts: attempt ? [attempt] : [] }, created: true };
+    });
+    const refund = intent.refund;
+    if (!intent.created) return { refundRequestPublicId: refund.publicId, amountToman: refund.amountToman.toString(), status: jsonObject(refund.metadata).unmatchedRefundStatus ?? "REFUND_REQUESTED", replay: true };
+    const attempt = refund.attempts[0];
+    if (!attempt) return { refundRequestPublicId: refund.publicId, amountToman: refund.amountToman.toString(), status: "MANUAL_INTERVENTION_REQUIRED", providerAvailable: false };
+    try {
+      const result = await this.adapter.refund({ organizationId, paymentRequestId: refund.id, originalPaymentRequestPublicId: original.publicId, amountToman: refund.amountToman, idempotencyKey: key });
+      if (result.status === "VERIFIED") {
+        if (jsonObject(result.evidence ?? null).simulated === true || jsonObject(result.evidence ?? null).fixture === true) throw new ApiError(409, "Simulated refund evidence cannot settle a refund");
+        return this.finalizeUnmatchedRefund(organizationId, actorUserId, refund, jsonObject(refund.metadata), result.providerReference, result.evidence ?? {});
+      }
+      const state = result.status === "FAILED" ? "UNMATCHED_MANUAL_INTERVENTION_REQUIRED" : "UNMATCHED_REFUND_OUTCOME_UNKNOWN";
+      await this.recordUnmatchedRefundState(organizationId, actorUserId, original.publicId, refund, state, result.evidence ?? {}, result.providerReference);
+      await updatePaymentAttemptStatus({ organizationId, attemptId: attempt.id, status: result.status === "FAILED" ? "FAILED" : "PENDING_VERIFICATION", verificationEvidence: result.evidence ?? {}, db: this.db as never });
+      if (result.status === "FAILED") await updatePaymentRequestStatus({ organizationId, paymentRequestId: refund.id, status: "FAILED", db: this.db as never });
+      return { refundRequestPublicId: refund.publicId, amountToman: refund.amountToman.toString(), status: result.status === "FAILED" ? "MANUAL_INTERVENTION_REQUIRED" : "OUTCOME_UNKNOWN" };
+    } catch (error) {
+      const untrusted = error instanceof ApiError && error.status === 409;
+      await this.recordUnmatchedRefundState(organizationId, actorUserId, original.publicId, refund, untrusted ? "UNMATCHED_MANUAL_INTERVENTION_REQUIRED" : "UNMATCHED_REFUND_OUTCOME_UNKNOWN", { providerCallOutcome: untrusted ? "UNTRUSTED_EVIDENCE" : "UNKNOWN_AFTER_ERROR" });
+      throw error;
+    }
+  }
+
+  private async recordUnmatchedRefundState(organizationId: string, actorUserId: string, originalPublicId: string, refund: { publicId: string; amountToman: bigint; metadata: Prisma.JsonValue | null }, state: string, evidence: Prisma.InputJsonObject, providerReference?: string | null) {
+    await this.db.$transaction(async tx => {
+      await tx.$queryRaw`SELECT "id" FROM "PaymentRequest" WHERE "publicId"=${originalPublicId} AND "organizationId"=${organizationId} FOR UPDATE`;
+      const original = await tx.paymentRequest.findFirst({ where: { publicId: originalPublicId, organizationId }, select: { id: true, metadata: true } });
+      if (!original) throw new ApiError(404, "Unmatched payment not found");
+      const org = await tx.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { slug: true } });
+      const previousState = typeof jsonObject(original.metadata).unmatchedResolutionStatus === "string" ? jsonObject(original.metadata).unmatchedResolutionStatus as string : "UNMATCHED_REFUND_REQUESTED";
+      await tx.paymentRequest.update({ where: { id: original.id }, data: { metadata: { ...jsonObject(original.metadata), unmatchedResolutionStatus: state, unmatchedResolutionUpdatedAt: this.now().toISOString() } } });
+      await tx.paymentRequest.update({ where: { publicId: refund.publicId }, data: { metadata: { ...jsonObject(refund.metadata), unmatchedRefundStatus: state, providerOutcomeEvidence: evidence, ...(providerReference ? { providerRefundReference: providerReference } : {}) } } });
+      if (previousState !== state) await tx.auditLog.create({ data: { action: "UPDATE", entityType: "HotelUnmatchedPayment", entityId: originalPublicId, userId: actorUserId, organizationId, organizationSlug: org.slug, description: "Unmatched payment refund state changed", previousValue: { status: previousState ?? "UNMATCHED_REFUND_REQUESTED" }, newValue: { status: state, refundRequestPublicId: refund.publicId, amountToman: refund.amountToman.toString() } } });
+    });
+  }
+
+  private async finalizeUnmatchedRefund(organizationId: string, actorUserId: string, refund: { id: string; publicId: string; amountToman: bigint; metadata: Prisma.JsonValue | null; attempts: { id: string }[] }, metadata: Record<string, unknown>, providerReference: string | null | undefined, evidence: Prisma.InputJsonObject) {
+    const originalPublicId = String(metadata.originalPaymentRequestPublicId ?? "");
+    return this.db.$transaction(async tx => {
+      await tx.$queryRaw`SELECT "id" FROM "HotelReservation" WHERE "organizationId"=${organizationId} AND "id"=${metadata.hotelReservationId as string} FOR UPDATE`;
+      const original = await tx.paymentRequest.findFirst({ where: { publicId: originalPublicId, organizationId, status: "PAID" }, include: { attempts: true } });
+      const reservation = await tx.hotelReservation.findFirst({ where: { id: metadata.hotelReservationId as string, organizationId, propertyId: metadata.hotelPropertyId as string }, select: { status: true, paidAmount: true, refundedAmount: true } });
+      const originalMetadata = jsonObject(original?.metadata);
+      const sourceAttempt = original?.attempts.find(attempt => attempt.id === metadata.originalProviderAttemptId);
+      const refundAttempt = refund.attempts[0] ? await tx.paymentProviderAttempt.findFirst({ where: { id: refund.attempts[0].id, organizationId, paymentRequestId: refund.id } }) : null;
+      if (!original || originalMetadata.hotelSettlementStatus !== "UNMATCHED_REQUIRES_RECONCILIATION" || original.amountToman !== refund.amountToman || original.currency !== "TOMAN" || !sourceAttempt || sourceAttempt.status !== "VERIFIED" || !refundAttempt || refundAttempt.amountToman !== original.amountToman || refundAttempt.providerIntegrationId !== original.providerIntegrationId || refundAttempt.merchantAccountKey !== original.merchantAccountKey || refundAttempt.credentialProfileKeySnapshot !== original.credentialProfileKeySnapshot || refundAttempt.provider !== sourceAttempt.provider || !reservation || reservation.status !== "EXPIRED" || reservation.paidAmount !== BigInt(0) || reservation.refundedAmount !== BigInt(0)) throw new ApiError(409, "Unmatched payment is no longer eligible for refund resolution");
+      const current = await tx.paymentRequest.findUniqueOrThrow({ where: { id: refund.id }, select: { status: true, metadata: true } });
+      if (jsonObject(current.metadata).unmatchedRefundVerified === true) return { status: "VERIFIED_REFUNDED", refundRequestPublicId: refund.publicId, amountToman: refund.amountToman.toString(), isIdempotentReplay: true };
+      if (!refund.attempts[0]) throw new ApiError(409, "Provider refund attempt is missing");
+      const org = await tx.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { slug: true } });
+      const now = this.now();
+      await updatePaymentAttemptStatus({ organizationId, attemptId: refundAttempt.id, status: "VERIFIED", verificationEvidence: evidence, db: tx as never });
+      await updatePaymentRequestStatus({ organizationId, paymentRequestId: refund.id, status: "PAID", providerReference, db: tx as never });
+      await tx.paymentRequest.update({ where: { id: refund.id }, data: { paidAt: now, metadata: { ...jsonObject(current.metadata), unmatchedRefundStatus: "PROVIDER_VERIFIED_REFUNDED", unmatchedRefundVerified: true, providerOutcomeEvidence: evidence, ...(providerReference ? { providerRefundReference: providerReference } : {}) } } });
+      await tx.paymentRequest.update({ where: { id: original.id }, data: { metadata: { ...jsonObject(original.metadata), unmatchedResolutionStatus: "UNMATCHED_REFUNDED", unmatchedResolutionUpdatedAt: now.toISOString() } } });
+      await tx.auditLog.create({ data: { action: "CHANGE_STATUS", entityType: "HotelUnmatchedPayment", entityId: originalPublicId, userId: actorUserId, organizationId, organizationSlug: org.slug, description: "Provider verified refund for unmatched hotel payment", newValue: { status: "UNMATCHED_REFUNDED", refundRequestPublicId: refund.publicId, amountToman: refund.amountToman.toString(), providerReference: providerReference ?? null } } });
+      return { status: "VERIFIED_REFUNDED", refundRequestPublicId: refund.publicId, amountToman: refund.amountToman.toString() };
+    });
   }
 
   private async simulate(organizationId: string, propertyId: string, reservation: { id: string; totalAmount: bigint; status: string; paidAmount: bigint; refundedAmount: bigint }, input: Extract<ActionInput, { action: "simulate-payment" | "simulate-refund" }>, key: string) {

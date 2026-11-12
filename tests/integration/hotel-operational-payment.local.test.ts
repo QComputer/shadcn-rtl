@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { HotelOperationalPaymentService } from "@/lib/hotel/services/hotel-operational-payment.service";
+import { createPrismaHotelRepositories } from "@/lib/hotel/persistence/prisma-hotel-repositories";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
@@ -85,6 +86,7 @@ async function cleanupPaymentFixtures(db: PrismaClient, ids: Awaited<ReturnType<
   try {
     if (ids.orgIds.length) {
       await db.hotelInventoryIdempotency.deleteMany({ where: { organizationId: { in: ids.orgIds }, operationScope: "HOTEL_OPERATIONAL_PAYMENT_ACTION" } });
+      await db.auditLog.deleteMany({ where: { organizationId: { in: ids.orgIds } } });
       await db.paymentProviderAttempt.deleteMany({ where: { organizationId: { in: ids.orgIds } } });
       await db.paymentRequest.deleteMany({ where: { organizationId: { in: ids.orgIds } } });
       await db.hotelPaymentAllocation.deleteMany({ where: { organizationId: { in: ids.orgIds } } });
@@ -261,5 +263,89 @@ test("durable refund recovery: provider timeout after committed refund intent, r
     process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED = priorOperational;
     process.env.HOTEL_GUEST_PORTAL_ENABLED = priorPortal;
     try { if (fx) await cleanupPaymentFixtures(db, fx.cleanupIds, passed); else { await db.$disconnect(); } } catch { /* cleanup already disconnects */ }
+  }
+});
+
+test("unmatched expired payment: durable case, one bounded refund, unknown recovery, tenant denial and single verified close", {
+  skip: process.env.HOTEL_OPERATIONAL_PAYMENT_ACCEPTANCE !== "1",
+  concurrency: false,
+}, async () => {
+  assert.equal(process.env.DATABASE_RUNTIME_ADAPTER, "postgresql");
+  const db = await setupIsolatedDb();
+  const token = randomUUID().replaceAll("-", "").slice(0, 14);
+  const priorOperational = process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED;
+  const priorPortal = process.env.HOTEL_GUEST_PORTAL_ENABLED;
+  let passed = false;
+  let fx: Awaited<ReturnType<typeof setupPaymentFixtures>> | null = null;
+  try {
+    fx = await setupPaymentFixtures(db, token);
+    const holdId = await setupConsumedHold(db, fx.org.id, fx.property.id, fx.reservation.roomTypeId, fx.reservation.ratePlanId, fx.reservation.checkIn, fx.reservation.checkOut, new Date("2027-12-10T00:00:00.000Z"));
+    await db.hotelReservation.update({ where: { id: fx.reservation.id }, data: { holdId } });
+    process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED = "1"; process.env.HOTEL_GUEST_PORTAL_ENABLED = "1";
+    let verifyRefundOutcome: "PENDING_VERIFICATION" | "VERIFIED" = "PENDING_VERIFICATION";
+    let refundCalls = 0, refundVerifications = 0, paymentVerifications = 0;
+    const adapter = {
+      ...fx.adapter,
+      async start(input: { integrationId: string }) { return { provider: "INOTI_USSD" as const, providerReference: `late-${token}`, binding: { merchantAccountKey: `LEGACY_INTEGRATION:${input.integrationId}`, credentialProfileKey: `fixture-${token}`, merchantCodeName: `hotel-${token}` } }; },
+      async verify() { paymentVerifications++; return { status: "VERIFIED" as const, paidAt: fx!.now, providerReference: `late-paid-${token}`, evidence: { providerVerified: true } }; },
+      async refund() { refundCalls++; return { status: "PENDING_VERIFICATION" as const, providerReference: `refund-unknown-${token}`, evidence: { providerAccepted: true } }; },
+      async verifyRefund() { refundVerifications++; return verifyRefundOutcome === "VERIFIED" ? { status: "VERIFIED" as const, providerReference: `refund-verified-${token}`, evidence: { providerStatusQuery: true } } : { status: "PENDING_VERIFICATION" as const, evidence: { providerStatusQuery: true } }; },
+    };
+    const service = new HotelOperationalPaymentService(db, () => fx!.now, adapter);
+    const payment = await service.execute(fx.actor, fx.org.id, fx.property.id, { action: "create-payment", reservationId: fx.reservation.id, integrationId: fx.integration.id }, `unmatched-payment-${token}`) as { paymentRequestPublicId: string };
+    const released = await db.$transaction(async tx => {
+      const result = await createPrismaHotelRepositories(tx as unknown as PrismaClient).cancelReservationAndReleaseInventory({ scope: { organizationId: fx!.org.id }, reservationId: fx!.reservation.id, expectedStatus: ["PENDING_PAYMENT"], now: fx!.now }, tx as never);
+      if (result.isUpdated) await tx.hotelReservation.update({ where: { id: fx!.reservation.id }, data: { status: "EXPIRED" } });
+      return result;
+    });
+    assert.equal(released.isUpdated, true);
+    const reconcileInput = { action: "reconcile-payment" as const, reservationId: fx.reservation.id, paymentRequestPublicId: payment.paymentRequestPublicId };
+    const late = await service.execute(fx.staffActor, fx.org.id, fx.property.id, reconcileInput, `unmatched-verify-${token}`) as { status: string };
+    assert.equal(late.status, "UNMATCHED_REQUIRES_RECONCILIATION");
+    await service.execute(fx.staffActor, fx.org.id, fx.property.id, reconcileInput, `unmatched-replay-${token}`);
+    assert.equal(paymentVerifications, 2, "provider replay verification is permitted but must remain financially idempotent");
+    assert.equal(await db.auditLog.count({ where: { organizationId: fx.org.id, entityType: "HotelUnmatchedPayment", entityId: payment.paymentRequestPublicId } }), 1, "only one unmatched case is created");
+    const original = await db.paymentRequest.findUniqueOrThrow({ where: { publicId: payment.paymentRequestPublicId } });
+    assert.equal(original.amountToman, fx.reservation.totalAmount);
+    assert.equal((original.metadata as { hotelSettlementStatus: string }).hotelSettlementStatus, "UNMATCHED_REQUIRES_RECONCILIATION");
+    await assert.rejects(service.execute({ ...fx.staffActor, organizationId: `${fx.org.id}-foreign` }, fx.org.id, fx.property.id, { action: "request-refund", reservationId: fx.reservation.id, paymentRequestPublicId: original.publicId }, `unmatched-foreign-${token}`), /Forbidden/);
+    const refundCommand = { action: "request-refund" as const, reservationId: fx.reservation.id, paymentRequestPublicId: original.publicId };
+    const [refundA, refundB] = await Promise.all([
+      service.execute(fx.staffActor, fx.org.id, fx.property.id, refundCommand, `unmatched-refund-a-${token}`),
+      service.execute(fx.staffActor, fx.org.id, fx.property.id, refundCommand, `unmatched-refund-b-${token}`),
+    ]) as Array<{ refundRequestPublicId: string; amountToman: string; status: string }>;
+    const refundId = refundA.refundRequestPublicId;
+    assert.equal(refundB.refundRequestPublicId, refundId);
+    assert.equal(refundA.amountToman, original.amountToman.toString());
+    assert.equal(refundB.amountToman, original.amountToman.toString());
+    assert.equal(refundCalls, 1, "concurrent staff clicks initiate one provider refund");
+    assert.equal(await db.paymentRequest.count({ where: { organizationId: fx.org.id, purpose: "RESERVATION_REFUND", metadata: { path: ["originalPaymentRequestPublicId"], equals: original.publicId } } }), 1);
+    const refund = await db.paymentRequest.findUniqueOrThrow({ where: { publicId: refundId } });
+    assert.equal(refund.amountToman, original.amountToman, "refund cannot exceed or diverge from verified original amount");
+    const unknown = await service.execute(fx.staffActor, fx.org.id, fx.property.id, { action: "reconcile-refund", reservationId: fx.reservation.id, paymentRequestPublicId: refundId }, `unmatched-refund-unknown-${token}`) as { status: string };
+    assert.equal(unknown.status, "OUTCOME_UNKNOWN");
+    assert.equal((await db.paymentRequest.findUniqueOrThrow({ where: { publicId: refundId } })).status, "PENDING_VERIFICATION");
+    verifyRefundOutcome = "VERIFIED";
+    const [closedA, closedB] = await Promise.all([
+      service.execute(fx.staffActor, fx.org.id, fx.property.id, { action: "reconcile-refund", reservationId: fx.reservation.id, paymentRequestPublicId: refundId }, `unmatched-refund-close-a-${token}`),
+      service.execute(fx.staffActor, fx.org.id, fx.property.id, { action: "reconcile-refund", reservationId: fx.reservation.id, paymentRequestPublicId: refundId }, `unmatched-refund-close-b-${token}`),
+    ]) as Array<{ status: string }>;
+    assert.deepEqual(closedA.status, "VERIFIED_REFUNDED");
+    assert.deepEqual(closedB.status, "VERIFIED_REFUNDED");
+    assert.equal(refundCalls, 1, "reconciliation never repeats a refund call");
+    assert.equal(await db.hotelPaymentAllocation.count({ where: { organizationId: fx.org.id, hotelReservationId: fx.reservation.id } }), 0, "unmatched refund is not falsely allocated against reservation balance");
+    assert.equal(await db.auditLog.count({ where: { organizationId: fx.org.id, entityType: "HotelUnmatchedPayment", entityId: original.publicId } }), 4, "case creation, refund request, unknown outcome and verified close are audited once");
+    const finalReservation = await db.hotelReservation.findUniqueOrThrow({ where: { id: fx.reservation.id } });
+    assert.equal(finalReservation.status, "EXPIRED");
+    assert.equal(finalReservation.paidAmount, BigInt(0));
+    assert.equal(finalReservation.refundedAmount, BigInt(0));
+    const inventory = await db.hotelInventory.findMany({ where: { organizationId: fx.org.id, roomTypeId: fx.reservation.roomTypeId }, orderBy: { date: "asc" } });
+    assert.ok(inventory.length > 0 && inventory.every(row => row.booked === 0), "financial resolution does not restore released inventory");
+    assert.equal(refundVerifications, 3, "unknown and concurrent provider status queries remain recoverable");
+    passed = true;
+  } finally {
+    process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED = priorOperational;
+    process.env.HOTEL_GUEST_PORTAL_ENABLED = priorPortal;
+    try { if (fx) await cleanupPaymentFixtures(db, fx.cleanupIds, passed); else await db.$disconnect(); } catch { /* cleanup already disconnects */ }
   }
 });

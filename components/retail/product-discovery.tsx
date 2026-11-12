@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowDownUp, ChevronLeft, ChevronRight, Filter, Heart, LoaderCircle, Search, SlidersHorizontal, X } from "lucide-react";
 import { appPath } from "@/lib/app-base-path";
 import type { PublicCatalogProduct } from "@/lib/public-catalog/contracts";
+import { shouldSkipInitialCatalogFetch } from "@/lib/public-catalog/discovery-initial-fetch";
 import { FavoriteButton } from "./favorite-button";
 import { RetailProductCard } from "./retail-product-card";
 import { DiscoveryFacet } from "./discovery-facet";
@@ -20,7 +21,7 @@ type Facets = {
 };
 type Props = {
   organization: string; storeName: string; logo: string | null; storefrontPath: string; previewOnly?: boolean;
-  initialProducts: PublicCatalogProduct[]; initialPagination: Pagination; facets: Facets; initialQuery: string;
+  initialProducts: PublicCatalogProduct[]; initialPagination: Pagination; facets: Facets; initialQuery: string; canReuseInitialProducts: boolean;
 };
 type FilterState = { category?: string; brand?: string; minPrice?: string; maxPrice?: string; available?: string; filters: string[]; page: number; sort: string; saved: boolean };
 const field = "h-11 min-w-0 rounded-xl border border-input bg-background px-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -33,7 +34,7 @@ function parseState(params: URLSearchParams): FilterState {
 function queryString(params: URLSearchParams) { const value = params.toString(); return value ? `?${value}` : ""; }
 function normalizeDigits(value: string) { return value.replace(/[۰-۹٠-٩]/g, digit => String.fromCharCode(digit.charCodeAt(0) >= 0x06f0 ? digit.charCodeAt(0) - 0x06f0 + 48 : digit.charCodeAt(0) - 0x0660 + 48)); }
 
-export function ProductDiscovery({ organization, storeName, logo, storefrontPath, previewOnly = false, initialProducts, initialPagination, facets, initialQuery }: Props) {
+export function ProductDiscovery({ organization, storeName, logo, storefrontPath, previewOnly = false, initialProducts, initialPagination, facets, initialQuery, canReuseInitialProducts }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -46,6 +47,8 @@ export function ProductDiscovery({ organization, storeName, logo, storefrontPath
   const [isNavigationPending, startTransition] = useTransition();
   const [optimisticParams, setOptimisticParams] = useOptimistic(paramsText, (_current, next: string) => next);
   const optimisticParamsRef = useRef(paramsText);
+  const [initialServerRequestKey] = useState(canReuseInitialProducts ? `${organization}\0${paramsText}` : "");
+  const hasNavigatedSinceInitialRender = useRef(false);
   const loading = settledRequestKey !== paramsText || isNavigationPending;
   const [error, setError] = useState("");
   const [mobileFilters, setMobileFilters] = useState(false);
@@ -74,7 +77,23 @@ export function ProductDiscovery({ organization, storeName, logo, storefrontPath
 
   useEffect(() => { startTransition(() => setQueryDraft(currentQuery)); }, [currentQuery, startTransition]);
 
+  const requestKey = `${organization}\0${paramsText}`;
   useEffect(() => {
+    if (requestKey !== initialServerRequestKey) hasNavigatedSinceInitialRender.current = true;
+  }, [initialServerRequestKey, requestKey]);
+
+  useEffect(() => {
+    // The server supplied this exact initial query. Keep the marker through StrictMode's
+    // repeated mount effect; any URL change clears it and must fetch normally.
+    if (shouldSkipInitialCatalogFetch({
+      currentRequestKey: requestKey,
+      initialRequestKey: initialServerRequestKey,
+      hasNavigated: hasNavigatedSinceInitialRender.current,
+      saved: new URLSearchParams(paramsText).get("saved") === "1",
+      retryKey,
+      favoriteRefreshKey,
+      canReuseInitialProducts,
+    })) return;
     const controller = new AbortController();
     let active = true;
 
@@ -96,7 +115,7 @@ export function ProductDiscovery({ organization, storeName, logo, storefrontPath
     }
     void load();
     return () => { active = false; controller.abort(); };
-  }, [organization, paramsText, retryKey, favoriteRefreshKey]);
+  }, [organization, paramsText, requestKey, initialServerRequestKey, retryKey, favoriteRefreshKey, canReuseInitialProducts]);
 
   useEffect(() => {
     const controller = new AbortController();

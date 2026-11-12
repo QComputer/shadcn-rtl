@@ -8,7 +8,9 @@ const enabled = process.env.RETAIL_HERO_PG_ACCEPTANCE === "1";
 
 function assertGuardedDatabase() {
   assert.equal(process.env.DATABASE_URL, process.env.DIRECT_URL, "both Prisma URLs must point to the same disposable local database");
-  const expected = new URL("postgresql://hero_test@127.0.0.1:55439/retail_hero_test");
+  // Dedicated PR59 database only. Never accept the Hotel/Kilo fixture identity
+  // or arbitrary developer, hosted, or Production database coordinates.
+  const expected = new URL("postgresql://website_studio_hero_test@127.0.0.1:55443/website_studio_hero_test");
   for (const key of ["DATABASE_URL", "DIRECT_URL"]) {
     const url = new URL(process.env[key] ?? "");
     assert.equal(url.protocol, expected.protocol);
@@ -34,7 +36,7 @@ test("Retail hero save, publication, isolation, rollback, media revocation, and 
 
   const identity = await db.$queryRaw<Array<{ database: string; version_num: number; current_user: string }>>`
     SELECT current_database() AS database, current_setting('server_version_num')::int AS version_num, current_user`;
-  assert.equal(identity[0]?.database, "retail_hero_test");
+  assert.equal(identity[0]?.database, "website_studio_hero_test");
   assert.ok((identity[0]?.version_num ?? 0) >= 170000 && (identity[0]?.version_num ?? 0) < 180000, "fixture must be PostgreSQL 17");
   assert.equal(identity[0]?.current_user, decodeURIComponent(new URL(process.env.DATABASE_URL!).username));
 
@@ -76,7 +78,7 @@ test("Retail hero save, publication, isolation, rollback, media revocation, and 
     const baseContent = initialRetailContent(org);
     const firstContent = {
       ...baseContent,
-      hero: { enabled: true, mode: "CAMPAIGN" as const, heading: "First published heading", description: "Published copy", ctaLabel: "Browse", ctaHref: "", desktopImageId: image.id, mobileImageId: "", imageAlt: "First campaign", imageFit: "cover" as const, focalX: 50, focalY: 50, productIds: [], autoplay: false },
+      hero: { enabled: true, mode: "CAMPAIGN" as const, heading: "First published heading", description: "Published copy", ctaLabel: "Browse", ctaHref: "", desktopImageId: image.id, mobileImageId: "", darkDesktopImageId: "", darkMobileImageId: "", imageAlt: "First campaign", imageFit: "cover" as const, focalX: 50, focalY: 50, productIds: [], autoplay: false },
     };
     const firstPrincipal = { userId: manager.id, role: "ADMIN" as const, organizationId: org.id };
     const otherPrincipal = { userId: otherManager.id, role: "ADMIN" as const, organizationId: otherOrg.id };

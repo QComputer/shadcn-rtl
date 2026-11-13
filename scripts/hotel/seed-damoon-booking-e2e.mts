@@ -135,7 +135,7 @@ async function main() {
         code: "standard-flex",
         name: "Synthetic flexible rate",
         currency: "TOMAN",
-        baseNightlyRate: 750_000n,
+        baseNightlyRate: BigInt(750_000),
         mealPlan: "none",
         minNights: 1,
         maxNights: 0,
@@ -189,6 +189,9 @@ async function main() {
       DAMOON_STANDALONE_URL: "http://damoon-hotel.ir:8080",
       DAMOON_E2E_PUBLIC_PORT: "8080",
     };
+    for (const key of ["DAMOON_MANAGER_PASSWORD", "DAMOON_FOREIGN_MANAGER_PASSWORD"]) {
+      console.log(`::add-mask::${values[key]}`);
+    }
     const output = Object.entries(values).map(([key, value]) => `${key}=${value}`).join("\n") + "\n";
     appendFileSync(process.env.GITHUB_ENV!, output, { encoding: "utf8" });
     console.log(`Seeded two synthetic Hotel tenants in ${target.databaseName}; only tenant A has approved availability.`);

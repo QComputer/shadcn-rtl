@@ -8,6 +8,9 @@ on:
       - 'components/retail/**'
       - 'components/dashboard/retail-*.tsx'
       - 'lib/retail/**'
+      - 'lib/security/bounded-json.ts'
+      - 'app/api/demo/catalog/connections/**'
+      - 'app/api/demo/seo-content/**'
       - 'lib/services/cart.service.ts'
       - 'lib/services/product.service.ts'
       - 'sites/damoon/**'
@@ -62,3 +65,7 @@ jobs:
           tests/damoon-static-server.test.mjs sites/damoon/tests/standalone-api-proxy.test.mjs
           tests/damoon-phase1-translations.test.mjs
           tests/damoon-stay-links.test.mjs tests/damoon-public-bundle.test.mjs
+      - name: Zod oversized collection regression
+        run: pnpm exec node --test tests/unit/zod-oversized-collections.test.mjs
+      - name: Bounded JSON request regression
+        run: pnpm exec node --import tsx --experimental-test-module-mocks --test tests/unit/bounded-json-body.test.ts

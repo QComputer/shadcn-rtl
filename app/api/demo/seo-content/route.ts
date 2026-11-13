@@ -3,11 +3,12 @@ import { z } from "zod";
 import { jsonError } from "@/lib/api-guards";
 import { resolveDemoSessionContext } from "@/lib/demo-universe/demo-session-context";
 import { createSeoContentRequest, listSeoContentRequests } from "@/lib/seo-content/seo-content.service";
+import { readBoundedJson } from "@/lib/security/bounded-json";
 
 const createSchema = z.object({
   businessEntityId: z.string().min(1),
   seoOpportunityId: z.string().min(1).optional(),
-  targetKeywords: z.array(z.string().min(1)).optional(),
+  targetKeywords: z.array(z.string().trim().min(1).max(200)).max(50).optional(),
   targetLocation: z.string().min(1).optional(),
 });
 
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
       request,
       allowedDemoRoles: ["ORGANIZATION_OWNER", "MANAGER"],
     });
-    const body = createSchema.parse(await request.json());
+    const body = createSchema.parse(await readBoundedJson(request));
     return NextResponse.json({
       request: await createSeoContentRequest({
         organizationId: context.organizationId,

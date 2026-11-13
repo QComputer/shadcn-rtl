@@ -25,7 +25,8 @@ Updated: 2026-11-13. This is the operational resume point; older documents and C
 - Local syntax checks passed. Targeted standalone bridge and Damoon source tests: **13/13 PASS** (covers test-only port allowlist, spoofed forwarding headers, and fail-closed missing upstream). This is not real PostgreSQL/browser acceptance.
 - Hosted workflow run `43477620082` failed at TypeScript because the first version ran `tsc` before Prisma client generation. The order was fixed on `5684b296`.
 - Hosted workflow run `43478096112` generated Prisma successfully, then failed typecheck on one fixture-only BigInt literal below the configured TS target. Commit `65c2824` fixes that and masks generated CI auth/manager secrets.
-- Hosted workflow run `43478630027` passed install, Prisma validation/generation, full typecheck, lint, migrations, fixture seed, service startup and both bridge tests. It then failed at Playwright harness initialization because a redundant `test.describe.configure()` was called outside a `describe`; removal is pending in the current local diff. No browser tests executed yet.
+- Hosted workflow run `43478630027` passed install, Prisma validation/generation, full typecheck, lint, migrations, fixture seed, service startup and both bridge tests. It then failed at Playwright harness initialization because the redundant top-level `test.describe.configure()` call was invalid; commit `46e6792` removed it.
+- Hosted workflow run `43479096680` reached the same harness stage and exposed split package versions (`playwright@1.61.1` CLI versus `@playwright/test@1.60.0` import). The current local diff aligns both imports with `playwright/test` to match the CLI. No browser tests executed yet.
 - Real PostgreSQL plus browser acceptance is **NOT_VERIFIED**. No successful persistence/browser evidence or merge result exists.
 - A review found the guest status tracking form nested inside the booking form; the local edit moves it outside. This must be covered by browser acceptance.
 - The focused hosted acceptance workflow now provisions a uniquely named disposable PostgreSQL 17 database, applies real Prisma migrations, seeds two synthetic tenants, starts the actual Next API and restricted standalone bridge, runs Chromium acceptance, verifies the disabled request gate, and drops only its named database. Browser tests cover FA request submission, EN/AR secure status tracking, reception review/status update, persistence, concurrent idempotency replay, tenant/host/origin isolation, optimistic concurrency, unapproved publication, out-of-range inventory, invalid references, no reservation/payment, and disabled gate. This workflow is still **NOT_VERIFIED** until it runs.
@@ -34,7 +35,7 @@ Updated: 2026-11-13. This is the operational resume point; older documents and C
 
 ## Exact next executable step
 
-Commit and push the focused Playwright harness fix to the existing PR64 branch. Follow Actions through the Chromium flow, disabled-gate check and disposable database cleanup. Record its full SHA, run URL, actual PASS/FAIL/NOT_VERIFIED matrix and next step here. Keep Draft and do not merge while any acceptance gate is incomplete.
+Commit and push the focused Playwright package-alignment fix to the existing PR64 branch. Follow Actions through the Chromium flow, disabled-gate check and disposable database cleanup. Record its full SHA, run URL, actual PASS/FAIL/NOT_VERIFIED matrix and next step here. Keep Draft and do not merge while any acceptance gate is incomplete.
 
 ## Next milestones
 

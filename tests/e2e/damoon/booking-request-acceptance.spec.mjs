@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { test, expect } from "@playwright/test";
+import { test, expect } from "playwright/test";
 
 const failClosed = () => {
   const env = process.env;

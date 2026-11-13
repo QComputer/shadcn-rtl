@@ -486,6 +486,14 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
       await managerPage.unroute(interceptPatch);
       await client.hotelGuestBookingRequest.deleteMany({ where: { id: fixtureId, organizationId, propertyId } });
       await client.$disconnect();
+      const filterControl = managerPage.locator("#hotel-request-status-filter");
+      if (await filterControl.inputValue() !== "ALL") {
+        const allRequests = managerPage.waitForResponse((response) =>
+          response.url() === `${appOrigin}${requestsApi}` && response.request().method() === "GET",
+        );
+        await filterControl.selectOption("ALL");
+        await allRequests;
+      }
     }
   });
 

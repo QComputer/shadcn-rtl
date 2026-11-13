@@ -5,11 +5,11 @@ Updated: 2026-11-13. This is the operational resume point; older documents and C
 ## Current source state
 
 - `origin/main` freshly fetched and verified at `ec51d9c4b483db814b90f3d3daef2236977916e8`.
-- PR64: [QComputer/shadcn-rtl#64](https://github.com/QComputer/shadcn-rtl/pull/64), Draft, branch `codex/damoon-booking-phase3-20261113`, base `main`.
-- PR64 candidate/local HEAD: `8fe27ccc282892247be0da21f357ccce64b5db74`. This SHA predates the uncommitted changes listed below.
+- PR64: [QComputer/shadcn-rtl#64](https://github.com/QComputer/shadcn-rtl/pull/64), Draft, PR head branch `codex/damoon-booking-requests-20261113`, base `main`.
+- PR64 latest pushed HEAD: `bd235599c84b6ef5fc65bb36804e4de49cadfb8f`; local checkout branch remains `codex/damoon-booking-phase3-20261113`.
 - Current task checkout: `C:/Users/disso/Project/shadcn-rtl-damoon-phase1`.
 - Other registered worktrees are preserved. Do not edit or remove them: shared checkout (`codex/hotel-operational-payment-20261112`), hero-media, Persian-slug-routing, theme-speed/PR62, and Website Studio/PR59.
-- Current PR64 work includes modified `sites/damoon/api-proxy.mjs`, `sites/damoon/booking.js`, and `sites/damoon/tests/standalone-api-proxy.test.mjs`; new `.github/workflows/damoon-booking-acceptance.yml`, `playwright.damoon.config.mjs`, `scripts/hotel/seed-damoon-booking-e2e.mts`, `scripts/hotel/verify-damoon-disabled-request-gate.mjs`, `tests/e2e/damoon/`, and these two handoff files. No commit or push is represented by this handoff.
+- Current follow-up fixes are being made only in `tests/e2e/damoon/booking-request-acceptance.spec.mjs` and this handoff. Do not touch other worktrees or their files.
 
 ## Decisions and boundaries
 
@@ -28,7 +28,7 @@ Updated: 2026-11-13. This is the operational resume point; older documents and C
 - Hosted workflow run `43478630027` passed install, Prisma validation/generation, full typecheck, lint, migrations, fixture seed, service startup and both bridge tests. It then failed at Playwright harness initialization because the redundant top-level `test.describe.configure()` call was invalid; commit `46e6792` removed it.
 - Hosted workflow run `43479096680` reached the same harness stage and exposed split package versions (`playwright@1.61.1` CLI versus `@playwright/test@1.60.0` import). The current local diff aligns both imports with `playwright/test` to match the CLI. No browser tests executed yet.
 - Hosted workflow run `43479603343` passed TypeScript and failed scoped ESLint on the now-unused `directUrl` local after exact URL string comparison; its removal is pending in the current local diff. No migration/browser flow ran in that attempt.
-- Hosted workflow run `43480481034` reached the real browser suite: 5/13 tests passed and 8 failed. The primary flow failure was an extra click on a calendar close button after the dialog had already closed on date selection, which caused context timeouts and cascaded failures. A direct request case returned 409 but was asserted without response body; the current diff removes the redundant close clicks and includes response text on that assertion. No result from the disabled-gate restart is available because the suite failed first.
+- Hosted workflow run `43481301084` on `bd235599...` completed TypeScript, ESLint, PostgreSQL migrations/seed, service startup and bridge tests, then failed browser acceptance (5/13 pass, 8 fail). The browser selected arrival while the calendar modal remained open, then clicked the blocked departure field; this timed out and cascaded into missing tracking reference and follow-on failures. The concurrency case independently returned 409 because its selected option was not available; the test now adds an availability preflight to expose fixture/search state. Focused fixes are uncommitted; no passing PostgreSQL/browser acceptance exists yet.
 - Real PostgreSQL plus browser acceptance is **NOT_VERIFIED**. No successful persistence/browser evidence or merge result exists.
 - A review found the guest status tracking form nested inside the booking form; the local edit moves it outside. This must be covered by browser acceptance.
 - The focused hosted acceptance workflow now provisions a uniquely named disposable PostgreSQL 17 database, applies real Prisma migrations, seeds two synthetic tenants, starts the actual Next API and restricted standalone bridge, runs Chromium acceptance, verifies the disabled request gate, and drops only its named database. Browser tests cover FA request submission, EN/AR secure status tracking, reception review/status update, persistence, concurrent idempotency replay, tenant/host/origin isolation, optimistic concurrency, unapproved publication, out-of-range inventory, invalid references, no reservation/payment, and disabled gate. This workflow is still **NOT_VERIFIED** until it runs.
@@ -37,7 +37,7 @@ Updated: 2026-11-13. This is the operational resume point; older documents and C
 
 ## Exact next executable step
 
-Commit and push the focused browser-flow fix to the existing PR64 branch. Follow Actions through all browser tests, the disabled-gate check and disposable database cleanup. Record its full SHA, run URL, actual PASS/FAIL/NOT_VERIFIED matrix and next step here. Keep Draft and do not merge while any acceptance gate is incomplete.
+Finish the shared date-picker selector fix and inspect the new availability diagnostic, then commit and push only the acceptance spec plus this handoff to the existing PR64 head. Follow Actions through browser tests, disabled-gate verification and disposable database cleanup. Record full SHA, run URL, exact PASS/FAIL/NOT_VERIFIED matrix and next step here. Keep Draft; do not mark Ready or merge while any gate fails.
 
 ## Next milestones
 

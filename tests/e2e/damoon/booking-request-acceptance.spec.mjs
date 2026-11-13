@@ -150,6 +150,23 @@ const dayAfterISO = (base) => {
   return d.toISOString().slice(0, 10);
 };
 
+async function chooseStayDates(page, checkIn, checkOut) {
+  await page.locator('[data-date-field="checkIn"]').click();
+  let moves = 0;
+  while (!(await page.locator(`[data-calendar-day="${checkIn}"]`).count()) && moves++ < 3) {
+    await page.locator("[data-month-next]").click();
+  }
+  await page.locator(`[data-calendar-day="${checkIn}"]`).click();
+
+  // Choosing arrival keeps the modal open and advances its active date to departure.
+  moves = 0;
+  while (!(await page.locator(`[data-calendar-day="${checkOut}"]`).count()) && moves++ < 3) {
+    await page.locator("[data-month-next]").click();
+  }
+  await page.locator(`[data-calendar-day="${checkOut}"]`).click();
+  await expect(page.locator("#booking-calendar")).not.toBeVisible();
+}
+
 const faPayload = (checkIn, checkOut) => ({
   property: propertySlug,
   roomType: roomTypeSlug,
@@ -206,19 +223,7 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await expect(page.locator("html")).toHaveAttribute("lang", "fa");
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
 
-    await page.locator('[data-date-field="checkIn"]').click();
-    let moves = 0;
-    while (!(await page.locator(`[data-calendar-day="${checkIn}"]`).count()) && moves++ < 3) {
-      await page.locator("[data-month-next]").click();
-    }
-    await page.locator(`[data-calendar-day="${checkIn}"]`).click();
-
-    await page.locator('[data-date-field="checkOut"]').click();
-    moves = 0;
-    while (!(await page.locator(`[data-calendar-day="${checkOut}"]`).count()) && moves++ < 3) {
-      await page.locator("[data-month-next]").click();
-    }
-    await page.locator(`[data-calendar-day="${checkOut}"]`).click();
+    await chooseStayDates(page, checkIn, checkOut);
 
     await page.locator("[data-adult-count]").selectOption("2");
     await page.locator("[data-child-count]").selectOption("1");
@@ -237,7 +242,7 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     const responsePromise = page.waitForResponse((r) => r.url().endsWith("/api/hotel/v1/requests") && r.request().method() === "POST");
     await page.locator('[data-create-request]').click();
     const response = await responsePromise;
-    expect(response.status()).toBe(201);
+    expect(response.status(), await response.text()).toBe(201);
     const body = await response.json();
     capturedReference = body.reference;
     capturedReplay = { payload: response.request().postDataJSON(), idempotencyKey: response.request().headers()["idempotency-key"] };
@@ -308,19 +313,7 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     const guestPage = await c.newPage();
 
     await guestPage.goto(`${standaloneUrl.origin}/fa/`, { waitUntil: "networkidle" });
-    await guestPage.locator('[data-date-field="checkIn"]').click();
-    let moves = 0;
-    while (!(await guestPage.locator(`[data-calendar-day="${checkIn}"]`).count()) && moves++ < 3) {
-      await guestPage.locator("[data-month-next]").click();
-    }
-    await guestPage.locator(`[data-calendar-day="${checkIn}"]`).click();
-
-    await guestPage.locator('[data-date-field="checkOut"]').click();
-    moves = 0;
-    while (!(await guestPage.locator(`[data-calendar-day="${checkOut}"]`).count()) && moves++ < 3) {
-      await guestPage.locator("[data-month-next]").click();
-    }
-    await guestPage.locator(`[data-calendar-day="${checkOut}"]`).click();
+    await chooseStayDates(guestPage, checkIn, checkOut);
 
     await guestPage.locator("[data-adult-count]").selectOption("2");
     await guestPage.locator("[data-child-count]").selectOption("1");
@@ -333,7 +326,7 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     const submitResponsePromise = guestPage.waitForResponse((r) => r.url().endsWith("/api/hotel/v1/requests") && r.request().method() === "POST");
     await guestPage.locator('[data-create-request]').click();
     const submitResponse = await submitResponsePromise;
-    expect(submitResponse.status()).toBe(201);
+    expect(submitResponse.status(), await submitResponse.text()).toBe(201);
     const submitBody = await submitResponse.json();
     const reference = submitBody.reference;
 
@@ -461,6 +454,10 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     const checkOut = dayAfterISO(checkIn);
     const payload = faPayload(checkIn, checkOut);
     payload.contact.email = `race-${randomUUID()}@example.test`;
+    const availability = await postAvailability(page, payload);
+    expect(availability.status(), await availability.text()).toBe(200);
+    const availabilityBody = await availability.json();
+    expect(availabilityBody.options.some((option) => option.roomType.slug === roomTypeSlug && option.ratePlan.code === ratePlanCode && option.isAvailable), JSON.stringify(availabilityBody.options)).toBe(true);
     const create = await postRequest(page, payload, `damoon-race-${randomUUID()}`);
     expect(create.status(), await create.text()).toBe(201);
     const inboxRequest = await waitForRequestInInbox(managerPage, payload.contact.email);

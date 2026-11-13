@@ -62,3 +62,5 @@ jobs:
           tests/damoon-static-server.test.mjs sites/damoon/tests/standalone-api-proxy.test.mjs
           tests/damoon-phase1-translations.test.mjs
           tests/damoon-stay-links.test.mjs tests/damoon-public-bundle.test.mjs
+      - name: Zod oversized collection regression
+        run: pnpm exec node --test tests/unit/zod-oversized-collections.test.mjs

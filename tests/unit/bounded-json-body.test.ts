@@ -1,15 +1,15 @@
 import assert from "node:assert/strict";
-import { register } from "node:module";
-import { describe, it } from "node:test";
+import { describe, it, mock } from "node:test";
 
-register(new URL("./loader.mjs", import.meta.url));
+class ApiError extends Error {
+  constructor(public status: number, message: string) { super(message); }
+}
+mock.module("@/lib/api-guards", { namedExports: { ApiError } });
 
 let readBoundedJson: typeof import("@/lib/security/bounded-json").readBoundedJson;
-let ApiError: typeof import("@/lib/api-guards").ApiError;
 
 async function loadSubject() {
   ({ readBoundedJson } = await import("@/lib/security/bounded-json"));
-  ({ ApiError } = await import("@/lib/api-guards"));
 }
 
 function streamedRequest(chunks: Uint8Array[], headers: HeadersInit = {}) {

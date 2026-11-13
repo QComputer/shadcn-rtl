@@ -65,4 +65,4 @@ jobs:
       - name: Zod oversized collection regression
         run: pnpm exec node --test tests/unit/zod-oversized-collections.test.mjs
       - name: Bounded JSON request regression
-        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/unit/bounded-json-body.test.ts
+        run: pnpm exec node --import tsx --experimental-test-module-mocks --test tests/unit/bounded-json-body.test.ts

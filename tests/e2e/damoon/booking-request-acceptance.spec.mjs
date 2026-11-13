@@ -397,8 +397,9 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     });
     expect(crossOriginPost.status()).toBe(403);
 
-    await managerPage.locator(`#request-status-${requestId}`).selectOption("IN_REVIEW");
-    await expect(managerPage.locator(`article:has-text("${payload.contact.fullName}") .rounded-full`)).toContainText("در حال بررسی");
+    const requestCard = managerPage.locator("article").filter({ has: managerPage.locator(`#request-status-${requestId}`) });
+    await requestCard.locator(`#request-status-${requestId}`).selectOption("IN_REVIEW");
+    await expect(requestCard.locator(".rounded-full")).toContainText("در حال بررسی");
 
     const recheckResponse = await postRecheckAvailability(managerPage, requestId);
     expect(recheckResponse.status()).toBe(200);
@@ -406,9 +407,9 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     expect(recheckBody.availabilityHint).toBe("AVAILABLE");
     expect(typeof recheckBody.version).toBe("number");
 
-    await managerPage.locator(`textarea[maxlength="500"]`).first().fill("اتاق در تاریخ‌های درخواستی موجود است. لطفاً برای نهایی‌سازی تماس بگیرید.");
-    await managerPage.locator(`#request-status-${requestId}`).selectOption("OPTION_OFFERED");
-    await expect(managerPage.locator(`article:has-text("${payload.contact.fullName}") .rounded-full`)).toContainText("پیشنهاد برای بررسی");
+    await requestCard.locator(`textarea[maxlength="500"]`).fill("اتاق در تاریخ‌های درخواستی موجود است. لطفاً برای نهایی‌سازی تماس بگیرید.");
+    await requestCard.locator(`#request-status-${requestId}`).selectOption("OPTION_OFFERED");
+    await expect(requestCard.locator(".rounded-full")).toContainText("پیشنهاد برای بررسی");
 
     await guestPage.locator('[data-track-request] [data-track-reference]').fill(reference);
     const trackResponsePromise = guestPage.waitForResponse((r) => r.url().endsWith("/api/hotel/v1/requests/status") && r.request().method() === "POST");

@@ -401,11 +401,14 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await requestCard.locator(`#request-status-${requestId}`).selectOption("IN_REVIEW");
     await expect(requestCard.locator(".rounded-full")).toContainText("در حال بررسی");
 
-    const recheckResponse = await postRecheckAvailability(managerPage, requestId);
+    const recheckPromise = managerPage.waitForResponse((response) => response.url().endsWith(`${requestsApi}/${encodeURIComponent(requestId)}/availability`) && response.request().method() === "POST");
+    await requestCard.getByRole("button", { name: "بررسی دوباره موجودی" }).click();
+    const recheckResponse = await recheckPromise;
     expect(recheckResponse.status()).toBe(200);
     const recheckBody = await recheckResponse.json();
     expect(recheckBody.availabilityHint).toBe("AVAILABLE");
     expect(typeof recheckBody.version).toBe("number");
+    await expect(requestCard.locator(`#request-status-${requestId}`)).toBeEnabled();
 
     await requestCard.locator(`textarea[maxlength="500"]`).fill("اتاق در تاریخ‌های درخواستی موجود است. لطفاً برای نهایی‌سازی تماس بگیرید.");
     await requestCard.locator(`#request-status-${requestId}`).selectOption("OPTION_OFFERED");

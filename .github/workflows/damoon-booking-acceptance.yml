@@ -71,10 +71,6 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Typecheck source and CI fixtures
-        run: pnpm exec tsc --noEmit --pretty false
-      - name: Lint changed Damoon and acceptance files
-        run: pnpm exec eslint sites/damoon/api-proxy.mjs sites/damoon/booking.js sites/damoon/tests/standalone-api-proxy.test.mjs scripts/hotel/seed-damoon-booking-e2e.mts scripts/hotel/verify-damoon-disabled-request-gate.mjs tests/e2e/damoon/booking-request-acceptance.spec.mjs playwright.damoon.config.mjs
       - name: Create uniquely named disposable database
         shell: bash
         run: |
@@ -95,8 +91,12 @@ jobs:
             echo "DAMOON_API_ORIGIN=http://127.0.0.1:3000"
           } >> "$GITHUB_ENV"
           echo "Created task-owned database ${database} on the ephemeral PostgreSQL 17 service."
-      - name: Validate and generate Prisma client
+      - name: Validate schema and generate Prisma client
         run: pnpm exec prisma validate && pnpm exec prisma generate
+      - name: Typecheck source and CI fixtures
+        run: pnpm exec tsc --noEmit --pretty false
+      - name: Lint changed Damoon and acceptance files
+        run: pnpm exec eslint sites/damoon/api-proxy.mjs sites/damoon/booking.js sites/damoon/tests/standalone-api-proxy.test.mjs scripts/hotel/seed-damoon-booking-e2e.mts scripts/hotel/verify-damoon-disabled-request-gate.mjs tests/e2e/damoon/booking-request-acceptance.spec.mjs playwright.damoon.config.mjs
       - name: Apply repository migrations to disposable PostgreSQL
         run: pnpm exec prisma migrate deploy
       - name: Seed synthetic Damoon and foreign tenant fixtures

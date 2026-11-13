@@ -6,7 +6,7 @@ Updated: 2026-11-13. This is the operational resume point; older documents and C
 
 - `origin/main` freshly fetched and verified at `ec51d9c4b483db814b90f3d3daef2236977916e8`.
 - PR64: [QComputer/shadcn-rtl#64](https://github.com/QComputer/shadcn-rtl/pull/64), Draft, PR head branch `codex/damoon-booking-requests-20261113`, base `main`.
-- PR64 latest pushed HEAD: `6d9a2445ac6078438516e69966c60beeae7dc6ce`; local checkout branch remains `codex/damoon-booking-phase3-20261113`.
+- PR64 latest pushed HEAD: `844cd4da45db6e5a191228168de01ab2437273a9`; local checkout branch remains `codex/damoon-booking-phase3-20261113`.
 - Current task checkout: `C:/Users/disso/Project/shadcn-rtl-damoon-phase1`.
 - Other registered worktrees are preserved. Do not edit or remove them: shared checkout (`codex/hotel-operational-payment-20261112`), hero-media, Persian-slug-routing, theme-speed/PR62, and Website Studio/PR59.
 - Current follow-up fixes are being made only in `tests/e2e/damoon/booking-request-acceptance.spec.mjs` and this handoff. Do not touch other worktrees or their files.
@@ -46,8 +46,8 @@ Commit and push the bounded submit diagnostic, then follow the hosted run. Use t
 
 ### Latest acceptance result and current resume point
 
-- Run `43486804461` for SHA `6d9a2445ac6078438516e69966c60beeae7dc6ce`: setup, Prisma, typecheck, lint, migrations, fixture seed and bridge tests passed. Browser acceptance passed 8/13; FA guest submission/tracking and EN/AR status tracking passed. Reception inbox polling timed out. The fixture manager `User` records lacked `organizationId`, which management authorization requires; the seed now assigns that context. The foreign-reference 400 and later concurrency timeout should be rechecked with a valid manager session. Exact run: https://github.com/QComputer/shadcn-rtl/actions/runs/43486804461.
-- Next: push the manager identity fixture and sanitized inbox diagnostics, then follow the hosted flow through reception status changes, tenant denial, idempotency, disabled gate and disposable database cleanup. Keep PR64 Draft until all gates pass.
+- Run `43486804461` for SHA `6d9a2445ac6078438516e69966c60beeae7dc6ce`: setup, Prisma, typecheck, lint, migrations, fixture seed and bridge tests passed. Browser acceptance passed 8/13; FA guest submission/tracking and EN/AR status tracking passed. Reception inbox polling timed out. The fixture managers were not marked `isTeamMember`, so the auth callback did not derive their organization context from active membership; the seed now marks the manager/admin fixtures as team members and includes bounded inbox diagnostics. Run `43487839146` for `844cd4da...` then failed typecheck because `organizationId` was mistakenly added to `User`, a field not present in the Prisma model; the local fix removes it and sets `isTeamMember`. Runs: https://github.com/QComputer/shadcn-rtl/actions/runs/43486804461 and https://github.com/QComputer/shadcn-rtl/actions/runs/43487839146.
+- Next: push the corrected team-member fixture, then follow the hosted flow through reception status changes, tenant denial, idempotency, disabled gate and disposable database cleanup. Keep PR64 Draft until all gates pass.
 
 ## Next milestones
 

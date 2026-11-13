@@ -74,7 +74,7 @@ async function createTenant(
 
   const username = `damoon-e2e-${suffix}-${key}-manager`;
   const passwordHash = await bcrypt.hash(managerPassword, 10);
-  const manager = await prisma.user.create({ data: { name: username, password: passwordHash, role: "MANAGER", organizationId: organization.id, isActive: true } });
+  const manager = await prisma.user.create({ data: { name: username, password: passwordHash, role: "MANAGER", isTeamMember: true, isActive: true } });
   await prisma.organizationMember.create({
     data: { organizationId: organization.id, organizationSlug: slug, userId: manager.id, role: "MANAGER", isActive: true },
   });
@@ -108,7 +108,7 @@ async function main() {
 
     const adminSlug = `damoon-e2e-${suffix}-a-admin`;
     const admin = await prisma.user.create({
-      data: { name: adminSlug, password: await bcrypt.hash(randomBytes(24).toString("base64url"), 10), role: "ADMIN", organizationId: tenantA.organization.id, isActive: true },
+      data: { name: adminSlug, password: await bcrypt.hash(randomBytes(24).toString("base64url"), 10), role: "ADMIN", isTeamMember: true, isActive: true },
     });
     await prisma.organizationMember.create({
       data: { organizationId: tenantA.organization.id, organizationSlug: tenantA.organization.slug, userId: admin.id, role: "ADMIN", isActive: true },

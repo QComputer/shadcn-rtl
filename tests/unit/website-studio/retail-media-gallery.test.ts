@@ -6,11 +6,22 @@ import { parseRetailMediaGalleryRequest, retailMediaGalleryResponse, retailMedia
 const organizationId = "org-gallery-a";
 let query: unknown;
 let fixtureRows: Array<WebsiteMedia & { createdAt: Date }> = [];
+let deleteImageCalls: unknown[] = [];
+let deleteStoredCalls: unknown[] = [];
 
 class GalleryApiError extends Error { constructor(public status: number, message: string) { super(message); } }
 
 mock.module("@/lib/db", { namedExports: {
-  prisma: { image: { findMany: async (value: unknown) => { query = value; return fixtureRows; } } },
+  prisma: {
+    image: {
+      findMany: async (value: unknown) => { query = value; return fixtureRows; },
+      deleteMany: async (value: unknown) => { deleteImageCalls.push(value); return { count: 0 }; },
+    },
+    $transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback({
+      image: { create: async () => ({ id: "uploaded-image" }) },
+      auditLog: { create: async () => { throw new Error("Invalid synthetic audit insert"); } },
+    }),
+  },
 } });
 mock.module("@/lib/api-guards", { namedExports: {
   ApiError: GalleryApiError,
@@ -24,11 +35,16 @@ mock.module("@/lib/website-studio/retail.service", { namedExports: {
     async filterDeliverableMedia(_organizationId: string, images: WebsiteMedia[]) { return images.filter(image => image.filename !== "missing-object.webp"); }
   },
 } });
-mock.module("@/lib/media-storage", { namedExports: { createStoredImageFilename: () => "unused", deleteStoredImage: async () => undefined, writeStoredImage: async () => ({ pathname: "unused", url: "unused" }) } });
+mock.module("@/lib/media-storage", { namedExports: {
+  createStoredImageFilename: () => "unused.png",
+  deleteStoredImage: async (...args: unknown[]) => { deleteStoredCalls.push(args); },
+  writeStoredImage: async () => ({ pathname: "unused.png", url: `/api/media/${organizationId}/tenants/${organizationId}/uploads/unused.png` }),
+} });
 mock.module("@/lib/website-studio/hero-upload.server", { namedExports: { MAX_RETAIL_HERO_UPLOAD_BYTES: 5_000_000, validateRetailHeroUpload: async () => undefined } });
 
 let GET: typeof import("../../../app/api/organizations/[id]/website/media/route").GET;
-before(async () => { ({ GET } = await import("../../../app/api/organizations/[id]/website/media/route")); });
+let POST: typeof import("../../../app/api/organizations/[id]/website/media/route").POST;
+before(async () => { ({ GET, POST } = await import("../../../app/api/organizations/[id]/website/media/route")); });
 
 const eligibleRow = (id: string, owner = organizationId, createdAt = new Date("2026-11-13T10:00:00.000Z")) => ({
   id, organizationId: owner, filename: `${id}.webp`, mimeType: "image/webp", sizeBytes: 100,
@@ -71,4 +87,21 @@ test("gallery GET returns bounded, owned, structurally eligible, deliverable med
     select: { id: true, url: true, filename: true, mimeType: true, sizeBytes: true, organizationId: true, createdAt: true },
   });
   assert.equal(response.headers.get("cache-control"), "private, no-store");
+});
+
+test("unexpected database failure returns 500 and compensates the staged image and record", async () => {
+  deleteImageCalls = [];
+  deleteStoredCalls = [];
+  const form = new FormData();
+  form.append("file", new Blob(["synthetic png bytes"], { type: "image/png" }), "upload.png");
+  const request = new Request("https://app.example/api/organizations/org-gallery-a/website/media", {
+    method: "POST",
+    headers: { origin: "https://app.example", "content-length": "100" },
+    body: form,
+  });
+  const response = await POST(request, { params: Promise.resolve({ id: organizationId }) });
+  assert.equal(response.status, 500);
+  assert.equal(response.headers.get("cache-control"), "private, no-store");
+  assert.deepEqual(deleteImageCalls, [{ where: { id: "uploaded-image" } }]);
+  assert.deepEqual(deleteStoredCalls, [["unused.png", organizationId]]);
 });

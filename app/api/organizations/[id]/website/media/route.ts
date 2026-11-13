@@ -68,6 +68,10 @@ export async function POST(request: Request, { params }: Context) {
   } catch (error) {
     if (createdId) await prisma.image.deleteMany({ where: { id: createdId } }).catch(() => undefined);
     if (stored && ownerId) await deleteStoredImage(stored.pathname, ownerId).catch(() => undefined);
-    return jsonError(error, "آپلود تصویر انجام نشد.");
+    if (error instanceof ApiError) return jsonError(error, "آپلود تصویر انجام نشد.");
+    return NextResponse.json(
+      { error: "آپلود تصویر انجام نشد." },
+      { status: 500, headers: { "Cache-Control": "private, no-store" } },
+    );
   }
 }

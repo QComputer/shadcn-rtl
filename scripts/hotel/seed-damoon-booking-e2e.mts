@@ -123,7 +123,7 @@ async function main() {
         maxAdults: 2,
         maxChildren: 2,
         maxOccupancy: 4,
-        beds: [{ kind: "queen", count: 1 }],
+        beds: [{ kind: "queen", count: 1 }, { kind: "single", count: 1 }],
         totalAllotment: 2,
       },
     });

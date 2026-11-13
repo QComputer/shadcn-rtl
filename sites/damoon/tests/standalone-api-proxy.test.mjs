@@ -34,10 +34,11 @@ test('standalone proxy forwards only same-origin guest POST routes with the Damo
   const port = portProbe.address().port;
   await new Promise((resolve) => portProbe.close(resolve));
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+  const hostAuthority = `damoon-hotel.ir:${port}`;
   const proxy = spawn(process.execPath, [resolve(root, 'server.mjs')], {
     cwd: root,
     stdio: 'ignore',
-    env: { ...process.env, NODE_ENV: 'test', PORT: String(port), DAMOON_API_ORIGIN: `http://127.0.0.1:${upstream.address().port}`, DAMOON_PUBLIC_HOSTS: '' },
+    env: { ...process.env, NODE_ENV: 'test', DAMOON_E2E_ENABLED: '1', PORT: String(port), DAMOON_API_ORIGIN: `http://127.0.0.1:${upstream.address().port}`, DAMOON_PUBLIC_HOSTS: hostAuthority },
   });
   t.after(async () => {
     proxy.kill();
@@ -72,7 +73,7 @@ test('standalone proxy forwards only same-origin guest POST routes with the Damo
   assert.equal(page.status, 200);
   assert.match(page.headers['content-security-policy'], /connect-src 'self'/);
   const response = await send('/api/hotel/v1/requests', 'POST', {
-    host: 'damoon-hotel.ir', origin: 'http://damoon-hotel.ir',
+    host: hostAuthority, origin: `http://${hostAuthority}`,
     'content-type': 'application/json', 'content-length': String(Buffer.byteLength(payload)),
     'idempotency-key': 'damoon-test-idempotency-001',
     'x-forwarded-host': 'attacker.example', 'x-forwarded-proto': 'https', 'x-forwarded-for': '203.0.113.77',
@@ -85,29 +86,62 @@ test('standalone proxy forwards only same-origin guest POST routes with the Damo
   assert.deepEqual(upstreamRequest, {
     method: 'POST',
     path: '/api/hotel/v1/requests',
-    host: 'damoon-hotel.ir',
-    origin: 'http://damoon-hotel.ir',
-    forwardedHost: 'damoon-hotel.ir',
+    host: hostAuthority,
+    origin: `http://${hostAuthority}`,
+    forwardedHost: hostAuthority,
     forwardedProto: 'http',
     forwardedFor,
     idempotencyKey: 'damoon-test-idempotency-001',
     body: JSON.stringify({ property: 'damoon-hotel' }),
   });
 
-  const crossOrigin = await send('/api/hotel/v1/requests', 'POST', { host: 'damoon-hotel.ir', origin: 'https://attacker.example', 'content-type': 'application/json', 'content-length': '2' }, '{}');
+  const crossOrigin = await send('/api/hotel/v1/requests', 'POST', { host: hostAuthority, origin: 'https://attacker.example', 'content-type': 'application/json', 'content-length': '2' }, '{}');
   assert.equal(crossOrigin.status, 403);
-  const privateRoute = await send('/api/dashboard/booking-requests', 'POST', { host: 'damoon-hotel.ir' });
+  const privateRoute = await send('/api/dashboard/booking-requests', 'POST', { host: hostAuthority });
   assert.equal(privateRoute.status, 404);
-  const wrongMethod = await send('/api/hotel/v1/requests/status', 'GET', { host: 'damoon-hotel.ir' });
+  const wrongMethod = await send('/api/hotel/v1/requests/status', 'GET', { host: hostAuthority });
   assert.equal(wrongMethod.status, 405);
   for (const path of ['/api/hotel/v1/availability/search', '/api/hotel/v1/requests/status']) {
     const body = '{}';
-    const allowed = await send(path, 'POST', { host: 'damoon-hotel.ir', origin: 'http://damoon-hotel.ir', 'content-type': 'application/json', 'content-length': '2' }, body);
+    const allowed = await send(path, 'POST', { host: hostAuthority, origin: `http://${hostAuthority}`, 'content-type': 'application/json', 'content-length': '2' }, body);
     assert.equal(allowed.status, 201);
     assert.equal(upstreamRequest.path, path);
   }
-  const hold = await send('/api/hotel/v1/holds', 'POST', { host: 'damoon-hotel.ir' });
+  const hold = await send('/api/hotel/v1/holds', 'POST', { host: hostAuthority });
   assert.equal(hold.status, 404, 'the current request-only guest flow must not expose hold creation');
   const invalidHost = await send('/api/hotel/v1/requests', 'POST', { host: 'attacker.example', origin: 'http://attacker.example', 'content-type': 'application/json', 'content-length': '2' }, '{}');
   assert.equal(invalidHost.status, 400);
+});
+
+test('standalone bridge fails closed when the API upstream is unavailable', async (t) => {
+  const portProbe = net.createServer();
+  portProbe.listen(0, '127.0.0.1');
+  await once(portProbe, 'listening');
+  const port = portProbe.address().port;
+  await new Promise((resolve) => portProbe.close(resolve));
+  const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+  const env = { ...process.env, NODE_ENV: 'test', PORT: String(port), DAMOON_E2E_ENABLED: '1', DAMOON_PUBLIC_HOSTS: `damoon-hotel.ir:${port}` };
+  delete env.DAMOON_API_ORIGIN;
+  const proxy = spawn(process.execPath, [resolve(root, 'server.mjs')], { cwd: root, stdio: 'ignore', env });
+  t.after(() => proxy.kill());
+  let ready = false;
+  for (let attempt = 0; attempt < 40 && !ready; attempt++) {
+    try {
+      ready = await new Promise((resolve, reject) => {
+        const request = http.get({ host: '127.0.0.1', port, path: '/healthz' }, (response) => { response.resume(); response.on('end', () => resolve(response.statusCode === 200)); });
+        request.setTimeout(250, () => request.destroy(new Error('readiness timeout')));
+        request.on('error', reject);
+      });
+    } catch { await new Promise((resolve) => setTimeout(resolve, 50)); }
+  }
+  assert.equal(ready, true, 'standalone server must become ready');
+  const status = await new Promise((resolve, reject) => {
+    const body = '{}';
+    const request = http.request({ host: '127.0.0.1', port, path: '/api/hotel/v1/requests/status', method: 'POST', headers: { host: `damoon-hotel.ir:${port}`, origin: `http://damoon-hotel.ir:${port}`, 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) } }, (response) => {
+      response.resume(); response.on('end', () => resolve(response.statusCode));
+    });
+    request.on('error', reject);
+    request.end(body);
+  });
+  assert.equal(status, 503);
 });

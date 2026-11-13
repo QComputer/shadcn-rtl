@@ -173,9 +173,9 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       </div>
       <div class="booking-child-ages-search" data-child-ages-root aria-live="polite"></div>
       <div class="booking-flow" data-booking-flow aria-live="polite"></div>
-      ${requestOnly ? `<form class="booking-step" data-track-request novalidate><label class="booking-field booking-field--text"><span>${escapeHtml(requestCopy[locale]?.trackLabel || requestCopy.en.trackLabel)}</span><input data-track-reference type="text" inputmode="text" autocomplete="off" minlength="40" maxlength="64" dir="ltr" /></label><button class="booking-link" type="submit">${escapeHtml(requestCopy[locale]?.trackButton || requestCopy.en.trackButton)}</button><p data-track-result role="status" aria-live="polite"></p></form>` : ""}
       <p class="booking-message" role="status" aria-live="polite"></p>
     </form>
+    ${requestOnly ? `<form class="booking-step" data-track-request novalidate><label class="booking-field booking-field--text"><span>${escapeHtml(requestCopy[locale]?.trackLabel || requestCopy.en.trackLabel)}</span><input data-track-reference type="text" inputmode="text" autocomplete="off" minlength="40" maxlength="64" dir="ltr" /></label><button class="booking-link" type="submit">${escapeHtml(requestCopy[locale]?.trackButton || requestCopy.en.trackButton)}</button><p data-track-result role="status" aria-live="polite"></p></form>` : ""}
     <dialog id="booking-calendar" class="booking-calendar" aria-labelledby="booking-calendar-title">
       <div class="booking-calendar__panel">
         <div class="booking-calendar__top"><div><p class="booking-kicker" data-calendar-active-label></p><h3 id="booking-calendar-title">${escapeHtml(ui.calendar)}</h3></div><button class="booking-calendar__close" type="button" data-calendar-close aria-label="${escapeHtml(ui.closeCalendar)}">×</button></div>

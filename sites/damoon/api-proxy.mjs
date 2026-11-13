@@ -17,13 +17,16 @@ function publicHost(req) {
   if (raw.length > 255 || /[\s/@?#\\]/.test(raw)) return null;
   let parsed;
   try { parsed = new URL(`https://${raw}`); } catch { return null; }
-  if (parsed.port && process.env.NODE_ENV === 'production' && parsed.port !== '443') return null;
-  if (parsed.port && process.env.NODE_ENV !== 'production' && !['80', '443'].includes(parsed.port)) return null;
-  const hostname = parsed.hostname.toLowerCase().replace(/\.$/, '');
+  const normalizedAuthority = raw.toLowerCase();
   const configured = (process.env.DAMOON_PUBLIC_HOSTS || '')
     .split(',').map((host) => host.trim().toLowerCase()).filter(Boolean);
   const allowed = configured.length ? new Set(configured) : defaultPublicHosts;
-  return allowed.has(hostname) ? raw : null;
+  const exactConfiguredAuthority = allowed.has(normalizedAuthority);
+  if (parsed.port && process.env.NODE_ENV === 'production' && parsed.port !== '443') return null;
+  if (parsed.port && process.env.NODE_ENV === 'test' && !(process.env.DAMOON_E2E_ENABLED === '1' && exactConfiguredAuthority) && !['80', '443'].includes(parsed.port)) return null;
+  if (parsed.port && process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test' && !['80', '443'].includes(parsed.port)) return null;
+  const hostname = parsed.hostname.toLowerCase().replace(/\.$/, '');
+  return allowed.has(hostname) || exactConfiguredAuthority ? raw : null;
 }
 
 function apiOrigin() {

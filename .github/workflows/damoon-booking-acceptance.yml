@@ -1,0 +1,189 @@
+name: Damoon booking request isolated acceptance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "sites/damoon/**"
+      - "app/api/hotel/v1/**"
+      - "app/api/organizations/**/hotels/**/booking-requests/**"
+      - "components/hotel-operations/hotel-guest-booking-requests.tsx"
+      - "lib/hotel/**"
+      - "prisma/**"
+      - "scripts/hotel/seed-damoon-booking-e2e.mts"
+      - "scripts/hotel/verify-damoon-disabled-request-gate.mjs"
+      - "tests/e2e/damoon/**"
+      - "tests/damoon-booking-flow.test.mjs"
+      - "tests/damoon-static-server.test.mjs"
+      - "tests/damoon-public-bundle.test.mjs"
+      - "playwright.damoon.config.mjs"
+      - ".github/workflows/damoon-booking-acceptance.yml"
+      - "pnpm-lock.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: damoon-booking-acceptance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  request-to-reception:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_RUNTIME_ADAPTER: postgresql
+      LOCAL_PRISMA_EXPECTED_PORT: "5432"
+      LOCAL_BASELINE_BOOTSTRAP_DISPOSABLE: "true"
+      HOTEL_GUEST_BOOKING_REQUEST_ENABLED: "1"
+      HOTEL_PUBLICATION_OPERATIONAL_ENABLED: "1"
+      HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED: "0"
+      HOTEL_CRON_SCHEDULER_ENABLED: "0"
+      HOTEL_PAYMENT_OPERATIONAL_ENABLED: "0"
+      HOTEL_PAYMENT_SIMULATOR_ENABLED: "0"
+      HOTEL_SMS_ENABLED: "0"
+      CUSTOMER_AUTH_SMS_WORKER_ENABLED: "0"
+      DAMOON_E2E_ENABLED: "1"
+      DAMOON_APP_URL: http://127.0.0.1:3000
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck source and CI fixtures
+        run: pnpm exec tsc --noEmit --pretty false
+      - name: Lint changed Damoon and acceptance files
+        run: pnpm exec eslint sites/damoon/api-proxy.mjs sites/damoon/booking.js sites/damoon/tests/standalone-api-proxy.test.mjs scripts/hotel/seed-damoon-booking-e2e.mts scripts/hotel/verify-damoon-disabled-request-gate.mjs tests/e2e/damoon/booking-request-acceptance.spec.mjs playwright.damoon.config.mjs
+      - name: Create uniquely named disposable database
+        shell: bash
+        run: |
+          set -euo pipefail
+          database="damoon_$(openssl rand -hex 8)"
+          psql "postgresql://postgres:postgres@127.0.0.1:5432/postgres" -v ON_ERROR_STOP=1 -c "CREATE DATABASE ${database}"
+          url="postgresql://postgres:postgres@127.0.0.1:5432/${database}?schema=public"
+          {
+            echo "DAMOON_CI_DATABASE_NAME=${database}"
+            echo "DATABASE_URL=${url}"
+            echo "DIRECT_URL=${url}"
+            echo "AUTH_SECRET=$(openssl rand -hex 32)"
+            echo "NEXTAUTH_SECRET=$(openssl rand -hex 32)"
+            echo "AUTH_TRUST_HOST=true"
+            echo "NEXTAUTH_URL=http://127.0.0.1:3000"
+            echo "NEXTAUTH_URL_INTERNAL=http://127.0.0.1:3000"
+            echo "NEXT_PUBLIC_APP_URL=http://127.0.0.1:3000"
+            echo "DAMOON_API_ORIGIN=http://127.0.0.1:3000"
+          } >> "$GITHUB_ENV"
+          echo "Created task-owned database ${database} on the ephemeral PostgreSQL 17 service."
+      - name: Validate and generate Prisma client
+        run: pnpm exec prisma validate && pnpm exec prisma generate
+      - name: Apply repository migrations to disposable PostgreSQL
+        run: pnpm exec prisma migrate deploy
+      - name: Seed synthetic Damoon and foreign tenant fixtures
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs scripts/hotel/seed-damoon-booking-e2e.mts
+      - name: Map synthetic tenant domains on runner loopback
+        shell: bash
+        run: echo "127.0.0.1 damoon-hotel.ir ${DAMOON_FOREIGN_HOST}" | sudo tee -a /etc/hosts >/dev/null
+      - name: Install Chromium for isolated browser acceptance
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Start real Next API backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          nohup env NODE_ENV=development ./node_modules/.bin/next dev --hostname 0.0.0.0 --port 3000 > "$RUNNER_TEMP/damoon-next.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/damoon-next.pid"
+      - name: Wait for authenticated API backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            if curl --silent --show-error --max-time 3 http://127.0.0.1:3000/api/auth/csrf > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          tail -n 100 "$RUNNER_TEMP/damoon-next.log"
+          exit 1
+      - name: Start restricted standalone Damoon server
+        shell: bash
+        run: |
+          set -euo pipefail
+          nohup env NODE_ENV=test DAMOON_E2E_ENABLED=1 PORT=8080 node sites/damoon/server.mjs > "$RUNNER_TEMP/damoon-static.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/damoon-static.pid"
+      - name: Wait for standalone server and restricted API bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail --max-time 2 -H "Host: ${DAMOON_PUBLIC_HOST}" http://127.0.0.1:8080/healthz >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/damoon-static.log"
+          exit 1
+      - name: Run focused standalone bridge and browser request acceptance
+        shell: bash
+        env:
+          NODE_ENV: test
+        run: |
+          set -euo pipefail
+          node --test sites/damoon/tests/standalone-api-proxy.test.mjs
+          pnpm exec playwright test --config=playwright.damoon.config.mjs
+      - name: Restart API with the guest-request gate disabled
+        shell: bash
+        run: |
+          set -euo pipefail
+          kill "$(cat "$RUNNER_TEMP/damoon-next.pid")" 2>/dev/null || true
+          for attempt in $(seq 1 20); do
+            if ! curl --silent --max-time 1 http://127.0.0.1:3000/api/auth/csrf >/dev/null; then break; fi
+            sleep 1
+          done
+          nohup env NODE_ENV=development HOTEL_GUEST_BOOKING_REQUEST_ENABLED=0 ./node_modules/.bin/next dev --hostname 0.0.0.0 --port 3000 > "$RUNNER_TEMP/damoon-next-disabled.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/damoon-next.pid"
+      - name: Verify disabled guest request gate over the real standalone bridge
+        shell: bash
+        env:
+          NODE_ENV: test
+          HOTEL_GUEST_BOOKING_REQUEST_ENABLED: "0"
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            if curl --silent --show-error --max-time 3 http://127.0.0.1:3000/api/auth/csrf > /dev/null; then break; fi
+            sleep 2
+          done
+          node scripts/hotel/verify-damoon-disabled-request-gate.mjs
+      - name: Show sanitized service logs on failure
+        if: failure()
+        shell: bash
+        run: |
+          for file in "$RUNNER_TEMP/damoon-next.log" "$RUNNER_TEMP/damoon-next-disabled.log" "$RUNNER_TEMP/damoon-static.log"; do
+            if [[ -f "$file" ]]; then tail -n 120 "$file"; fi
+          done
+      - name: Stop task-owned servers and drop only the disposable database
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in "$RUNNER_TEMP/damoon-static.pid" "$RUNNER_TEMP/damoon-next.pid"; do
+            if [[ -f "$file" ]]; then kill "$(cat "$file")" 2>/dev/null || true; fi
+          done
+          if [[ "${DAMOON_CI_DATABASE_NAME:-}" =~ ^damoon_[a-f0-9]{16}$ ]]; then
+            psql "postgresql://postgres:postgres@127.0.0.1:5432/postgres" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS ${DAMOON_CI_DATABASE_NAME} WITH (FORCE)"
+          fi

@@ -1,6 +1,9 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { prisma as defaultPrisma } from "@/lib/db-runtime";
+import { canTransitionHotelGuestBookingRequest, type HotelGuestBookingRequestStatus } from "@/lib/hotel/domain/guest-booking-request";
+import { PrismaHotelRepositories } from "@/lib/hotel/persistence/prisma-hotel-repositories";
+import { searchPublicHotelAvailability } from "@/lib/hotel/services/public-availability.service";
 
 export type HotelManagementPrincipal = {
   readonly userId: string;
@@ -146,6 +149,90 @@ export class HotelManagementService {
   }
 
   async archivePhysicalRoom(principal: HotelManagementPrincipal, scope: HotelManagementScope, roomId: string) { await this.authorize(principal, scope); await this.assertNoRoomAllocations(roomId); return this.db.hotelRoom.updateMany({ where: { id: roomId, organizationId: scope.organizationId }, data: { isActive: false, deletedAt: new Date() } }); }
+
+  async listGuestBookingRequests(principal: HotelManagementPrincipal, scope: HotelManagementScope, propertyId: string, cursor?: string) {
+    await this.authorize(principal, scope);
+    await this.assertProperty(scope, propertyId);
+    const rows = await this.db.hotelGuestBookingRequest.findMany({
+      where: { organizationId: scope.organizationId, propertyId },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      take: 50,
+      select: { id: true, status: true, checkIn: true, checkOut: true, adults: true, children: true, childAges: true, roomTypeSlug: true, ratePlanCode: true, availabilityHint: true, managerMessage: true, guestName: true, guestPhone: true, guestEmail: true, guestNote: true, version: true, createdAt: true, updatedAt: true },
+    });
+    return { requests: rows, nextCursor: rows.length === 50 ? rows[rows.length - 1]?.id ?? null : null };
+  }
+
+  async updateGuestBookingRequestStatus(principal: HotelManagementPrincipal, scope: HotelManagementScope, propertyId: string, requestId: string, input: { status: HotelGuestBookingRequestStatus; expectedVersion: number; managerMessage?: string }) {
+    await this.authorize(principal, scope);
+    await this.assertProperty(scope, propertyId);
+    return this.db.$transaction(async (tx) => {
+      const current = await tx.hotelGuestBookingRequest.findFirst({ where: { id: requestId, organizationId: scope.organizationId, propertyId } });
+      if (!current) throw new HotelManagementAuthorizationError("Booking request is outside the property scope");
+      if (current.version !== input.expectedVersion) throw new HotelManagementConflictError("Booking request changed; reload before updating");
+      if (!canTransitionHotelGuestBookingRequest(current.status as HotelGuestBookingRequestStatus, input.status)) {
+        throw new HotelManagementValidationError("Invalid booking request status transition");
+      }
+      const managerMessage = input.managerMessage?.trim() || null;
+      if (input.status === "OPTION_OFFERED" && !managerMessage) throw new HotelManagementValidationError("Add a message explaining the option or requested changes");
+      const changed = await tx.hotelGuestBookingRequest.updateMany({
+        where: { id: requestId, organizationId: scope.organizationId, propertyId, version: input.expectedVersion, status: current.status },
+        data: { status: input.status, managerMessage, version: { increment: 1 } },
+      });
+      if (changed.count !== 1) throw new HotelManagementConflictError("Booking request changed concurrently");
+      await tx.auditLog.create({ data: {
+        action: "CHANGE_STATUS",
+        entityType: "HotelGuestBookingRequest",
+        entityId: current.id,
+        organizationId: scope.organizationId,
+        userId: principal.userId,
+        previousValue: { status: current.status, version: current.version, hasManagerMessage: Boolean(current.managerMessage) },
+        newValue: { status: input.status, version: current.version + 1, hasManagerMessage: Boolean(managerMessage) },
+      } });
+      return tx.hotelGuestBookingRequest.findFirstOrThrow({
+        where: { id: requestId, organizationId: scope.organizationId, propertyId },
+        select: { id: true, status: true, managerMessage: true, version: true, updatedAt: true },
+      });
+    });
+  }
+
+  async recheckGuestBookingRequestAvailability(principal: HotelManagementPrincipal, scope: HotelManagementScope, propertyId: string, requestId: string) {
+    await this.authorize(principal, scope);
+    const property = await this.assertProperty(scope, propertyId);
+    const request = await this.db.hotelGuestBookingRequest.findFirst({ where: { id: requestId, organizationId: scope.organizationId, propertyId } });
+    if (!request) throw new HotelManagementAuthorizationError("Booking request is outside the property scope");
+
+    const availability = await searchPublicHotelAvailability({
+      scope: { organizationId: scope.organizationId },
+      propertySlug: property.slug,
+      query: {
+        propertyId,
+        window: { checkIn: request.checkIn.toISOString().slice(0, 10), checkOut: request.checkOut.toISOString().slice(0, 10) },
+        occupancy: { adults: request.adults, children: request.children, childAges: request.childAges },
+      },
+    }, new PrismaHotelRepositories(this.db));
+    if (!availability) throw new HotelManagementAuthorizationError("Property is outside the organization scope");
+    const available = availability.options.some((option) => option.isAvailable && option.roomType.slug === request.roomTypeSlug && option.ratePlan.code === request.ratePlanCode);
+    const availabilityHint = available ? "AVAILABLE" : "UNAVAILABLE";
+
+    return this.db.$transaction(async (tx) => {
+      const changed = await tx.hotelGuestBookingRequest.updateMany({
+        where: { id: request.id, organizationId: scope.organizationId, propertyId, version: request.version },
+        data: { availabilityHint, version: { increment: 1 } },
+      });
+      if (changed.count !== 1) throw new HotelManagementConflictError("Booking request changed while availability was being checked");
+      await tx.auditLog.create({ data: {
+        action: "UPDATE",
+        entityType: "HotelGuestBookingRequest",
+        entityId: request.id,
+        organizationId: scope.organizationId,
+        userId: principal.userId,
+        previousValue: { availabilityHint: request.availabilityHint, version: request.version },
+        newValue: { availabilityHint, version: request.version + 1 },
+      } });
+      return { id: request.id, availabilityHint, version: request.version + 1 };
+    });
+  }
 
   async createAmenity(principal: HotelManagementPrincipal, scope: HotelManagementScope, input: { propertyId: string; key: string; label: string; description?: string; localizedContent?: LocalizedContent }) { await this.authorize(principal, scope); assertText(input.key, "Amenity key", 64); assertText(input.label, "Amenity label"); assertLocalizedContent(input.localizedContent); await this.assertProperty(scope, input.propertyId); return this.db.hotelAmenity.create({ data: { organizationId: scope.organizationId, propertyId: input.propertyId, key: input.key.trim(), label: input.label.trim(), description: input.description, localizedContent: input.localizedContent } }); }
   async updateAmenity(principal: HotelManagementPrincipal, scope: HotelManagementScope, amenityId: string, patch: { label?: string; description?: string | null; localizedContent?: LocalizedContent; isActive?: boolean }) { await this.authorize(principal, scope); if (patch.label !== undefined) assertText(patch.label, "Amenity label"); assertLocalizedContent(patch.localizedContent); return this.db.hotelAmenity.updateMany({ where: { id: amenityId, organizationId: scope.organizationId }, data: patch as never }); }

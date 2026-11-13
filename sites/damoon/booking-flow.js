@@ -137,7 +137,36 @@ export function buildHoldPayload({ property, range, adults, children, childAges,
   return payload;
 }
 
+export function requestAttemptFingerprint({ property, range, adults, children, childAges, option, contact, specialRequests }) {
+  return JSON.stringify({
+    property,
+    roomType: option?.roomType?.slug || "",
+    ratePlan: option?.ratePlan?.code || "",
+    checkIn: range?.checkIn || "",
+    checkOut: range?.checkOut || "",
+    adults,
+    children,
+    childAges: Array.isArray(childAges) ? childAges : [],
+    contact: { fullName: contact?.fullName || "", phone: contact?.phone || "", email: contact?.email || "" },
+    specialRequests: String(specialRequests || "").trim(),
+  });
+}
+
+export function buildGuestRequestPayload({ property, range, adults, children, childAges, option, contact, specialRequests }) {
+  return {
+    property,
+    roomType: option.roomType.slug,
+    ratePlan: option.ratePlan.code,
+    checkIn: range.checkIn,
+    checkOut: range.checkOut,
+    occupancy: { adults, children, childAges },
+    contact,
+    ...(String(specialRequests || "").trim() ? { specialRequests: String(specialRequests).trim() } : {}),
+  };
+}
+
 export function createIdempotencyKey() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return `damoon-${crypto.randomUUID()}`;
-  return `damoon-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+  if (typeof crypto === "undefined" || typeof crypto.getRandomValues !== "function") throw new Error("Secure request keys are unavailable");
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return `damoon-${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 }

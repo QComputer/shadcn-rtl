@@ -12,11 +12,13 @@ import translations from "./translations.js";
 import {
   availableOptions,
   buildHoldPayload,
+  buildGuestRequestPayload,
   createIdempotencyKey,
   formatMoney,
   holdAttemptFingerprint,
   parseChildAges,
   policySummary,
+  requestAttemptFingerprint,
   validateContact,
   withStaySelection,
 } from "./booking-flow.js";
@@ -30,6 +32,11 @@ const CHILD_OPTIONS = [0, 1, 2, 3, 4];
 const dateIcon = '<svg class="booking-field__symbol" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="6" width="24" height="23" rx="2"/><path d="M4 12h24M10 2v8M22 2v8M9 17h3m3 0h3m3 0h3M9 22h3m3 0h3m3 0h3"/></svg>';
 const guestIcon = '<svg class="booking-field__symbol" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="14" cy="9" r="6"/><path d="M3 29v-5c0-5 4-8 11-8s11 3 11 8v5H3Zm21-25c6 2 6 10 0 12m3 3c3 2 4 5 3 10"/></svg>';
 const submitArrow = '<svg class="booking-submit__arrow" viewBox="0 0 32 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 12h27M21 4l8 8-8 8"/></svg>';
+const requestCopy = {
+  fa: { submit: "ارسال درخواست اقامت", notBooking: "این درخواست رزرو قطعی نیست؛ قیمت و موجودی باید توسط پذیرش دوباره بررسی شوند.", unavailable: "سامانه ثبت درخواست اقامت هنوز فعال نیست.", received: "درخواست اقامت ثبت شد", reference: "کد پیگیری امن", keepReference: "این کد را برای پیگیری نزد خود نگه دارید.", status: "وضعیت درخواست", check: "بررسی وضعیت", checking: "در حال بررسی وضعیت...", trackLabel: "پیگیری با کد امن", trackButton: "نمایش وضعیت", trackError: "درخواستی با این کد پیدا نشد یا کد معتبر نیست.", statuses: { RECEIVED: "دریافت‌شده", IN_REVIEW: "در حال بررسی", OPTION_OFFERED: "پیشنهاد برای بررسی شما آماده است", UNAVAILABLE: "در این زمان در دسترس نیست", DECLINED: "پذیرفته نشد", CLOSED: "بسته‌شده" } },
+  en: { submit: "Send stay request", notBooking: "This request is not a confirmed booking. Reception must recheck the rate and availability.", unavailable: "Stay requests are not enabled yet.", received: "Stay request submitted", reference: "Secure tracking reference", keepReference: "Keep this reference to check your request later.", status: "Request status", check: "Check status", checking: "Checking status...", trackLabel: "Track with secure reference", trackButton: "Show status", trackError: "No request was found for this reference.", statuses: { RECEIVED: "Received", IN_REVIEW: "Under review", OPTION_OFFERED: "An option is ready for your review", UNAVAILABLE: "Unavailable for these dates", DECLINED: "Declined", CLOSED: "Closed" } },
+  ar: { submit: "إرسال طلب الإقامة", notBooking: "هذا الطلب ليس حجزاً مؤكداً. يجب على الاستقبال إعادة التحقق من السعر والتوفر.", unavailable: "طلبات الإقامة غير مفعلة بعد.", received: "تم إرسال طلب الإقامة", reference: "رمز متابعة آمن", keepReference: "احتفظ بهذا الرمز لمتابعة طلبك لاحقاً.", status: "حالة الطلب", check: "تحقق من الحالة", checking: "جارٍ التحقق من الحالة...", trackLabel: "المتابعة باستخدام الرمز الآمن", trackButton: "عرض الحالة", trackError: "لم يتم العثور على طلب بهذا الرمز.", statuses: { RECEIVED: "تم الاستلام", IN_REVIEW: "قيد المراجعة", OPTION_OFFERED: "الخيار جاهز لمراجعتك", UNAVAILABLE: "غير متاح في هذه التواريخ", DECLINED: "مرفوض", CLOSED: "مغلق" } },
+};
 
 function validArrival(value, minISO) {
   if (typeof value !== "string" || !value) return false;
@@ -110,9 +117,14 @@ function nightsLabel(count, locale, ui) {
 }
 function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]); }
 
-export function mountBooking(slot, { routeHref = (path) => path, locale = localeForPath(window.location.pathname), coordinationOnly = true } = {}) {
+export function mountBooking(slot, { routeHref = (path) => path, locale = localeForPath(window.location.pathname), coordinationOnly = true, requestOnly = false } = {}) {
   if (!(slot instanceof Element)) return () => {};
   const ui = { ...faUi, ...(translations[locale]?.ui || {}) };
+  if (requestOnly) {
+    ui.datePlanningOnly = locale === "fa" ? "این بخش فقط گزینه‌های فعلی را برای ارسال درخواست نشان می‌دهد؛ ثبت درخواست رزرو یا تثبیت قیمت نیست." : locale === "ar" ? "تعرض هذه الصفحة الخيارات الحالية لإرسال طلب فقط؛ إرسال الطلب لا يؤكد الحجز أو السعر." : "Current options are shown for a request only; submitting does not confirm a booking or price.";
+    ui.bookingSubmit = locale === "fa" ? "بررسی گزینه‌های فعلی" : locale === "ar" ? "عرض الخيارات الحالية" : "View current options";
+    ui.totalPrice = locale === "fa" ? "مبلغ تخمینی" : locale === "ar" ? "السعر التقديري" : "Indicative total";
+  }
   if (coordinationOnly) {
     ui.datePlanningOnly = locale === "fa" ? "تاریخ و مهمانان را برای هماهنگی با پذیرش انتخاب کنید؛ این انتخاب تأیید اتاق، نرخ یا موجودی نیست." : locale === "ar" ? "اختر التواريخ والضيوف للتنسيق مع الاستقبال؛ هذا الاختيار لا يؤكد الغرفة أو السعر أو التوفر." : "Choose dates and guests to coordinate with reception; this does not confirm a room, rate or availability.";
     ui.bookingSubmit = locale === "fa" ? "ادامه برای هماهنگی اقامت" : locale === "ar" ? "المتابعة لتنسيق الإقامة" : "Continue to stay coordination";
@@ -163,6 +175,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       <div class="booking-flow" data-booking-flow aria-live="polite"></div>
       <p class="booking-message" role="status" aria-live="polite"></p>
     </form>
+    ${requestOnly ? `<form class="booking-step" data-track-request novalidate><label class="booking-field booking-field--text"><span>${escapeHtml(requestCopy[locale]?.trackLabel || requestCopy.en.trackLabel)}</span><input data-track-reference type="text" inputmode="text" autocomplete="off" minlength="40" maxlength="64" dir="ltr" /></label><button class="booking-link" type="submit">${escapeHtml(requestCopy[locale]?.trackButton || requestCopy.en.trackButton)}</button><p data-track-result role="status" aria-live="polite"></p></form>` : ""}
     <dialog id="booking-calendar" class="booking-calendar" aria-labelledby="booking-calendar-title">
       <div class="booking-calendar__panel">
         <div class="booking-calendar__top"><div><p class="booking-kicker" data-calendar-active-label></p><h3 id="booking-calendar-title">${escapeHtml(ui.calendar)}</h3></div><button class="booking-calendar__close" type="button" data-calendar-close aria-label="${escapeHtml(ui.closeCalendar)}">×</button></div>
@@ -244,7 +257,6 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   function selectedOptionPanel() {
     const option = flow.selected; if (!option) return "";
     const policy = option.ratePlan?.cancellationPolicy; const summary = policySummary(policy, locale);
-    const policyKey = policy?.key || "";
     const ages = childAges.length === children ? childAges : Array.from({ length: children }, () => "");
     const draft = flow.draftContact || { fullName: "", phone: "", email: "" };
     return `<section class="booking-step"><div class="booking-step__head"><h4>${escapeHtml(option.roomType?.name || "")} · ${escapeHtml(option.ratePlan?.name || "")}</h4><button type="button" class="booking-link" data-flow-back>${escapeHtml(ui.backToOptions || "Back")}</button></div>
@@ -255,11 +267,17 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
         <label class="booking-field booking-field--text"><span>${escapeHtml(ui.phone || "Phone")}</span><input data-guest-phone type="tel" autocomplete="tel" required minlength="8" maxlength="24" dir="ltr" value="${escapeHtml(draft.phone || "")}" /></label>
         <label class="booking-field booking-field--text"><span>${escapeHtml(ui.email || "Email")}</span><input data-guest-email type="email" autocomplete="email" maxlength="200" dir="ltr" value="${escapeHtml(draft.email || "")}" /></label>
       </div>
-      <div class="booking-policy"><p class="booking-step__label">${escapeHtml(ui.policies || "Policy")}</p><div class="booking-policy__text">${escapeHtml(summary || policy?.name || policyKey || "—")}</div><label class="booking-policy__accept"><input type="checkbox" data-policy-accept ${policyKey ? "" : "disabled"} ${flow.policyAccepted ? "checked" : ""} /> <span>${escapeHtml(ui.policyAcceptance || "I accept the cancellation policy.")}</span></label></div>
-      <div class="booking-step__actions"><button type="button" class="booking-submit" data-create-hold ${flow.busy || !policyKey ? "disabled" : ""}>${escapeHtml(ui.holdRoom || "Reserve")}</button></div>
+      ${requestOnly ? `<p class="booking-policy__text">${escapeHtml(requestCopy[locale]?.notBooking || requestCopy.en.notBooking)}</p><label class="booking-field booking-field--text"><span>${escapeHtml(locale === "fa" ? "درخواست ویژه (اختیاری)" : locale === "ar" ? "طلبات خاصة (اختياري)" : "Special requests (optional)")}</span><textarea data-special-request maxlength="500">${escapeHtml(flow.draftSpecialRequests || "")}</textarea></label>` : `<div class="booking-policy"><p class="booking-step__label">${escapeHtml(ui.policies || "Policy")}</p><div class="booking-policy__text">${escapeHtml(summary || policy?.name || policy?.key || "—")}</div><label class="booking-policy__accept"><input type="checkbox" data-policy-accept ${policy?.key ? "" : "disabled"} ${flow.policyAccepted ? "checked" : ""} /> <span>${escapeHtml(ui.policyAcceptance || "I accept the cancellation policy.")}</span></label></div>`}
+      <div class="booking-step__actions"><button type="button" class="booking-submit" data-create-${requestOnly ? "request" : "hold"} ${flow.busy || (!requestOnly && !policy?.key) ? "disabled" : ""}>${escapeHtml(requestOnly ? (requestCopy[locale]?.submit || requestCopy.en.submit) : (ui.holdRoom || "Reserve"))}</button></div>
     </section>`;
   }
   function confirmationPanel() {
+    if (requestOnly && flow.request) {
+      const request = flow.request;
+      const status = flow.requestStatus || request.status;
+      const copy = requestCopy[locale] || requestCopy.en;
+      return `<section class="booking-step booking-step--confirmed"><h4>${escapeHtml(copy.received)}</h4><p><strong>${escapeHtml(copy.reference)}:</strong> <span dir="ltr">${escapeHtml(request.reference)}</span></p><p>${escapeHtml(copy.keepReference)}</p><p><strong>${escapeHtml(copy.status)}:</strong> ${escapeHtml(copy.statuses[status] || status)}</p>${request.managerMessage ? `<p class="booking-policy__text">${escapeHtml(request.managerMessage)}</p>` : ""}<div class="booking-step__actions"><button type="button" class="booking-link" data-check-request-status ${flow.busy ? "disabled" : ""}>${escapeHtml(copy.check)}</button><button type="button" class="booking-link" data-flow-reset>${escapeHtml(ui.backToOptions || "Back")}</button></div></section>`;
+    }
     const h = flow.hold; if (!h) return "";
     const expires = h.expiresAt ? new Date(h.expiresAt) : null;
     const expiresText = expires && !Number.isNaN(expires.getTime()) ? expires.toLocaleString(locale === "fa" ? "fa-IR" : locale === "ar" ? "ar" : "en-US") : String(h.expiresAt || "");
@@ -284,6 +302,20 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     let data = null; try { data = text ? JSON.parse(text) : null; } catch { data = { error: text }; }
     return { ok: res.ok, status: res.status, data, rawText: text };
   }
+  slot.querySelector("[data-track-request]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const copy = requestCopy[locale] || requestCopy.en;
+    const reference = slot.querySelector("[data-track-reference]")?.value.trim() || "";
+    const output = slot.querySelector("[data-track-result]");
+    if (!reference || reference.length < 40) { output.textContent = copy.trackError; return; }
+    output.textContent = copy.checking;
+    try {
+      const result = await postJson("/api/hotel/v1/requests/status", { reference });
+      if (!result.ok || typeof result.data?.status !== "string") { output.textContent = copy.trackError; return; }
+      const label = copy.statuses[result.data.status] || result.data.status;
+      output.textContent = result.data.managerMessage ? `${label} · ${result.data.managerMessage}` : label;
+    } catch { output.textContent = copy.trackError; }
+  });
   function apiErrorMessage(status, data, fallback) {
     const err = typeof data?.error === "string" ? data.error : data?.error?.message || "";
     if (err && status < 500) return `${status}: ${err}`;
@@ -297,7 +329,9 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   }
   function collectChildAgesFromInputs() {
     if (!children) return { ok: true, ages: [] };
-    const inputs = [...slot.querySelectorAll("[data-child-age]")];
+    // The search form keeps its own age inputs mounted while the selected-room
+    // details panel renders editable copies. Submit only the active details panel.
+    const inputs = [...flowNode.querySelectorAll("[data-child-age]")];
     return parseChildAges(inputs.map((i) => i.value), children);
   }
   function bindFlow() {
@@ -311,7 +345,27 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     }));
     slot.querySelector("[data-flow-back]")?.addEventListener("click", () => { clearHoldAttempt(); flow = { ...flow, step: "options", selected: null, hold: null, message: "", error: false }; renderFlow(); });
     slot.querySelector("[data-flow-reset]")?.addEventListener("click", () => { clearHoldAttempt(); flow = { step: "options", options: flow.options, selected: null, hold: null, busy: false, message: "", error: false, draftContact: { fullName: "", phone: "", email: "" }, policyAccepted: false }; renderFlow(); });
-    slot.querySelector("[data-create-hold]")?.addEventListener("click", async () => {
+    slot.querySelector("[data-check-request-status]")?.addEventListener("click", async () => {
+      if (flow.busy || !flow.request?.reference) return;
+      flow.busy = true; renderFlow();
+      const copy = requestCopy[locale] || requestCopy.en;
+      setMessage(copy.checking);
+      try {
+        const result = await postJson("/api/hotel/v1/requests/status", { reference: flow.request.reference });
+        if (!result.ok || typeof result.data?.status !== "string") {
+          setMessage(apiErrorMessage(result.status, result.data, copy.check), true);
+          return;
+        }
+        flow.requestStatus = result.data.status;
+        flow.request.managerMessage = typeof result.data.managerMessage === "string" ? result.data.managerMessage : "";
+        setMessage("");
+      } catch {
+        setMessage(locale === "fa" ? "بررسی وضعیت ناموفق بود؛ دوباره تلاش کنید." : locale === "ar" ? "تعذر التحقق من الحالة؛ حاول مرة أخرى." : "Status check failed. Try again.", true);
+      } finally {
+        flow.busy = false; renderFlow();
+      }
+    });
+    slot.querySelector(`[data-create-${requestOnly ? "request" : "hold"}]`)?.addEventListener("click", async () => {
       if (flow.busy || !flow.selected) return;
       const agesResult = collectChildAgesFromInputs();
       if (!agesResult.ok) { setMessage(ui.childAgeRequired || "Enter valid ages for each child.", true); slot.querySelector("[data-child-age]")?.focus(); return; }
@@ -319,10 +373,36 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       const draft = { fullName: slot.querySelector("[data-guest-name]")?.value || "", phone: slot.querySelector("[data-guest-phone]")?.value || "", email: slot.querySelector("[data-guest-email]")?.value || "" };
       const contact = validateContact(draft);
       if (!contact.ok) { flow.draftContact = draft; setMessage(ui.invalidContact || "Invalid contact details.", true); renderFlow(); slot.querySelector("[data-guest-name]")?.focus(); return; }
+      flow.draftContact = contact.value;
+      if (requestOnly) {
+        const specialRequests = slot.querySelector("[data-special-request]")?.value || "";
+        flow.draftSpecialRequests = specialRequests;
+        const payload = buildGuestRequestPayload({ property: DAMOON_PROPERTY_SLUG, range, adults, children, childAges, option: flow.selected, contact: contact.value, specialRequests });
+        const fingerprint = requestAttemptFingerprint({ property: DAMOON_PROPERTY_SLUG, range, adults, children, childAges, option: flow.selected, contact: contact.value, specialRequests });
+        if (!holdAttempt.key || holdAttempt.fingerprint !== fingerprint) holdAttempt = { key: createIdempotencyKey(), fingerprint, payload };
+        flow.busy = true; persist(); renderFlow();
+        setMessage(locale === "fa" ? "در حال ارسال درخواست هماهنگی..." : locale === "ar" ? "جارٍ إرسال طلب التنسيق..." : "Submitting your stay request...");
+        try {
+          const result = await postJson("/api/hotel/v1/requests", holdAttempt.payload || payload, { "Idempotency-Key": holdAttempt.key });
+          if (result.ok && typeof result.data?.reference === "string") {
+            clearHoldAttempt();
+            flow = { ...flow, step: "confirmed", request: result.data, requestStatus: result.data.status, busy: false, message: "", error: false };
+            renderFlow();
+            return;
+          }
+          const errorText = typeof result.data?.error === "string" ? result.data.error : result.data?.error?.message || "";
+          if (result.status === 409 && /idempotency-key was used with a different request/i.test(errorText)) clearHoldAttempt();
+          setMessage(result.status === 503 ? (requestCopy[locale]?.unavailable || requestCopy.en.unavailable) : apiErrorMessage(result.status, result.data, errorText), true);
+        } catch {
+          setMessage(locale === "fa" ? "پاسخ سرور دریافت نشد؛ همان درخواست را دوباره ارسال کنید." : locale === "ar" ? "لم يصل رد من الخادم؛ أعد إرسال الطلب نفسه." : "No server response. Retry the same request.", true);
+        } finally {
+          flow.busy = false; renderFlow();
+        }
+        return;
+      }
       const accepted = slot.querySelector("[data-policy-accept]")?.checked;
       const policyKey = flow.selected.ratePlan?.cancellationPolicy?.key || "";
       if (!policyKey || !accepted) { flow.draftContact = contact.value; flow.policyAccepted = Boolean(accepted); setMessage(ui.policyRequired || "Accept the cancellation policy.", true); renderFlow(); return; }
-      flow.draftContact = contact.value;
       flow.policyAccepted = true;
       flow.busy = true; persist(); renderFlow();
       setMessage(locale === "fa" ? "در حال ثبت رزرو موقت..." : locale === "ar" ? "جارٍ إنشاء الحجز المؤقت..." : "Creating hold...");

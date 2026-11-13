@@ -113,6 +113,43 @@ export const availabilitySearchSchema = z
 
 export type AvailabilitySearchInputDto = z.infer<typeof availabilitySearchSchema>;
 
+/** A request for reception follow-up; it never creates a hold or confirmed reservation. */
+export const hotelGuestBookingRequestSchema = z.object({
+  property: propertySlugSchema,
+  roomType: roomTypeSlugSchema,
+  ratePlan: z.string().min(1).max(64),
+  checkIn: stayDateSchema,
+  checkOut: stayDateSchema,
+  occupancy: occupancySchema,
+  contact: z.object({
+    fullName: z.string().trim().min(2).max(120),
+    phone: z.string().trim().min(8).max(24).regex(/^[+\d][\d\s\-()]{7,23}$/),
+    email: z.string().trim().email().max(200).optional(),
+  }),
+  specialRequests: z.string().trim().max(500).optional(),
+}).superRefine((value, ctx) => {
+  if (value.checkOut <= value.checkIn) {
+    ctx.addIssue({ code: "custom", path: ["checkOut"], message: "checkOut must be after checkIn" });
+    return;
+  }
+  const nights = (Date.parse(`${value.checkOut}T00:00:00Z`) - Date.parse(`${value.checkIn}T00:00:00Z`)) / 86_400_000;
+  if (!Number.isInteger(nights) || nights < 1 || nights > MAX_HOTEL_STAY_NIGHTS) {
+    ctx.addIssue({ code: "custom", path: ["checkOut"], message: `Stay must be between 1 and ${MAX_HOTEL_STAY_NIGHTS} nights` });
+  }
+});
+
+export type HotelGuestBookingRequestInput = z.infer<typeof hotelGuestBookingRequestSchema>;
+
+export const hotelGuestBookingRequestStatusSchema = z.object({
+  reference: z.string().min(40).max(64).regex(/^[A-Za-z0-9_-]+$/),
+});
+
+export const hotelGuestBookingRequestUpdateSchema = z.object({
+  status: z.enum(["RECEIVED", "IN_REVIEW", "OPTION_OFFERED", "UNAVAILABLE", "DECLINED", "CLOSED"]),
+  expectedVersion: z.number().int().nonnegative().safe(),
+  managerMessage: z.string().trim().max(500).optional(),
+});
+
 export const guestSchema = z.object({
   fullName: z.string().min(2).max(120),
   isPrimary: z.boolean().default(false),

@@ -222,7 +222,7 @@ export class HotelManagementService {
       });
       if (changed.count !== 1) throw new HotelManagementConflictError("Booking request changed while availability was being checked");
       await tx.auditLog.create({ data: {
-        action: "RECHECK_AVAILABILITY",
+        action: "UPDATE",
         entityType: "HotelGuestBookingRequest",
         entityId: request.id,
         organizationId: scope.organizationId,

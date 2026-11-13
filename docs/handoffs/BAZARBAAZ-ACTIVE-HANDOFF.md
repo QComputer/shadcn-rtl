@@ -1,5 +1,12 @@
 # Bazarbaaz Active Handoff
 
+## PR64 acceptance update — 2026-11-13
+
+- Run `43497811921` on `119293a75daa434575c1c383c1f6816a4a252435` passed PostgreSQL migrations, typecheck, lint, all 11 browser tests, disabled guest-request gate verification, and disposable database/server cleanup. Focused regressions and RunFlare TypeScript also passed on that SHA. These are isolated CI results, not production booking or payment acceptance.
+- Earlier run `43494913875` exposed a duplicate-name locator; `1db454b6` scoped the card and message to the request ID. Run `43497261048` then exposed a stale version after a direct API availability recheck; `119293a7` exercises the actual reception button and waits for the UI to finish. Both failed runs cleaned their disposable database.
+- Vercel is suspended by owner decision: `NOT_APPLICABLE — SUSPENDED`. Runflare remains the active deployment platform; do not deploy or modify Production as part of PR64 acceptance. No active main branch rules were returned by GitHub's branch rules endpoint and traditional branch protection was absent at inspection time.
+- The subsequent commit removes an unused test helper and records this handoff; verify CI on its exact SHA before review or merge. Keep security gates intact and distinguish acceptance from release.
+
 Updated: 2026-11-13. This is the operational resume point; older documents and CI results apply only to their recorded SHA and environment.
 
 ## Current source state

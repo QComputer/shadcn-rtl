@@ -113,12 +113,6 @@ async function patchRequestStatus(page, requestId, status, expectedVersion, mana
   });
 }
 
-async function postRecheckAvailability(page, requestId) {
-  return page.request.post(`${appOrigin}${requestsApi}/${encodeURIComponent(requestId)}/availability`, {
-    headers: { "Content-Type": "application/json", Origin: appOrigin },
-  });
-}
-
 async function waitForRequestInInbox(page, guestEmail, timeout = 30_000) {
   const deadline = Date.now() + timeout;
   let lastResponseStatus = 0;

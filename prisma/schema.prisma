@@ -5173,6 +5173,7 @@ model HotelProperty {
   inventoryAdjustments HotelInventoryAdjustment[]
   holds                HotelBookingHold[]
   reservations         HotelReservation[]
+  guestBookingRequests HotelGuestBookingRequest[]
   websitePages         HotelWebsitePage[]
   websiteMedia         HotelWebsiteMediaAssociation[]
   websiteOperations    HotelWebsiteOperation[]
@@ -5742,6 +5743,41 @@ model HotelReservationGuest {
 
   @@unique([reservationId, fullName])
   @@index([organizationId, reservationId])
+}
+
+/// A guest's request for reception review. It does not hold inventory, create
+/// a reservation, confirm a stay, or start payment. The public tracking value
+/// is stored only as a SHA-256 digest.
+model HotelGuestBookingRequest {
+  id                    String   @id @default(cuid())
+  organizationId        String
+  propertyId            String
+  trackingReferenceHash String   @unique
+  idempotencyHash       String
+  requestFingerprint    String
+  status                String   @default("RECEIVED")
+  checkIn               DateTime @db.Date
+  checkOut              DateTime @db.Date
+  adults                Int
+  children              Int      @default(0)
+  childAges             Int[]    @default([])
+  roomTypeSlug          String?
+  ratePlanCode          String?
+  availabilityHint      String   @default("UNKNOWN")
+  managerMessage        String?  @db.VarChar(500)
+  guestName             String
+  guestPhone            String
+  guestEmail            String?
+  guestNote             String?  @db.VarChar(500)
+  version               Int      @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  property HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([organizationId, idempotencyHash])
+  @@unique([id, organizationId])
+  @@index([organizationId, propertyId, status, createdAt])
 }
 
 /// Links a reservation to a payment request. Deliberately has NO foreign key to

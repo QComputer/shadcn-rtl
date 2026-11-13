@@ -27,6 +27,9 @@ export default async function HotelWebsitePropertyDashboardPage({
     <Link className="mb-4 inline-flex rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href={`/${locale}/dashboard/hotel-website${organization.role === "SUPER_ADMIN" ? `?organizationId=${encodeURIComponent(organization.id)}` : ""}`}>
       ← {locale === "en" ? "All properties" : locale === "ar" ? "كل العقارات" : "بازگشت به املاک"}
     </Link>
+    <Link className="mb-4 ms-2 inline-flex rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href={`/${locale}/dashboard/hotel-website/${encodeURIComponent(organization.id)}/${encodeURIComponent(property.id)}/requests`}>
+      {locale === "en" ? "Reception requests" : locale === "ar" ? "طلبات الاستقبال" : "درخواست‌های پذیرش"}
+    </Link>
     <HotelCmsWorkspace
       key={`${organization.id}:${property.id}`}
       scope={{ organizationId: organization.id, propertyId: property.id }}

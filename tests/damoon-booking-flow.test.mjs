@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { availableOptions, buildHoldPayload, createIdempotencyKey, formatMoney, holdAttemptFingerprint, parseChildAges, policySummary, validateContact } from "../sites/damoon/booking-flow.js";
+import { availableOptions, buildGuestRequestPayload, buildHoldPayload, createIdempotencyKey, formatMoney, holdAttemptFingerprint, parseChildAges, policySummary, requestAttemptFingerprint, validateContact } from "../sites/damoon/booking-flow.js";
 
 test("parseChildAges requires explicit valid ages and never invents defaults", () => {
   assert.deepEqual(parseChildAges([], 0), { ok: true, ages: [] });
@@ -72,6 +72,38 @@ test("holdAttemptFingerprint is stable for the same attempt and changes for a ge
   assert.notEqual(holdAttemptFingerprint(base), holdAttemptFingerprint({ ...base, option: { ...base.option, ratePlan: { ...base.option.ratePlan, code: "nonref" } } }));
   assert.notEqual(holdAttemptFingerprint(base), holdAttemptFingerprint({ ...base, option: { ...base.option, ratePlan: { code: "flex", currency: "TOMAN", cancellationPolicy: { key: "flex-24", version: 4 } } } }));
   assert.notEqual(holdAttemptFingerprint(base), holdAttemptFingerprint({ ...base, option: { ...base.option, totalRate: 260000 } }));
+});
+
+test("guest request payload keeps the selected stay and preferences without claiming a reservation", () => {
+  const input = {
+    property: "damoon-hotel",
+    range: { checkIn: "2026-12-01", checkOut: "2026-12-03" },
+    adults: 2,
+    children: 1,
+    childAges: [7],
+    option: { roomType: { slug: "double" }, ratePlan: { code: "standard" } },
+    contact: { fullName: "Guest Name", phone: "+989121234567", email: "guest@example.test" },
+    specialRequests: "Quiet room",
+  };
+  const payload = buildGuestRequestPayload(input);
+  assert.deepEqual(payload.occupancy, { adults: 2, children: 1, childAges: [7] });
+  assert.equal(payload.roomType, "double");
+  assert.equal(payload.ratePlan, "standard");
+  assert.equal(payload.specialRequests, "Quiet room");
+  assert.equal("reservation" in payload, false);
+  assert.equal("payment" in payload, false);
+});
+
+test("guest request idempotency fingerprint changes for guest or preference edits", () => {
+  const input = {
+    property: "damoon-hotel",
+    range: { checkIn: "2026-12-01", checkOut: "2026-12-03" },
+    adults: 2, children: 0, childAges: [], option: { roomType: { slug: "double" }, ratePlan: { code: "standard" } },
+    contact: { fullName: "Guest Name", phone: "+989121234567", email: "guest@example.test" },
+    specialRequests: "Quiet room",
+  };
+  assert.equal(requestAttemptFingerprint(input), requestAttemptFingerprint({ ...input, contact: { ...input.contact } }));
+  assert.notEqual(requestAttemptFingerprint(input), requestAttemptFingerprint({ ...input, specialRequests: "Near elevator" }));
 });
 
 test("policySummary exposes full cancellation terms including tiers, cutoff/retention and penalty basis", () => {

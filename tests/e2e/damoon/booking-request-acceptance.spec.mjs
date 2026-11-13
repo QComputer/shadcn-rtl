@@ -419,6 +419,63 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await expect(guestPage.locator("[data-track-result]")).toContainText(statusLabels.fa.OPTION_OFFERED);
   });
 
+  test("A status update finishing after a filter change refreshes the selected filter", async () => {
+    const checkIn = tomorrowISO();
+    const checkOut = dayAfterISO(checkIn);
+    const payload = faPayload(checkIn, checkOut);
+    payload.contact.email = `filter-race-${randomUUID()}@example.test`;
+    const submit = await postRequest(managerPage, payload, `damoon-filter-race-${randomUUID()}`);
+    expect(submit.status(), await submit.text()).toBe(201);
+
+    const inboxRequest = await waitForRequestInInbox(managerPage, payload.contact.email);
+    const patchUrl = `${appOrigin}${requestsApi}/${encodeURIComponent(inboxRequest.id)}`;
+    let releasePatch;
+    let patchFetched;
+    const patchFetchedPromise = new Promise((resolve) => { patchFetched = resolve; });
+    const releasePatchPromise = new Promise((resolve) => { releasePatch = resolve; });
+    const interceptPatch = (url) => url.href === patchUrl;
+    await managerPage.route(interceptPatch, async (route) => {
+      const response = await route.fetch();
+      patchFetched();
+      await releasePatchPromise;
+      await route.fulfill({ response });
+    });
+
+    try {
+      const patchResponsePromise = managerPage.waitForResponse((response) =>
+        response.url() === patchUrl && response.request().method() === "PATCH",
+      );
+      await managerPage.locator(`#request-status-${inboxRequest.id}`).selectOption("IN_REVIEW");
+      await patchFetchedPromise;
+
+      const selectedFilterResponsePromise = managerPage.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return url.pathname === requestsApi && url.searchParams.get("status") === "DECLINED";
+      });
+      await managerPage.locator("#hotel-request-status-filter").selectOption("DECLINED");
+      await selectedFilterResponsePromise;
+
+      const refreshAfterUpdatePromise = managerPage.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return url.pathname === requestsApi && url.searchParams.get("status") === "DECLINED";
+      });
+      releasePatch();
+      const patchResponse = await patchResponsePromise;
+      expect(patchResponse.status()).toBe(200);
+      const refreshAfterUpdate = await refreshAfterUpdatePromise;
+      expect(refreshAfterUpdate.status()).toBe(200);
+      await expect(managerPage.locator("#hotel-request-status-filter")).toHaveValue("DECLINED");
+      await expect(managerPage.locator(`#request-status-${inboxRequest.id}`)).toHaveCount(0);
+      const visibleStatuses = managerPage.locator("section[aria-labelledby='hotel-stay-requests-title'] article span.rounded-full");
+      for (let index = 0; index < await visibleStatuses.count(); index += 1) {
+        await expect(visibleStatuses.nth(index)).toHaveText("ردشده");
+      }
+    } finally {
+      releasePatch();
+      await managerPage.unroute(interceptPatch);
+    }
+  });
+
   test("Negative: Bad reference returns 404 on status check", async () => {
     const c = await newContext(browser);
     guestContexts.push(c);

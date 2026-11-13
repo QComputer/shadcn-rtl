@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type RequestStatus = "RECEIVED" | "IN_REVIEW" | "OPTION_OFFERED" | "UNAVAILABLE" | "DECLINED" | "CLOSED";
 type GuestRequest = {
@@ -25,13 +25,13 @@ type GuestRequest = {
 
 const labels = {
   fa: {
-    title: "درخواست‌های اقامت", refresh: "به‌روزرسانی", all: "همه وضعیت‌ها", loading: "در حال دریافت درخواست‌ها…", empty: "درخواستی ثبت نشده است.", error: "دریافت درخواست‌ها ناموفق بود.", saveError: "تغییر وضعیت ذخیره نشد. فهرست را تازه کنید.", retry: "تلاش دوباره", guest: "مهمان", dates: "ورود / خروج", party: "مهمانان", room: "ترجیح اتاق", note: "درخواست مهمان", availability: "بررسی هنگام ثبت", status: "وضعیت", update: "تغییر وضعیت", more: "درخواست‌های قدیمی‌تر", received: "دریافت‌شده", review: "در حال بررسی", offered: "پیشنهاد برای بررسی", unavailable: "ناموجود", declined: "ردشده", closed: "بسته‌شده", checkAvailability: "بررسی دوباره موجودی", checking: "در حال بررسی…", available: "موجود در بررسی ثبت درخواست", noAvailability: "ناموجود در بررسی ثبت درخواست", unknown: "بررسی نشده", refreshAvailabilityError: "بررسی موجودی انجام نشد. دوباره تلاش کنید.",
+    title: "درخواست‌های اقامت", refresh: "به‌روزرسانی", all: "همه وضعیت‌ها", loading: "در حال دریافت درخواست‌ها…", empty: "درخواستی ثبت نشده است.", emptyFiltered: "درخواستی با این وضعیت پیدا نشد.", error: "دریافت درخواست‌ها ناموفق بود.", saveError: "تغییر وضعیت ذخیره نشد. فهرست را تازه کنید.", retry: "تلاش دوباره", guest: "مهمان", dates: "ورود / خروج", party: "مهمانان", room: "ترجیح اتاق", note: "درخواست مهمان", availability: "بررسی هنگام ثبت", status: "وضعیت", update: "تغییر وضعیت", more: "درخواست‌های قدیمی‌تر", received: "دریافت‌شده", review: "در حال بررسی", offered: "پیشنهاد برای بررسی", unavailable: "ناموجود", declined: "ردشده", closed: "بسته‌شده", checkAvailability: "بررسی دوباره موجودی", checking: "در حال بررسی…", available: "موجود در بررسی ثبت درخواست", noAvailability: "ناموجود در بررسی ثبت درخواست", unknown: "بررسی نشده", refreshAvailabilityError: "بررسی موجودی انجام نشد. دوباره تلاش کنید.",
   },
   en: {
-    title: "Stay requests", refresh: "Refresh", all: "All statuses", loading: "Loading requests…", empty: "No stay requests yet.", error: "Could not load stay requests.", saveError: "Status was not saved. Refresh and retry.", retry: "Retry", guest: "Guest", dates: "Check-in / check-out", party: "Guests", room: "Room preference", note: "Guest request", availability: "At submission", status: "Status", update: "Change status", more: "Load older requests", received: "Received", review: "Under review", offered: "Option offered", unavailable: "Unavailable", declined: "Declined", closed: "Closed", checkAvailability: "Recheck availability", checking: "Checking…", available: "Available when request was submitted", noAvailability: "Unavailable when request was submitted", unknown: "Not checked", refreshAvailabilityError: "Availability could not be checked. Try again.",
+    title: "Stay requests", refresh: "Refresh", all: "All statuses", loading: "Loading requests…", empty: "No stay requests yet.", emptyFiltered: "No requests match this status.", error: "Could not load stay requests.", saveError: "Status was not saved. Refresh and retry.", retry: "Retry", guest: "Guest", dates: "Check-in / check-out", party: "Guests", room: "Room preference", note: "Guest request", availability: "At submission", status: "Status", update: "Change status", more: "Load older requests", received: "Received", review: "Under review", offered: "Option offered", unavailable: "Unavailable", declined: "Declined", closed: "Closed", checkAvailability: "Recheck availability", checking: "Checking…", available: "Available when request was submitted", noAvailability: "Unavailable when request was submitted", unknown: "Not checked", refreshAvailabilityError: "Availability could not be checked. Try again.",
   },
   ar: {
-    title: "طلبات الإقامة", refresh: "تحديث", all: "كل الحالات", loading: "جارٍ تحميل الطلبات…", empty: "لا توجد طلبات إقامة بعد.", error: "تعذر تحميل الطلبات.", saveError: "لم تُحفظ الحالة. حدّث القائمة ثم أعد المحاولة.", retry: "إعادة المحاولة", guest: "الضيف", dates: "الوصول / المغادرة", party: "الضيوف", room: "تفضيل الغرفة", note: "طلب الضيف", availability: "عند الإرسال", status: "الحالة", update: "تغيير الحالة", more: "تحميل الطلبات الأقدم", received: "تم الاستلام", review: "قيد المراجعة", offered: "تم تقديم خيار", unavailable: "غير متاح", declined: "مرفوض", closed: "مغلق", checkAvailability: "إعادة التحقق من التوفر", checking: "جارٍ التحقق…", available: "كان متاحاً عند إرسال الطلب", noAvailability: "لم يكن متاحاً عند إرسال الطلب", unknown: "لم يتم التحقق", refreshAvailabilityError: "تعذر التحقق من التوفر. حاول مرة أخرى.",
+    title: "طلبات الإقامة", refresh: "تحديث", all: "كل الحالات", loading: "جارٍ تحميل الطلبات…", empty: "لا توجد طلبات إقامة بعد.", emptyFiltered: "لا توجد طلبات بهذه الحالة.", error: "تعذر تحميل الطلبات.", saveError: "لم تُحفظ الحالة. حدّث القائمة ثم أعد المحاولة.", retry: "إعادة المحاولة", guest: "الضيف", dates: "الوصول / المغادرة", party: "الضيوف", room: "تفضيل الغرفة", note: "طلب الضيف", availability: "عند الإرسال", status: "الحالة", update: "تغيير الحالة", more: "تحميل الطلبات الأقدم", received: "تم الاستلام", review: "قيد المراجعة", offered: "تم تقديم خيار", unavailable: "غير متاح", declined: "مرفوض", closed: "مغلق", checkAvailability: "إعادة التحقق من التوفر", checking: "جارٍ التحقق…", available: "كان متاحاً عند إرسال الطلب", noAvailability: "لم يكن متاحاً عند إرسال الطلب", unknown: "لم يتم التحقق", refreshAvailabilityError: "تعذر التحقق من التوفر. حاول مرة أخرى.",
   },
 } as const;
 
@@ -59,20 +59,28 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [messages, setMessages] = useState<Record<string, string>>({});
+  const latestLoadId = useRef(0);
+  const selectedFilter = useRef<RequestStatus | "ALL">("ALL");
 
-  const load = useCallback(async (nextCursor?: string | null, append = false) => {
+  const load = useCallback(async (nextCursor?: string | null, append = false, statusFilter: RequestStatus | "ALL" = filter) => {
+    const loadId = ++latestLoadId.current;
     setLoading(true); setError("");
     try {
       const url = new URL(base, window.location.origin);
       if (nextCursor) url.searchParams.set("cursor", nextCursor);
+      if (statusFilter !== "ALL") url.searchParams.set("status", statusFilter);
       const response = await fetch(url, { credentials: "same-origin", cache: "no-store" });
       const data = await response.json().catch(() => null) as { requests?: GuestRequest[]; nextCursor?: string | null } | null;
       if (!response.ok || !Array.isArray(data?.requests)) throw new Error(text.error);
+      if (loadId !== latestLoadId.current) return;
       setRequests((current) => append ? [...current, ...data.requests!] : data.requests!);
       setCursor(data.nextCursor || null);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : text.error); }
-    finally { setLoading(false); }
-  }, [base, text.error]);
+    } catch (cause) {
+      if (loadId === latestLoadId.current) setError(cause instanceof Error ? cause.message : text.error);
+    } finally {
+      if (loadId === latestLoadId.current) setLoading(false);
+    }
+  }, [base, filter, text.error]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -85,7 +93,14 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
       });
       if (!response.ok) throw new Error(text.saveError);
       const updated = await response.json() as Pick<GuestRequest, "id" | "status" | "managerMessage" | "version">;
-      setRequests((current) => current.map((item) => item.id === updated.id ? { ...item, status: updated.status, managerMessage: updated.managerMessage, version: updated.version } : item));
+      const activeFilter = selectedFilter.current;
+      if (activeFilter !== "ALL" && updated.status !== activeFilter) {
+        setRequests((current) => current.filter((item) => item.id !== updated.id));
+        setCursor(null);
+        void load(null, false, activeFilter);
+      } else {
+        setRequests((current) => current.map((item) => item.id === updated.id ? { ...item, status: updated.status, managerMessage: updated.managerMessage, version: updated.version } : item));
+      }
       setMessages((current) => ({ ...current, [request.id]: updated.managerMessage || "" }));
     } catch { setError(text.saveError); }
     finally { setBusyId(null); }
@@ -106,14 +121,14 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? value : new Intl.DateTimeFormat(language === "fa" ? "fa-IR" : language === "ar" ? "ar" : "en", { dateStyle: "medium", timeZone: "UTC" }).format(parsed);
   };
-  const shown = filter === "ALL" ? requests : requests.filter((request) => request.status === filter);
+  const shown = requests;
 
   return <section className="mt-8 space-y-4 rounded-xl border bg-card p-4 sm:p-6" dir={language === "fa" || language === "ar" ? "rtl" : "ltr"} aria-labelledby="hotel-stay-requests-title">
     <header className="flex flex-wrap items-center justify-between gap-3">
       <h2 id="hotel-stay-requests-title" className="text-xl font-semibold">{text.title}</h2>
       <div className="flex flex-wrap gap-2">
         <label className="sr-only" htmlFor="hotel-request-status-filter">{text.status}</label>
-        <select id="hotel-request-status-filter" className="rounded-md border bg-background px-3 py-2 text-sm" value={filter} onChange={(event) => setFilter(event.target.value as RequestStatus | "ALL")}>
+        <select id="hotel-request-status-filter" className="rounded-md border bg-background px-3 py-2 text-sm" value={filter} onChange={(event) => { const nextFilter = event.target.value as RequestStatus | "ALL"; selectedFilter.current = nextFilter; latestLoadId.current += 1; setCursor(null); setRequests([]); setFilter(nextFilter); }}>
           <option value="ALL">{text.all}</option>
           {statuses.map((status) => <option key={status} value={status}>{text[statusLabelKey[status]]}</option>)}
         </select>
@@ -122,7 +137,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
     </header>
     {error && <p className="rounded-md border border-destructive/40 p-3 text-sm text-destructive" role="alert">{error} <button className="underline" onClick={() => void load()}>{text.retry}</button></p>}
     {loading && <p className="text-sm text-muted-foreground" role="status">{text.loading}</p>}
-    {!loading && !shown.length && !error && <p className="rounded-lg border p-4 text-sm text-muted-foreground">{text.empty}</p>}
+    {!loading && !shown.length && !error && <p className="rounded-lg border p-4 text-sm text-muted-foreground">{filter === "ALL" ? text.empty : text.emptyFiltered}</p>}
     <div className="grid gap-3">
       {shown.map((request) => {
         const nextStatuses = transitions[request.status];

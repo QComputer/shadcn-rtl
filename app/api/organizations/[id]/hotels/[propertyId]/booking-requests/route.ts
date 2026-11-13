@@ -6,8 +6,10 @@ const service = new HotelManagementService();
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string; propertyId: string }> }) {
   const { id: organizationId, propertyId } = await context.params;
-  const cursor = new URL(request.url).searchParams.get("cursor") || undefined;
+  const searchParams = new URL(request.url).searchParams;
+  const cursor = searchParams.get("cursor") || undefined;
+  const status = searchParams.get("status") || undefined;
   return managementAction(request, organizationId, (principal) =>
-    service.listGuestBookingRequests(principal, { organizationId }, propertyId, cursor),
+    service.listGuestBookingRequests(principal, { organizationId }, propertyId, { cursor, status }),
   );
 }

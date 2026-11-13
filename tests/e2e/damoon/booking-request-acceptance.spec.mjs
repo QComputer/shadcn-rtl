@@ -6,7 +6,6 @@ const failClosed = () => {
   if (env.NODE_ENV !== "test") throw new Error("NODE_ENV must be 'test'");
   if (env.DAMOON_E2E_ENABLED !== "1") throw new Error("DAMOON_E2E_ENABLED must be '1'");
   const dbUrl = new URL(env.DATABASE_URL || "");
-  const directUrl = new URL(env.DIRECT_URL || "");
   if (env.DATABASE_URL !== env.DIRECT_URL) {
     throw new Error("DATABASE_URL must equal DIRECT_URL");
   }

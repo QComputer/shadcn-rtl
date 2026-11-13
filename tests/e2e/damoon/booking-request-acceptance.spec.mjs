@@ -241,9 +241,10 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await page.locator("[data-guest-email]").fill(payload.contact.email);
     await page.locator("[data-special-request]").fill(payload.specialRequests);
 
-    const responsePromise = page.waitForResponse((r) => r.url().endsWith("/api/hotel/v1/requests") && r.request().method() === "POST");
+    const responsePromise = page.waitForResponse((r) => r.url().endsWith("/api/hotel/v1/requests") && r.request().method() === "POST", { timeout: 10_000 }).catch(() => null);
     await page.locator('[data-create-request]').click();
     const response = await responsePromise;
+    expect(response, `Request was not sent; form message: ${await page.locator(".booking-message").textContent()}`).toBeTruthy();
     expect(response.status(), await response.text()).toBe(201);
     const body = await response.json();
     capturedReference = body.reference;
@@ -327,9 +328,10 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await guestPage.locator("[data-guest-phone]").fill(payload.contact.phone);
     await guestPage.locator("[data-guest-email]").fill(payload.contact.email);
 
-    const submitResponsePromise = guestPage.waitForResponse((r) => r.url().endsWith("/api/hotel/v1/requests") && r.request().method() === "POST");
+    const submitResponsePromise = guestPage.waitForResponse((r) => r.url().endsWith("/api/hotel/v1/requests") && r.request().method() === "POST", { timeout: 10_000 }).catch(() => null);
     await guestPage.locator('[data-create-request]').click();
     const submitResponse = await submitResponsePromise;
+    expect(submitResponse, `Request was not sent; form message: ${await guestPage.locator(".booking-message").textContent()}`).toBeTruthy();
     expect(submitResponse.status(), await submitResponse.text()).toBe(201);
     const submitBody = await submitResponse.json();
     const reference = submitBody.reference;
@@ -458,7 +460,9 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     const checkOut = dayAfterISO(checkIn);
     const payload = faPayload(checkIn, checkOut);
     payload.contact.email = `race-${randomUUID()}@example.test`;
-    const availability = await postAvailability(page, payload);
+    const availabilityPayload = { ...payload };
+    delete availabilityPayload.ratePlan;
+    const availability = await postAvailability(page, availabilityPayload);
     expect(availability.status(), await availability.text()).toBe(200);
     const availabilityBody = await availability.json();
     expect(availabilityBody.options.some((option) => option.roomType.slug === roomTypeSlug && option.ratePlan.code === ratePlanCode && option.isAvailable), JSON.stringify(availabilityBody)).toBe(true);

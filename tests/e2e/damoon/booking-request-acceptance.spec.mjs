@@ -233,6 +233,7 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await expect(page.locator("[data-booking-flow] .booking-options")).toBeVisible();
     await page.locator(".booking-option__select").first().click();
     await expect(page.locator("[data-booking-flow] .booking-step")).toBeVisible();
+    await expect(page.locator('[data-booking-flow] [data-child-age="0"]')).toHaveValue("8");
 
     await expect(page.locator("[data-booking-flow] .booking-step")).toContainText(copy.fa.notBooking);
 
@@ -324,6 +325,7 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await guestPage.locator(".booking-form .booking-submit[type=submit]").click();
     await expect(guestPage.locator("[data-booking-flow] .booking-options")).toBeVisible();
     await guestPage.locator(".booking-option__select").first().click();
+    await expect(guestPage.locator('[data-booking-flow] [data-child-age="0"]')).toHaveValue("8");
     await guestPage.locator("[data-guest-name]").fill(payload.contact.fullName);
     await guestPage.locator("[data-guest-phone]").fill(payload.contact.phone);
     await guestPage.locator("[data-guest-email]").fill(payload.contact.email);

@@ -6,7 +6,7 @@ Updated: 2026-11-13. This is the operational resume point; older documents and C
 
 - `origin/main` freshly fetched and verified at `ec51d9c4b483db814b90f3d3daef2236977916e8`.
 - PR64: [QComputer/shadcn-rtl#64](https://github.com/QComputer/shadcn-rtl/pull/64), Draft, PR head branch `codex/damoon-booking-requests-20261113`, base `main`.
-- PR64 latest pushed HEAD: `f61453c9e2253469aba0176742eb156a82c2661d`; local checkout branch remains `codex/damoon-booking-phase3-20261113`.
+- PR64 latest pushed HEAD: `d52a06d78ef479890e8718eb990705efdd8b0221`; local checkout branch remains `codex/damoon-booking-phase3-20261113`.
 - Current task checkout: `C:/Users/disso/Project/shadcn-rtl-damoon-phase1`.
 - Other registered worktrees are preserved. Do not edit or remove them: shared checkout (`codex/hotel-operational-payment-20261112`), hero-media, Persian-slug-routing, theme-speed/PR62, and Website Studio/PR59.
 - Current follow-up fixes are being made only in `tests/e2e/damoon/booking-request-acceptance.spec.mjs` and this handoff. Do not touch other worktrees or their files.
@@ -38,6 +38,11 @@ Updated: 2026-11-13. This is the operational resume point; older documents and C
 ## Exact next executable step
 
 Commit and push the bounded submit diagnostic, then follow the hosted run. Use the UI message to diagnose why the request POST is not observed; ensure the flow completes without bypassing the public bridge. Confirm the rate-plan preflight is now available. Record full SHA, run URL and exact PASS/FAIL/NOT_VERIFIED matrix. Keep Draft; do not mark Ready or merge while any gate fails.
+
+### Latest acceptance result
+
+- Run `43485806963` for SHA `d52a06d78ef479890e8718eb990705efdd8b0221`: CI setup, migrations, seeding, typecheck, lint and bridge tests passed; browser acceptance failed 5/13. The visible form error was that child age validation rejected duplicate fields left mounted in both the search form and selected-room details panel. The current local patch changes collection to read only the active details panel and asserts the age is retained after selection.
+- The next executable step is to push that focused UI fix and rerun the existing hosted acceptance workflow; follow through to disabled-gate verification and disposable DB cleanup. Keep PR64 Draft and do not merge until all acceptance gates pass.
 
 ## Next milestones
 

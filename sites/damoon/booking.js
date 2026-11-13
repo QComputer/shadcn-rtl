@@ -329,7 +329,9 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   }
   function collectChildAgesFromInputs() {
     if (!children) return { ok: true, ages: [] };
-    const inputs = [...slot.querySelectorAll("[data-child-age]")];
+    // The search form keeps its own age inputs mounted while the selected-room
+    // details panel renders editable copies. Submit only the active details panel.
+    const inputs = [...flowNode.querySelectorAll("[data-child-age]")];
     return parseChildAges(inputs.map((i) => i.value), children);
   }
   function bindFlow() {

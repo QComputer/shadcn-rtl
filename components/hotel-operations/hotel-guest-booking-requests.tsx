@@ -85,6 +85,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
   useEffect(() => { void load(); }, [load]);
 
   const update = async (request: GuestRequest, status: RequestStatus) => {
+    const filterAtStart = selectedFilter.current;
     setBusyId(request.id); setError("");
     try {
       const response = await fetch(`${base}/${encodeURIComponent(request.id)}`, {
@@ -94,7 +95,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
       if (!response.ok) throw new Error(text.saveError);
       const updated = await response.json() as Pick<GuestRequest, "id" | "status" | "managerMessage" | "version">;
       const activeFilter = selectedFilter.current;
-      if (activeFilter !== "ALL" && updated.status !== activeFilter) {
+      if (activeFilter !== filterAtStart || (activeFilter !== "ALL" && updated.status !== activeFilter)) {
         setRequests((current) => current.filter((item) => item.id !== updated.id));
         setCursor(null);
         void load(null, false, activeFilter);

@@ -435,9 +435,9 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     const releasePatchPromise = new Promise((resolve) => { releasePatch = resolve; });
     const interceptPatch = (url) => url.href === patchUrl;
     await managerPage.route(interceptPatch, async (route) => {
-      const response = await route.fetch();
       patchFetched();
       await releasePatchPromise;
+      const response = await route.fetch();
       await route.fulfill({ response });
     });
 
@@ -450,25 +450,25 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
 
       const selectedFilterResponsePromise = managerPage.waitForResponse((response) => {
         const url = new URL(response.url());
-        return url.pathname === requestsApi && url.searchParams.get("status") === "DECLINED";
+        return url.pathname === requestsApi && url.searchParams.get("status") === "IN_REVIEW";
       });
-      await managerPage.locator("#hotel-request-status-filter").selectOption("DECLINED");
+      await managerPage.locator("#hotel-request-status-filter").selectOption("IN_REVIEW");
       await selectedFilterResponsePromise;
 
       const refreshAfterUpdatePromise = managerPage.waitForResponse((response) => {
         const url = new URL(response.url());
-        return url.pathname === requestsApi && url.searchParams.get("status") === "DECLINED";
+        return url.pathname === requestsApi && url.searchParams.get("status") === "IN_REVIEW";
       });
       releasePatch();
       const patchResponse = await patchResponsePromise;
       expect(patchResponse.status()).toBe(200);
       const refreshAfterUpdate = await refreshAfterUpdatePromise;
       expect(refreshAfterUpdate.status()).toBe(200);
-      await expect(managerPage.locator("#hotel-request-status-filter")).toHaveValue("DECLINED");
-      await expect(managerPage.locator(`#request-status-${inboxRequest.id}`)).toHaveCount(0);
+      await expect(managerPage.locator("#hotel-request-status-filter")).toHaveValue("IN_REVIEW");
+      await expect(managerPage.locator(`#request-status-${inboxRequest.id}`)).toHaveCount(1);
       const visibleStatuses = managerPage.locator("section[aria-labelledby='hotel-stay-requests-title'] article span.rounded-full");
       for (let index = 0; index < await visibleStatuses.count(); index += 1) {
-        await expect(visibleStatuses.nth(index)).toHaveText("ردشده");
+        await expect(visibleStatuses.nth(index)).toHaveText("در حال بررسی");
       }
     } finally {
       releasePatch();

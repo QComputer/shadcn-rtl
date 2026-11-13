@@ -230,6 +230,8 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await page.locator('[data-child-age="0"]').fill("8");
 
     await page.locator(".booking-form .booking-submit[type=submit]").click();
+    await expect(page.locator("[data-booking-flow] .booking-options")).toBeVisible();
+    await page.locator(".booking-option__select").first().click();
     await expect(page.locator("[data-booking-flow] .booking-step")).toBeVisible();
 
     await expect(page.locator("[data-booking-flow] .booking-step")).toContainText(copy.fa.notBooking);
@@ -319,6 +321,8 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await guestPage.locator("[data-child-count]").selectOption("1");
     await guestPage.locator('[data-child-age="0"]').fill("8");
     await guestPage.locator(".booking-form .booking-submit[type=submit]").click();
+    await expect(guestPage.locator("[data-booking-flow] .booking-options")).toBeVisible();
+    await guestPage.locator(".booking-option__select").first().click();
     await guestPage.locator("[data-guest-name]").fill(payload.contact.fullName);
     await guestPage.locator("[data-guest-phone]").fill(payload.contact.phone);
     await guestPage.locator("[data-guest-email]").fill(payload.contact.email);
@@ -457,7 +461,7 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     const availability = await postAvailability(page, payload);
     expect(availability.status(), await availability.text()).toBe(200);
     const availabilityBody = await availability.json();
-    expect(availabilityBody.options.some((option) => option.roomType.slug === roomTypeSlug && option.ratePlan.code === ratePlanCode && option.isAvailable), JSON.stringify(availabilityBody.options)).toBe(true);
+    expect(availabilityBody.options.some((option) => option.roomType.slug === roomTypeSlug && option.ratePlan.code === ratePlanCode && option.isAvailable), JSON.stringify(availabilityBody)).toBe(true);
     const create = await postRequest(page, payload, `damoon-race-${randomUUID()}`);
     expect(create.status(), await create.text()).toBe(201);
     const inboxRequest = await waitForRequestInInbox(managerPage, payload.contact.email);

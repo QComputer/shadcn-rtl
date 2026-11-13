@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { test } from "node:test";
 import type { PrismaClient } from "@prisma/client";
@@ -7,8 +8,13 @@ import { initialRetailContent } from "@/lib/website-studio/retail-contract";
 const enabled = process.env.RETAIL_HERO_PG_ACCEPTANCE === "1";
 
 function assertGuardedDatabase() {
+  assert.equal(process.env.RETAIL_HERO_PG_ACCEPTANCE, "1", "the acceptance gate must be explicitly enabled for a disposable local run");
   assert.equal(process.env.DATABASE_URL, process.env.DIRECT_URL, "both Prisma URLs must point to the same disposable local database");
-  const expected = new URL("postgresql://hero_test@127.0.0.1:55439/retail_hero_test");
+  const expectedPort = process.env.RETAIL_HERO_PG_PORT ?? "";
+  const databaseName = process.env.RETAIL_HERO_PG_DATABASE ?? "";
+  assert.match(expectedPort, /^55\d{3}$/, "the isolated PostgreSQL test port must be in the reserved 55xxx range");
+  assert.match(databaseName, /^retail_hero_test_[a-z0-9_]{8,32}$/i, "the database name must identify a disposable Retail Hero test database");
+  const expected = new URL(`postgresql://hero_test@127.0.0.1:${expectedPort}/${databaseName}`);
   for (const key of ["DATABASE_URL", "DIRECT_URL"]) {
     const url = new URL(process.env[key] ?? "");
     assert.equal(url.protocol, expected.protocol);
@@ -34,7 +40,7 @@ test("Retail hero save, publication, isolation, rollback, media revocation, and 
 
   const identity = await db.$queryRaw<Array<{ database: string; version_num: number; current_user: string }>>`
     SELECT current_database() AS database, current_setting('server_version_num')::int AS version_num, current_user`;
-  assert.equal(identity[0]?.database, "retail_hero_test");
+  assert.equal(identity[0]?.database, process.env.RETAIL_HERO_PG_DATABASE);
   assert.ok((identity[0]?.version_num ?? 0) >= 170000 && (identity[0]?.version_num ?? 0) < 180000, "fixture must be PostgreSQL 17");
   assert.equal(identity[0]?.current_user, decodeURIComponent(new URL(process.env.DATABASE_URL!).username));
 
@@ -44,6 +50,7 @@ test("Retail hero save, publication, isolation, rollback, media revocation, and 
   const orgIds: string[] = [];
   const userIds: string[] = [];
   const imageIds: string[] = [];
+  let temporaryDiskImage: { pathname: string; organizationId: string } | null = null;
   let service: import("@/lib/website-studio/retail.service").RetailWebsiteService | undefined;
 
   try {
@@ -76,7 +83,7 @@ test("Retail hero save, publication, isolation, rollback, media revocation, and 
     const baseContent = initialRetailContent(org);
     const firstContent = {
       ...baseContent,
-      hero: { enabled: true, mode: "CAMPAIGN" as const, heading: "First published heading", description: "Published copy", ctaLabel: "Browse", ctaHref: "", desktopImageId: image.id, mobileImageId: "", imageAlt: "First campaign", imageFit: "cover" as const, focalX: 50, focalY: 50, productIds: [], autoplay: false },
+      hero: { enabled: true, mode: "CAMPAIGN" as const, heading: "First published heading", description: "Published copy", ctaLabel: "Browse", ctaHref: "", desktopImageId: image.id, mobileImageId: "", darkDesktopImageId: "", darkMobileImageId: "", imageAlt: "First campaign", imageFit: "cover" as const, focalX: 50, focalY: 50, productIds: [], autoplay: false },
     };
     const firstPrincipal = { userId: manager.id, role: "ADMIN" as const, organizationId: org.id };
     const otherPrincipal = { userId: otherManager.id, role: "ADMIN" as const, organizationId: otherOrg.id };
@@ -126,15 +133,47 @@ test("Retail hero save, publication, isolation, rollback, media revocation, and 
     assert.equal((await getPublishedRetailHero(slug))?.hero.heading, "First published heading");
 
     await db.image.update({ where: { id: image.id }, data: { access: "PRIVATE" } });
-    assert.equal(await getPublishedRetailHero(slug), null, "revoking campaign media removes the published hero from public resolution");
+    const revoked = await getPublishedRetailHero(slug);
+    assert.equal(revoked?.hero.heading, "First published heading", "revoking campaign media retains the text-only published Hero");
+    assert.equal(revoked?.hero.desktopImage, null, "revoked media is not publicly resolved");
     settings = await db.organizationSettings.findUniqueOrThrow({ where: { organizationSlug: slug } });
     assert.equal((settings.settings as Record<string, unknown>).retailHeroPublication && typeof (settings.settings as Record<string, unknown>).retailHeroPublication === "object", true, "media revocation leaves the publication pointer auditable");
 
     await db.image.update({ where: { id: image.id }, data: { access: "PUBLIC" } });
     assert.equal((await getPublishedRetailHero(slug))?.hero.heading, "First published heading", "restoring approved media restores the published hero");
     await db.image.delete({ where: { id: image.id } });
-    assert.equal(await getPublishedRetailHero(slug), null, "deleting media also fails closed");
+    const deleted = await getPublishedRetailHero(slug);
+    assert.equal(deleted?.hero.heading, "First published heading", "deleted media retains the text-only published Hero");
+    assert.equal(deleted?.hero.desktopImage, null, "deleted media is not publicly resolved");
+
+    const { createStoredImageFilename, deleteStoredImage, writeStoredImage } = await import("@/lib/media-storage");
+    const diskBytes = await readFile("public/retail-preview/preview-fashion-campaign.png");
+    const diskFilename = createStoredImageFilename("image/png", "retail-hero-test");
+    const stored = await writeStoredImage(diskFilename, diskBytes, "PUBLIC", org.id);
+    temporaryDiskImage = { pathname: stored.pathname, organizationId: org.id };
+    const diskImage = await db.image.create({ data: { url: stored.url, filename: stored.pathname, mimeType: "image/png", sizeBytes: diskBytes.length, purpose: "retail-hero-test", access: "PUBLIC", organizationId: org.id, uploadedByUserId: manager.id } });
+    imageIds.push(diskImage.id);
+    const diskContent = { ...firstContent, hero: { ...firstContent.hero!, heading: "Persistent disk Hero", desktopImageId: diskImage.id } };
+    const diskRevision = await service.save(firstPrincipal, org.id, { content: diskContent, baseRevisionId: second.id, requestId: randomUUID() });
+    const diskPublication = await service.changePublication(firstPrincipal, org.id, { action: "publish", revisionId: diskRevision.id, basePublishedRevisionId: first.id });
+    assert.equal(diskPublication.revisionId, diskRevision.id);
+    assert.equal((await getPublishedRetailHero(slug))?.hero.desktopImage, stored.url, "public resolution serves the explicitly selected persistent disk image");
+    await deleteStoredImage(stored.pathname, org.id);
+    temporaryDiskImage = null;
+    const unavailable = await getPublishedRetailHero(slug);
+    assert.equal(unavailable?.hero.heading, "Persistent disk Hero", "an unavailable published object preserves the owner's text-only Hero");
+    assert.equal(unavailable?.hero.desktopImage, null, "an unavailable persistent object is omitted from public Hero media");
+    const reopenedDiskRevision = await service.load(firstPrincipal, org.id, diskRevision.id);
+    assert.equal(reopenedDiskRevision.media.some(item => item.id === diskImage.id), false, "private preview and editor loading do not return missing disk media");
+    await assert.rejects(
+      () => service.changePublication(firstPrincipal, org.id, { action: "publish", revisionId: diskRevision.id, basePublishedRevisionId: diskRevision.id }),
+      statusIs(422), "a same-pointer publish attempt still revalidates missing media",
+    );
   } finally {
+    if (temporaryDiskImage) {
+      const { deleteStoredImage } = await import("@/lib/media-storage");
+      await deleteStoredImage(temporaryDiskImage.pathname, temporaryDiskImage.organizationId).catch(() => undefined);
+    }
     if (orgIds.length) {
       await db.auditLog.deleteMany({ where: { organizationId: { in: orgIds } } });
       await db.tenantWebsiteRevision.deleteMany({ where: { organizationId: { in: orgIds } } });

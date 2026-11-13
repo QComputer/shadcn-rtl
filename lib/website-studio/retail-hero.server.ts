@@ -5,6 +5,8 @@ import { getPublicCatalogProduct, listPublicCatalogProducts } from "@/lib/public
 import { retailWebsiteMedia } from "./brand-media";
 import { retailContentSchema, type RetailContent, type WebsiteMedia } from "./retail-contract";
 import { readRetailHeroPublication, type PublishedRetailHero } from "./retail-hero-contract";
+import { legacyPublishedRetailHeroMedia } from "./legacy-retail-hero-media.server";
+import { readTenantDiskImage } from "@/lib/storage/tenant-image-storage.server";
 
 export function resolveRetailHero(content: RetailContent, media: WebsiteMedia[]): PublishedRetailHero | null {
   const hero = content.hero;
@@ -14,8 +16,6 @@ export function resolveRetailHero(content: RetailContent, media: WebsiteMedia[])
   const mobileImage = media.find(image => image.id === mobileImageId)?.url ?? null;
   const darkDesktopImage = media.find(image => image.id === darkDesktopImageId)?.url ?? null;
   const darkMobileImage = media.find(image => image.id === darkMobileImageId)?.url ?? null;
-  // A revoked campaign image must not continue rendering from a cached URL.
-  if (hero.enabled && hero.mode === "CAMPAIGN" && !desktopImage) return null;
   return { ...config, desktopImage, mobileImage, darkDesktopImage, darkMobileImage };
 }
 
@@ -38,10 +38,22 @@ export async function getPublishedRetailHero(slug: string) {
   const row = await prisma.tenantWebsiteRevision.findFirst({ where: { id: pointer.revisionId, organizationId: org.id }, select: { content: true } });
   const parsed = retailContentSchema.safeParse(row?.content);
   if (!parsed.success) return null;
-  const images = await prisma.image.findMany({ where: { organizationId: org.id, access: "PUBLIC" }, select: { id: true, url: true, filename: true, mimeType: true } });
-  const hero = resolveRetailHero(parsed.data, retailWebsiteMedia(org.slug, images));
-  if (!hero) return null;
-  return { hero, products: hero.mode === "PRODUCTS" ? await retailHeroProducts(slug, hero.productIds) : [] };
+  const hero = parsed.data.hero;
+  const selectedIds = [hero?.desktopImageId, hero?.mobileImageId, hero?.darkDesktopImageId, hero?.darkMobileImageId].filter((id): id is string => Boolean(id));
+  const images = selectedIds.length ? await prisma.image.findMany({ where: { id: { in: [...new Set(selectedIds)] }, organizationId: org.id, access: "PUBLIC" }, select: { id: true, url: true, filename: true, mimeType: true, sizeBytes: true, organizationId: true } }) : [];
+  // Existing published static references remain visible until an owner publishes a valid replacement.
+  const eligible = retailWebsiteMedia(org.id, images);
+  const available = await Promise.all(eligible.map(async (image) => {
+    if (!image.url.startsWith("/api/media/")) return image;
+    if (!image.filename) return null;
+    const asset = await readTenantDiskImage(org.id, image.filename);
+    if (!asset || asset.metadata.organizationId !== org.id || asset.metadata.access !== "public" || asset.metadata.mimeType !== image.mimeType) return null;
+    return image;
+  }));
+  const media = [...available.filter((image): image is (typeof eligible)[number] => image !== null), ...legacyPublishedRetailHeroMedia(org.slug)];
+  const resolvedHero = resolveRetailHero(parsed.data, media);
+  if (!resolvedHero) return null;
+  return { hero: resolvedHero, products: resolvedHero.mode === "PRODUCTS" ? await retailHeroProducts(slug, resolvedHero.productIds) : [] };
 }
 
 export async function studioProductChoices(slug: string, selectedIds: string[] = []) {

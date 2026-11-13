@@ -47,14 +47,12 @@ test("shared media eligibility follows Hotel public upload rules", () => {
   ]) assert.equal(isEligibleWebsiteImage(image), false, JSON.stringify(image));
 });
 
-test("Retail Studio admits only validated tenant brand assets in addition to public uploads", () => {
+test("Retail Studio excludes tenant brand presets and accepts only public upload routes", () => {
   const url = "/brand/tenants/aka-shoes/home/hero-desktop.webp";
-  const valid = { id: `brand:aka-shoes:${url}`, url, filename: "hero-desktop.webp", mimeType: "image/webp", source: "TENANT_BRAND" as const };
-  assert.equal(isEligibleRetailWebsiteMedia(valid), true);
-  assert.equal(isEligibleRetailWebsiteMedia({ ...valid, id: "brand:restaurant-13:wrong-tenant" }), false);
-  assert.equal(isEligibleRetailWebsiteMedia({ ...valid, url: "https://evil.example/hero-desktop.webp" }), false);
-  assert.equal(isEligibleRetailWebsiteMedia({ ...valid, url: "/brand/tenants/aka-shoes/home/../private.webp", id: "brand:aka-shoes:/brand/tenants/aka-shoes/home/../private.webp" }), false);
-  assert.equal(isEligibleRetailWebsiteMedia({ ...valid, mimeType: "image/svg+xml" }), false);
+  const preset = { id: `brand:aka-shoes:${url}`, url, filename: "hero-desktop.webp", mimeType: "image/webp" };
+  assert.equal(isEligibleRetailWebsiteMedia(preset), false);
+  assert.equal(isEligibleRetailWebsiteMedia({ ...preset, url: "https://evil.example/hero-desktop.webp" }), false);
+  assert.equal(isEligibleRetailWebsiteMedia({ ...preset, mimeType: "image/svg+xml" }), false);
   assert.equal(isEligibleRetailWebsiteMedia({ id: "upload-1", filename: "public.webp", url: "/uploads/public.webp", mimeType: "image/webp" }), true);
 });
 

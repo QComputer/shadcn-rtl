@@ -8,7 +8,6 @@ import { useParams } from "next/navigation";
 import { Home, LayoutGrid, Share2, ShoppingBag, UserRound } from "lucide-react";
 import { RetailProductCard } from "@/components/retail/retail-product-card";
 import { RetailCardViewToggle, useRetailCardView } from "@/components/retail/retail-card-view-toggle";
-import { RetailStorefrontHero } from "@/components/retail/retail-storefront-hero";
 import { RetailManagedHero } from "@/components/retail/retail-managed-hero";
 import type { PublishedRetailHero } from "@/lib/website-studio/retail-hero-contract";
 import { PremiumProductDetail } from "@/components/retail/premium-product-detail";
@@ -161,7 +160,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
       {shareMessage && <p role="status" aria-live="polite" className="text-xs text-[#6e6a60] md:basis-full">{shareMessage}</p>}
     </section></>}
     {!productSlug && <>
-    {!category && (view.managedHero ? <RetailManagedHero {...view.managedHero} name={view.name} storefrontPath={base} /> : <RetailStorefrontHero name={view.name} description={view.description} logo={view.branding.logo} cover={view.branding.cover} theme={view.theme} products={view.products} storefrontPath={base} />)}
+    {!category && view.managedHero && <RetailManagedHero {...view.managedHero} name={view.name} storefrontPath={base} />}
     <section id="categories" className="mx-auto max-w-7xl px-4 py-8 md:px-10">
       <div className="flex items-end justify-between gap-4 border-b border-border pb-4"><div><span className="text-xs text-muted-foreground">{isFashion ? "انتخاب بر اساس دسته" : "دسته‌بندی محصولات"}</span><h2 className="mt-2 text-2xl font-semibold">دسته‌بندی‌ها</h2></div><button type="button" onClick={() => changeCategory("")} aria-pressed={!category} className="rounded-md px-2 py-1 text-sm text-muted-foreground transition hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">همه دسته‌بندی‌ها</button></div>
       {categoryProducts.length ? <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">{categoryProducts.map((item) => {

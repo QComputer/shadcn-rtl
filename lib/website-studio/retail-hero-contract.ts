@@ -20,7 +20,6 @@ export const retailHeroSchema = z.object({
   autoplay: z.boolean().default(false),
 }).strict().superRefine((hero, ctx) => {
   if (!hero.enabled) return;
-  if (hero.mode === "CAMPAIGN" && !hero.desktopImageId) ctx.addIssue({ code: "custom", path: ["desktopImageId"], message: "تصویر اصلی مجموعه را انتخاب کنید." });
   if (hero.mode === "PRODUCTS" && !hero.productIds.length) ctx.addIssue({ code: "custom", path: ["productIds"], message: "حداقل یک محصول انتخاب کنید." });
 });
 export type RetailHeroConfig = z.infer<typeof retailHeroSchema>;

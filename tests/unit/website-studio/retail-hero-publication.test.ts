@@ -8,9 +8,9 @@ import { resolveRetailHero } from "@/lib/website-studio/retail-hero.server";
 
 const org = { id: "org-1", name: "نمونه", slug: "sample", description: null, phone: null, email: null, address: null };
 const principal: StudioPrincipal = { userId: "user-1", role: "ADMIN", organizationId: "org-1" };
-const image = { id: "hero-image", url: "https://store.public.blob.vercel-storage.com/hero.jpg", filename: "hero.jpg", mimeType: "image/jpeg" };
-const secondImage = { id: "hero-image-mobile", url: "https://store.public.blob.vercel-storage.com/mobile.jpg", filename: "mobile.jpg", mimeType: "image/jpeg" };
-const darkImage = { id: "hero-image-dark", url: "https://store.public.blob.vercel-storage.com/dark.jpg", filename: "dark.jpg", mimeType: "image/jpeg" };
+const image = { id: "hero-image", url: "https://store.public.blob.vercel-storage.com/hero.jpg", filename: "hero.jpg", mimeType: "image/jpeg", organizationId: "org-1" };
+const secondImage = { id: "hero-image-mobile", url: "https://store.public.blob.vercel-storage.com/mobile.jpg", filename: "mobile.jpg", mimeType: "image/jpeg", organizationId: "org-1" };
+const darkImage = { id: "hero-image-dark", url: "https://store.public.blob.vercel-storage.com/dark.jpg", filename: "dark.jpg", mimeType: "image/jpeg", organizationId: "org-1" };
 
 function content(heroOverrides: Record<string, unknown> = {}): RetailContent {
   const base = initialRetailContent(org);
@@ -102,7 +102,7 @@ test("Retail hero contract rejects unsafe destinations, invalid media ids, dupli
   for (const href of ["//outside.example", "https://outside.example", "javascript:alert(1)", "data:text/html,hello", "/path with spaces"]) {
     assert.equal(retailHeroSchema.safeParse({ ...valid, ctaHref: href }).success, false, href);
   }
-  assert.equal(retailHeroSchema.safeParse({ ...valid, desktopImageId: "" }).success, false);
+  assert.equal(retailHeroSchema.safeParse({ ...valid, desktopImageId: "" }).success, true, "an owner may intentionally publish a text-only hero");
   assert.equal(retailHeroSchema.safeParse({ ...valid, productIds: ["p1", "p1"], mode: "PRODUCTS" }).success, false);
   assert.equal(retailHeroSchema.safeParse({ ...valid, productIds: ["p1", "p2", "p3", "p4"], mode: "PRODUCTS" }).success, false);
   assert.equal(retailHeroSchema.safeParse({ ...valid, productIds: ["", "p2"], mode: "PRODUCTS" }).success, false);
@@ -144,13 +144,13 @@ test("hero theme image selection prefers the active theme across desktop and mob
   });
 });
 
-test("hero resolution includes eligible images and hides a campaign when its image is revoked", () => {
+test("hero resolution includes eligible images and retains text content when a selected image is revoked", () => {
   const resolved = resolveRetailHero(content(), [image, secondImage]);
   assert.equal(resolved?.desktopImage, image.url);
   assert.equal(resolved?.mobileImage, secondImage.url);
   assert.equal("desktopImageId" in (resolved ?? {}), false);
   assert.equal("revisionId" in (resolved ?? {}), false);
-  assert.equal(resolveRetailHero(content(), [secondImage]), null);
+  assert.equal(resolveRetailHero(content(), [secondImage])?.desktopImage, null);
   assert.equal(resolveRetailHero(content({ mode: "PRODUCTS", productIds: ["product-1"] }), [secondImage])?.desktopImage, null);
 });
 
@@ -193,9 +193,16 @@ test("publication requires an immutable revision owned by the tenant and current
   assert.equal(result.revisionId, "r1");
   assert.equal(result.previousRevisionId, null);
   assert.deepEqual(valid.revisionLookups, [{ id: "r1", organizationId: "org-1" }]);
-  assert.deepEqual(valid.imageLookups, [{ where: { organizationId: "org-1", access: "PUBLIC" }, select: { id: true, url: true, filename: true, mimeType: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }] }]);
+  assert.deepEqual(valid.imageLookups, [{ where: { organizationId: "org-1", access: "PUBLIC", mimeType: { in: ["image/jpeg", "image/png", "image/webp", "image/gif"] }, id: { in: [image.id, secondImage.id] } }, select: { id: true, url: true, filename: true, mimeType: true, sizeBytes: true, organizationId: true } }]);
   assert.equal(valid.audit.length, 1);
   assert.match(valid.sql[0] ?? "", /COALESCE\("OrganizationSettings"\.settings,'\{\}'::jsonb\) \|\| jsonb_build_object\('retailHeroPublication'/);
+
+  const idempotentMissingMedia = publicationService({
+    settings: { retailHeroPublication: { revisionId: "r2", previousRevisionId: "r1", publishedAt: "2026-11-01T12:00:00.000Z" } },
+    revisions: { r2: content() }, images: [],
+  });
+  await assert.rejects(idempotentMissingMedia.service.changePublication(principal, "org-1", publish("r2", "r2")), (error: unknown) => error instanceof ApiError && error.status === 422);
+  assert.equal(idempotentMissingMedia.sql.length, 0, "same-pointer publish still revalidates media without rewriting publication state");
 });
 
 test("product hero publication rejects products outside the published tenant catalog", async () => {

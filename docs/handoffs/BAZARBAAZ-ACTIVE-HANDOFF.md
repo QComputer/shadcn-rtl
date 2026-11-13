@@ -9,7 +9,7 @@ Updated: 2026-11-13. This is the operational resume point; older documents and C
 - PR64 latest pushed HEAD: `3510412e21a556410c9ac97ceeb6ec1c3d6dcd4e`; local checkout branch remains `codex/damoon-booking-phase3-20261113`.
 - Current task checkout: `C:/Users/disso/Project/shadcn-rtl-damoon-phase1`.
 - Other registered worktrees are preserved. Do not edit or remove them: shared checkout (`codex/hotel-operational-payment-20261112`), hero-media, Persian-slug-routing, theme-speed/PR62, and Website Studio/PR59.
-- Current follow-up fixes are being made only in `tests/e2e/damoon/booking-request-acceptance.spec.mjs` and this handoff. Do not touch other worktrees or their files.
+- Current follow-up fixes are limited to the reception requests route, `tests/e2e/damoon/booking-request-acceptance.spec.mjs`, and this handoff. Do not touch other worktrees or their files.
 
 ## Decisions and boundaries
 
@@ -58,9 +58,9 @@ Commit and push the bounded submit diagnostic, then follow the hosted run. Use t
 ### Latest acceptance result and exact resume point (2026-11-13)
 
 - Run `43488214881` for `3510412e21a556410c9ac97ceeb6ec1c3d6dcd4e`: hosted PostgreSQL 17 setup, real migrations, synthetic two-tenant seed, TypeScript, ESLint and bridge checks passed. Browser acceptance was 9/13. FA submission/status and EN/AR tracking passed. Reception UI polling failed because the test clicked a refresh button not present in the rendered inbox; dependent foreign-reference, reception concurrency and idempotency tests then failed because the worker restarted and their values were held only in module globals. Run: https://github.com/QComputer/shadcn-rtl/actions/runs/43488214881.
-- Focused uncommitted E2E fix: after authorized API polling finds the inbox request, reload the authenticated inbox and wait for its request row; move idempotent replay/database uniqueness assertion and foreign-tenant status/unpublished-availability checks into the primary test where its local reference and replay payload are available. Do not weaken limits or assertions. Re-run the existing hosted workflow to validate.
-- Current local delta is limited to `tests/e2e/damoon/booking-request-acceptance.spec.mjs`; syntax and diff checks are the only local checks intended due to the low-space constraint. The previous run's setup/type/lint/migration/seed/bridge checks passed, but PostgreSQL/browser acceptance remains **NOT_VERIFIED** until the next hosted run passes.
-- Immediate next step: validate the focused test diff, commit and push to PR64, follow the hosted run through browser acceptance, disabled-gate verification and disposable database cleanup. Keep PR64 Draft and do not merge while any required acceptance check fails.
+- Run `43489727499` for `0687b4e9bbceefa625192e9ed78581114acc4655`: setup, Node/pnpm install, PostgreSQL 17, migrations, fixture seed, TypeScript, ESLint, real Next/standalone startup and bridge tests passed. Browser was 9/11: the main request flow, idempotent replay/unique row, tenant checks, and localized tracking passed; two reception tests timed out after the inbox list API returned the request but the browser page did not expose its row. The workflow cleaned its disposable database and containers. Run: https://github.com/QComputer/shadcn-rtl/actions/runs/43489727499.
+- Inspection corrected an earlier mistaken assumption: the authenticated `/requests` route already exists and mounts `HotelGuestBookingRequests`. Current local test-only diagnostic waits for the inbox landmark and enabled refresh button using stable selectors, and emits bounded page text/URL if that authenticated UI is missing or stuck. No product file is currently changed. Idempotency replay, DB uniqueness and tenant-isolation assertions remain scoped to the test that owns its reference and payload.
+- Immediate next step: run syntax/diff checks, commit and push the focused diagnostic plus this handoff, then use the next hosted run to identify whether the remaining reception UI issue is route authorization, client loading, or selector behavior. Keep PR64 Draft until PostgreSQL/browser acceptance and required checks pass.
 
 ## Continuity
 

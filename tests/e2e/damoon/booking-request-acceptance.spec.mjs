@@ -130,7 +130,11 @@ async function waitForRequestInInbox(page, guestEmail, timeout = 30_000) {
       const data = await response.json();
       const found = data.requests?.find((r) => r.guestEmail === guestEmail);
       if (found) {
-        await page.reload({ waitUntil: "domcontentloaded" });
+        const inbox = page.locator('section[aria-labelledby="hotel-stay-requests-title"]');
+        await expect(inbox, `Reception inbox did not render at ${page.url()}`).toBeVisible({ timeout: 5_000 });
+        const refresh = inbox.locator("header button").first();
+        await expect(refresh, `Reception inbox did not become interactive: ${(await page.locator("body").innerText()).slice(0, 400)}`).toBeEnabled({ timeout: 5_000 });
+        await refresh.click();
         await page.locator(`#request-status-${found.id}`).waitFor({ state: "visible" });
         return found;
       }

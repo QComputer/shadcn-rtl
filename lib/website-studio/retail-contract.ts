@@ -28,6 +28,12 @@ export const retailContentSchema = z.object({
 export type RetailContent = z.infer<typeof retailContentSchema>;
 export type RetailSection = RetailContent["sections"][number];
 export type WebsiteMedia = { id: string; url: string; filename: string | null; mimeType: string | null; sizeBytes?: number | null; organizationId?: string | null; alt?: string };
+
+/** Keep the active choice available as the gallery page/search result set changes. */
+export function findRetainedRetailMediaSelection(page: WebsiteMedia[], retained: WebsiteMedia[], selectedId: string) {
+  if (!selectedId) return undefined;
+  return page.find((image) => image.id === selectedId) ?? retained.find((image) => image.id === selectedId);
+}
 export type WebsiteRevision = { id: string; content: RetailContent; createdAt: string };
 export const saveRetailDraftSchema = z.object({ content: retailContentSchema, baseRevisionId: z.string().max(128).nullable(), requestId: z.string().uuid() }).strict();
 

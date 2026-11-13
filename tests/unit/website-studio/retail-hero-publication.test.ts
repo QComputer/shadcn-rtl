@@ -193,9 +193,16 @@ test("publication requires an immutable revision owned by the tenant and current
   assert.equal(result.revisionId, "r1");
   assert.equal(result.previousRevisionId, null);
   assert.deepEqual(valid.revisionLookups, [{ id: "r1", organizationId: "org-1" }]);
-  assert.deepEqual(valid.imageLookups, [{ where: { organizationId: "org-1", access: "PUBLIC" }, select: { id: true, url: true, filename: true, mimeType: true, sizeBytes: true, organizationId: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }] }]);
+  assert.deepEqual(valid.imageLookups, [{ where: { organizationId: "org-1", access: "PUBLIC", mimeType: { in: ["image/jpeg", "image/png", "image/webp", "image/gif"] }, id: { in: [image.id, secondImage.id] } }, select: { id: true, url: true, filename: true, mimeType: true, sizeBytes: true, organizationId: true } }]);
   assert.equal(valid.audit.length, 1);
   assert.match(valid.sql[0] ?? "", /COALESCE\("OrganizationSettings"\.settings,'\{\}'::jsonb\) \|\| jsonb_build_object\('retailHeroPublication'/);
+
+  const idempotentMissingMedia = publicationService({
+    settings: { retailHeroPublication: { revisionId: "r2", previousRevisionId: "r1", publishedAt: "2026-11-01T12:00:00.000Z" } },
+    revisions: { r2: content() }, images: [],
+  });
+  await assert.rejects(idempotentMissingMedia.service.changePublication(principal, "org-1", publish("r2", "r2")), (error: unknown) => error instanceof ApiError && error.status === 422);
+  assert.equal(idempotentMissingMedia.sql.length, 0, "same-pointer publish still revalidates media without rewriting publication state");
 });
 
 test("product hero publication rejects products outside the published tenant catalog", async () => {

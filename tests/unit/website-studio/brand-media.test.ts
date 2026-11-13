@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { retailWebsiteMedia } from "@/lib/website-studio/brand-media";
-import { isEligibleRetailWebsiteMedia } from "@/lib/website-studio/retail-contract";
+import { findRetainedRetailMediaSelection, isEligibleRetailWebsiteMedia } from "@/lib/website-studio/retail-contract";
 
 const orgId = "org_123";
 const image = (id: string, url: string, filename = "hero.webp", mimeType = "image/webp", organizationId: string | null = orgId) => ({ id, url, filename, mimeType, organizationId });
@@ -32,4 +32,12 @@ test("persistent disk URLs must match exact canonical route, tenant, filename an
     `/api/media/${orgId}/tenants/${orgId}/uploads/%68ero.webp`,
   ]) assert.equal(isEligibleRetailWebsiteMedia({ ...valid, url }), false, url);
   assert.deepEqual(retailWebsiteMedia(orgId, [{ ...valid, organizationId: "org_other", url: "/api/media/org_other/tenants/org_other/uploads/hero.webp" }]), []);
+});
+
+test("a selected image remains addressable when it is not in the current gallery search page", () => {
+  const selected = image("selected-outside-page", `/api/media/${orgId}/tenants/${orgId}/uploads/selected.webp`);
+  const page = [image("search-result", `/api/media/${orgId}/tenants/${orgId}/uploads/result.webp`)];
+  assert.equal(findRetainedRetailMediaSelection(page, [selected], selected.id)?.filename, "hero.webp");
+  assert.equal(findRetainedRetailMediaSelection(page, [selected], "search-result")?.id, "search-result");
+  assert.equal(findRetainedRetailMediaSelection(page, [selected], "missing"), undefined);
 });

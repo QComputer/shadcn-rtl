@@ -4,6 +4,7 @@ import { ApiError, jsonError, requireAuthSession, requireSameOriginMutation } fr
 import { createStoredImageFilename, deleteStoredImage, writeStoredImage } from "@/lib/media-storage";
 import { RetailWebsiteService } from "@/lib/website-studio/retail.service";
 import { retailWebsiteMedia } from "@/lib/website-studio/brand-media";
+import { parseRetailMediaGalleryRequest, retailMediaGalleryResponse, retailMediaGalleryWhere } from "@/lib/website-studio/retail-media-gallery.server";
 import { MAX_RETAIL_HERO_UPLOAD_BYTES, validateRetailHeroUpload } from "@/lib/website-studio/hero-upload.server";
 
 export const runtime = "nodejs";
@@ -14,18 +15,23 @@ type Context = { params: Promise<{ id: string }> };
 async function authorize(id: string) {
   const session = await requireAuthSession();
   const principal = { userId: session.user.id, role: session.user.role, organizationId: session.user.organizationId };
-  const loaded = await service.load(principal, id);
-  return { session, organizationId: loaded.organization.id! };
+  const organization = await service.authorizeOrganization(principal, id);
+  return { session, organizationId: organization.id! };
 }
 
-export async function GET(_request: Request, { params }: Context) {
+export async function GET(request: Request, { params }: Context) {
   try {
     const { id } = await params;
     const { organizationId } = await authorize(id);
-    const rows = await prisma.image.findMany({ where: { organizationId, access: "PUBLIC" }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], select: { id: true, url: true, filename: true, mimeType: true, sizeBytes: true, organizationId: true } });
-    const eligibleIds = new Set(retailWebsiteMedia(organizationId, rows).map((image) => image.id));
-    const images = rows.filter((image) => eligibleIds.has(image.id));
-    return NextResponse.json({ images }, { headers: { "Cache-Control": "private, no-store" } });
+    const { search, cursor } = parseRetailMediaGalleryRequest(request.url);
+    const rows = await prisma.image.findMany({
+      where: retailMediaGalleryWhere(organizationId, search, cursor),
+      orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 25,
+      select: { id: true, url: true, filename: true, mimeType: true, sizeBytes: true, organizationId: true, createdAt: true },
+    });
+    const page = retailMediaGalleryResponse(rows);
+    const images = await service.filterDeliverableMedia(organizationId, retailWebsiteMedia(organizationId, page.rows));
+    return NextResponse.json({ images, nextCursor: page.nextCursor }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) { return jsonError(error, "بارگذاری گالری فروشگاه انجام نشد."); }
 }
 

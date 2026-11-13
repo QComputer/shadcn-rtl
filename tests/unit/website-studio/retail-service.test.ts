@@ -19,7 +19,7 @@ type MockOptions = {
 };
 
 function mockService(options: MockOptions = {}) {
-  const calls: { insert: number; membership: number; images: number; insertedValues: unknown[] } = { insert: 0, membership: 0, images: 0, insertedValues: [] };
+  const calls: { insert: number; membership: number; images: number; imageQueries: unknown[]; insertedValues: unknown[] } = { insert: 0, membership: 0, images: 0, imageQueries: [], insertedValues: [] };
   const revisionId = options.currentRevision ?? null;
   const previous = options.previous ?? null;
   const tx = {
@@ -27,7 +27,8 @@ function mockService(options: MockOptions = {}) {
     organization: { findFirst: async () => options.organization === null ? null : options.organization ?? org },
     organizationMember: { findFirst: async () => { calls.membership++; return options.member === false ? null : { id: "member-1" }; } },
     tenantWebsiteRevision: { findFirst: async () => null },
-    image: { findMany: async () => { calls.images++; return options.images ?? media; } },
+    organizationSettings: { findUnique: async () => null },
+    image: { findMany: async (query: unknown) => { calls.images++; calls.imageQueries.push(query); return options.images ?? media; } },
     auditLog: { create: async () => ({}) },
     $queryRaw: async (strings: TemplateStringsArray, ...values: unknown[]) => {
       const sql = strings.join("?");
@@ -65,6 +66,17 @@ test("authorization uses organization scope, current active membership, and acti
 
   const inactiveUser = mockService({ userRole: "MISSING" });
   await assert.rejects(inactiveUser.service.load(principal, "org-1"), (error: unknown) => error instanceof ApiError && error.status === 403);
+});
+
+test("studio bootstrap loads a bounded tenant page rather than the full gallery", async () => {
+  const { service, calls } = mockService();
+  await service.load(principal, "org-1");
+  assert.equal(calls.imageQueries.length, 1);
+  assert.deepEqual(calls.imageQueries[0], {
+    where: { organizationId: "org-1", access: "PUBLIC", mimeType: { in: ["image/jpeg", "image/png", "image/webp", "image/gif"] } },
+    select: { id: true, url: true, filename: true, mimeType: true, sizeBytes: true, organizationId: true },
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 24,
+  });
 });
 
 test("saving rejects media outside the eligible public organization set", async () => {

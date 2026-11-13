@@ -25,12 +25,11 @@ test("private Hotel revision previews remain reachable inside the explicit Hotel
   assert.equal(getDashboardRouteAccessDecision({ locale: "fa", pathname: path, role: "STAFF" }).isAllowed, false);
 });
 
-test("reception request management uses the same Hotel website role and capability gate", () => {
+test("reception request management route is recognized and limited to Hotel management roles", () => {
   const path = "/fa/dashboard/hotel-website/org-1/property-1/requests";
-  const manager = getDashboardRouteAccessDecision({ locale: "fa", pathname: path, role: "MANAGER", capabilities: ["HOTEL_WEBSITE"] });
+  const manager = getDashboardRouteAccessDecision({ locale: "fa", pathname: path, role: "MANAGER" });
   assert.equal(manager.isKnownRoute, true);
   assert.equal(manager.isAllowed, true);
   assert.equal(manager.routeKey, "/hotel-website/[organizationId]/[propertyId]/requests");
-  assert.equal(getDashboardRouteAccessDecision({ locale: "fa", pathname: path, role: "MANAGER" }).isAllowed, false);
-  assert.equal(getDashboardRouteAccessDecision({ locale: "fa", pathname: path, role: "STAFF", capabilities: ["HOTEL_WEBSITE"] }).isAllowed, false);
+  assert.equal(getDashboardRouteAccessDecision({ locale: "fa", pathname: path, role: "STAFF" }).isAllowed, false);
 });

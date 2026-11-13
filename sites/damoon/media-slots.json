@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "publicationStatus": "OWNER_INPUT_PENDING",
+  "slots": {
+    "logo": {
+      "currentAsset": null,
+      "currentKind": "TEXT_MONOGRAM",
+      "approval": "PENDING"
+    },
+    "hero": {
+      "currentAsset": "hero-reference-v2.png",
+      "currentKind": "CONCEPT",
+      "approval": "PENDING"
+    },
+    "architecture": {
+      "currentAsset": "architecture-concept.webp",
+      "currentKind": "CONCEPT",
+      "approval": "PENDING"
+    },
+    "lobby": {
+      "currentAsset": "lobby-concept.webp",
+      "currentKind": "CONCEPT",
+      "approval": "PENDING"
+    },
+    "single": {
+      "currentAsset": "room-concept-1.webp",
+      "currentKind": "CONCEPT",
+      "approval": "PENDING"
+    },
+    "double": {
+      "currentAsset": "room-concept-2.webp",
+      "currentKind": "CONCEPT",
+      "approval": "PENDING"
+    },
+    "suite": {
+      "currentAsset": "room-concept-3.webp",
+      "currentKind": "CONCEPT",
+      "approval": "PENDING"
+    },
+    "gallery": {
+      "currentAsset": "gallery-concept-1.webp",
+      "currentKind": "CONCEPT",
+      "approval": "PENDING"
+    },
+    "restaurant": {
+      "currentAsset": "gallery-concept-2.webp",
+      "currentKind": "CONCEPT",
+      "approval": "PENDING"
+    },
+    "cafe": {
+      "currentAsset": "gallery-concept-3.webp",
+      "currentKind": "CONCEPT",
+      "approval": "PENDING"
+    }
+  }
+}

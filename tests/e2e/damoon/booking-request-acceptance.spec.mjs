@@ -212,7 +212,6 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
       await page.locator("[data-month-next]").click();
     }
     await page.locator(`[data-calendar-day="${checkIn}"]`).click();
-    await page.locator("[data-calendar-close]").click();
 
     await page.locator('[data-date-field="checkOut"]').click();
     moves = 0;
@@ -220,7 +219,6 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
       await page.locator("[data-month-next]").click();
     }
     await page.locator(`[data-calendar-day="${checkOut}"]`).click();
-    await page.locator("[data-calendar-close]").click();
 
     await page.locator("[data-adult-count]").selectOption("2");
     await page.locator("[data-child-count]").selectOption("1");
@@ -316,7 +314,6 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
       await guestPage.locator("[data-month-next]").click();
     }
     await guestPage.locator(`[data-calendar-day="${checkIn}"]`).click();
-    await guestPage.locator("[data-calendar-close]").click();
 
     await guestPage.locator('[data-date-field="checkOut"]').click();
     moves = 0;
@@ -324,7 +321,6 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
       await guestPage.locator("[data-month-next]").click();
     }
     await guestPage.locator(`[data-calendar-day="${checkOut}"]`).click();
-    await guestPage.locator("[data-calendar-close]").click();
 
     await guestPage.locator("[data-adult-count]").selectOption("2");
     await guestPage.locator("[data-child-count]").selectOption("1");
@@ -466,7 +462,7 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     const payload = faPayload(checkIn, checkOut);
     payload.contact.email = `race-${randomUUID()}@example.test`;
     const create = await postRequest(page, payload, `damoon-race-${randomUUID()}`);
-    expect(create.status()).toBe(201);
+    expect(create.status(), await create.text()).toBe(201);
     const inboxRequest = await waitForRequestInInbox(managerPage, payload.contact.email);
     const results = await Promise.all([
       patchRequestStatus(managerPage, inboxRequest.id, "IN_REVIEW", inboxRequest.version),

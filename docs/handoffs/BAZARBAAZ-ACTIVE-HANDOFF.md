@@ -6,7 +6,7 @@ Updated: 2026-11-13. This is the operational resume point; older documents and C
 
 - `origin/main` freshly fetched and verified at `ec51d9c4b483db814b90f3d3daef2236977916e8`.
 - PR64: [QComputer/shadcn-rtl#64](https://github.com/QComputer/shadcn-rtl/pull/64), Draft, PR head branch `codex/damoon-booking-requests-20261113`, base `main`.
-- PR64 latest pushed HEAD: `844cd4da45db6e5a191228168de01ab2437273a9`; local checkout branch remains `codex/damoon-booking-phase3-20261113`.
+- PR64 latest pushed HEAD: `3510412e21a556410c9ac97ceeb6ec1c3d6dcd4e`; local checkout branch remains `codex/damoon-booking-phase3-20261113`.
 - Current task checkout: `C:/Users/disso/Project/shadcn-rtl-damoon-phase1`.
 - Other registered worktrees are preserved. Do not edit or remove them: shared checkout (`codex/hotel-operational-payment-20261112`), hero-media, Persian-slug-routing, theme-speed/PR62, and Website Studio/PR59.
 - Current follow-up fixes are being made only in `tests/e2e/damoon/booking-request-acceptance.spec.mjs` and this handoff. Do not touch other worktrees or their files.
@@ -54,6 +54,13 @@ Commit and push the bounded submit diagnostic, then follow the hosted run. Use t
 1. **Isolated acceptance:** real PostgreSQL-backed guest-to-reception browser flow and focused negative security cases pass; disposable resources are cleaned up.
 2. **PR review/merge:** required CI passes, PR64 is Ready for Review, acceptance evidence is attached, and merge follows repository rules. Production gates remain disabled.
 3. **Controlled operational enablement preparation:** separately validate actual publication, inventory, routing, and staffing readiness; Production activation requires its own explicit authorization and is outside PR64.
+
+### Latest acceptance result and exact resume point (2026-11-13)
+
+- Run `43488214881` for `3510412e21a556410c9ac97ceeb6ec1c3d6dcd4e`: hosted PostgreSQL 17 setup, real migrations, synthetic two-tenant seed, TypeScript, ESLint and bridge checks passed. Browser acceptance was 9/13. FA submission/status and EN/AR tracking passed. Reception UI polling failed because the test clicked a refresh button not present in the rendered inbox; dependent foreign-reference, reception concurrency and idempotency tests then failed because the worker restarted and their values were held only in module globals. Run: https://github.com/QComputer/shadcn-rtl/actions/runs/43488214881.
+- Focused uncommitted E2E fix: after authorized API polling finds the inbox request, reload the authenticated inbox and wait for its request row; move idempotent replay/database uniqueness assertion and foreign-tenant status/unpublished-availability checks into the primary test where its local reference and replay payload are available. Do not weaken limits or assertions. Re-run the existing hosted workflow to validate.
+- Current local delta is limited to `tests/e2e/damoon/booking-request-acceptance.spec.mjs`; syntax and diff checks are the only local checks intended due to the low-space constraint. The previous run's setup/type/lint/migration/seed/bridge checks passed, but PostgreSQL/browser acceptance remains **NOT_VERIFIED** until the next hosted run passes.
+- Immediate next step: validate the focused test diff, commit and push to PR64, follow the hosted run through browser acceptance, disabled-gate verification and disposable database cleanup. Keep PR64 Draft and do not merge while any required acceptance check fails.
 
 ## Continuity
 

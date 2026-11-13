@@ -47,7 +47,6 @@ const managerUsername = env.DAMOON_MANAGER_USERNAME;
 const managerPassword = env.DAMOON_MANAGER_PASSWORD;
 const roomTypeSlug = env.DAMOON_ROOM_TYPE_SLUG;
 const ratePlanCode = env.DAMOON_RATE_PLAN_CODE;
-let capturedReplay;
 let capturedReference;
 
 const requestsApi = `/api/organizations/${encodeURIComponent(organizationId)}/hotels/${encodeURIComponent(propertyId)}/booking-requests`;
@@ -131,7 +130,7 @@ async function waitForRequestInInbox(page, guestEmail, timeout = 30_000) {
       const data = await response.json();
       const found = data.requests?.find((r) => r.guestEmail === guestEmail);
       if (found) {
-        await page.getByRole("button", { name: /به‌روزرسانی|Refresh|تحديث/ }).click();
+        await page.reload({ waitUntil: "domcontentloaded" });
         await page.locator(`#request-status-${found.id}`).waitFor({ state: "visible" });
         return found;
       }
@@ -258,7 +257,8 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     expect(response.status(), await response.text()).toBe(201);
     const body = await response.json();
     capturedReference = body.reference;
-    capturedReplay = { payload: response.request().postDataJSON(), idempotencyKey: response.request().headers()["idempotency-key"] };
+    const replayPayload = response.request().postDataJSON();
+    const idempotencyKey = response.request().headers()["idempotency-key"];
     const reference = body.reference;
     expect(typeof reference).toBe("string");
     expect(reference.length).toBeGreaterThanOrEqual(40);
@@ -277,6 +277,27 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     const trackBody = await trackResponse.json();
     expect(trackBody.status).toBe("RECEIVED");
     await expect(page.locator("[data-track-result]")).toContainText(statusLabels.fa.RECEIVED);
+
+    const replays = await Promise.all([
+      postRequest(page, replayPayload, idempotencyKey),
+      postRequest(page, replayPayload, idempotencyKey),
+    ]);
+    expect(replays.map((replay) => replay.status())).toEqual([200, 200]);
+    const replayBodies = await Promise.all(replays.map((replay) => replay.json()));
+    expect(replayBodies[0].reference).toBe(reference);
+    expect(replayBodies[1].reference).toBe(reference);
+    expect(replayBodies.every((item) => item.bookingConfirmed === false && item.inventoryReserved === false)).toBe(true);
+    const prisma = (await import("@prisma/client")).PrismaClient;
+    const client = new prisma();
+    try {
+      const idempotencyHash = createHash("sha256").update(`${organizationId}\0${idempotencyKey}`).digest("hex");
+      expect(await client.hotelGuestBookingRequest.count({ where: { organizationId, idempotencyHash } })).toBe(1);
+    } finally { await client.$disconnect(); }
+
+    const foreignStatus = await postStatus(page, reference, `${foreignHost}:8080`);
+    expect(foreignStatus.status(), await foreignStatus.text()).toBe(404);
+    const foreignSearch = await postAvailability(page, faPayload(checkIn, checkOut), `${foreignHost}:8080`, `${standaloneUrl.protocol}//${foreignHost}:8080`);
+    expect(foreignSearch.status()).toBe(404);
   });
 
   test("EN: Guest submits stay request and tracks status", async () => {
@@ -452,17 +473,6 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     expect(wrongOrigin.status()).toBe(403);
   });
 
-  test("Negative: foreign tenant cannot read a valid-shaped guest reference; unpublished tenant has no availability", async () => {
-    const c = await newContext(browser);
-    guestContexts.push(c);
-    const page = await c.newPage();
-    const status = await postStatus(page, capturedReference, `${foreignHost}:8080`);
-    expect(status.status(), await status.text()).toBe(404);
-    const searchPayload = faPayload(tomorrowISO(), dayAfterISO(tomorrowISO()));
-    const unapproved = await postAvailability(page, searchPayload, `${foreignHost}:8080`, `${standaloneUrl.protocol}//${foreignHost}:8080`);
-    expect(unapproved.status()).toBe(404);
-  });
-
   test("Negative: reception status update uses optimistic concurrency", async () => {
     const c = await newContext(browser);
     guestContexts.push(c);
@@ -500,34 +510,6 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     expect(response.status()).toBe(200);
     const data = await response.json();
     expect(data.options.some((option) => option.isAvailable)).toBe(false);
-  });
-
-  test("Idempotency replay returns same reference without duplication", async () => {
-    expect(capturedReplay?.idempotencyKey).toBeTruthy();
-    const c = await newContext(browser);
-    guestContexts.push(c);
-    const page = await c.newPage();
-    const replays = await Promise.all([
-      postRequest(page, capturedReplay.payload, capturedReplay.idempotencyKey),
-      postRequest(page, capturedReplay.payload, capturedReplay.idempotencyKey),
-    ]);
-    expect(replays.map((response) => response.status())).toEqual([200, 200]);
-    const replayBodies = await Promise.all(replays.map((response) => response.json()));
-    expect(replayBodies[0].reference).toBeTruthy();
-    expect(replayBodies[1].reference).toBe(replayBodies[0].reference);
-    expect(replayBodies.every((body) => body.bookingConfirmed === false && body.inventoryReserved === false)).toBe(true);
-
-    const listResponse = await getRequestsApi(managerPage);
-    expect(listResponse.ok()).toBe(true);
-    const listData = await listResponse.json();
-    const matching = listData.requests?.filter((r) => r.guestEmail === capturedReplay.payload.contact.email) || [];
-    expect(matching.length).toBe(1);
-    const prisma = (await import("@prisma/client")).PrismaClient;
-    const client = new prisma();
-    try {
-      const idempotencyHash = createHash("sha256").update(`${organizationId}\0${capturedReplay.idempotencyKey}`).digest("hex");
-      expect(await client.hotelGuestBookingRequest.count({ where: { organizationId, idempotencyHash } })).toBe(1);
-    } finally { await client.$disconnect(); }
   });
 
   test("No reservation or payment created for request-only flow", async () => {

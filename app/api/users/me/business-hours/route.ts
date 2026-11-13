@@ -11,6 +11,7 @@ import {
 import { businessHoursSchema } from "@/lib/validators";
 import { writeAuditLog } from "@/lib/audit-log";
 import { getClientIp } from "@/lib/rate-limit";
+import { readBoundedJson } from "@/lib/security/bounded-json";
 
 function normalizeOrganizationId(request: NextRequest, fallback?: string | null) {
   return request.nextUrl.searchParams.get("organizationId") || fallback || null;
@@ -77,7 +78,7 @@ export async function PUT(request: NextRequest) {
 
     await requireOrgAccess(session, membership.organizationId, ["ADMIN", "MANAGER", "STAFF"]);
 
-    const body = await request.json();
+    const body = await readBoundedJson(request, { maxBytes: 64 * 1024 });
     const data = businessHoursSchema.parse(body);
     assertUniqueDays(data);
 

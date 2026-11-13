@@ -100,7 +100,7 @@ export const businessHoursSchema = z.array(
     closeTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format (HH:mm)"),
     isOpen: z.boolean().default(true),
   })
-);
+).max(7, "Business hours cannot contain more than seven days");
 
 // Service Category validators
 export const createServiceCategorySchema = z.object({

@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { organizationService } from "@/lib/services/organization.service";
 import { businessHoursSchema } from "@/lib/validators";
 import { hasPermission } from "@/lib/types";
+import { readBoundedJson } from "@/lib/security/bounded-json";
+import { ApiError } from "@/lib/api-guards";
 
 export async function GET(
   request: NextRequest,
@@ -44,13 +46,16 @@ export async function PUT(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const body = await request.json();
+    const body = await readBoundedJson(request, { maxBytes: 64 * 1024 });
     const data = businessHoursSchema.parse(body);
 
     const hours = await organizationService.updateBusinessHours(id, data);
 
     return NextResponse.json(hours);
   } catch (error) {
+    if (error instanceof ApiError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error updating business hours:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },

@@ -45,7 +45,7 @@ async function createTenant(
 ) {
   const slug = `damoon-e2e-${suffix}-${key}`;
   const organization = await prisma.organization.create({
-    data: { name: `Synthetic Damoon E2E ${key.toUpperCase()} ${suffix}`, slug, type: "SHOP", vertical: "HOTEL" },
+    data: { name: `Synthetic Damoon E2E ${key.toUpperCase()} ${suffix}`, slug, type: "SHOP", vertical: "HOTEL", capabilitiesInitializedAt: new Date() },
   });
   const property = await prisma.hotelProperty.create({
     data: { organizationId: organization.id, organizationSlug: slug, slug: "damoon-hotel", name: `Synthetic Hotel ${key.toUpperCase()}`, timezone: "Asia/Tehran" },

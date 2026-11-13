@@ -148,6 +148,7 @@ jobs:
           NODE_ENV: test
         run: |
           set -euo pipefail
+          pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/unit/hotel-cms/hotel-cms-dashboard-navigation.test.ts
           node --test sites/damoon/tests/standalone-api-proxy.test.mjs
           pnpm exec playwright test --config=playwright.damoon.config.mjs
       - name: Restart API with the guest-request gate disabled

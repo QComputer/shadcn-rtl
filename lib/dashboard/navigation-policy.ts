@@ -220,6 +220,7 @@ export const DASHBOARD_ROUTE_POLICY = {
   "/website-studio/[organizationId]/preview/[revisionId]": ROLE_NAVIGATION_POLICY.websiteStudio,
   "/hotel-website": ROLE_NAVIGATION_POLICY.hotelWebsite,
   "/hotel-website/[organizationId]/[propertyId]": ROLE_NAVIGATION_POLICY.hotelWebsite,
+  "/hotel-website/[organizationId]/[propertyId]/requests": ROLE_NAVIGATION_POLICY.hotelWebsite,
   "/hotel-website/[organizationId]/[propertyId]/preview/[revisionId]": ROLE_NAVIGATION_POLICY.hotelWebsite,
   "/pilots": ROLE_NAVIGATION_POLICY.pilots,
   "/pilots/[organizationId]": ROLE_NAVIGATION_POLICY.pilots,

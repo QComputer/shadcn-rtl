@@ -14,7 +14,7 @@ export async function managementRequest<T>(request: NextRequest, organizationId:
 
 export async function managementAction(request: NextRequest, organizationId: string, action: (principal: ReturnType<typeof managementPrincipal>) => Promise<unknown>, status = 200) {
   try {
-    requireSameOriginMutation(request);
+    if (request.method !== "GET" && request.method !== "HEAD") requireSameOriginMutation(request);
     const session = await requireAuthSession();
     if (session.user.role !== "SUPER_ADMIN" && session.user.organizationId !== organizationId) throw new ApiError(403, "Forbidden");
     return NextResponse.json(await action(managementPrincipal(session)), { status });

@@ -134,7 +134,14 @@ async function waitForRequestInInbox(page, guestEmail, timeout = 30_000) {
         await expect(inbox, `Reception inbox did not render at ${page.url()}`).toBeVisible({ timeout: 5_000 });
         const refresh = inbox.locator("header button").first();
         await expect(refresh, `Reception inbox did not become interactive: ${(await page.locator("body").innerText()).slice(0, 400)}`).toBeEnabled({ timeout: 5_000 });
+        const browserGetPromise = page.waitForResponse((candidate) =>
+          candidate.url() === `${appOrigin}${requestsApi}` && candidate.request().method() === "GET",
+        );
         await refresh.click();
+        const browserGet = await browserGetPromise;
+        const browserHeaders = await browserGet.request().allHeaders();
+        expect(browserHeaders.origin, "same-origin browser GET must not need an injected Origin").toBeFalsy();
+        expect(browserGet.status(), "authenticated browser inbox GET without Origin").toBe(200);
         await page.locator(`#request-status-${found.id}`).waitFor({ state: "visible" });
         return found;
       }
@@ -379,6 +386,16 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     expect(inboxRequest.guestPhone).toBe(payload.contact.phone);
     expect(inboxRequest.roomTypeSlug).toBe(roomTypeSlug);
     expect(inboxRequest.ratePlanCode).toBe(ratePlanCode);
+
+    const crossOriginPatch = await managerPage.request.patch(`${appOrigin}${requestsApi}/${encodeURIComponent(requestId)}`, {
+      headers: { Origin: "https://attacker.invalid", "Content-Type": "application/json" },
+      data: { status: "IN_REVIEW", expectedVersion: inboxRequest.version },
+    });
+    expect(crossOriginPatch.status()).toBe(403);
+    const crossOriginPost = await managerPage.request.post(`${appOrigin}${requestsApi}/${encodeURIComponent(requestId)}/availability`, {
+      headers: { Origin: "https://attacker.invalid", "Content-Type": "application/json" },
+    });
+    expect(crossOriginPost.status()).toBe(403);
 
     await managerPage.locator(`#request-status-${requestId}`).selectOption("IN_REVIEW");
     await expect(managerPage.locator(`article:has-text("${payload.contact.fullName}") .rounded-full`)).toContainText("در حال بررسی");

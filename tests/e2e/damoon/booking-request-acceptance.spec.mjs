@@ -424,8 +424,19 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     const checkOut = dayAfterISO(checkIn);
     const payload = faPayload(checkIn, checkOut);
     payload.contact.email = `filter-race-${randomUUID()}@example.test`;
-    const submit = await postRequest(managerPage, payload, `damoon-filter-race-${randomUUID()}`);
-    expect(submit.status(), await submit.text()).toBe(201);
+    const { PrismaClient } = await import("@prisma/client");
+    const client = new PrismaClient();
+    const [identity] = await client.$queryRaw`SELECT current_database() AS name`;
+    expect(identity.name).toBe(new URL(env.DATABASE_URL).pathname.slice(1));
+    const fixtureId = `filter-race-${randomUUID()}`;
+    const fixtureHash = createHash("sha256").update(randomUUID()).digest("hex");
+    await client.hotelGuestBookingRequest.create({ data: {
+      id: fixtureId, organizationId, propertyId,
+      trackingReferenceHash: fixtureHash, idempotencyHash: fixtureHash, requestFingerprint: fixtureHash,
+      checkIn: new Date(`${checkIn}T00:00:00Z`), checkOut: new Date(`${checkOut}T00:00:00Z`),
+      adults: 2, children: 1, childAges: [8], roomTypeSlug, ratePlanCode,
+      guestName: payload.contact.fullName, guestPhone: payload.contact.phone, guestEmail: payload.contact.email,
+    } });
 
     const inboxRequest = await waitForRequestInInbox(managerPage, payload.contact.email);
     const patchUrl = `${appOrigin}${requestsApi}/${encodeURIComponent(inboxRequest.id)}`;
@@ -473,6 +484,8 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     } finally {
       releasePatch();
       await managerPage.unroute(interceptPatch);
+      await client.hotelGuestBookingRequest.deleteMany({ where: { id: fixtureId, organizationId, propertyId } });
+      await client.$disconnect();
     }
   });
 

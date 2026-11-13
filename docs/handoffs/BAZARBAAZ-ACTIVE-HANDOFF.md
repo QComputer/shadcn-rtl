@@ -6,7 +6,7 @@ Updated: 2026-11-13. This is the operational resume point; older documents and C
 
 - `origin/main` freshly fetched and verified at `ec51d9c4b483db814b90f3d3daef2236977916e8`.
 - PR64: [QComputer/shadcn-rtl#64](https://github.com/QComputer/shadcn-rtl/pull/64), Draft, PR head branch `codex/damoon-booking-requests-20261113`, base `main`.
-- PR64 latest pushed HEAD: `d52a06d78ef479890e8718eb990705efdd8b0221`; local checkout branch remains `codex/damoon-booking-phase3-20261113`.
+- PR64 latest pushed HEAD: `6d9a2445ac6078438516e69966c60beeae7dc6ce`; local checkout branch remains `codex/damoon-booking-phase3-20261113`.
 - Current task checkout: `C:/Users/disso/Project/shadcn-rtl-damoon-phase1`.
 - Other registered worktrees are preserved. Do not edit or remove them: shared checkout (`codex/hotel-operational-payment-20261112`), hero-media, Persian-slug-routing, theme-speed/PR62, and Website Studio/PR59.
 - Current follow-up fixes are being made only in `tests/e2e/damoon/booking-request-acceptance.spec.mjs` and this handoff. Do not touch other worktrees or their files.
@@ -43,6 +43,11 @@ Commit and push the bounded submit diagnostic, then follow the hosted run. Use t
 
 - Run `43485806963` for SHA `d52a06d78ef479890e8718eb990705efdd8b0221`: CI setup, migrations, seeding, typecheck, lint and bridge tests passed; browser acceptance failed 5/13. The visible form error was that child age validation rejected duplicate fields left mounted in both the search form and selected-room details panel. The current local patch changes collection to read only the active details panel and asserts the age is retained after selection.
 - The next executable step is to push that focused UI fix and rerun the existing hosted acceptance workflow; follow through to disabled-gate verification and disposable DB cleanup. Keep PR64 Draft and do not merge until all acceptance gates pass.
+
+### Latest acceptance result and current resume point
+
+- Run `43486804461` for SHA `6d9a2445ac6078438516e69966c60beeae7dc6ce`: setup, Prisma, typecheck, lint, migrations, fixture seed and bridge tests passed. Browser acceptance passed 8/13; FA guest submission/tracking and EN/AR status tracking passed. Reception inbox polling timed out. The fixture manager `User` records lacked `organizationId`, which management authorization requires; the seed now assigns that context. The foreign-reference 400 and later concurrency timeout should be rechecked with a valid manager session. Exact run: https://github.com/QComputer/shadcn-rtl/actions/runs/43486804461.
+- Next: push the manager identity fixture and sanitized inbox diagnostics, then follow the hosted flow through reception status changes, tenant denial, idempotency, disabled gate and disposable database cleanup. Keep PR64 Draft until all gates pass.
 
 ## Next milestones
 

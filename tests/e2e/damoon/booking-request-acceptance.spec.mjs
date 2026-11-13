@@ -122,8 +122,11 @@ async function postRecheckAvailability(page, requestId) {
 
 async function waitForRequestInInbox(page, guestEmail, timeout = 30_000) {
   const deadline = Date.now() + timeout;
+  let lastResponseStatus = 0;
+  let lastApiError = "";
   while (Date.now() < deadline) {
     const response = await getRequestsApi(page);
+    lastResponseStatus = response.status();
     if (response.ok()) {
       const data = await response.json();
       const found = data.requests?.find((r) => r.guestEmail === guestEmail);
@@ -132,10 +135,16 @@ async function waitForRequestInInbox(page, guestEmail, timeout = 30_000) {
         await page.locator(`#request-status-${found.id}`).waitFor({ state: "visible" });
         return found;
       }
+      lastApiError = "No matching request in successful inbox response";
+    } else {
+      try {
+        const data = await response.json();
+        lastApiError = typeof data.error === "string" ? data.error.slice(0, 160) : "Inbox request failed";
+      } catch { lastApiError = "Inbox request failed"; }
     }
     await page.waitForTimeout(1000);
   }
-  throw new Error(`Request for ${guestEmail} not found in inbox within ${timeout}ms`);
+  throw new Error(`Guest request was not found in inbox within ${timeout}ms (last HTTP ${lastResponseStatus}: ${lastApiError})`);
 }
 
 const tomorrowISO = () => {
@@ -448,7 +457,7 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     guestContexts.push(c);
     const page = await c.newPage();
     const status = await postStatus(page, capturedReference, `${foreignHost}:8080`);
-    expect(status.status()).toBe(404);
+    expect(status.status(), await status.text()).toBe(404);
     const searchPayload = faPayload(tomorrowISO(), dayAfterISO(tomorrowISO()));
     const unapproved = await postAvailability(page, searchPayload, `${foreignHost}:8080`, `${standaloneUrl.protocol}//${foreignHost}:8080`);
     expect(unapproved.status()).toBe(404);

@@ -64,3 +64,5 @@ jobs:
           tests/damoon-stay-links.test.mjs tests/damoon-public-bundle.test.mjs
       - name: Zod oversized collection regression
         run: pnpm exec node --test tests/unit/zod-oversized-collections.test.mjs
+      - name: Bounded JSON request regression
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/unit/bounded-json-body.test.ts

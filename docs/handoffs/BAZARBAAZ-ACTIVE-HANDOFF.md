@@ -24,7 +24,8 @@ Updated: 2026-11-13. This is the operational resume point; older documents and C
 - Previously reported bridge tests: 12/12 PASS (historical evidence; exact current SHA/run link was not present in the supplied handoff context).
 - Local syntax checks passed. Targeted standalone bridge and Damoon source tests: **13/13 PASS** (covers test-only port allowlist, spoofed forwarding headers, and fail-closed missing upstream). This is not real PostgreSQL/browser acceptance.
 - Hosted workflow run `43477620082` failed at TypeScript because the first version ran `tsc` before Prisma client generation. The order was fixed on `5684b296`.
-- Hosted workflow run `43478096112` generated Prisma successfully, then failed typecheck on one fixture-only BigInt literal below the configured TS target. The fix and explicit masking of temporary CI secrets/passwords are uncommitted as of this handoff update; no PostgreSQL/browser test executed yet.
+- Hosted workflow run `43478096112` generated Prisma successfully, then failed typecheck on one fixture-only BigInt literal below the configured TS target. Commit `65c2824` fixes that and masks generated CI auth/manager secrets.
+- Hosted workflow run `43478630027` passed install, Prisma validation/generation, full typecheck, lint, migrations, fixture seed, service startup and both bridge tests. It then failed at Playwright harness initialization because a redundant `test.describe.configure()` was called outside a `describe`; removal is pending in the current local diff. No browser tests executed yet.
 - Real PostgreSQL plus browser acceptance is **NOT_VERIFIED**. No successful persistence/browser evidence or merge result exists.
 - A review found the guest status tracking form nested inside the booking form; the local edit moves it outside. This must be covered by browser acceptance.
 - The focused hosted acceptance workflow now provisions a uniquely named disposable PostgreSQL 17 database, applies real Prisma migrations, seeds two synthetic tenants, starts the actual Next API and restricted standalone bridge, runs Chromium acceptance, verifies the disabled request gate, and drops only its named database. Browser tests cover FA request submission, EN/AR secure status tracking, reception review/status update, persistence, concurrent idempotency replay, tenant/host/origin isolation, optimistic concurrency, unapproved publication, out-of-range inventory, invalid references, no reservation/payment, and disabled gate. This workflow is still **NOT_VERIFIED** until it runs.
@@ -33,7 +34,7 @@ Updated: 2026-11-13. This is the operational resume point; older documents and C
 
 ## Exact next executable step
 
-Finish reviewing the fixture typecheck/masking patch, commit and push the focused change to the existing PR64 branch. Follow the new Actions run through Prisma migrations, fixture seeding, Chromium flow, disabled-gate check and disposable database cleanup. Record its full SHA, run URL, actual PASS/FAIL/NOT_VERIFIED matrix and next step here. Keep Draft and do not merge while any acceptance gate is incomplete.
+Commit and push the focused Playwright harness fix to the existing PR64 branch. Follow Actions through the Chromium flow, disabled-gate check and disposable database cleanup. Record its full SHA, run URL, actual PASS/FAIL/NOT_VERIFIED matrix and next step here. Keep Draft and do not merge while any acceptance gate is incomplete.
 
 ## Next milestones
 

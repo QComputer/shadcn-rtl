@@ -174,8 +174,6 @@ const copy = {
   ar: { submit: "إرسال طلب الإقامة", received: "تم إرسال طلب الإقامة", reference: "رمز متابعة آمن", keepReference: "احتفظ بهذا الرمز لمتابعة طلبك لاحقاً.", status: "حالة الطلب", check: "تحقق من الحالة", checking: "جارٍ التحقق من الحالة...", trackLabel: "المتابعة باستخدام الرمز الآمن", trackButton: "عرض الحالة", trackError: "لم يتم العثور على طلب بهذا الرمز.", notBooking: "هذا الطلب ليس حجزاً مؤكداً. يجب على الاستقبال إعادة التحقق من السعر والتوفر." },
 };
 
-test.describe.configure({ retries: 0 });
-
 test.describe("PR64 Damoon Booking Request Acceptance", () => {
   let browser;
   let managerContext;

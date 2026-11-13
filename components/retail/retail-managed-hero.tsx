@@ -70,12 +70,12 @@ export function RetailManagedHero({ hero, products, name, storefrontPath, previe
     return () => window.clearInterval(timer);
   }, [hero.mode, hero.autoplay, slides.length, visible, motionAllowed, paused, hovered, focused]);
 
-  if (!themeImages || !hero.enabled || (campaign ? !themeImages.desktop : !slides.length)) return null;
+  if (!themeImages || !hero.enabled || (!campaign && !slides.length)) return null;
   const targetProps = preview ? { onClick: (event: MouseEvent<HTMLAnchorElement>) => event.preventDefault() } : {};
   const go = (next: number) => { setIndex((next + slides.length) % slides.length); setPaused(true); };
 
   return <section ref={section} dir="rtl" lang="fa" aria-label={`بنر ${name}`} data-retail-managed-hero className="mx-auto max-w-7xl px-4 py-3 md:px-8 lg:px-10" onPointerEnter={() => setHovered(true)} onPointerLeave={() => setHovered(false)} onFocusCapture={() => setFocused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false); }}>
-    <div className="grid overflow-hidden rounded-[1.5rem] border border-border/70 bg-card text-card-foreground shadow-sm sm:rounded-[2rem] lg:grid-cols-[2fr_3fr]">
+    <div className={`grid overflow-hidden rounded-[1.5rem] border border-border/70 bg-card text-card-foreground shadow-sm sm:rounded-[2rem] ${campaign && !themeImages.desktop ? "grid-cols-1" : "lg:grid-cols-[2fr_3fr]"}`}>
       <div className="flex min-w-0 flex-col justify-center px-5 py-6 sm:px-8 sm:py-9 lg:order-1 lg:px-10 lg:py-12">
         <p className="text-xs font-medium tracking-wide text-muted-foreground">{name}</p>
         <h1 className="mt-3 text-[clamp(1.65rem,3.5vw,3rem)] font-semibold leading-[1.45] tracking-tight">{hero.heading}</h1>
@@ -87,7 +87,7 @@ export function RetailManagedHero({ hero, products, name, storefrontPath, previe
         {!campaign && slide && <p className="mt-4 text-sm text-muted-foreground" aria-live={paused ? "polite" : "off"}>{slide.product.name}</p>}
       </div>
 
-      <div className={`relative min-w-0 bg-muted/30 lg:order-2 ${campaign ? "" : "border-t border-border/60 p-2.5 sm:p-4 lg:border-e lg:border-t-0"}`}>
+      {(!campaign || themeImages.desktop) && <div className={`relative min-w-0 bg-muted/30 lg:order-2 ${campaign ? "" : "border-t border-border/60 p-2.5 sm:p-4 lg:border-e lg:border-t-0"}`}>
         {campaign ? <div className={`relative overflow-hidden bg-muted/40 ${themeImages.hasMobileImage ? "aspect-[3/4]" : "aspect-[4/3]"} sm:aspect-auto sm:h-[clamp(22rem,42vw,30rem)] lg:h-full lg:min-h-[420px]`}>
           <picture className="absolute inset-0">
             {themeImages.hasMobileImage && themeImages.mobile && <source media="(max-width: 639px)" srcSet={themeImages.mobile} />}
@@ -106,7 +106,7 @@ export function RetailManagedHero({ hero, products, name, storefrontPath, previe
             <button type="button" onClick={() => go(currentIndex + 1)} aria-label="اسلاید بعدی" className={`grid size-9 place-items-center rounded-lg border border-border bg-card ${focus}`}><ChevronLeft aria-hidden className="size-4" /></button>
           </div>
         </div>}
-      </div>
+      </div>}
     </div>
   </section>;
 }

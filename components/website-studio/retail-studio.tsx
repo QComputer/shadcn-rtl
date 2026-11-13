@@ -12,7 +12,7 @@ import { retailHeroSchema, type RetailHeroPublication } from "@/lib/website-stud
 import type { PublicCatalogProduct } from "@/lib/public-catalog/contracts";
 import { RetailBrandColorEditor } from "./retail-brand-color-editor";
 
-type ApiPayload = { organization: { id?: string; name: string }; revision: WebsiteRevision | null; content: RetailContent; media: WebsiteMedia[]; products: PublicCatalogProduct[]; publication: RetailHeroPublication | null };
+type ApiPayload = { organization: { id?: string; name: string }; revision: WebsiteRevision | null; content: RetailContent; media: WebsiteMedia[]; products: PublicCatalogProduct[]; publication: RetailHeroPublication | null; legacyHeroNeedsReplacement?: boolean };
 type Props = { organizationId: string; locale: string };
 const labels: Record<RetailSection["kind"], string> = { HERO: "معرفی اصلی", ABOUT: "درباره فروشگاه", GALLERY: "گالری تصاویر", FEATURES: "ویژگی‌ها", CONTACT: "راه‌های ارتباطی" };
 function responseError(data: { error?: unknown; message?: unknown }, fallback: string) {
@@ -132,10 +132,8 @@ export function RetailStudio({ organizationId, locale }: Props) {
   }
 
   function prepareHero() {
-    const desktop = usableMedia.find(image => /hero.*desktop/.test(image.url));
-    const mobile = usableMedia.find(image => /hero.*mobile/.test(image.url));
-    const hero = retailHeroSchema.parse({ enabled: false, mode: "CAMPAIGN", heading: "استایل تو، قدم‌های تو", description: "مدل‌های تازه را ببین و انتخاب مناسب خودت را پیدا کن.", ctaLabel: "مشاهدهٔ مجموعه", desktopImageId: desktop?.id ?? "", mobileImageId: mobile?.id ?? "", imageAlt: desktop?.alt ?? "", focalX: 75, focalY: 50 });
-    update(current => ({ ...current, hero: { ...hero, enabled: Boolean(desktop) } }));
+    const hero = retailHeroSchema.parse({ enabled: false, mode: "CAMPAIGN", heading: payload?.organization.name ?? "ویترین فروشگاه", description: "", ctaLabel: "مشاهدهٔ مجموعه", desktopImageId: "", mobileImageId: "", darkDesktopImageId: "", darkMobileImageId: "", imageAlt: "", focalX: 50, focalY: 50 });
+    update(current => ({ ...current, hero }));
   }
 
   async function changePublication(action: "publish" | "rollback") {
@@ -158,6 +156,7 @@ export function RetailStudio({ organizationId, locale }: Props) {
     {error && <div role="alert" className={styles.alert}>{error}<button type="button" disabled={busy} onClick={() => void refresh()}>تلاش دوباره</button></div>}
     {missingMedia.length > 0 && <div role="status" className={styles.alert}>بعضی تصاویر نسخه ذخیره‌شده در این محیط در دسترس نیستند. برای ذخیره نسخه بعدی، تصویر جایگزین را از رسانه‌های تأییدشده انتخاب کنید.</div>}
     {notice && <div role="status" className={styles.success}><Check size={17} />{notice}</div>}
+    {payload?.legacyHeroNeedsReplacement && <p role="status" className="mx-auto max-w-6xl rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm leading-6 text-amber-950">نسخهٔ منتشرشده یا پیش‌نویس به تصویر ثابت قدیمی اشاره می‌کند و برای انتشار بعدی باید با تصویری از گالری همین فروشگاه جایگزین شود. تصویر فعلی فروشگاه تا انتشار جایگزین معتبر حفظ می‌شود.</p>}
     <div className={styles.workspace}>
       <nav className={styles.tabs} aria-label="نمای استودیو"><button type="button" aria-pressed={view === "edit"} onClick={() => setView("edit")}>ویرایش محتوا</button><button type="button" disabled={!payload?.revision} onClick={() => openPreview()} aria-pressed={view === "preview"}><Eye size={16} /> پیش‌نمایش ذخیره‌شده</button></nav>
       {loading ? <div className={styles.loading}><LoaderCircle className={styles.spinner} /> در حال بارگذاری اطلاعات فروشگاه…</div> : content && view === "edit" ? <div className={styles.editorLayout}>
@@ -165,7 +164,7 @@ export function RetailStudio({ organizationId, locale }: Props) {
           <div className={styles.intro}><strong>نسخه خصوصی وب‌سایت</strong><span>ذخیره، نسخه تازه‌ای می‌سازد و هیچ محتوایی را منتشر نمی‌کند.</span></div>
           <div className={styles.publicNote} role="note">فروشگاه عمومی بدون تغییر می‌ماند؛ ذخیره این پیش‌نویس فقط یک نسخه خصوصی ایجاد می‌کند.</div>
           <article className={styles.card}>
-            {content.hero ? <RetailHeroEditor value={content.hero} onChange={hero => update(current => ({ ...current, hero }))} media={usableMedia} products={payload?.products ?? []} disabled={busy} /> : <div className={styles.intro}><strong>هیروی صفحهٔ فروشگاه</strong><p>تصویر، متن و محصولات منتخب ویترین را از اینجا مدیریت کنید.</p><button type="button" onClick={prepareHero}>آماده‌سازی هیرو</button></div>}
+            {content.hero ? <RetailHeroEditor value={content.hero} onChange={hero => update(current => ({ ...current, hero }))} media={usableMedia} products={payload?.products ?? []} organizationId={organizationId} onMediaAdded={image => setPayload(current => current ? { ...current, media: [image, ...current.media.filter(item => item.id !== image.id)] } : current)} disabled={busy} /> : <div className={styles.intro}><strong>هیروی صفحهٔ فروشگاه</strong><p>تصویر، متن و محصولات منتخب ویترین را از اینجا مدیریت کنید.</p><button type="button" onClick={prepareHero}>آماده‌سازی هیرو</button></div>}
           </article>
           {content.hero && <article className={styles.card} aria-label="انتشار هیرو">
             <h2 className={styles.sectionTitle}>انتشار هیرو</h2>

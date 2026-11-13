@@ -1,14 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ApiError } from "@/lib/api-guards";
-import { tenantBrandWebsiteMedia } from "@/lib/website-studio/brand-media";
 import { RetailWebsiteService, retailWebsiteScope, type StudioPrincipal } from "@/lib/website-studio/retail.service";
 import { initialRetailContent, type RetailContent } from "@/lib/website-studio/retail-contract";
 
 const org = { id: "org-1", name: "نمونه", slug: "sample", description: null, phone: null, email: null, address: null };
 const principal: StudioPrincipal = { userId: "user-1", role: "ADMIN", organizationId: "org-1" };
 const content = initialRetailContent(org);
-const media = [{ id: "image-1", url: "/uploads/one.jpg", filename: "one.jpg", mimeType: "image/jpeg" }];
+const media = [{ id: "image-1", url: "/uploads/one.jpg", filename: "one.jpg", mimeType: "image/jpeg", organizationId: "org-1" }];
 
 type MockOptions = {
   currentRevision?: string | null;
@@ -27,6 +26,7 @@ function mockService(options: MockOptions = {}) {
     user: { findFirst: async () => options.userRole === "MISSING" ? null : { role: options.userRole ?? "ADMIN" } },
     organization: { findFirst: async () => options.organization === null ? null : options.organization ?? org },
     organizationMember: { findFirst: async () => { calls.membership++; return options.member === false ? null : { id: "member-1" }; } },
+    tenantWebsiteRevision: { findFirst: async () => null },
     image: { findMany: async () => { calls.images++; return options.images ?? media; } },
     auditLog: { create: async () => ({}) },
     $queryRaw: async (strings: TemplateStringsArray, ...values: unknown[]) => {
@@ -75,20 +75,13 @@ test("saving rejects media outside the eligible public organization set", async 
   assert.equal(calls.insert, 0);
 });
 
-test("saving accepts current tenant registry media and rejects another tenant's brand image id", async () => {
-  const akaMedia = tenantBrandWebsiteMedia("aka-shoes");
-  assert.ok(akaMedia.length > 0);
-  const selected = akaMedia[0]!;
+test("saving rejects legacy tenant brand IDs even when they match known static assets", async () => {
+  const selected = { id: "brand:aka-shoes:/brand/tenants/aka-shoes/home/hero-desktop.webp" };
   const withBrandImage = structuredClone(content);
   withBrandImage.sections = withBrandImage.sections.map((section) => section.kind === "HERO" ? { ...section, imageId: selected.id } : section);
-  const aka = mockService({ organization: { ...org, slug: "aka-shoes" }, images: [] });
-  const saved = await aka.service.save(principal, "org-1", draft(undefined, null, withBrandImage));
-  assert.deepEqual(saved.content, withBrandImage);
-  assert.equal(aka.calls.insert, 1);
-
-  const restaurant = mockService({ organization: { ...org, slug: "italiano-13" }, images: [] });
-  await assert.rejects(restaurant.service.save(principal, "org-1", draft(undefined, null, withBrandImage)), (error: unknown) => error instanceof ApiError && error.status === 422);
-  assert.equal(restaurant.calls.insert, 0);
+  const { service, calls } = mockService({ organization: { ...org, slug: "aka-shoes" }, images: [] });
+  await assert.rejects(service.save(principal, "org-1", draft(undefined, null, withBrandImage)), (error: unknown) => error instanceof ApiError && error.status === 422);
+  assert.equal(calls.insert, 0);
 });
 
 test("saving checks the latest revision and returns 409 for a stale base", async () => {

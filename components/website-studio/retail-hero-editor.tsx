@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ImagePlus, Sparkles, Trash2 } from "lucide-react";
 import { isEligibleRetailWebsiteMedia, type WebsiteMedia } from "@/lib/website-studio/retail-contract";
 import type { PublicCatalogProduct } from "@/lib/public-catalog/contracts";
@@ -13,12 +13,14 @@ type Props = {
   onChange: (hero: RetailHeroConfig) => void;
   media: WebsiteMedia[];
   products: PublicCatalogProduct[];
+  organizationId: string;
+  onMediaAdded: (image: WebsiteMedia) => void;
   disabled: boolean;
 };
 
 const money = new Intl.NumberFormat("fa-IR");
 
-export function RetailHeroEditor({ value, onChange, media, products, disabled }: Props) {
+export function RetailHeroEditor({ value, onChange, media, products, organizationId, onMediaAdded, disabled }: Props) {
   const [productSearch, setProductSearch] = useState("");
   const availableMedia = media.filter(isEligibleRetailWebsiteMedia);
   const selectedProducts = value.productIds.map((id, index) => ({
@@ -41,20 +43,10 @@ export function RetailHeroEditor({ value, onChange, media, products, disabled }:
     update({ productIds: next });
   };
 
-  const renderImagePicker = (label: string, selectedId: string, field: "desktopImageId" | "mobileImageId" | "darkDesktopImageId" | "darkMobileImageId") => {
-    const selected = availableMedia.find((item) => item.id === selectedId);
-    return <label className={styles.field}>
-      <span>{label}</span>
-      <select value={selectedId} disabled={disabled} onChange={(event) => update({ [field]: event.target.value })}>
-        <option value="">انتخاب از رسانه‌های تأییدشده</option>
-        {availableMedia.map((item) => <option key={item.id} value={item.id}>{item.alt || item.filename || "تصویر فروشگاه"}</option>)}
-      </select>
-      {selected ? <div className={styles.imagePreview}>
-        <Image src={selected.url} alt={selected.alt || selected.filename || `پیش‌نمایش ${label}`} width={720} height={420} unoptimized />
-        <span>{selected.filename || "تصویر انتخاب‌شده"}</span>
-      </div> : <span className={styles.hint}>تصویر را از مدیریت رسانه‌های فروشگاه اضافه و سپس از این فهرست انتخاب کنید.</span>}
-    </label>;
-  };
+  const renderImagePicker = (label: string, selectedId: string, field: "desktopImageId" | "mobileImageId" | "darkDesktopImageId" | "darkMobileImageId") => <HeroImagePicker
+    label={label} selectedId={selectedId} media={availableMedia} disabled={disabled} organizationId={organizationId}
+    onSelect={(id) => update({ [field]: id })} onMediaAdded={onMediaAdded}
+  />;
 
   return <section className={styles.editor} aria-labelledby="retail-hero-title" dir="rtl">
     <div className={styles.headingRow}>
@@ -167,4 +159,58 @@ export function RetailHeroEditor({ value, onChange, media, products, disabled }:
       </label>
     </fieldset>
   </section>;
+}
+
+function HeroImagePicker({ label, selectedId, media, disabled, organizationId, onSelect, onMediaAdded }: {
+  label: string; selectedId: string; media: WebsiteMedia[]; disabled: boolean; organizationId: string;
+  onSelect(id: string): void; onMediaAdded(image: WebsiteMedia): void;
+}) {
+  const [search, setSearch] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState("");
+  const [retryFile, setRetryFile] = useState<File | null>(null);
+  const selected = media.find((image) => image.id === selectedId);
+  const filtered = useMemo(() => media.filter((image) => `${image.filename ?? ""}`.toLocaleLowerCase("fa-IR").includes(search.trim().toLocaleLowerCase("fa-IR"))), [media, search]);
+  function upload(file?: File) {
+    if (!file) return;
+    setRetryFile(file);
+    setError(""); setUploading(true); setProgress(0);
+    const body = new FormData(); body.append("file", file);
+    const request = new XMLHttpRequest();
+    request.open("POST", `/api/organizations/${encodeURIComponent(organizationId)}/website/media`);
+    request.withCredentials = true;
+    request.upload.onprogress = (event) => { if (event.lengthComputable) setProgress(Math.round(event.loaded / event.total * 100)); };
+    request.onload = () => {
+      try {
+        const result = JSON.parse(request.responseText) as { image?: WebsiteMedia; error?: string };
+        if (request.status < 200 || request.status >= 300 || !result.image) throw new Error(result.error || "آپلود تصویر انجام نشد.");
+        onMediaAdded(result.image); onSelect(result.image.id); setProgress(100);
+      } catch (cause) { setError(cause instanceof Error ? cause.message : "آپلود تصویر انجام نشد."); }
+      finally { setUploading(false); }
+    };
+    request.onerror = () => { setError("ارتباط با سرور قطع شد. دوباره تلاش کنید."); setUploading(false); };
+    request.send(body);
+  }
+  return <fieldset className={`${styles.field} min-w-0`} disabled={disabled || uploading}>
+    <legend className="mb-2 text-sm font-medium">{label}</legend>
+    <div className="space-y-3 rounded-xl border p-3 sm:p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <strong className="text-sm">گالری فروشگاه</strong>
+        <label className="inline-flex min-h-10 cursor-pointer items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground focus-within:ring-2 focus-within:ring-ring">
+          {selected ? "جایگزینی تصویر" : "آپلود تصویر جدید"}
+          <input className="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={disabled || uploading} onChange={(event) => { upload(event.currentTarget.files?.[0]); event.currentTarget.value = ""; }} />
+        </label>
+      </div>
+      <label className="block"><span className="sr-only">جست‌وجو در گالری فروشگاه</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="جست‌وجو بر اساس نام فایل" className="min-h-10 w-full rounded-md border bg-background px-3 text-sm" /></label>
+      {uploading && <div role="status" aria-live="polite" className="space-y-1 text-xs"><span>در حال آپلود تصویر… {progress}%</span><progress className="block h-2 w-full" max={100} value={progress} /></div>}
+      {error && <div className="flex flex-wrap items-center gap-2 text-sm text-destructive"><p role="alert">{error}</p><button type="button" disabled={!retryFile || uploading} className="rounded border px-2 py-1" onClick={() => retryFile && upload(retryFile)}>تلاش دوباره</button></div>}
+      {selected ? <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-2">
+        <Image src={selected.url} alt={selected.alt || selected.filename || "پیش‌نمایش تصویر"} width={120} height={88} unoptimized className="h-20 w-28 rounded object-contain" />
+        <div className="min-w-0 flex-1"><strong className="block truncate text-sm">{selected.filename}</strong><span className="text-xs text-muted-foreground">پیش‌نمایش · {selected.mimeType || "نوع نامشخص"}{selected.sizeBytes ? ` · ${(selected.sizeBytes / 1024).toFixed(0)} KB` : ""}</span></div>
+        <button type="button" className="rounded border px-2 py-1 text-xs" onClick={() => onSelect("")}>حذف انتخاب</button>
+      </div> : <p className="rounded border border-dashed p-3 text-center text-sm text-muted-foreground">هیچ تصویری انتخاب نشده است</p>}
+      {media.length === 0 ? <p className="rounded border border-dashed p-4 text-center text-sm text-muted-foreground">گالری فروشگاه خالی است. تصویری آپلود کنید تا در گالری این سازمان ذخیره شود.</p> : filtered.length ? <div className="grid max-h-56 grid-cols-3 gap-2 overflow-auto sm:grid-cols-4">{filtered.map((image) => <button key={image.id} type="button" aria-pressed={selectedId === image.id} onClick={() => onSelect(image.id)} className={`min-w-0 rounded-md border p-1 text-start focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring ${selectedId === image.id ? "border-primary ring-2 ring-primary" : "hover:border-primary"}`}><Image src={image.url} alt="" width={160} height={120} unoptimized className="aspect-[4/3] w-full rounded object-cover" /><span className="block truncate px-1 py-1 text-xs" title={image.filename ?? ""}>{image.filename}</span><span className="block px-1 pb-1 text-[11px] text-primary">{selectedId === image.id ? "انتخاب‌شده" : "انتخاب تصویر"}</span></button>)}</div> : <p className="text-center text-sm text-muted-foreground">نتیجه‌ای پیدا نشد.</p>}
+    </div>
+  </fieldset>;
 }

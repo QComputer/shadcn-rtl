@@ -27,17 +27,23 @@ export const retailContentSchema = z.object({
 });
 export type RetailContent = z.infer<typeof retailContentSchema>;
 export type RetailSection = RetailContent["sections"][number];
-export type WebsiteMedia = { id: string; url: string; filename: string | null; mimeType: string | null; source?: "TENANT_BRAND"; alt?: string };
+export type WebsiteMedia = { id: string; url: string; filename: string | null; mimeType: string | null; sizeBytes?: number | null; organizationId?: string | null; alt?: string };
 export type WebsiteRevision = { id: string; content: RetailContent; createdAt: string };
 export const saveRetailDraftSchema = z.object({ content: retailContentSchema, baseRevisionId: z.string().max(128).nullable(), requestId: z.string().uuid() }).strict();
 
-const tenantBrandPath = /^\/brand\/tenants\/([a-z0-9-]+)\/home\/(?:[a-z0-9-]+\/)*[a-z0-9-]+\.webp$/;
 export function isEligibleRetailWebsiteMedia(image: WebsiteMedia): boolean {
-  if (image.source !== "TENANT_BRAND") return isEligibleWebsiteImage(image);
-  const match = tenantBrandPath.exec(image.url);
-  if (!match || image.id !== `brand:${match[1]}:${image.url}`) return false;
-  const filename = image.url.split("/").at(-1);
-  return Boolean(filename && image.filename === filename && image.mimeType === "image/webp" && image.id.length <= 128);
+  if (isEligibleWebsiteImage(image)) return true;
+  if (!image.filename || !/^[A-Za-z0-9_.-]+$/.test(image.filename) || image.filename.includes("..")) return false;
+  const segments = image.url.split("/");
+  if (segments.length !== 8 || segments[0] !== "" || segments[1] !== "api" || segments[2] !== "media") return false;
+  try {
+    const encoded = segments.slice(3);
+    const decoded = encoded.map(decodeURIComponent);
+    const [routeOrg, tenants, keyOrg, uploads, filename] = decoded;
+    return encoded.every((part, i) => encodeURIComponent(decoded[i]!) === part)
+      && Boolean(routeOrg && /^[A-Za-z0-9_-]+$/.test(routeOrg)) && routeOrg === keyOrg && image.organizationId === routeOrg
+      && tenants === "tenants" && uploads === "uploads" && filename === image.filename;
+  } catch { return false; }
 }
 
 export function referencedWebsiteImages(content: RetailContent) {

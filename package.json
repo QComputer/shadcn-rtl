@@ -361,7 +361,7 @@
     "web-push": "^3.6.7",
     "ws": "8.20.1",
     "xlsx": "file:vendor/xlsx-0.20.3.tgz",
-    "zod": "^4.4.3"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
@@ -384,7 +384,9 @@
   },
   "pnpm": {
     "overrides": {
-      "proxy-addr": "2.0.8"
+      "proxy-addr": "2.0.8",
+      "ip-address": "10.7.4",
+      "@modelcontextprotocol/sdk": "1.32.0"
     }
   },
   "buildCacheBuster": "tailwind-postcss-2026-05-20-1831",

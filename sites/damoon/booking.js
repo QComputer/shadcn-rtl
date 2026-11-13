@@ -33,9 +33,9 @@ const dateIcon = '<svg class="booking-field__symbol" viewBox="0 0 32 32" aria-hi
 const guestIcon = '<svg class="booking-field__symbol" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="14" cy="9" r="6"/><path d="M3 29v-5c0-5 4-8 11-8s11 3 11 8v5H3Zm21-25c6 2 6 10 0 12m3 3c3 2 4 5 3 10"/></svg>';
 const submitArrow = '<svg class="booking-submit__arrow" viewBox="0 0 32 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 12h27M21 4l8 8-8 8"/></svg>';
 const requestCopy = {
-  fa: { submit: "ارسال درخواست اقامت", notBooking: "این درخواست رزرو قطعی نیست؛ قیمت و موجودی باید توسط پذیرش دوباره بررسی شوند.", unavailable: "سامانه ثبت درخواست اقامت هنوز فعال نیست.", received: "درخواست اقامت ثبت شد", reference: "کد پیگیری امن", keepReference: "این کد را برای پیگیری نزد خود نگه دارید.", status: "وضعیت درخواست", check: "بررسی وضعیت", checking: "در حال بررسی وضعیت...", statuses: { RECEIVED: "دریافت‌شده", IN_REVIEW: "در حال بررسی", OPTION_OFFERED: "پیشنهاد برای بررسی شما آماده است", UNAVAILABLE: "در این زمان در دسترس نیست", DECLINED: "پذیرفته نشد", CLOSED: "بسته‌شده" } },
-  en: { submit: "Send stay request", notBooking: "This request is not a confirmed booking. Reception must recheck the rate and availability.", unavailable: "Stay requests are not enabled yet.", received: "Stay request submitted", reference: "Secure tracking reference", keepReference: "Keep this reference to check your request later.", status: "Request status", check: "Check status", checking: "Checking status...", statuses: { RECEIVED: "Received", IN_REVIEW: "Under review", OPTION_OFFERED: "An option is ready for your review", UNAVAILABLE: "Unavailable for these dates", DECLINED: "Declined", CLOSED: "Closed" } },
-  ar: { submit: "إرسال طلب الإقامة", notBooking: "هذا الطلب ليس حجزاً مؤكداً. يجب على الاستقبال إعادة التحقق من السعر والتوفر.", unavailable: "طلبات الإقامة غير مفعلة بعد.", received: "تم إرسال طلب الإقامة", reference: "رمز متابعة آمن", keepReference: "احتفظ بهذا الرمز لمتابعة طلبك لاحقاً.", status: "حالة الطلب", check: "تحقق من الحالة", checking: "جارٍ التحقق من الحالة...", statuses: { RECEIVED: "تم الاستلام", IN_REVIEW: "قيد المراجعة", OPTION_OFFERED: "الخيار جاهز لمراجعتك", UNAVAILABLE: "غير متاح في هذه التواريخ", DECLINED: "مرفوض", CLOSED: "مغلق" } },
+  fa: { submit: "ارسال درخواست اقامت", notBooking: "این درخواست رزرو قطعی نیست؛ قیمت و موجودی باید توسط پذیرش دوباره بررسی شوند.", unavailable: "سامانه ثبت درخواست اقامت هنوز فعال نیست.", received: "درخواست اقامت ثبت شد", reference: "کد پیگیری امن", keepReference: "این کد را برای پیگیری نزد خود نگه دارید.", status: "وضعیت درخواست", check: "بررسی وضعیت", checking: "در حال بررسی وضعیت...", trackLabel: "پیگیری با کد امن", trackButton: "نمایش وضعیت", trackError: "درخواستی با این کد پیدا نشد یا کد معتبر نیست.", statuses: { RECEIVED: "دریافت‌شده", IN_REVIEW: "در حال بررسی", OPTION_OFFERED: "پیشنهاد برای بررسی شما آماده است", UNAVAILABLE: "در این زمان در دسترس نیست", DECLINED: "پذیرفته نشد", CLOSED: "بسته‌شده" } },
+  en: { submit: "Send stay request", notBooking: "This request is not a confirmed booking. Reception must recheck the rate and availability.", unavailable: "Stay requests are not enabled yet.", received: "Stay request submitted", reference: "Secure tracking reference", keepReference: "Keep this reference to check your request later.", status: "Request status", check: "Check status", checking: "Checking status...", trackLabel: "Track with secure reference", trackButton: "Show status", trackError: "No request was found for this reference.", statuses: { RECEIVED: "Received", IN_REVIEW: "Under review", OPTION_OFFERED: "An option is ready for your review", UNAVAILABLE: "Unavailable for these dates", DECLINED: "Declined", CLOSED: "Closed" } },
+  ar: { submit: "إرسال طلب الإقامة", notBooking: "هذا الطلب ليس حجزاً مؤكداً. يجب على الاستقبال إعادة التحقق من السعر والتوفر.", unavailable: "طلبات الإقامة غير مفعلة بعد.", received: "تم إرسال طلب الإقامة", reference: "رمز متابعة آمن", keepReference: "احتفظ بهذا الرمز لمتابعة طلبك لاحقاً.", status: "حالة الطلب", check: "تحقق من الحالة", checking: "جارٍ التحقق من الحالة...", trackLabel: "المتابعة باستخدام الرمز الآمن", trackButton: "عرض الحالة", trackError: "لم يتم العثور على طلب بهذا الرمز.", statuses: { RECEIVED: "تم الاستلام", IN_REVIEW: "قيد المراجعة", OPTION_OFFERED: "الخيار جاهز لمراجعتك", UNAVAILABLE: "غير متاح في هذه التواريخ", DECLINED: "مرفوض", CLOSED: "مغلق" } },
 };
 
 function validArrival(value, minISO) {
@@ -173,6 +173,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       </div>
       <div class="booking-child-ages-search" data-child-ages-root aria-live="polite"></div>
       <div class="booking-flow" data-booking-flow aria-live="polite"></div>
+      ${requestOnly ? `<form class="booking-step" data-track-request novalidate><label class="booking-field booking-field--text"><span>${escapeHtml(requestCopy[locale]?.trackLabel || requestCopy.en.trackLabel)}</span><input data-track-reference type="text" inputmode="text" autocomplete="off" minlength="40" maxlength="64" dir="ltr" /></label><button class="booking-link" type="submit">${escapeHtml(requestCopy[locale]?.trackButton || requestCopy.en.trackButton)}</button><p data-track-result role="status" aria-live="polite"></p></form>` : ""}
       <p class="booking-message" role="status" aria-live="polite"></p>
     </form>
     <dialog id="booking-calendar" class="booking-calendar" aria-labelledby="booking-calendar-title">
@@ -301,6 +302,20 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     let data = null; try { data = text ? JSON.parse(text) : null; } catch { data = { error: text }; }
     return { ok: res.ok, status: res.status, data, rawText: text };
   }
+  slot.querySelector("[data-track-request]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const copy = requestCopy[locale] || requestCopy.en;
+    const reference = slot.querySelector("[data-track-reference]")?.value.trim() || "";
+    const output = slot.querySelector("[data-track-result]");
+    if (!reference || reference.length < 40) { output.textContent = copy.trackError; return; }
+    output.textContent = copy.checking;
+    try {
+      const result = await postJson("/api/hotel/v1/requests/status", { reference });
+      if (!result.ok || typeof result.data?.status !== "string") { output.textContent = copy.trackError; return; }
+      const label = copy.statuses[result.data.status] || result.data.status;
+      output.textContent = result.data.managerMessage ? `${label} · ${result.data.managerMessage}` : label;
+    } catch { output.textContent = copy.trackError; }
+  });
   function apiErrorMessage(status, data, fallback) {
     const err = typeof data?.error === "string" ? data.error : data?.error?.message || "";
     if (err && status < 500) return `${status}: ${err}`;

@@ -12,7 +12,9 @@ import { enumerateStayNights } from "../domain/stay-dates";
 import { decideReservationTransition } from "../domain/booking-state";
 
 const id = z.string().trim().min(1).max(200);
+const MAX_TOMAN = BigInt(Number.MAX_SAFE_INTEGER);
 const stay = { roomTypeId: id, ratePlanId: id, checkIn: z.iso.date(), checkOut: z.iso.date(), adults: z.number().int().min(1).max(30), childAges: z.array(z.number().int().min(0).max(17)).max(20) };
+const confirmationAmount = z.union([z.number().int().safe().nonnegative(), z.string().regex(/^\d{1,16}$/)]).nullable().optional();
 export const hotelOperationalCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("quote"), ...stay }).strict(),
   z.object({ action: z.literal("search"), ...stay }).strict(),
@@ -20,6 +22,8 @@ export const hotelOperationalCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("hold"), quoteId: id }).strict(),
   z.object({ action: z.literal("reserve"), quoteId: id, holdId: id, guests: z.array(z.object({ fullName: z.string().trim().min(1).max(150), isPrimary: z.boolean(), isChild: z.boolean().optional(), age: z.number().int().min(0).max(120).optional() }).strict()).min(1).max(50) }).strict(),
   z.object({ action: z.literal("cancel"), reservationId: id }).strict(),
+  z.object({ action: z.literal("select-payment-method"), reservationId: id, method: z.enum(["CASH", "BANK_TRANSFER"]) }).strict(),
+  z.object({ action: z.literal("confirm-reservation"), reservationId: id }).strict(),
   z.object({ action: z.literal("assign-room"), reservationId: id, roomId: id }).strict(),
   z.object({ action: z.literal("check-in"), reservationId: id }).strict(),
   z.object({ action: z.literal("check-out"), reservationId: id }).strict(),
@@ -36,12 +40,34 @@ export class HotelOperationalReservationService {
   constructor(private readonly db: PrismaClient = prisma, private readonly now = () => new Date()) {}
 
   async configure(actor: HotelBookingActor, organizationId: string, propertyId: string, input: unknown) {
-    const { mode } = z.object({ mode: z.enum(["DISABLED", "REQUEST_ONLY", "RESERVATION"]) }).strict().parse(input);
+    const parsed = z.object({
+      mode: z.enum(["DISABLED", "REQUEST_ONLY", "RESERVATION"]),
+      manualConfirmationPolicy: z.enum(["DISABLED", "CASH_ON_ARRIVAL", "MINIMUM_VERIFIED_DEPOSIT"]).optional(),
+      allowedOfflinePaymentMethods: z.array(z.enum(["CASH", "BANK_TRANSFER"])).max(2).optional(),
+      minimumVerifiedDepositAmount: confirmationAmount,
+    }).strict().parse(input);
+    const { mode } = parsed;
     await authorizeHotelBookingActor(this.db, actor, organizationId, propertyId);
     if (!["ADMIN", "SUPER_ADMIN"].includes(actor.role)) fail("Organization administrator required", 403);
     if (actor.role !== "SUPER_ADMIN" && !await this.db.organizationMember.findFirst({ where: { organizationId, userId: actor.userId, isActive: true, role: "ADMIN" } })) fail("Organization administrator required", 403);
-    await this.db.hotelProperty.update({ where: { id: propertyId, organizationId }, data: { operationalMode: mode } });
-    return { mode };
+    const hasPaymentConfig = parsed.manualConfirmationPolicy !== undefined || parsed.allowedOfflinePaymentMethods !== undefined || parsed.minimumVerifiedDepositAmount !== undefined;
+    const data: Prisma.HotelPropertyUpdateInput = { operationalMode: mode };
+    if (hasPaymentConfig) {
+      if (parsed.manualConfirmationPolicy === undefined || parsed.allowedOfflinePaymentMethods === undefined) fail("Confirmation policy and allowed methods must be configured together", 400);
+      const methods = parsed.allowedOfflinePaymentMethods;
+      if (new Set(methods).size !== methods.length) fail("Duplicate payment method", 400);
+      const rawMinimum = parsed.minimumVerifiedDepositAmount;
+      const minimum = rawMinimum == null ? null : BigInt(rawMinimum);
+      if (minimum !== null && (minimum <= BigInt(0) || minimum > MAX_TOMAN)) fail("Minimum deposit is outside the supported Toman range", 400);
+      if (parsed.manualConfirmationPolicy === "CASH_ON_ARRIVAL" && (!methods.includes("CASH") || minimum !== null)) fail("Cash-on-arrival policy requires CASH and no minimum deposit", 400);
+      if (parsed.manualConfirmationPolicy === "MINIMUM_VERIFIED_DEPOSIT" && (!methods.length || minimum === null)) fail("Minimum-deposit policy requires allowed methods and a positive minimum", 400);
+      if (parsed.manualConfirmationPolicy === "DISABLED" && minimum !== null) fail("Disabled confirmation policy cannot set a minimum deposit", 400);
+      data.manualConfirmationPolicy = parsed.manualConfirmationPolicy;
+      data.allowedOfflinePaymentMethods = methods;
+      data.minimumVerifiedDepositAmount = minimum;
+    }
+    const updated = await this.db.hotelProperty.update({ where: { id: propertyId, organizationId }, data });
+    return { mode, manualConfirmationPolicy: updated.manualConfirmationPolicy, allowedOfflinePaymentMethods: updated.allowedOfflinePaymentMethods, minimumVerifiedDepositAmount: updated.minimumVerifiedDepositAmount?.toString() ?? null };
   }
   private async authorize(actor: HotelBookingActor, organizationId: string, propertyId: string) {
     if (process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED !== "1" || process.env.HOTEL_GUEST_PORTAL_ENABLED !== "1") fail("Operational reservations are disabled", 403);
@@ -72,7 +98,7 @@ export class HotelOperationalReservationService {
     }
   }
   async get(actor: HotelBookingActor, organizationId: string, propertyId: string) {
-    await this.authorize(actor, organizationId, propertyId);
+    const property = await this.authorize(actor, organizationId, propertyId);
     await this.expire(organizationId, propertyId);
     const quotes = await this.quotes(this.db, organizationId, propertyId, actor);
     const ids = quotes.flatMap(row => { const quote = row.snapshot as unknown as HotelPricedQuote; return quote.reservationId ? [quote.reservationId] : []; });
@@ -81,7 +107,7 @@ export class HotelOperationalReservationService {
     const ratePlans = await this.db.hotelRatePlan.findMany({ where: { organizationId, propertyId, isActive: true }, select: { id: true, name: true, roomTypeId: true } });
     const rooms = actor.role === "CUSTOMER" ? [] : await this.db.hotelRoom.findMany({ where: { organizationId, propertyId, isActive: true, deletedAt: null, isOutOfService: false }, select: { id: true, code: true, roomTypeId: true } });
     const history = await this.db.hotelInventoryIdempotency.findMany({ where: { organizationId, operationScope: { in: [ACTIONS, "HOTEL_OPERATIONAL_SYSTEM_EXPIRY"] }, AND: [{ resultJson: { path: ["propertyId"], equals: propertyId } }, ...(actor.role === "CUSTOMER" ? [{ resultJson: { path: ["actorUserId"], equals: actor.userId } }] : [])] }, orderBy: { createdAt: "desc" }, take: 200, select: { id: true, resultJson: true, createdAt: true } });
-    return json({ mode: "RESERVATION", view: actor.role === "CUSTOMER" ? "guest" : "reception", roomTypes, ratePlans, rooms, history, reservations: reservations.map(row => ({ id: row.id, reference: row.reference, guestName: row.guests.find(g => g.isPrimary)?.fullName ?? "", status: row.status, roomTypeId: row.roomTypeId, checkIn: dateOnly(row.checkIn), checkOut: dateOnly(row.checkOut), totalAmount: row.totalAmount, currency: row.currency, paidAmount: row.paidAmount, refundedAmount: row.refundedAmount, outstandingAmount: row.totalAmount - row.paidAmount, createdAt: row.createdAt, confirmedAt: row.confirmedAt, checkedInAt: row.checkedInAt, checkedOutAt: row.checkedOutAt, cancelledAt: row.cancelledAt, nights: row.nights })) });
+    return json({ mode: "RESERVATION", view: actor.role === "CUSTOMER" ? "guest" : "reception", confirmationPolicy: { manualConfirmationPolicy: property.manualConfirmationPolicy, allowedOfflinePaymentMethods: property.allowedOfflinePaymentMethods, minimumVerifiedDepositAmount: property.minimumVerifiedDepositAmount?.toString() ?? null }, roomTypes, ratePlans, rooms, history, reservations: reservations.map(row => ({ id: row.id, reference: row.reference, guestName: row.guests.find(g => g.isPrimary)?.fullName ?? "", status: row.status, paymentMethod: row.paymentMethod, roomTypeId: row.roomTypeId, checkIn: dateOnly(row.checkIn), checkOut: dateOnly(row.checkOut), totalAmount: row.totalAmount, currency: row.currency, paidAmount: row.paidAmount, refundedAmount: row.refundedAmount, outstandingAmount: row.totalAmount - row.paidAmount, createdAt: row.createdAt, confirmedAt: row.confirmedAt, checkedInAt: row.checkedInAt, checkedOutAt: row.checkedOutAt, cancelledAt: row.cancelledAt, nights: row.nights })) });
   }
   private async lockQuote(tx: Tx, actor: HotelBookingActor, organizationId: string, propertyId: string, quoteId: string) {
     await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelStayQuote" WHERE "id"=${quoteId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} FOR UPDATE`);
@@ -101,7 +127,7 @@ export class HotelOperationalReservationService {
       const replay = await tx.hotelInventoryIdempotency.findUnique({ where: key });
       if (replay) { if (replay.requestFingerprint !== fingerprint) fail("Idempotency-Key conflict"); return replay.resultJson; }
       await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelProperty" WHERE "id"=${propertyId} AND "organizationId"=${organizationId} FOR SHARE`);
-      const property = await tx.hotelProperty.findFirst({ where: { id: propertyId, organizationId, operationalMode: "RESERVATION", isActive: true, deletedAt: null } });
+        const property = await tx.hotelProperty.findFirst({ where: { id: propertyId, organizationId, operationalMode: "RESERVATION", isActive: true, deletedAt: null } });
       if (!property) fail("Operational reservations disabled", 403);
       const now = this.now(); const repo = new PrismaHotelRepositories(this.db);
       let result: Record<string, unknown>;
@@ -171,11 +197,41 @@ export class HotelOperationalReservationService {
         const candidates = await this.quotes(tx, organizationId, propertyId, actor);
         if (!candidates.some(row => (row.snapshot as unknown as HotelPricedQuote).reservationId === command.reservationId)) fail("Reservation not found", 404);
         await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelReservation" WHERE "id"=${command.reservationId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} FOR UPDATE`);
-        let reservation = await tx.hotelReservation.findFirstOrThrow({ where: { id: command.reservationId, organizationId, propertyId }, include: { nights: true } });
-        if (command.action === "cancel") {
+        let reservation = await tx.hotelReservation.findFirstOrThrow({ where: { id: command.reservationId, organizationId, propertyId }, include: { nights: true, hold: true } });
+        if (command.action === "select-payment-method") {
+          if (actor.role !== "CUSTOMER") fail("Guest account required to select a payment method", 403);
+          if (reservation.status !== "PENDING_PAYMENT") fail("Only pending reservations can select a payment method");
+          if (!reservation.holdId) fail("Reservation hold is unavailable");
+          await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelBookingHold" WHERE "id"=${reservation.holdId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} FOR UPDATE`);
+          const activeHold = await tx.hotelBookingHold.findFirst({ where: { id: reservation.holdId, organizationId, propertyId } });
+          if (!activeHold || activeHold.status !== "CONSUMED" || activeHold.expiresAt <= now) fail("Reservation hold expired");
+          if (!property!.allowedOfflinePaymentMethods.includes(command.method)) fail("Payment method is not enabled for this property", 422);
+          const selected = await tx.hotelReservation.updateMany({ where: { id: reservation.id, organizationId, propertyId, status: "PENDING_PAYMENT", version: reservation.version }, data: { paymentMethod: command.method, version: { increment: 1 } } });
+          if (selected.count !== 1) fail("Reservation changed while selecting payment method");
+          reservation = await tx.hotelReservation.findFirstOrThrow({ where: { id: reservation.id, organizationId, propertyId }, include: { nights: true, hold: true } });
+        } else if (command.action === "confirm-reservation") {
+          if (actor.role === "CUSTOMER") fail("Reception role required", 403);
+          if (reservation.status !== "PENDING_PAYMENT") fail("Only pending reservations can be confirmed");
+          if (!reservation.holdId || !reservation.hold || reservation.hold.status !== "CONSUMED") fail("Reservation hold is unavailable");
+          await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelBookingHold" WHERE "id"=${reservation.holdId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} FOR UPDATE`);
+          const hold = await tx.hotelBookingHold.findFirst({ where: { id: reservation.holdId, organizationId, propertyId } });
+          if (!hold || hold.status !== "CONSUMED" || hold.expiresAt <= now) fail("Reservation hold expired");
+          if (!reservation.paymentMethod || !property!.allowedOfflinePaymentMethods.includes(reservation.paymentMethod)) fail("Select an enabled payment method before confirmation");
+          if (property!.manualConfirmationPolicy === "CASH_ON_ARRIVAL") {
+            if (reservation.paymentMethod === "BANK_TRANSFER" && reservation.paidAmount < reservation.totalAmount) fail("Bank transfer confirmation requires a verified full payment");
+          } else if (property!.manualConfirmationPolicy === "MINIMUM_VERIFIED_DEPOSIT") {
+            const minimum = property!.minimumVerifiedDepositAmount;
+            if (minimum === null || minimum <= BigInt(0) || minimum > MAX_TOMAN || reservation.paidAmount < minimum) fail("Minimum verified deposit has not been received");
+          } else {
+            fail("Manual confirmation is disabled for this property", 403);
+          }
+          const confirmed = await tx.hotelReservation.updateMany({ where: { id: reservation.id, organizationId, propertyId, status: "PENDING_PAYMENT", version: reservation.version }, data: { status: "CONFIRMED", confirmedAt: now, version: { increment: 1 } } });
+          if (confirmed.count !== 1) fail("Reservation changed while confirming");
+          reservation = await tx.hotelReservation.findFirstOrThrow({ where: { id: reservation.id, organizationId, propertyId }, include: { nights: true, hold: true } });
+        } else if (command.action === "cancel") {
           if (!["CANCELLED", "EXPIRED"].includes(reservation.status)) {
             const cancelled = await repo.cancelReservationAndReleaseInventory({ scope: { organizationId }, reservationId: reservation.id, expectedStatus: ["PENDING_PAYMENT", "CONFIRMED"], now }, tx);
-            if (!cancelled.isUpdated) fail(cancelled.reason); reservation = await tx.hotelReservation.findUniqueOrThrow({ where: { id: reservation.id }, include: { nights: true } });
+            if (!cancelled.isUpdated) fail(cancelled.reason); reservation = await tx.hotelReservation.findUniqueOrThrow({ where: { id: reservation.id }, include: { nights: true, hold: true } });
           }
         } else {
           if (actor.role === "CUSTOMER") fail("Reception role required", 403);
@@ -184,7 +240,7 @@ export class HotelOperationalReservationService {
             await this.lockRoom(tx, organizationId, propertyId, reservation.roomTypeId, command.roomId);
             if (await tx.hotelReservationRoom.findFirst({ where: { organizationId, roomId: command.roomId, date: { in: reservation.nights.map(n => n.date) }, reservationId: { not: reservation.id } } })) fail("Room is already assigned");
             await tx.hotelReservationRoom.updateMany({ where: { organizationId, reservationId: reservation.id }, data: { roomId: command.roomId } });
-            reservation = await tx.hotelReservation.update({ where: { id: reservation.id }, data: { version: { increment: 1 } }, include: { nights: true } });
+            reservation = await tx.hotelReservation.update({ where: { id: reservation.id }, data: { version: { increment: 1 } }, include: { nights: true, hold: true } });
           } else {
             const checkingIn = command.action === "check-in";
             if (checkingIn) {
@@ -195,7 +251,7 @@ export class HotelOperationalReservationService {
             if (checkingIn ? reservation.status !== "CONFIRMED" : reservation.status !== "CHECKED_IN") fail("Invalid reception transition");
             const decision = decideReservationTransition({ current: checkingIn ? "CONFIRMED" : "CHECKED_IN", transition: checkingIn ? "CHECK_IN" : "CHECK_OUT", event: { type: checkingIn ? "GUEST_CHECKED_IN" : "GUEST_CHECKED_OUT", at: now.toISOString() }, now: now.toISOString() });
             if (!decision.isAllowed) fail(decision.reason);
-            reservation = await tx.hotelReservation.update({ where: { id: reservation.id }, data: { status: checkingIn ? "CHECKED_IN" : "CHECKED_OUT", ...(checkingIn ? { checkedInAt: now } : { checkedOutAt: now }), version: { increment: 1 } }, include: { nights: true } });
+            reservation = await tx.hotelReservation.update({ where: { id: reservation.id }, data: { status: checkingIn ? "CHECKED_IN" : "CHECKED_OUT", ...(checkingIn ? { checkedInAt: now } : { checkedOutAt: now }), version: { increment: 1 } }, include: { nights: true, hold: true } });
           }
         }
         result = { reservation: this.summary(reservation) };
@@ -205,7 +261,7 @@ export class HotelOperationalReservationService {
       return durable;
     }, { maxWait: 10000, timeout: 20000 });
   }
-  private summary(row: { id: string; reference: string; status: string; totalAmount: string | number | bigint; currency: string }) { return { id: row.id, reference: row.reference, status: row.status, totalAmount: row.totalAmount.toString(), currency: row.currency, simulated: false }; }
+  private summary(row: { id: string; reference: string; status: string; paymentMethod?: string | null; totalAmount: string | number | bigint; currency: string }) { return { id: row.id, reference: row.reference, status: row.status, paymentMethod: row.paymentMethod ?? null, totalAmount: row.totalAmount.toString(), currency: row.currency, simulated: false }; }
   private async lockRoom(tx: Tx, organizationId: string, propertyId: string, roomTypeId: string, roomId: string) {
     await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelRoom" WHERE "id"=${roomId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} FOR UPDATE`);
     if (!await tx.hotelRoom.findFirst({ where: { id: roomId, organizationId, propertyId, roomTypeId, isActive: true, deletedAt: null, isOutOfService: false } })) fail("Room is not available");

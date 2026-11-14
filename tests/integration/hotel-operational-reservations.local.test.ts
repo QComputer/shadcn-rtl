@@ -5,16 +5,19 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { HotelOperationalReservationService } from "../../lib/hotel/services/hotel-operational-reservation.service";
 import { HotelStayRequestService } from "../../lib/hotel/services/hotel-stay-request.service";
+import { createHotelOfflinePaymentService } from "../../lib/hotel/offline-payments/service";
+import { createPrismaHotelOfflinePaymentRepository } from "../../lib/hotel/offline-payments/prisma-repository";
 
 const enabled = process.env.HOTEL_OPERATIONAL_RESERVATION_ACCEPTANCE === "1";
 const day = (value: string) => new Date(`${value}T00:00:00.000Z`);
 const stay = { checkIn: "2027-12-10", checkOut: "2027-12-12", adults: 1, childAges: [] as number[] };
 type OperationalResult = {
   simulated?: boolean;
+  confirmationPolicy?: { manualConfirmationPolicy?: string; allowedOfflinePaymentMethods?: string[]; minimumVerifiedDepositAmount?: string | null };
   quote?: { id: string };
   hold?: { id: string };
-  reservation?: { id: string; status: string };
-  reservations?: Array<{ id: string }>;
+  reservation?: { id: string; status: string; paymentMethod?: string | null; paidAmount?: string; confirmedAt?: string | Date | null };
+  reservations?: Array<{ id: string; paymentMethod?: string | null }>;
   history?: Array<{ resultJson?: { actorUserId?: string; reservation?: { id: string } } }>;
 };
 
@@ -94,6 +97,10 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     await service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION" });
     await service.configure(foreignReceptionist, b.id, pb.id, { mode: "RESERVATION" });
     process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED = "1"; process.env.HOTEL_GUEST_PORTAL_ENABLED = "1";
+    assert.equal((await service.get(guestA, a.id, pa.id) as OperationalResult).confirmationPolicy?.manualConfirmationPolicy, "DISABLED", "manual confirmation is disabled by default");
+    await assert.rejects(() => service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION", manualConfirmationPolicy: "CASH_ON_ARRIVAL", allowedOfflinePaymentMethods: ["BANK_TRANSFER"], minimumVerifiedDepositAmount: null }), /cash-on-arrival/i);
+    await assert.rejects(() => service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION", manualConfirmationPolicy: "MINIMUM_VERIFIED_DEPOSIT", allowedOfflinePaymentMethods: ["BANK_TRANSFER"], minimumVerifiedDepositAmount: 0 }), /positive minimum/i);
+    await assert.rejects(() => service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION", manualConfirmationPolicy: "MINIMUM_VERIFIED_DEPOSIT", allowedOfflinePaymentMethods: ["BANK_TRANSFER"], minimumVerifiedDepositAmount: Number.MAX_SAFE_INTEGER + 1 }), /safe integer|number/i);
     const quote = async (actor: typeof guestA, org: string, property: string, roomTypeId: string, ratePlanId: string, key: string) => {
       const result = await service.execute(actor, org, property, { action: "quote", roomTypeId, ratePlanId, ...stay }, key) as OperationalResult;
       assert.equal(result.simulated, false); assert.ok(result.quote?.id); quotes.push(result.quote.id); return result.quote;
@@ -135,15 +142,45 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     assert.equal(replay.reservation.id, reserve.reservation.id, "repeat reserve command resolves to the same reservation");
     const guestView = await service.get(guestA, a.id, pa.id) as OperationalResult;
     assert.ok(guestView.reservations?.some(row => row.id === reserve.reservation!.id));
+    assert.equal(guestView.reservations?.find(row => row.id === reserve.reservation!.id)?.paymentMethod, null);
     assert.ok(guestView.history?.length, "guest sees their own operational history");
     assert.ok(guestView.history?.every(row => row.resultJson?.actorUserId === customer.id), "guest history excludes other actors");
     const staffView = await service.get(receptionist, a.id, pa.id) as OperationalResult;
     assert.ok(staffView.history?.some(row => row.resultJson?.reservation?.id === reserve.reservation!.id));
+    await assert.rejects(() => service.execute(receptionist, a.id, pa.id, { action: "confirm-reservation", reservationId: reserve.reservation.id }, `confirm-disabled-${token}`), /disabled|select an enabled/i);
+    await service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION", manualConfirmationPolicy: "CASH_ON_ARRIVAL", allowedOfflinePaymentMethods: ["CASH", "BANK_TRANSFER"], minimumVerifiedDepositAmount: null });
+    await assert.rejects(() => service.execute(otherGuest, a.id, pa.id, { action: "select-payment-method", reservationId: reserve.reservation.id, method: "CASH" }, `other-select-${token}`), /not found/i);
+    const selectedTransferWithoutPayment = await service.execute(guestA, a.id, pa.id, { action: "select-payment-method", reservationId: reserve.reservation.id, method: "BANK_TRANSFER" }, `select-transfer-unpaid-${token}`) as OperationalResult;
+    assert.equal(selectedTransferWithoutPayment.reservation?.paymentMethod, "BANK_TRANSFER");
+    await assert.rejects(() => service.execute(receptionist, a.id, pa.id, { action: "confirm-reservation", reservationId: reserve.reservation.id }, `confirm-transfer-unpaid-${token}`), /full payment/i);
+    const selectedCash = await service.execute(guestA, a.id, pa.id, { action: "select-payment-method", reservationId: reserve.reservation.id, method: "CASH" }, `select-cash-${token}`) as OperationalResult;
+    assert.equal(selectedCash.reservation?.paymentMethod, "CASH");
+    assert.deepEqual(await service.execute(guestA, a.id, pa.id, { action: "select-payment-method", reservationId: reserve.reservation.id, method: "CASH" }, `select-cash-${token}`), selectedCash, "payment selection is replayable from the existing audit history");
+    const confirmationRace = await Promise.allSettled([
+      service.execute(receptionist, a.id, pa.id, { action: "confirm-reservation", reservationId: reserve.reservation.id }, `confirm-cash-a-${token}`),
+      service.execute(receptionist, a.id, pa.id, { action: "confirm-reservation", reservationId: reserve.reservation.id }, `confirm-cash-b-${token}`),
+    ]);
+    assert.equal(confirmationRace.filter(result => result.status === "fulfilled").length, 1, "only one concurrent confirmation wins the pending-state CAS");
+    const zeroDepositConfirmation = (confirmationRace.find(result => result.status === "fulfilled") as PromiseFulfilledResult<OperationalResult>).value;
+    assert.equal(zeroDepositConfirmation.reservation?.status, "CONFIRMED", "cash-on-arrival permits confirmation without a deposit");
+    assert.equal((await db.hotelReservation.findUniqueOrThrow({ where: { id: reserve.reservation.id } })).paidAmount, BigInt(0), "confirmation does not change the payment balance");
     await assert.rejects(() => service.execute(foreignReceptionist, a.id, pa.id, { action: "cancel", reservationId: reserve.reservation.id }, `foreign-cancel-${token}`), /forbidden|not found/i);
     const cancelled = await service.execute(guestA, a.id, pa.id, { action: "cancel", reservationId: reserve.reservation.id }, `cancel-${token}`) as OperationalResult;
     assert.equal(cancelled.reservation.status, "CANCELLED");
     const stock = await db.hotelInventory.findMany({ where: { organizationId: a.id, roomTypeId: roomA.id }, orderBy: { date: "asc" } });
     assert.ok(stock.every(row => row.booked === 0 && row.held === 1), "cancellation releases its claim while the competing hold remains active");
+
+    await db.hotelInventory.updateMany({ where: { organizationId: a.id, roomTypeId: roomA.id }, data: { allotment: 4 } });
+    const fullTransferQuote = await quote(guestA, a.id, pa.id, roomA.id, rateA.id, `quote-${token}-full-transfer`);
+    const fullTransferHold = await service.execute(guestA, a.id, pa.id, { action: "hold", quoteId: fullTransferQuote.id }, `hold-${token}-full-transfer`) as OperationalResult;
+    const fullTransferReservation = await service.execute(guestA, a.id, pa.id, { action: "reserve", quoteId: fullTransferQuote.id, holdId: fullTransferHold.hold!.id, guests }, `reserve-${token}-full-transfer`) as OperationalResult;
+    await service.execute(guestA, a.id, pa.id, { action: "select-payment-method", reservationId: fullTransferReservation.reservation!.id, method: "BANK_TRANSFER" }, `select-transfer-full-${token}`);
+    const fullAmount = (await db.hotelReservation.findUniqueOrThrow({ where: { id: fullTransferReservation.reservation!.id } })).totalAmount;
+    await db.hotelOfflinePayment.create({ data: { id: `verified-full-${token}`, organizationId: a.id, reservationId: fullTransferReservation.reservation!.id, method: "BANK_TRANSFER", status: "VERIFIED", amountToman: fullAmount, recordedByUserId: customer.id, verifiedByUserId: staff.id, verifiedAt: now(), bankReference: `verified-full-${token}` } });
+    await db.hotelReservation.update({ where: { id: fullTransferReservation.reservation!.id }, data: { paidAmount: fullAmount } });
+    const fullTransferConfirmation = await service.execute(receptionist, a.id, pa.id, { action: "confirm-reservation", reservationId: fullTransferReservation.reservation!.id }, `confirm-transfer-full-${token}`) as OperationalResult;
+    assert.equal(fullTransferConfirmation.reservation?.status, "CONFIRMED", "cash-on-arrival policy also allows bank transfer after verified full payment");
+    await service.execute(guestA, a.id, pa.id, { action: "cancel", reservationId: fullTransferReservation.reservation!.id }, `cancel-full-transfer-${token}`);
 
     await db.hotelInventory.updateMany({ where: { organizationId: a.id, roomTypeId: roomA.id }, data: { allotment: 4 } });
     const expiringQuote = await quote(guestA, a.id, pa.id, roomA.id, rateA.id, `quote-${token}-expiring-hold`);
@@ -166,8 +203,26 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     assert.equal(releasedHold.status, "EXPIRED", "expired active hold is released by the request sweep");
     assert.equal(consumedHold.status, "CONSUMED");
     assert.equal(expiredReservation.status, "EXPIRED", "expired pending reservation is atomically cancelled");
+    await assert.rejects(() => service.execute(guestA, a.id, pa.id, { action: "select-payment-method", reservationId: pending.reservation!.id, method: "CASH" }, `select-expired-${token}`), /not found|pending/i);
+    await assert.rejects(() => service.execute(receptionist, a.id, pa.id, { action: "confirm-reservation", reservationId: pending.reservation!.id }, `confirm-expired-${token}`), /not found|pending/i);
     const finalStock = await db.hotelInventory.findMany({ where: { organizationId: a.id, roomTypeId: roomA.id } });
     assert.ok(finalStock.every(row => row.booked === 0 && row.held === 0), "both expiry paths release every night claim");
+
+    await db.hotelInventory.updateMany({ where: { organizationId: a.id, roomTypeId: roomA.id }, data: { allotment: 4 } });
+    await service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION", manualConfirmationPolicy: "MINIMUM_VERIFIED_DEPOSIT", allowedOfflinePaymentMethods: ["BANK_TRANSFER", "CASH"], minimumVerifiedDepositAmount: 50_000 });
+    const depositQuote = await quote(guestA, a.id, pa.id, roomA.id, rateA.id, `quote-${token}-minimum-deposit`);
+    const depositHold = await service.execute(guestA, a.id, pa.id, { action: "hold", quoteId: depositQuote.id }, `hold-${token}-minimum-deposit`) as OperationalResult;
+    const depositReservation = await service.execute(guestA, a.id, pa.id, { action: "reserve", quoteId: depositQuote.id, holdId: depositHold.hold!.id, guests }, `reserve-${token}-minimum-deposit`) as OperationalResult;
+    await service.execute(guestA, a.id, pa.id, { action: "select-payment-method", reservationId: depositReservation.reservation!.id, method: "BANK_TRANSFER" }, `select-transfer-${token}`);
+    const payments = createHotelOfflinePaymentService({ repository: createPrismaHotelOfflinePaymentRepository(db), now });
+    const transfer = await payments.submitBankTransfer({ actor: { organizationId: a.id, userId: customer.id, permissions: ["hotel:offline-payment:submit-transfer"] }, reservationId: depositReservation.reservation!.id, amountToman: BigInt(50_000), bankReference: `unverified-${token}`, idempotencyKey: `submit-deposit-${token}` });
+    assert.equal(transfer.outcome, "APPLIED");
+    if (transfer.outcome !== "APPLIED") throw new Error("Transfer fixture was not submitted");
+    await assert.rejects(() => service.execute(receptionist, a.id, pa.id, { action: "confirm-reservation", reservationId: depositReservation.reservation!.id }, `confirm-unverified-${token}`), /minimum verified deposit/i);
+    const verification = await payments.verifyBankTransfer({ actor: { organizationId: a.id, userId: staff.id, permissions: ["hotel:offline-payment:verify-transfer"] }, reservationId: depositReservation.reservation!.id, ledgerEntryId: transfer.entry.id, idempotencyKey: `verify-deposit-${token}` });
+    assert.equal(verification.outcome, "APPLIED");
+    const depositedConfirmation = await service.execute(receptionist, a.id, pa.id, { action: "confirm-reservation", reservationId: depositReservation.reservation!.id }, `confirm-verified-${token}`) as OperationalResult;
+    assert.equal(depositedConfirmation.reservation?.status, "CONFIRMED", "only the verified reservation balance satisfies minimum deposit policy");
 
     // Synthetic confirmation is test-only fixture setup; no gateway or payment request is involved.
     await db.hotelInventory.updateMany({ where: { organizationId: a.id, roomTypeId: roomA.id }, data: { allotment: 4 } });
@@ -218,6 +273,8 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
       if (orgs.length) {
         await db.hotelInventoryIdempotency.deleteMany({ where: { organizationId: { in: orgs } } });
         await db.hotelStayRequest.deleteMany({ where: { organizationId: { in: orgs } } });
+        await db.hotelOfflinePaymentCommandIdempotency.deleteMany({ where: { organizationId: { in: orgs } } });
+        await db.hotelOfflinePayment.deleteMany({ where: { organizationId: { in: orgs } } });
         await db.hotelReservation.deleteMany({ where: { organizationId: { in: orgs } } });
         await db.hotelBookingHold.deleteMany({ where: { organizationId: { in: orgs } } });
         await db.hotelStayQuote.deleteMany({ where: { organizationId: { in: orgs } } });

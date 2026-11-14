@@ -53,6 +53,6 @@ export default async function HotelReservationsPage({ params, searchParams }: {
     redirect(`/${locale}/login?callbackUrl=${encodeURIComponent(path)}`);
   }
   return <main className="mx-auto min-w-0 w-full max-w-5xl p-4 sm:p-6">
-    <HotelOperationalReservations key={`${organizationId}:${propertyId}:${session.user.id}`} organizationId={organizationId} propertyId={propertyId} locale={locale} mode={session.user.role === "CUSTOMER" ? "guest" : "reception"} initialStay={initialStay(search)} requestId={requestId.length <= 200 ? requestId : undefined} />
+    <HotelOperationalReservations key={`${organizationId}:${propertyId}:${session.user.id}`} organizationId={organizationId} propertyId={propertyId} locale={locale} mode={session.user.role === "CUSTOMER" ? "guest" : "reception"} canConfigure={session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN"} initialStay={initialStay(search)} requestId={requestId.length <= 200 ? requestId : undefined} />
   </main>;
 }

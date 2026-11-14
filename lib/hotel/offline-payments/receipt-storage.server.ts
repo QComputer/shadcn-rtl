@@ -37,3 +37,8 @@ export async function readHotelPaymentReceipt(organizationId: string, key: strin
   if (asset.buffer.length > MAX_BYTES) throw new ApiError(413, "Receipt exceeds the allowed size");
   return { buffer: asset.buffer, contentType: asset.metadata.mimeType };
 }
+
+/** Used to remove a newly stored object if attaching it to the ledger fails. */
+export async function removeHotelPaymentReceipt(organizationId: string, key: string) {
+  await createPersistentDiskApplicationStorage().remove(reference(organizationId, key));
+}

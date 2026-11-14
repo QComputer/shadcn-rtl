@@ -105,6 +105,12 @@ enum HotelOfflinePaymentCommandType {
   VERIFY_BANK_TRANSFER
 }
 
+enum HotelManualConfirmationPolicy {
+  DISABLED
+  CASH_ON_ARRIVAL
+  MINIMUM_VERIFIED_DEPOSIT
+}
+
 enum OrganizationCapabilityStatus {
   ACTIVE
   INACTIVE
@@ -5186,6 +5192,9 @@ model HotelProperty {
   minStayNights  Int     @default(1)
   maxStayNights  Int     @default(30)
   operationalMode HotelOperationalMode @default(DISABLED)
+  manualConfirmationPolicy HotelManualConfirmationPolicy @default(DISABLED)
+  allowedOfflinePaymentMethods HotelOfflinePaymentMethod[] @default([])
+  minimumVerifiedDepositAmount BigInt?
   addressLine1   String?
   city           String?
   latitude       Decimal? @db.Decimal(9, 6)
@@ -5736,6 +5745,8 @@ model HotelReservation {
   currency       String   @default("TOMAN")
   totalAmount    BigInt
   paidAmount     BigInt   @default(0)
+  /// Guest-selected collection method; this does not imply any payment was made.
+  paymentMethod  HotelOfflinePaymentMethod?
   refundedAmount BigInt   @default(0)
   /// Denormalised for reporting; the SNAPSHOT below is authoritative.
   cancellationPolicyKey String
@@ -5783,6 +5794,7 @@ model HotelOfflinePayment {
   amountToman      BigInt
   recordedByUserId String
   bankReference    String? @db.VarChar(160)
+  receiptKey       String?
   verifiedByUserId String?
   verifiedAt       DateTime?
   createdAt        DateTime @default(now())

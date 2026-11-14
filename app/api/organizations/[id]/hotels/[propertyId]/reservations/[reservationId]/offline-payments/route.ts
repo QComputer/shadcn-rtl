@@ -32,8 +32,8 @@ export async function GET(request: NextRequest, params: Params) {
     const reservation = await prisma.hotelReservation.findFirst({ where: { id: scope.reservationId, organizationId: scope.organizationId, propertyId: scope.propertyId }, select: { totalAmount: true, paidAmount: true, guestCustomerId: true } });
     if (!reservation) throw new ApiError(404, "Reservation not found");
     if (scope.role === "CUSTOMER" && (!reservation.guestCustomerId || !await prisma.customerIdentity.findFirst({ where: { organizationId: scope.organizationId, userId: scope.userId, guestCustomerId: reservation.guestCustomerId, status: "ACTIVE" }, select: { id: true } }))) throw new ApiError(404, "Reservation not found");
-    const entries = await prisma.$queryRaw<Array<{ id: string; method: string; status: string; amountToman: bigint; createdAt: Date; verifiedAt: Date | null }>>(Prisma.sql`
-      SELECT "id", "method"::text, "status"::text, "amountToman", "createdAt", "verifiedAt"
+    const entries = await prisma.$queryRaw<Array<{ id: string; method: string; status: string; amountToman: bigint; createdAt: Date; verifiedAt: Date | null; hasReceipt: boolean }>>(Prisma.sql`
+      SELECT "id", "method"::text, "status"::text, "amountToman", "createdAt", "verifiedAt", ("receiptKey" IS NOT NULL) AS "hasReceipt"
       FROM "HotelOfflinePayment" WHERE "organizationId" = ${scope.organizationId} AND "reservationId" = ${scope.reservationId}
       ORDER BY "createdAt" DESC LIMIT 100
     `);

@@ -9,6 +9,7 @@ export type HotelOfflinePaymentEntry = {
   amountToman: string;
   createdAt?: string;
   verifiedAt?: string | null;
+  hasReceipt?: boolean;
 };
 
 export type HotelOfflinePaymentSummary = {
@@ -52,6 +53,7 @@ export function parseHotelOfflinePaymentSummary(value: unknown): HotelOfflinePay
     if (typeof entry.id !== "string" || !entry.id || (entry.method !== "CASH" && entry.method !== "BANK_TRANSFER") || (entry.status !== "SUBMITTED" && entry.status !== "VERIFIED") || amountToman === null) return null;
     entries.push({ id: entry.id, method: entry.method, status: entry.status, amountToman,
       ...(typeof entry.createdAt === "string" ? { createdAt: entry.createdAt } : {}),
+      ...(typeof entry.hasReceipt === "boolean" ? { hasReceipt: entry.hasReceipt } : {}),
       ...(typeof entry.verifiedAt === "string" ? { verifiedAt: entry.verifiedAt } : entry.verifiedAt === null ? { verifiedAt: null } : {}) });
   }
   return { totalToman, paidToman, outstandingToman, entries };
@@ -142,9 +144,9 @@ export function HotelOfflinePayments({ organizationId, propertyId, reservationId
     void send("VERIFY_BANK_TRANSFER", { ledgerEntryId: entry.id }, `VERIFY_BANK_TRANSFER:${entry.id}`);
   };
 
-  return <section className="space-y-4 rounded-xl border bg-card p-4 sm:p-6" dir={language === "en" ? "ltr" : "rtl"} aria-labelledby="hotel-offline-payments-title">
+  return <section className="space-y-4 rounded-xl border bg-card p-4 sm:p-6" dir={language === "en" ? "ltr" : "rtl"} aria-label={text.title}>
     <header className="flex flex-wrap items-center justify-between gap-3">
-      <h2 id="hotel-offline-payments-title" className="text-xl font-semibold">{text.title}</h2>
+      <h2 className="text-xl font-semibold">{text.title}</h2>
       {apiWired && <button type="button" className="rounded-md border px-3 py-2 text-sm" disabled={loading || busy} onClick={() => void load()}>{text.refresh}</button>}
     </header>
     {!apiWired && <p className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm" role="note">{text.notWired}</p>}
@@ -162,6 +164,7 @@ export function HotelOfflinePayments({ organizationId, propertyId, reservationId
       <ul className="space-y-2">
         {summary.entries.map((entry) => <li key={entry.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
           <div><p className="font-medium">{entry.method === "CASH" ? text.cash : text.transfer} · {formatHotelToman(entry.amountToman, language)}</p><p className="text-sm text-muted-foreground">{entry.status === "VERIFIED" ? text.verified : text.submitted}</p></div>
+          {entry.hasReceipt && <a href={`${endpoint}/${encodeURIComponent(entry.id)}/receipt`} target="_blank" rel="noopener noreferrer">{language === "fa" ? "مشاهده رسید" : language === "ar" ? "عرض الإيصال" : "View receipt"}</a>}
           {entry.method === "BANK_TRANSFER" && entry.status === "SUBMITTED" && <button type="button" className="rounded-md border px-3 py-2 text-sm disabled:opacity-50" disabled={busy} onClick={() => verifyTransfer(entry)}>{busy ? text.busy : text.verify}</button>}
         </li>)}
       </ul>

@@ -34,7 +34,7 @@ export function TenantSearch(props: Props) {
   const loading = open && includeProducts && Boolean(term) && result?.key !== requestKey;
 
   useEffect(() => {
-    if (!open || !term || !includeProducts || !organization) return;
+    if (!open || !term || !includeProducts || !organization || (result?.key === requestKey && !result.failed)) return;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
@@ -49,7 +49,7 @@ export function TenantSearch(props: Props) {
       }
     }, 300);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [open, term, includeProducts, organization, requestKey]);
+  }, [open, term, includeProducts, organization, requestKey, result?.key, result?.failed]);
 
   const products = includeProducts && term && result?.key === requestKey ? result.products : [];
   const info = tab === "products" ? [] : ([

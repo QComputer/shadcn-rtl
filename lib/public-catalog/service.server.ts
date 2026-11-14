@@ -1,6 +1,7 @@
 import { readGallerySettings, orderedImages, isRetailSizeDefinition } from "@/lib/retail/product-galleries";
 import { getCardImage, type ImageDerivatives } from "@/lib/retail/image-derivatives";
 import "server-only";
+import { cache } from "react";
 
 import { ApiError } from "@/lib/api-guards";
 import { prisma } from "@/lib/db";
@@ -171,7 +172,7 @@ async function retailProduct(product: PublicRetailProduct, organizationId: strin
   };
 }
 
-async function requirePublicShop(identifier: string) {
+const requirePublicShop = cache(async (identifier: string) => {
   const organization = await prisma.organization.findFirst({
     where: { slug: identifier, isActive: true, deletedAt: null, isPlatformOwner: false },
     select: {
@@ -184,7 +185,7 @@ async function requirePublicShop(identifier: string) {
     throw new ApiError(404, "Catalog not found");
   }
   return organization;
-}
+});
 
 async function purchaseBuilder(organization: { id: string; slug: string }) {
   const appEndpoint = await resolveOrganizationEndpointForTenant({ organizationId: organization.id, role: "APP" });

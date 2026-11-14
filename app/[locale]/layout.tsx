@@ -16,6 +16,8 @@ import { resolveTenantPwaRequestContext } from "@/lib/tenant-pwa-context.server"
 import { resolvePlatformFallbackBranding } from "@/lib/organization-branding"
 import { isTenantPwaInstallable, safeTenantAssetUrl } from "@/lib/operational-app-manifest"
 
+/* eslint-disable @next/next/no-sync-scripts -- Same-origin parser-blocking bootstrap applies the stored theme before first paint under script-src 'self'. */
+
 export const dynamic = "force-dynamic";
 
 export function generateStaticParams() {
@@ -120,8 +122,9 @@ export default async function LocaleLayout({
     default: "بازارباز | از کسب‌وکار سنتی تا حضور دیجیتال هوشمند",
   };
   return (
-    <html lang={locale} dir={localeConfig[locale].dir}>
+    <html lang={locale} dir={localeConfig[locale].dir} className="dark" data-theme="dark" suppressHydrationWarning>
       <head key={locale}>
+        <script src={appResourceUrl("/theme-prepaint.js", appBasePath)} />
       </head>
       <body className="antialiased">
         <SessionProvider basePath={appPath("/api/auth")}>

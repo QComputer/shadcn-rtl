@@ -110,6 +110,8 @@ jobs:
         run: echo "127.0.0.1 damoon-hotel.ir ${DAMOON_FOREIGN_HOST}" | sudo tee -a /etc/hosts >/dev/null
       - name: Install Chromium for isolated browser acceptance
         run: pnpm exec playwright install --with-deps chromium
+      - name: Verify latest guest tracking response wins
+        run: pnpm exec node --test sites/damoon/tests/booking-tracking-latest-submit.test.mjs
       - name: Start real Next API backend
         shell: bash
         run: |

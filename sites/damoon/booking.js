@@ -302,8 +302,10 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     let data = null; try { data = text ? JSON.parse(text) : null; } catch { data = { error: text }; }
     return { ok: res.ok, status: res.status, data, rawText: text };
   }
+  let trackingAttemptId = 0;
   slot.querySelector("[data-track-request]")?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const trackingAttempt = ++trackingAttemptId;
     const copy = requestCopy[locale] || requestCopy.en;
     const reference = slot.querySelector("[data-track-reference]")?.value.trim() || "";
     const output = slot.querySelector("[data-track-result]");
@@ -311,10 +313,11 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     output.textContent = copy.checking;
     try {
       const result = await postJson("/api/hotel/v1/requests/status", { reference });
+      if (trackingAttempt !== trackingAttemptId) return;
       if (!result.ok || typeof result.data?.status !== "string") { output.textContent = copy.trackError; return; }
       const label = copy.statuses[result.data.status] || result.data.status;
       output.textContent = result.data.managerMessage ? `${label} · ${result.data.managerMessage}` : label;
-    } catch { output.textContent = copy.trackError; }
+    } catch { if (trackingAttempt === trackingAttemptId) output.textContent = copy.trackError; }
   });
   function apiErrorMessage(status, data, fallback) {
     const err = typeof data?.error === "string" ? data.error : data?.error?.message || "";

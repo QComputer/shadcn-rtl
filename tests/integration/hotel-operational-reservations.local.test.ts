@@ -99,7 +99,7 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED = "1"; process.env.HOTEL_GUEST_PORTAL_ENABLED = "1";
     assert.equal((await service.get(guestA, a.id, pa.id) as OperationalResult).confirmationPolicy?.manualConfirmationPolicy, "DISABLED", "manual confirmation is disabled by default");
     await assert.rejects(() => service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION", manualConfirmationPolicy: "CASH_ON_ARRIVAL", allowedOfflinePaymentMethods: ["BANK_TRANSFER"], minimumVerifiedDepositAmount: null }), /cash-on-arrival/i);
-    await assert.rejects(() => service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION", manualConfirmationPolicy: "MINIMUM_VERIFIED_DEPOSIT", allowedOfflinePaymentMethods: ["BANK_TRANSFER"], minimumVerifiedDepositAmount: 0 }), /positive minimum/i);
+    await assert.rejects(() => service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION", manualConfirmationPolicy: "MINIMUM_VERIFIED_DEPOSIT", allowedOfflinePaymentMethods: ["BANK_TRANSFER"], minimumVerifiedDepositAmount: 0 }), /minimum deposit.*range/i);
     await assert.rejects(() => service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION", manualConfirmationPolicy: "MINIMUM_VERIFIED_DEPOSIT", allowedOfflinePaymentMethods: ["BANK_TRANSFER"], minimumVerifiedDepositAmount: Number.MAX_SAFE_INTEGER + 1 }), /safe integer|number/i);
     const quote = async (actor: typeof guestA, org: string, property: string, roomTypeId: string, ratePlanId: string, key: string) => {
       const result = await service.execute(actor, org, property, { action: "quote", roomTypeId, ratePlanId, ...stay }, key) as OperationalResult;

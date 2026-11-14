@@ -74,6 +74,19 @@ enum HotelWebsiteReviewAction {
   REJECTED
 }
 
+enum HotelOperationalMode {
+  DISABLED
+  REQUEST_ONLY
+  RESERVATION
+}
+
+enum HotelStayRequestStatus {
+  NEW
+  CONTACTED
+  DECLINED
+  CANCELLED
+}
+
 enum OrganizationCapabilityStatus {
   ACTIVE
   INACTIVE
@@ -5154,6 +5167,7 @@ model HotelProperty {
   checkOutTime   String  @default("11:00")
   minStayNights  Int     @default(1)
   maxStayNights  Int     @default(30)
+  operationalMode HotelOperationalMode @default(DISABLED)
   addressLine1   String?
   city           String?
   latitude       Decimal? @db.Decimal(9, 6)
@@ -5174,6 +5188,8 @@ model HotelProperty {
   holds                HotelBookingHold[]
   reservations         HotelReservation[]
   guestBookingRequests HotelGuestBookingRequest[]
+  stayQuotes           HotelStayQuote[]
+  stayRequests         HotelStayRequest[]
   websitePages         HotelWebsitePage[]
   websiteMedia         HotelWebsiteMediaAssociation[]
   websiteOperations    HotelWebsiteOperation[]
@@ -5181,6 +5197,44 @@ model HotelProperty {
   @@unique([organizationId, slug])
   @@unique([id, organizationId])
   @@index([organizationId, isActive])
+}
+
+/// A server-priced quote bound to the tenant, property and authenticated user.
+model HotelStayQuote {
+  id             String   @id @default(cuid())
+  organizationId String
+  propertyId     String
+  userId         String
+  snapshot       Json
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+
+  property HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  request  HotelStayRequest?
+
+  @@unique([id, organizationId])
+  @@index([organizationId, propertyId, userId])
+}
+
+/// An authenticated enquiry; it does not reserve inventory.
+model HotelStayRequest {
+  id             String                 @id @default(cuid())
+  organizationId String
+  propertyId     String
+  userId         String
+  quoteId        String                 @unique
+  guestName      String
+  message        String?
+  status         HotelStayRequestStatus @default(NEW)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  snapshot       Json
+
+  property HotelProperty  @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  quote    HotelStayQuote @relation(fields: [quoteId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([quoteId, organizationId])
+  @@index([organizationId, propertyId, userId, createdAt])
 }
 
 /// A sellable room category. Distinct from a physical room.

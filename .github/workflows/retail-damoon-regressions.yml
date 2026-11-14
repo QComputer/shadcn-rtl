@@ -78,3 +78,4 @@ jobs:
           --experimental-test-module-mocks --test
           tests/unit/business-hours-bounded-input.test.ts
           tests/unit/organization-business-hours-route.test.ts
+          tests/unit/organization-service-business-hours.test.ts

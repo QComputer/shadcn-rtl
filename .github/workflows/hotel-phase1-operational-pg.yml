@@ -5,12 +5,16 @@ on:
     paths:
       - ".github/workflows/hotel-phase1-operational-pg.yml"
       - "lib/hotel/**"
+      - "app/api/organizations/**/hotels/**"
+      - "app/**/hotel-reservations/**"
+      - "components/hotel-operations/**"
       - "prisma/**"
       - "scripts/db/guard-local-prisma-env.mjs"
       - "scripts/e2e/register-server-only.cjs"
       - "tests/integration/hotel-reservation-atomic.local.test.ts"
       - "tests/integration/hotel-operational-reservations.local.test.ts"
       - "tests/integration/hotel-offline-payments.local.test.ts"
+      - "tests/unit/hotel-offline-payment-route.test.ts"
       - "package.json"
       - "pnpm-lock.yaml"
   push:
@@ -92,3 +96,7 @@ jobs:
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-operational-reservations.local.test.ts
       - name: Run offline payment acceptance
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-offline-payments.local.test.ts
+      - name: Run offline payment authorization tests
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --experimental-test-module-mocks --test tests/unit/hotel-offline-payment-route.test.ts
+      - name: Check TypeScript
+        run: pnpm exec tsc --noEmit --incremental false

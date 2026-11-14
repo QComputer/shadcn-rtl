@@ -112,6 +112,8 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Verify latest guest tracking response wins
         run: pnpm exec node --test sites/damoon/tests/booking-tracking-latest-submit.test.mjs
+      - name: Verify shared public guest booking bundle
+        run: pnpm exec node --test tests/damoon-public-booking-module.test.mjs
       - name: Start real Next API backend
         shell: bash
         run: |

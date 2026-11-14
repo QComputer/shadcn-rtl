@@ -87,6 +87,17 @@ test("guest endpoint returns a no-store 503 when shared counters are unavailable
   storeUnavailable = false;
 });
 
+test("legitimate guest requests continue when the verified tenant budget permits", async () => {
+  blocked = false;
+  storeUnavailable = false;
+  const create = await createPost(request("/api/hotel/v1/requests", "{}"));
+  const status = await statusPost(request("/api/hotel/v1/requests/status", JSON.stringify({ reference: "tracking-reference" })));
+  assert.equal(create.status, 201);
+  assert.equal(status.status, 200);
+  assert.equal(create.headers.get("cache-control"), "no-store");
+  assert.equal(status.headers.get("cache-control"), "no-store");
+});
+
 test("rotated, multi-value, and malformed forwarding headers cannot evade tenant endpoint limits", async () => {
   const spoofed = [
     { "x-forwarded-for": "198.51.100.1", "x-real-ip": "198.51.100.1" },

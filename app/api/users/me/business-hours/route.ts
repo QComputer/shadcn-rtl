@@ -7,6 +7,7 @@ import {
   jsonError,
   requireAuthSession,
   requireOrgAccess,
+  requireSameOriginMutation,
 } from "@/lib/api-guards";
 import { businessHoursSchema } from "@/lib/validators";
 import { writeAuditLog } from "@/lib/audit-log";
@@ -71,6 +72,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    requireSameOriginMutation(request);
     const session = await requireAuthSession();
     const membership = await resolveBusinessHoursOrganization(request, session.user.id);
     const membershipRole = getMembershipRole(membership);

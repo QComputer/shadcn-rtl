@@ -1,27 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { organizationService } from "@/lib/services/organization.service";
 import { businessHoursSchema } from "@/lib/validators";
-import { hasPermission } from "@/lib/types";
 import { readBoundedJson } from "@/lib/security/bounded-json";
-import { ApiError } from "@/lib/api-guards";
+import {
+  ApiError,
+  requireAuthSession,
+  requireOrgAccess,
+  requireSameOriginMutation,
+} from "@/lib/api-guards";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession();
     const { id } = await params;
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    await requireOrgAccess(session, id, ["ADMIN", "MANAGER", "STAFF"]);
 
     const hours = await organizationService.getBusinessHours(id);
 
     return NextResponse.json(hours);
   } catch (error) {
+    if (error instanceof ApiError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error getting business hours:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
@@ -35,16 +38,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    requireSameOriginMutation(request);
+    const session = await requireAuthSession();
     const { id } = await params;
-
-    if (!session?.user?.id || !session.user.role) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!hasPermission(session.user.role, "org:manage_hours")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    await requireOrgAccess(session, id, ["ADMIN", "MANAGER"]);
 
     const body = await readBoundedJson(request, { maxBytes: 64 * 1024 });
     const data = businessHoursSchema.parse(body);

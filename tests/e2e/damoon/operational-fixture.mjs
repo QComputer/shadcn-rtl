@@ -34,7 +34,7 @@ export async function seedOperationalGuestFixture() {
   const password = randomBytes(24).toString("base64url");
   try {
     await db.$connect();
-    const [identity] = await db.$queryRaw`SELECT current_database() AS database, current_user AS role, current_schema() AS schema, inet_server_port() AS port`;
+    const [identity] = await db.$queryRaw`SELECT current_database()::text AS database, current_user::text AS role, current_schema()::text AS schema, inet_server_port() AS port`;
     if (identity?.database !== target.databaseName || identity.role !== target.databaseUser || identity.schema !== "public" || Number(identity.port) !== 5432) throw new Error("Connected database identity did not match the disposable fixture target");
 
     const organizationId = process.env.DAMOON_ORGANIZATION_ID;

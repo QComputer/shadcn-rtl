@@ -564,36 +564,66 @@ export class OrganizationService {
       isOpen: boolean;
     }>,
   ) {
-    // Delete existing hours and create new ones
-    await prisma.businessHour.deleteMany({
-      where: { organizationId, userId: null },
+    const businessHours = await prisma.$transaction(async (tx) => {
+      await tx.businessHour.deleteMany({
+        where: { organizationId, userId: null },
+      });
+
+      const created = hours.length > 0
+        ? await tx.businessHour.createMany({
+            data: hours.map((h) => ({
+              day: h.day as
+                | "MONDAY"
+                | "TUESDAY"
+                | "WEDNESDAY"
+                | "THURSDAY"
+                | "FRIDAY"
+                | "SATURDAY"
+                | "SUNDAY",
+              openTime: h.openTime,
+              closeTime: h.closeTime,
+              isOpen: h.isOpen,
+              organizationId,
+            })),
+          })
+        : { count: 0 };
+
+      const organizationMembers = await tx.organizationMember.findMany({
+        where: { organizationId },
+        select: { userId: true },
+        // Keep membership processing deterministic without changing which members are included.
+        orderBy: { userId: "asc" },
+      });
+
+      for (const member of organizationMembers) {
+        await tx.businessHour.deleteMany({
+          where: { organizationId, userId: member.userId },
+        });
+        if (hours.length > 0) {
+          await tx.businessHour.createMany({
+            data: hours.map((h) => ({
+              day: h.day as
+                | "MONDAY"
+                | "TUESDAY"
+                | "WEDNESDAY"
+                | "THURSDAY"
+                | "FRIDAY"
+                | "SATURDAY"
+                | "SUNDAY",
+              openTime: h.openTime,
+              closeTime: h.closeTime,
+              isOpen: h.isOpen,
+              organizationId,
+              userId: member.userId,
+            })),
+          });
+        }
+      }
+
+      return created;
     });
 
-    const businessHours = await prisma.businessHour.createMany({
-      data: hours.map((h) => ({
-        day: h.day as
-          | "MONDAY"
-          | "TUESDAY"
-          | "WEDNESDAY"
-          | "THURSDAY"
-          | "FRIDAY"
-          | "SATURDAY"
-          | "SUNDAY",
-        openTime: h.openTime,
-        closeTime: h.closeTime,
-        isOpen: h.isOpen,
-        organizationId,
-      })),
-    });
-
-    // Update all staff business hours and wait for every write to finish.
-    const organizationMembers = await this.getMembers(organizationId);
-    await Promise.all(
-      organizationMembers.map((m) =>
-        this.updateStaffBusinessHours(m.userId, organizationId, hours),
-      ),
-    );
-
+    // Revalidate only after the organization and staff writes commit together.
     revalidatePath(`/dashboard/settings`);
     return businessHours;
   }

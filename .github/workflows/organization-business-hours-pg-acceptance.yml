@@ -1,0 +1,64 @@
+name: Organization business-hours PostgreSQL acceptance
+
+on:
+  pull_request:
+    paths:
+      - "lib/services/organization.service.ts"
+      - "tests/integration/organization-business-hours.postgres.local.test.ts"
+      - "prisma/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/organization-business-hours-pg-acceptance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: organization-business-hours-pg-acceptance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  organization-business-hours-pg-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: organization_business_hours_test
+          POSTGRES_USER: organization_business_hours_test
+          POSTGRES_PASSWORD: local_only_synthetic_fixture
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U organization_business_hours_test -d organization_business_hours_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      CI: "true"
+      NODE_ENV: test
+      DATABASE_URL: postgresql://organization_business_hours_test:local_only_synthetic_fixture@127.0.0.1:5432/organization_business_hours_test?schema=public
+      DIRECT_URL: postgresql://organization_business_hours_test:local_only_synthetic_fixture@127.0.0.1:5432/organization_business_hours_test?schema=public
+      DATABASE_RUNTIME_ADAPTER: postgresql
+      AI_MEDIA_APPLICATION_STORAGE_ADAPTER: local-test
+      LOCAL_PRISMA_EXPECTED_PORT: "5432"
+      LOCAL_BASELINE_BOOTSTRAP_DISPOSABLE: "true"
+      ORGANIZATION_BUSINESS_HOURS_PG_ACCEPTANCE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma validate
+      - run: pnpm exec prisma generate
+      - name: Apply migrations to disposable PostgreSQL 17
+        run: pnpm exec prisma migrate deploy
+      - name: Run real-database acceptance
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test --experimental-test-module-mocks tests/integration/organization-business-hours.postgres.local.test.ts

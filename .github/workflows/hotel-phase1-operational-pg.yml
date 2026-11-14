@@ -10,6 +10,7 @@ on:
       - "scripts/e2e/register-server-only.cjs"
       - "tests/integration/hotel-reservation-atomic.local.test.ts"
       - "tests/integration/hotel-operational-reservations.local.test.ts"
+      - "tests/integration/hotel-offline-payments.local.test.ts"
       - "package.json"
       - "pnpm-lock.yaml"
   push:
@@ -23,6 +24,7 @@ on:
       - "scripts/e2e/register-server-only.cjs"
       - "tests/integration/hotel-reservation-atomic.local.test.ts"
       - "tests/integration/hotel-operational-reservations.local.test.ts"
+      - "tests/integration/hotel-offline-payments.local.test.ts"
       - "package.json"
       - "pnpm-lock.yaml"
   workflow_dispatch:
@@ -66,6 +68,7 @@ jobs:
       HOTEL_OPERATIONAL_RESERVATIONS_ENABLED: "0"
       HOTEL_RESERVATION_PG_ACCEPTANCE: "1"
       HOTEL_OPERATIONAL_RESERVATION_ACCEPTANCE: "1"
+      HOTEL_OFFLINE_PAYMENT_PG_ACCEPTANCE: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -87,3 +90,5 @@ jobs:
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-reservation-atomic.local.test.ts
       - name: Run operational reservation acceptance
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-operational-reservations.local.test.ts
+      - name: Run offline payment acceptance
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-offline-payments.local.test.ts

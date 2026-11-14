@@ -1,5 +1,46 @@
 # Bazarbaaz Active Handoff
 
+## Verified current status — 2026-11-14
+
+### Main and merged work
+
+- Fresh fetch: `origin/main` is `61d58fca0d9b31d35e0482cc614ab66c3284b0a0`.
+- PR64 merged as `17bd558fa1facfffaa0f57081036cf950adf9d9b`; accepted PR head `8095e91f7282d59e5b81aacd10ea0b600d840c8a`; final isolated acceptance run [43498287992](https://github.com/QComputer/shadcn-rtl/actions/runs/43498287992) is SUCCESS. Earlier failed run 43494913875 is superseded. Do not repeat PR64 work or acceptance.
+- PR66 and PR67 are merged; current main includes their dependency-security updates.
+
+### Guest-request schema readiness
+
+- Source on main: model `HotelGuestBookingRequest` in `prisma/schema.prisma`; additive migration `prisma/migrations/20261113150000_hotel_guest_booking_requests/migration.sql`, last touched by PR64 merge commit above.
+- SQL creates one new table, its indexes and checks, and a composite FK to `HotelProperty(id, organizationId)`. The referenced unique key exists in the earlier Hotel persistence migration. PR64's successful isolated PostgreSQL 17 acceptance applies repository migrations from source.
+- This establishes source and isolated-CI migration readiness only. Production `_prisma_migrations`, actual production schema parity, and the deployed Prisma client were not inspected. Read-only Runflare CLI event lookup returned no events; it did not establish migration application. Production migration state is **NOT_VERIFIED**.
+- Migration is additive and has no rollback/down SQL. Do not apply or reverse it through this handoff. Before any operational guest-request enablement, verify the exact migration row and table/index/FK shape against the production database using an authorized read-only Runflare path; confirm the deployed client contains the model. No production database mutation was performed.
+
+### Reception filter PR65
+
+- [PR65](https://github.com/QComputer/shadcn-rtl/pull/65) is OPEN, non-Draft, head `0665f41248d77bdaeb8811da45ea5979339d5c7e`, base `main`. Its diff contains no Prisma/schema/migration files.
+- Isolated reception/PostgreSQL acceptance [43506947468](https://github.com/QComputer/shadcn-rtl/actions/runs/43506947468), focused regressions [43506947479](https://github.com/QComputer/shadcn-rtl/actions/runs/43506947479), and RunFlare TypeScript [43506947446](https://github.com/QComputer/shadcn-rtl/actions/runs/43506947446) all passed on this head. Vercel is suspended by owner decision and its check is blocked; CodeRabbit skipped. No required checks were reported and traditional branch protection was absent at inspection. PR65 has not been merged.
+- Because Runflare auto-deploys main, do not infer live schema readiness or guest-request operational acceptance from PR65 CI. Keep production booking/hold/payment/SMS gates disabled until separately validated.
+
+### Security follow-up PR68
+
+- [PR68](https://github.com/QComputer/shadcn-rtl/pull/68) remains Draft. Security route-authorization commit `7420558eb39e5518942215dfbacc0909d7233432` scopes organization business-hours GET/PUT by authenticated organization membership; PUT also retains same-origin protection. A new route regression proves foreign-tenant reads/writes do not reach the service. The regression workflow was updated to run it.
+- Focused unit run: 16 passed, 0 failed (business-hours schema, tenant-route behavior, and `requireOrgAccess` tests). Focused CI run [43573600243](https://github.com/QComputer/shadcn-rtl/actions/runs/43573600243) passed; RunFlare TypeScript [43573600176](https://github.com/QComputer/shadcn-rtl/actions/runs/43573600176) was in progress at this update. Vercel remains suspended. Scoped local ESLint was not verified because the PR68 worktree has no installed dependencies.
+- Preserve the additional uncommitted `lib/services/organization.service.ts` change in the PR68 worktree; it was intentionally not staged in commit 7420558e and has not been accepted or tested as part of that commit.
+
+### Current workspace boundaries
+
+- Shared checkout `C:/Users/disso/Project/shadcn-rtl` is currently on PR65 branch `codex/hotel-reception-readiness-20261113` at `0665f412`. Preserve its four inherited untracked files: `README.fa.md`, `docs/DAMOON-CHAT-KNOWLEDGE-HANDOFF-v1.1-FA.md`, `test-runner.sh`, and `typecheck.log`.
+- `C:/Users/disso/Project/shadcn-rtl-damoon-phase1` is PR68 branch `codex/security-bounded-tenant-json-20261114` at `7420558e`, with the uncommitted organization service change above. Do not overwrite it.
+- Other existing worktrees remain registered: hero-media (`d647f9a0`), Persian slug routing (`01d62ac1`), theme-speed/PR62 (`e29a13a2`), and Website Studio/PR59 (`72484637`); they were clean at the last status check. Do not remove or modify them for this task.
+- PR60 remains an open Draft branch at `419fa846`; its former root checkout has been preserved as a branch. No main push, Runflare deployment, migration, payment, SMS, or production gate change was performed by this update.
+
+### Next executable steps
+
+1. Obtain authorized read-only confirmation of the production migration row and schema shape; until then, production guest-request schema status stays **NOT_VERIFIED**.
+2. Keep PR65's three successful source/isolated checks as its acceptance evidence; decide merge only with the production auto-deploy consequence understood. Do not treat suspended Vercel as a passing test.
+3. Let PR68 TypeScript complete, review the route changes and tenant regression, then separately assess the preserved service change and remaining business-hours edge cases before changing its Draft status.
+4. Continue Damoon request/reception work using synthetic isolated tenants and keep operational booking gates disabled.
+
 ## PR64 acceptance update — 2026-11-13
 
 - Run `43497811921` on `119293a75daa434575c1c383c1f6816a4a252435` passed PostgreSQL migrations, typecheck, lint, all 11 browser tests, disabled guest-request gate verification, and disposable database/server cleanup. Focused regressions and RunFlare TypeScript also passed on that SHA. These are isolated CI results, not production booking or payment acceptance.

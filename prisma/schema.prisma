@@ -1122,6 +1122,7 @@ model Organization {
   customerAccessLinks CustomerAccessLink[]
   customerPhoneSessions CustomerPhoneSession[]
   customerUssdEnrollmentRoutes CustomerUssdEnrollmentRoute[]
+  hotelGuestRequestRateLimits HotelGuestRequestRateLimit[]
   id                        String           @id @default(cuid())
   type                      OrganizationType
   locale                    String           @default("fa")
@@ -5778,6 +5779,18 @@ model HotelGuestBookingRequest {
   @@unique([organizationId, idempotencyHash])
   @@unique([id, organizationId])
   @@index([organizationId, propertyId, status, createdAt])
+}
+
+/// One shared, database-clock fixed-window counter per Hotel tenant and public endpoint.
+model HotelGuestRequestRateLimit {
+  organizationId String
+  endpoint String
+  count Int @default(0)
+  windowStartedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, endpoint])
 }
 
 /// Links a reservation to a payment request. Deliberately has NO foreign key to

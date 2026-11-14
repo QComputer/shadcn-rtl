@@ -1,0 +1,72 @@
+name: Hotel guest request rate limit PostgreSQL
+
+on:
+  pull_request:
+    paths:
+      - "app/api/hotel/v1/requests/**"
+      - "lib/hotel/guest-request-rate-limit.server.ts"
+      - "tests/unit/hotel/guest-request-rate-limit.test.ts"
+      - "tests/unit/hotel-guest-request-routes.test.ts"
+      - "tests/integration/hotel-guest-request-rate-limit.local.test.ts"
+      - "prisma/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/hotel-guest-request-rate-limit-pg.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hotel-guest-request-rate-limit-pg-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  hotel-guest-request-rate-limit-pg:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: hotel_guest_rate_limit_test
+          POSTGRES_USER: hotel_guest_rate_limit_test
+          POSTGRES_PASSWORD: ci_only_guest_request_limiter
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hotel_guest_rate_limit_test -d hotel_guest_rate_limit_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      CI: "true"
+      NODE_ENV: test
+      DATABASE_URL: postgresql://hotel_guest_rate_limit_test:ci_only_guest_request_limiter@127.0.0.1:5432/hotel_guest_rate_limit_test?schema=public
+      DIRECT_URL: postgresql://hotel_guest_rate_limit_test:ci_only_guest_request_limiter@127.0.0.1:5432/hotel_guest_rate_limit_test?schema=public
+      HOTEL_GUEST_REQUEST_LIMIT_TEST_DATABASE_URL: postgresql://hotel_guest_rate_limit_test:ci_only_guest_request_limiter@127.0.0.1:5432/hotel_guest_rate_limit_test
+      DATABASE_RUNTIME_ADAPTER: postgresql
+      AI_MEDIA_APPLICATION_STORAGE_ADAPTER: local-test
+      LOCAL_PRISMA_EXPECTED_PORT: "5432"
+      LOCAL_BASELINE_BOOTSTRAP_DISPOSABLE: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma validate
+      - run: pnpm exec prisma generate
+      - name: Apply migrations to disposable PostgreSQL 17
+        run: pnpm exec prisma migrate deploy
+      - name: Run focused limiter and route tests
+        run: >-
+          pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test
+          --experimental-test-module-mocks
+          tests/unit/hotel/guest-request-rate-limit.test.ts
+          tests/unit/hotel-guest-request-routes.test.ts
+          tests/integration/hotel-guest-request-rate-limit.local.test.ts

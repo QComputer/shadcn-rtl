@@ -45,6 +45,7 @@ export class HotelOperationalReservationService {
       manualConfirmationPolicy: z.enum(["DISABLED", "CASH_ON_ARRIVAL", "MINIMUM_VERIFIED_DEPOSIT"]).optional(),
       allowedOfflinePaymentMethods: z.array(z.enum(["CASH", "BANK_TRANSFER"])).max(2).optional(),
       minimumVerifiedDepositAmount: confirmationAmount,
+      pendingPaymentMinutes: z.number().int().min(5).max(10080).optional(),
     }).strict().parse(input);
     const { mode } = parsed;
     await authorizeHotelBookingActor(this.db, actor, organizationId, propertyId);
@@ -52,6 +53,7 @@ export class HotelOperationalReservationService {
     if (actor.role !== "SUPER_ADMIN" && !await this.db.organizationMember.findFirst({ where: { organizationId, userId: actor.userId, isActive: true, role: "ADMIN" } })) fail("Organization administrator required", 403);
     const hasPaymentConfig = parsed.manualConfirmationPolicy !== undefined || parsed.allowedOfflinePaymentMethods !== undefined || parsed.minimumVerifiedDepositAmount !== undefined;
     const data: Prisma.HotelPropertyUpdateInput = { operationalMode: mode };
+    if (parsed.pendingPaymentMinutes !== undefined) data.pendingPaymentMinutes = parsed.pendingPaymentMinutes;
     if (hasPaymentConfig) {
       if (parsed.manualConfirmationPolicy === undefined || parsed.allowedOfflinePaymentMethods === undefined) fail("Confirmation policy and allowed methods must be configured together", 400);
       const methods = parsed.allowedOfflinePaymentMethods;
@@ -67,7 +69,7 @@ export class HotelOperationalReservationService {
       data.minimumVerifiedDepositAmount = minimum;
     }
     const updated = await this.db.hotelProperty.update({ where: { id: propertyId, organizationId }, data });
-    return { mode, manualConfirmationPolicy: updated.manualConfirmationPolicy, allowedOfflinePaymentMethods: updated.allowedOfflinePaymentMethods, minimumVerifiedDepositAmount: updated.minimumVerifiedDepositAmount?.toString() ?? null };
+    return { mode, manualConfirmationPolicy: updated.manualConfirmationPolicy, allowedOfflinePaymentMethods: updated.allowedOfflinePaymentMethods, minimumVerifiedDepositAmount: updated.minimumVerifiedDepositAmount?.toString() ?? null, pendingPaymentMinutes: updated.pendingPaymentMinutes };
   }
   private async authorize(actor: HotelBookingActor, organizationId: string, propertyId: string) {
     if (process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED !== "1" || process.env.HOTEL_GUEST_PORTAL_ENABLED !== "1") fail("Operational reservations are disabled", 403);
@@ -107,7 +109,7 @@ export class HotelOperationalReservationService {
     const ratePlans = await this.db.hotelRatePlan.findMany({ where: { organizationId, propertyId, isActive: true }, select: { id: true, name: true, roomTypeId: true } });
     const rooms = actor.role === "CUSTOMER" ? [] : await this.db.hotelRoom.findMany({ where: { organizationId, propertyId, isActive: true, deletedAt: null, isOutOfService: false }, select: { id: true, code: true, roomTypeId: true } });
     const history = await this.db.hotelInventoryIdempotency.findMany({ where: { organizationId, operationScope: { in: [ACTIONS, "HOTEL_OPERATIONAL_SYSTEM_EXPIRY"] }, AND: [{ resultJson: { path: ["propertyId"], equals: propertyId } }, ...(actor.role === "CUSTOMER" ? [{ resultJson: { path: ["actorUserId"], equals: actor.userId } }] : [])] }, orderBy: { createdAt: "desc" }, take: 200, select: { id: true, resultJson: true, createdAt: true } });
-    return json({ mode: "RESERVATION", view: actor.role === "CUSTOMER" ? "guest" : "reception", confirmationPolicy: { manualConfirmationPolicy: property.manualConfirmationPolicy, allowedOfflinePaymentMethods: property.allowedOfflinePaymentMethods, minimumVerifiedDepositAmount: property.minimumVerifiedDepositAmount?.toString() ?? null }, roomTypes, ratePlans, rooms, history, reservations: reservations.map(row => ({ id: row.id, reference: row.reference, guestName: row.guests.find(g => g.isPrimary)?.fullName ?? "", status: row.status, paymentMethod: row.paymentMethod, roomTypeId: row.roomTypeId, checkIn: dateOnly(row.checkIn), checkOut: dateOnly(row.checkOut), totalAmount: row.totalAmount, currency: row.currency, paidAmount: row.paidAmount, refundedAmount: row.refundedAmount, outstandingAmount: row.totalAmount - row.paidAmount, createdAt: row.createdAt, confirmedAt: row.confirmedAt, checkedInAt: row.checkedInAt, checkedOutAt: row.checkedOutAt, cancelledAt: row.cancelledAt, nights: row.nights })) });
+    return json({ mode: "RESERVATION", view: actor.role === "CUSTOMER" ? "guest" : "reception", confirmationPolicy: { manualConfirmationPolicy: property.manualConfirmationPolicy, allowedOfflinePaymentMethods: property.allowedOfflinePaymentMethods, minimumVerifiedDepositAmount: property.minimumVerifiedDepositAmount?.toString() ?? null, pendingPaymentMinutes: property.pendingPaymentMinutes }, roomTypes, ratePlans, rooms, history, reservations: reservations.map(row => ({ id: row.id, reference: row.reference, guestName: row.guests.find(g => g.isPrimary)?.fullName ?? "", status: row.status, paymentMethod: row.paymentMethod, roomTypeId: row.roomTypeId, checkIn: dateOnly(row.checkIn), checkOut: dateOnly(row.checkOut), totalAmount: row.totalAmount, currency: row.currency, paidAmount: row.paidAmount, refundedAmount: row.refundedAmount, outstandingAmount: row.totalAmount - row.paidAmount, createdAt: row.createdAt, confirmedAt: row.confirmedAt, checkedInAt: row.checkedInAt, checkedOutAt: row.checkedOutAt, cancelledAt: row.cancelledAt, nights: row.nights })) });
   }
   private async lockQuote(tx: Tx, actor: HotelBookingActor, organizationId: string, propertyId: string, quoteId: string) {
     await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelStayQuote" WHERE "id"=${quoteId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} FOR UPDATE`);
@@ -184,7 +186,11 @@ export class HotelOperationalReservationService {
             if (!quote.holdId || quote.holdId !== command.holdId) fail("Quote and hold mismatch", 403);
             if (command.guests.length !== quote.adults + quote.childAges.length || command.guests.filter(g => g.isPrimary).length !== 1 || command.guests.filter(g => !g.isChild).length !== quote.adults || !isDeepStrictEqual(command.guests.filter(g => g.isChild).map(g => g.age).sort(), [...quote.childAges].sort())) fail("Guests do not match quoted occupancy", 422);
             const held = await tx.hotelBookingHold.findFirstOrThrow({ where: { id: quote.holdId, organizationId, propertyId } });
+            if (held.status !== "ACTIVE" || held.expiresAt <= now) fail("Hold expired");
             const reservation = await repo.createReservation({ id: randomUUID(), organizationId, propertyId, reference: held.reference, idempotencyKey: `operational:${quote.id}`, holdId: held.id, roomTypeId: quote.roomTypeId, ratePlanId: quote.ratePlanId, status: "PENDING_PAYMENT", checkIn: quote.checkIn, checkOut: quote.checkOut, nights: enumerateStayNights(quote.checkIn, quote.checkOut), nightlyRates: quote.nightlyRates, totalAmount: Number(quote.totalAmount), currency: quote.currency, cancellationPolicySnapshot: quote.policy, guests: command.guests, createdAt: now, updatedAt: now }, tx);
+            const pendingPaymentExpiresAt = new Date(now.getTime() + property!.pendingPaymentMinutes * 60_000);
+            const consumedHold = await tx.hotelBookingHold.updateMany({ where: { id: held.id, organizationId, propertyId, status: "CONSUMED" }, data: { expiresAt: pendingPaymentExpiresAt } });
+            if (consumedHold.count !== 1) fail("Reservation hold could not be converted");
             await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify([organizationId, "HOTEL_OPERATIONAL_GUEST", actor.userId])},0))`);
             const guest = await tx.guestCustomer.upsert({ where: { sessionId: `hotel-operational:${organizationId}:${actor.userId}` }, update: {}, create: { sessionId: `hotel-operational:${organizationId}:${actor.userId}`, name: command.guests.find(g => g.isPrimary)!.fullName } });
             if (!await tx.customerIdentity.findFirst({ where: { organizationId, userId: actor.userId, guestCustomerId: guest.id } })) await tx.customerIdentity.create({ data: { organizationId, userId: actor.userId, guestCustomerId: guest.id } });

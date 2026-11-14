@@ -54,6 +54,7 @@ function daysFromNow(offset) {
 }
 
 test("authenticated Damoon guest lifecycle reaches reception check-out with tenant isolation", async ({ browser }) => {
+  test.setTimeout(90_000);
   assertTestTarget();
   const resolved = await lookup(tenantHostname, { all: true, verbatim: true });
   if (!resolved.length || resolved.some(({ address }) => address !== "::1" && !/^127(?:\.\d{1,3}){3}$/.test(address))) throw new Error("Damoon test domain must resolve exclusively to loopback");

@@ -11,7 +11,7 @@ type RoomType = { id: string; name: string };
 type RatePlan = { id: string; name: string; roomTypeId: string };
 type Room = { id: string; code: string; roomTypeId: string };
 type Reservation = { id: string; reference: string; status: string; paymentMethod?: "CASH" | "BANK_TRANSFER" | null; checkIn: string; checkOut: string; totalAmount: string | number; currency: string; paidAmount: string | number; refundedAmount: string | number; nights: { roomId: string | null }[] };
-type Snapshot = { mode: string; view: string; roomTypes: RoomType[]; ratePlans: RatePlan[]; reservations: Reservation[]; rooms: Room[]; confirmationPolicy?: { manualConfirmationPolicy: "DISABLED" | "CASH_ON_ARRIVAL" | "MINIMUM_VERIFIED_DEPOSIT"; allowedOfflinePaymentMethods: Array<"CASH" | "BANK_TRANSFER">; minimumVerifiedDepositAmount: string | null } };
+type Snapshot = { mode: string; view: string; roomTypes: RoomType[]; ratePlans: RatePlan[]; reservations: Reservation[]; rooms: Room[]; confirmationPolicy?: { manualConfirmationPolicy: "DISABLED" | "CASH_ON_ARRIVAL" | "MINIMUM_VERIFIED_DEPOSIT"; allowedOfflinePaymentMethods: Array<"CASH" | "BANK_TRANSFER">; minimumVerifiedDepositAmount: string | null; pendingPaymentMinutes: number } };
 type Guest = { fullName: string; isPrimary: boolean; isChild?: boolean; age?: number };
 
 const labels = {

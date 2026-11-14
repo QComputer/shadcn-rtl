@@ -13,7 +13,7 @@ const day = (value: string) => new Date(`${value}T00:00:00.000Z`);
 const stay = { checkIn: "2027-12-10", checkOut: "2027-12-12", adults: 1, childAges: [] as number[] };
 type OperationalResult = {
   simulated?: boolean;
-  confirmationPolicy?: { manualConfirmationPolicy?: string; allowedOfflinePaymentMethods?: string[]; minimumVerifiedDepositAmount?: string | null };
+  confirmationPolicy?: { manualConfirmationPolicy?: string; allowedOfflinePaymentMethods?: string[]; minimumVerifiedDepositAmount?: string | null; pendingPaymentMinutes?: number };
   quote?: { id: string };
   hold?: { id: string };
   reservation?: { id: string; status: string; paymentMethod?: string | null; paidAmount?: string; confirmedAt?: string | Date | null };
@@ -98,9 +98,12 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     await service.configure(foreignReceptionist, b.id, pb.id, { mode: "RESERVATION" });
     process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED = "1"; process.env.HOTEL_GUEST_PORTAL_ENABLED = "1";
     assert.equal((await service.get(guestA, a.id, pa.id) as OperationalResult).confirmationPolicy?.manualConfirmationPolicy, "DISABLED", "manual confirmation is disabled by default");
+    assert.equal((await service.get(guestA, a.id, pa.id) as OperationalResult).confirmationPolicy?.pendingPaymentMinutes, 15, "pending payment deadline defaults to 15 minutes");
     await assert.rejects(() => service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION", manualConfirmationPolicy: "CASH_ON_ARRIVAL", allowedOfflinePaymentMethods: ["BANK_TRANSFER"], minimumVerifiedDepositAmount: null }), /cash-on-arrival/i);
     await assert.rejects(() => service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION", manualConfirmationPolicy: "MINIMUM_VERIFIED_DEPOSIT", allowedOfflinePaymentMethods: ["BANK_TRANSFER"], minimumVerifiedDepositAmount: 0 }), /minimum deposit.*range/i);
     await assert.rejects(() => service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION", manualConfirmationPolicy: "MINIMUM_VERIFIED_DEPOSIT", allowedOfflinePaymentMethods: ["BANK_TRANSFER"], minimumVerifiedDepositAmount: Number.MAX_SAFE_INTEGER + 1 }), /safe integer|number/i);
+    await assert.rejects(() => service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION", pendingPaymentMinutes: 4 }), /too small|pendingPaymentMinutes/i);
+    await assert.rejects(() => service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION", pendingPaymentMinutes: 10081 }), /too big|pendingPaymentMinutes/i);
     const quote = async (actor: typeof guestA, org: string, property: string, roomTypeId: string, ratePlanId: string, key: string) => {
       const result = await service.execute(actor, org, property, { action: "quote", roomTypeId, ratePlanId, ...stay }, key) as OperationalResult;
       assert.equal(result.simulated, false); assert.ok(result.quote?.id); quotes.push(result.quote.id); return result.quote;
@@ -140,6 +143,7 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     assert.equal(reserve.reservation?.status, "PENDING_PAYMENT"); assert.equal(reserve.simulated, false);
     const replay = await service.execute(guestA, a.id, pa.id, { action: "reserve", quoteId: lifecycleQuote.id, holdId: holdResult.hold.id, guests }, `reserve-${token}-replay`) as OperationalResult;
     assert.equal(replay.reservation.id, reserve.reservation.id, "repeat reserve command resolves to the same reservation");
+    assert.equal((await db.hotelBookingHold.findUniqueOrThrow({ where: { id: holdResult.hold.id } })).expiresAt.getTime(), clock.getTime() + 15 * 60_000, "conversion extends the consumed hold to the default payment deadline");
     const guestView = await service.get(guestA, a.id, pa.id) as OperationalResult;
     assert.ok(guestView.reservations?.some(row => row.id === reserve.reservation!.id));
     assert.equal(guestView.reservations?.find(row => row.id === reserve.reservation!.id)?.paymentMethod, null);
@@ -185,15 +189,26 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     await db.hotelInventory.updateMany({ where: { organizationId: a.id, roomTypeId: roomA.id }, data: { allotment: 4 } });
     const expiringQuote = await quote(guestA, a.id, pa.id, roomA.id, rateA.id, `quote-${token}-expiring-hold`);
     const activeHold = await service.execute(guestA, a.id, pa.id, { action: "hold", quoteId: expiringQuote.id }, `hold-${token}-expiring`) as OperationalResult;
+    const pendingPolicy = await service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION", pendingPaymentMinutes: 5 });
+    assert.equal(pendingPolicy.pendingPaymentMinutes, 5);
+    assert.equal((await service.get(guestA, a.id, pa.id) as OperationalResult).confirmationPolicy?.pendingPaymentMinutes, 5, "configured deadline is returned after reloading policy");
     const pendingQuote = await quote(guestA, a.id, pa.id, roomA.id, rateA.id, `quote-${token}-expiring-reservation`);
     const pendingHold = await service.execute(guestA, a.id, pa.id, { action: "hold", quoteId: pendingQuote.id }, `hold-${token}-pending`) as OperationalResult;
     const pending = await service.execute(guestA, a.id, pa.id, { action: "reserve", quoteId: pendingQuote.id, holdId: pendingHold.hold!.id, guests }, `reserve-${token}-pending`) as OperationalResult;
+    const pendingExpiry = (await db.hotelBookingHold.findUniqueOrThrow({ where: { id: pendingHold.hold!.id } })).expiresAt;
+    assert.equal(pendingExpiry.getTime(), clock.getTime() + 5 * 60_000, "consumed hold receives the configured pending deadline atomically");
     const expiryKey = `expire:${pending.reservation!.id}`;
     await quote(guestA, a.id, pa.id, roomA.id, rateA.id, expiryKey);
     assert.ok(await db.hotelInventoryIdempotency.findUnique({ where: { organizationId_operationScope_idempotencyKey: {
       organizationId: a.id, operationScope: "HOTEL_OPERATIONAL_ACTION", idempotencyKey: expiryKey,
     } } }), "a customer can own the former system-expiry key in the client action namespace");
-    clock = new Date(clock.getTime() + 11 * 60_000);
+    clock = new Date(clock.getTime() + 6 * 60_000);
+    const replayAfterDeadline = await service.execute(guestA, a.id, pa.id, { action: "reserve", quoteId: pendingQuote.id, holdId: pendingHold.hold!.id, guests }, `reserve-${token}-pending-replay-after-deadline`) as OperationalResult;
+    assert.equal(replayAfterDeadline.reservation?.id, pending.reservation?.id, "reservation replay keeps the original result");
+    assert.equal((await db.hotelBookingHold.findUniqueOrThrow({ where: { id: pendingHold.hold!.id } })).expiresAt.getTime(), pendingExpiry.getTime(), "replay never extends or resurrects an expired payment deadline");
+    await assert.rejects(() => service.execute(guestA, a.id, pa.id, { action: "select-payment-method", reservationId: pending.reservation!.id, method: "CASH" }, `select-before-expiry-sweep-${token}`), /reservation hold expired/i);
+    await assert.rejects(() => service.execute(receptionist, a.id, pa.id, { action: "confirm-reservation", reservationId: pending.reservation!.id }, `confirm-before-expiry-sweep-${token}`), /reservation hold expired/i);
+    clock = new Date(clock.getTime() + 5 * 60_000);
     await service.get(guestA, a.id, pa.id); // request-driven expiry sweep
     const [releasedHold, consumedHold, expiredReservation] = await Promise.all([
       db.hotelBookingHold.findUniqueOrThrow({ where: { id: activeHold.hold!.id } }),

@@ -103,6 +103,16 @@ enum HotelOfflinePaymentCommandType {
   RECORD_CASH
   SUBMIT_BANK_TRANSFER
   VERIFY_BANK_TRANSFER
+  REJECT_BANK_TRANSFER
+  REVERSE_CASH
+}
+
+enum HotelOfflinePaymentAuditEventType {
+  CASH_RECORDED
+  BANK_TRANSFER_SUBMITTED
+  BANK_TRANSFER_VERIFIED
+  BANK_TRANSFER_REJECTED
+  CASH_REVERSED
 }
 
 enum HotelManualConfirmationPolicy {
@@ -5195,6 +5205,7 @@ model HotelProperty {
   manualConfirmationPolicy HotelManualConfirmationPolicy @default(DISABLED)
   allowedOfflinePaymentMethods HotelOfflinePaymentMethod[] @default([])
   minimumVerifiedDepositAmount BigInt?
+  pendingPaymentMinutes Int @default(15)
   addressLine1   String?
   city           String?
   latitude       Decimal? @db.Decimal(9, 6)
@@ -5801,9 +5812,29 @@ model HotelOfflinePayment {
 
   reservation HotelReservation @relation(fields: [reservationId, organizationId], references: [id, organizationId], onDelete: Restrict, map: "HotelOfflinePayment_reservation_tenant_fkey")
   commands HotelOfflinePaymentCommandIdempotency[]
+  auditEvents HotelOfflinePaymentAuditEvent[]
 
   @@unique([id, organizationId])
   @@index([organizationId, reservationId, createdAt])
+}
+
+/// Append-only history for authorized offline payment actions.
+model HotelOfflinePaymentAuditEvent {
+  id                 String @id @default(cuid())
+  organizationId     String
+  ledgerEntryId      String
+  eventType          HotelOfflinePaymentAuditEventType
+  actorUserId        String
+  amountToman        BigInt
+  reason             String? @db.VarChar(500)
+  idempotencyKey     String
+  requestFingerprint String
+  createdAt          DateTime @default(now())
+
+  ledgerEntry HotelOfflinePayment @relation(fields: [ledgerEntryId, organizationId], references: [id, organizationId], onDelete: Restrict, map: "HotelOfflinePaymentAuditEvent_ledger_tenant_fkey")
+
+  @@unique([organizationId, eventType, idempotencyKey], map: "HotelOfflinePaymentAuditEvent_org_event_key_key")
+  @@index([organizationId, ledgerEntryId, createdAt], map: "HotelOfflinePaymentAuditEvent_org_ledger_created_idx")
 }
 
 model HotelOfflinePaymentCommandIdempotency {

@@ -2,7 +2,7 @@ name: Damoon booking request isolated acceptance
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, codex/damoon-public-booking-sync-20261114]
     paths:
       - "sites/damoon/**"
       - "app/api/hotel/v1/**"
@@ -19,6 +19,7 @@ on:
       - "tests/damoon-public-booking-module.test.mjs"
       - "public/damoon-front/**"
       - "playwright.damoon.config.mjs"
+      - "playwright.damoon-operational.config.mjs"
       - ".github/workflows/damoon-booking-acceptance.yml"
       - "pnpm-lock.yaml"
   workflow_dispatch:
@@ -163,6 +164,32 @@ jobs:
           pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/unit/hotel-cms/hotel-cms-dashboard-navigation.test.ts
           node --test sites/damoon/tests/standalone-api-proxy.test.mjs
           pnpm exec playwright test --config=playwright.damoon.config.mjs
+      - name: Restart isolated API with operational fixture gates
+        if: github.event_name == 'pull_request' && github.head_ref == 'codex/damoon-phase1-operational-20261114'
+        shell: bash
+        run: |
+          set -euo pipefail
+          kill "$(cat "$RUNNER_TEMP/damoon-next.pid")" 2>/dev/null || true
+          for attempt in $(seq 1 20); do
+            if ! curl --silent --max-time 1 http://127.0.0.1:3000/api/auth/csrf >/dev/null; then break; fi
+            sleep 1
+          done
+          nohup env NODE_ENV=development HOTEL_OPERATIONAL_RESERVATIONS_ENABLED=1 HOTEL_GUEST_PORTAL_ENABLED=1 HOTEL_OFFLINE_PAYMENT_OPERATIONAL_ENABLED=1 ./node_modules/.bin/next dev --hostname 0.0.0.0 --port 3000 > "$RUNNER_TEMP/damoon-next-operational.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/damoon-next.pid"
+          for attempt in $(seq 1 60); do
+            if curl --silent --show-error --max-time 3 http://127.0.0.1:3000/api/auth/csrf >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          tail -n 100 "$RUNNER_TEMP/damoon-next-operational.log"
+          exit 1
+      - name: Run isolated operational guest and reception browser acceptance
+        if: github.event_name == 'pull_request' && github.head_ref == 'codex/damoon-phase1-operational-20261114'
+        env:
+          NODE_ENV: test
+          HOTEL_OPERATIONAL_RESERVATIONS_ENABLED: "1"
+          HOTEL_GUEST_PORTAL_ENABLED: "1"
+          HOTEL_OFFLINE_PAYMENT_OPERATIONAL_ENABLED: "1"
+        run: pnpm exec playwright test --config=playwright.damoon-operational.config.mjs
       - name: Restart API with the guest-request gate disabled
         shell: bash
         run: |
@@ -190,7 +217,7 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          for file in "$RUNNER_TEMP/damoon-next.log" "$RUNNER_TEMP/damoon-next-disabled.log" "$RUNNER_TEMP/damoon-static.log"; do
+          for file in "$RUNNER_TEMP/damoon-next.log" "$RUNNER_TEMP/damoon-next-operational.log" "$RUNNER_TEMP/damoon-next-disabled.log" "$RUNNER_TEMP/damoon-static.log"; do
             if [[ -f "$file" ]]; then tail -n 120 "$file"; fi
           done
       - name: Stop task-owned servers and drop only the disposable database

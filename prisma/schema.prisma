@@ -74,6 +74,53 @@ enum HotelWebsiteReviewAction {
   REJECTED
 }
 
+enum HotelOperationalMode {
+  DISABLED
+  REQUEST_ONLY
+  RESERVATION
+}
+
+enum HotelStayRequestStatus {
+  NEW
+  CONTACTED
+  DECLINED
+  CANCELLED
+}
+
+enum HotelOfflinePaymentMethod {
+  CASH
+  BANK_TRANSFER
+}
+
+enum HotelOfflinePaymentStatus {
+  SUBMITTED
+  VERIFIED
+  REJECTED
+  REVERSED
+}
+
+enum HotelOfflinePaymentCommandType {
+  RECORD_CASH
+  SUBMIT_BANK_TRANSFER
+  VERIFY_BANK_TRANSFER
+  REJECT_BANK_TRANSFER
+  REVERSE_CASH
+}
+
+enum HotelOfflinePaymentAuditEventType {
+  CASH_RECORDED
+  BANK_TRANSFER_SUBMITTED
+  BANK_TRANSFER_VERIFIED
+  BANK_TRANSFER_REJECTED
+  CASH_REVERSED
+}
+
+enum HotelManualConfirmationPolicy {
+  DISABLED
+  CASH_ON_ARRIVAL
+  MINIMUM_VERIFIED_DEPOSIT
+}
+
 enum OrganizationCapabilityStatus {
   ACTIVE
   INACTIVE
@@ -5154,6 +5201,11 @@ model HotelProperty {
   checkOutTime   String  @default("11:00")
   minStayNights  Int     @default(1)
   maxStayNights  Int     @default(30)
+  operationalMode HotelOperationalMode @default(DISABLED)
+  manualConfirmationPolicy HotelManualConfirmationPolicy @default(DISABLED)
+  allowedOfflinePaymentMethods HotelOfflinePaymentMethod[] @default([])
+  minimumVerifiedDepositAmount BigInt?
+  pendingPaymentMinutes Int @default(15)
   addressLine1   String?
   city           String?
   latitude       Decimal? @db.Decimal(9, 6)
@@ -5174,6 +5226,8 @@ model HotelProperty {
   holds                HotelBookingHold[]
   reservations         HotelReservation[]
   guestBookingRequests HotelGuestBookingRequest[]
+  stayQuotes           HotelStayQuote[]
+  stayRequests         HotelStayRequest[]
   websitePages         HotelWebsitePage[]
   websiteMedia         HotelWebsiteMediaAssociation[]
   websiteOperations    HotelWebsiteOperation[]
@@ -5181,6 +5235,44 @@ model HotelProperty {
   @@unique([organizationId, slug])
   @@unique([id, organizationId])
   @@index([organizationId, isActive])
+}
+
+/// A server-priced quote bound to the tenant, property and authenticated user.
+model HotelStayQuote {
+  id             String   @id @default(cuid())
+  organizationId String
+  propertyId     String
+  userId         String
+  snapshot       Json
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+
+  property HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  request  HotelStayRequest?
+
+  @@unique([id, organizationId])
+  @@index([organizationId, propertyId, userId])
+}
+
+/// An authenticated enquiry; it does not reserve inventory.
+model HotelStayRequest {
+  id             String                 @id @default(cuid())
+  organizationId String
+  propertyId     String
+  userId         String
+  quoteId        String                 @unique
+  guestName      String
+  message        String?
+  status         HotelStayRequestStatus @default(NEW)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  snapshot       Json
+
+  property HotelProperty  @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  quote    HotelStayQuote @relation(fields: [quoteId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([quoteId, organizationId])
+  @@index([organizationId, propertyId, userId, createdAt])
 }
 
 /// A sellable room category. Distinct from a physical room.
@@ -5664,6 +5756,8 @@ model HotelReservation {
   currency       String   @default("TOMAN")
   totalAmount    BigInt
   paidAmount     BigInt   @default(0)
+  /// Guest-selected collection method; this does not imply any payment was made.
+  paymentMethod  HotelOfflinePaymentMethod?
   refundedAmount BigInt   @default(0)
   /// Denormalised for reporting; the SNAPSHOT below is authoritative.
   cancellationPolicyKey String
@@ -5691,6 +5785,7 @@ model HotelReservation {
   nights     HotelReservationRoom[]
   guests     HotelReservationGuest[]
   allocations HotelPaymentAllocation[]
+  offlinePayments HotelOfflinePayment[]
 
   @@unique([organizationId, reference])
   @@unique([organizationId, idempotencyKey])
@@ -5698,6 +5793,65 @@ model HotelReservation {
   @@index([organizationId, status, createdAt])
   @@index([organizationId, propertyId, checkIn, checkOut])
   @@index([organizationId, holdId])
+}
+
+/// An offline collection or an unverified bank-transfer claim.
+model HotelOfflinePayment {
+  id               String @id @default(cuid())
+  organizationId   String
+  reservationId   String
+  method           HotelOfflinePaymentMethod
+  status           HotelOfflinePaymentStatus
+  amountToman      BigInt
+  recordedByUserId String
+  bankReference    String? @db.VarChar(160)
+  receiptKey       String?
+  verifiedByUserId String?
+  verifiedAt       DateTime?
+  createdAt        DateTime @default(now())
+
+  reservation HotelReservation @relation(fields: [reservationId, organizationId], references: [id, organizationId], onDelete: Restrict, map: "HotelOfflinePayment_reservation_tenant_fkey")
+  commands HotelOfflinePaymentCommandIdempotency[]
+  auditEvents HotelOfflinePaymentAuditEvent[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, reservationId, createdAt])
+}
+
+/// Append-only history for authorized offline payment actions.
+model HotelOfflinePaymentAuditEvent {
+  id                 String @id @default(cuid())
+  organizationId     String
+  ledgerEntryId      String
+  eventType          HotelOfflinePaymentAuditEventType
+  actorUserId        String
+  amountToman        BigInt
+  reason             String? @db.VarChar(500)
+  idempotencyKey     String
+  requestFingerprint String
+  createdAt          DateTime @default(now())
+
+  ledgerEntry HotelOfflinePayment @relation(fields: [ledgerEntryId, organizationId], references: [id, organizationId], onDelete: Restrict, map: "HotelOfflinePaymentAuditEvent_ledger_tenant_fkey")
+
+  @@unique([organizationId, eventType, idempotencyKey], map: "HotelOfflinePaymentAuditEvent_org_event_key_key")
+  @@index([organizationId, ledgerEntryId, createdAt], map: "HotelOfflinePaymentAuditEvent_org_ledger_created_idx")
+}
+
+model HotelOfflinePaymentCommandIdempotency {
+  id                 String @id @default(cuid())
+  organizationId     String
+  operation          HotelOfflinePaymentCommandType
+  idempotencyKey     String
+  requestFingerprint String
+  status             String @default("PROCESSING")
+  ledgerEntryId      String?
+  createdAt          DateTime @default(now())
+  completedAt        DateTime?
+
+  ledgerEntry HotelOfflinePayment? @relation(fields: [ledgerEntryId, organizationId], references: [id, organizationId], onDelete: Restrict, map: "HotelOfflinePaymentCommandIdempotency_ledger_tenant_fkey")
+
+  @@unique([organizationId, operation, idempotencyKey], map: "HotelOfflinePaymentCommandIdempotency_org_operation_key_key")
+  @@index([organizationId, ledgerEntryId], map: "HotelOfflinePaymentCommandIdempotency_org_ledger_idx")
 }
 
 /// One row per occupied night: the per-night allocation ledger.

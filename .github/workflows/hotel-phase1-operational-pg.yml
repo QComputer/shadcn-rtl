@@ -1,0 +1,109 @@
+name: Hotel Phase 1 Operational PostgreSQL
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/hotel-phase1-operational-pg.yml"
+      - "lib/hotel/**"
+      - "app/api/organizations/**/hotels/**"
+      - "app/**/hotel-reservations/**"
+      - "components/hotel-operations/**"
+      - "prisma/**"
+      - "scripts/db/guard-local-prisma-env.mjs"
+      - "scripts/e2e/register-server-only.cjs"
+      - "tests/integration/hotel-reservation-atomic.local.test.ts"
+      - "tests/integration/hotel-operational-reservations.local.test.ts"
+      - "tests/integration/hotel-offline-payments.local.test.ts"
+      - "tests/unit/hotel-offline-payment-route.test.ts"
+      - "tests/unit/hotel-offline-receipt-route.test.ts"
+      - "tests/unit/hotel-guest-reservations-route.test.ts"
+      - "tests/unit/hotel-offline-policy-settings.test.tsx"
+      - "package.json"
+      - "pnpm-lock.yaml"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/hotel-phase1-operational-pg.yml"
+      - "lib/hotel/**"
+      - "prisma/**"
+      - "scripts/db/guard-local-prisma-env.mjs"
+      - "scripts/e2e/register-server-only.cjs"
+      - "tests/integration/hotel-reservation-atomic.local.test.ts"
+      - "tests/integration/hotel-operational-reservations.local.test.ts"
+      - "tests/integration/hotel-offline-payments.local.test.ts"
+      - "package.json"
+      - "pnpm-lock.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hotel-phase1-operational-pg-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  hotel-phase1-operational-pg:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: retail_hero_test
+          POSTGRES_USER: hero_test
+          POSTGRES_PASSWORD: local_admin_fixture_only
+        ports:
+          - 55439:5432
+        options: >-
+          --health-cmd "pg_isready -U hero_test -d retail_hero_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      CI: "true"
+      NODE_ENV: test
+      DATABASE_URL: postgresql://hero_test:local_admin_fixture_only@127.0.0.1:55439/retail_hero_test
+      DIRECT_URL: postgresql://hero_test:local_admin_fixture_only@127.0.0.1:55439/retail_hero_test
+      DATABASE_RUNTIME_ADAPTER: postgresql
+      LOCAL_PRISMA_EXPECTED_PORT: "55439"
+      RETAIL_HERO_EXPECTED_DATABASE: retail_hero_test
+      LOCAL_BASELINE_BOOTSTRAP_DISPOSABLE: "true"
+      AI_MEDIA_APPLICATION_STORAGE_ADAPTER: local-test
+      HOTEL_GUEST_PORTAL_ENABLED: "1"
+      HOTEL_OPERATIONAL_RESERVATIONS_ENABLED: "0"
+      HOTEL_RESERVATION_PG_ACCEPTANCE: "1"
+      HOTEL_OPERATIONAL_RESERVATION_ACCEPTANCE: "1"
+      HOTEL_OFFLINE_PAYMENT_PG_ACCEPTANCE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate and generate Prisma client
+        run: |
+          pnpm exec prisma validate
+          pnpm exec prisma generate
+      - name: Apply repository migrations through the local guard
+        run: pnpm run db:migrate:local
+      - name: Run atomic reservation repository acceptance
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-reservation-atomic.local.test.ts
+      - name: Run operational reservation acceptance
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-operational-reservations.local.test.ts
+      - name: Run offline payment acceptance
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-offline-payments.local.test.ts
+      - name: Run offline payment authorization tests
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --experimental-test-module-mocks --test tests/unit/hotel-offline-payment-route.test.ts
+      - name: Run private receipt authorization tests
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --experimental-test-module-mocks --test tests/unit/hotel-offline-receipt-route.test.ts
+      - name: Run guest reservation and policy tests
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --experimental-test-module-mocks --test tests/unit/hotel-guest-reservations-route.test.ts tests/unit/hotel-offline-policy-settings.test.tsx
+      - name: Check TypeScript
+        run: pnpm exec tsc --noEmit --incremental false

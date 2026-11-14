@@ -21,7 +21,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await requireAuthSession();
+    const session = await requireAuthSession(request);
     const { id } = await params;
     await requireOrderAccess(session, id, ["ADMIN", "MANAGER", "STAFF", "DRIVER", "CUSTOMER"]);
 
@@ -39,7 +39,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await requireAuthSession();
+    const session = await requireAuthSession(request);
     const { id } = await params;
     await requireOrderAccess(session, id, ["ADMIN", "MANAGER", "STAFF"]);
 
@@ -63,7 +63,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await requireAuthSession();
+    const session = await requireAuthSession(request);
     const { id } = await params;
     const body = await request.json();
     const validation = updateOrderEstimatedEndTimeSchema.safeParse(body);
@@ -105,7 +105,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await requireAuthSession();
+    const session = await requireAuthSession(request);
     const { id } = await params;
     await requireOrderAccess(session, id, ["ADMIN", "MANAGER"]);
 

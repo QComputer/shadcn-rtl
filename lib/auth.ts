@@ -19,7 +19,7 @@ import { appCookiePath, appPath } from "./app-base-path";
 import { credentialBinding } from "./security/credential-binding";
 import { validateSessionCredential } from "./security/session-credential.server";
 import { resolveCustomerAuthContext } from "./customer-auth/context.server";
-import { customerPhoneAuthService, validateCustomerPhoneSession, revokeCustomerPhoneSession } from "./customer-auth/core.server";
+import { customerPhoneAuthService, createCustomerPasswordSession, validateCustomerPhoneSession, revokeCustomerPhoneSession } from "./customer-auth/core.server";
 import { customerSsoService } from "./customer-auth/sso.server";
 
 /**
@@ -30,6 +30,7 @@ import { customerSsoService } from "./customer-auth/sso.server";
 declare module "next-auth" {
   interface User {
     phoneSessionId?: string;
+    customerOrigin?: string;
     credentialBinding?: string;
     role?: UserRole;
     locale?: string;
@@ -94,7 +95,7 @@ const buildProviders = (): Provider[] => {
           placeholder: "Enter your password"
         }
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.username || !credentials?.password) {
           throw new Error("Invalid username or password");
         }
@@ -159,6 +160,21 @@ const buildProviders = (): Provider[] => {
           );
         }
 
+        let phoneSessionId: string | undefined;
+        let customerOrganizationId: string | undefined;
+        let customerOrigin: string | undefined;
+        if (user.role === "CUSTOMER") {
+          const context = await resolveCustomerAuthContext(request);
+          if (!context || request.headers.get("origin") !== context.origin) return null;
+          try {
+            phoneSessionId = await createCustomerPasswordSession(user.id, context.organizationId);
+            customerOrganizationId = context.organizationId;
+            customerOrigin = context.origin;
+          } catch {
+            return null;
+          }
+        }
+
         const organizationMember = user.isTeamMember
           ? await prisma.organizationMember.findFirst({
               where: {
@@ -194,7 +210,9 @@ const buildProviders = (): Provider[] => {
           locale: user.locale,
           theme: user.theme,
           isTeamMember: user.isTeamMember || false,
-          organizationId: organizationMember?.organizationId || null,
+          organizationId: customerOrganizationId ?? organizationMember?.organizationId ?? null,
+          phoneSessionId,
+          customerOrigin,
           credentialBinding: credentialBinding(user.id, user.password, nextAuthSecret!),
         };
       }
@@ -213,7 +231,7 @@ const buildProviders = (): Provider[] => {
         const customer = await customerPhoneAuthService.consume({ token: typeof credentials?.token === "string" ? credentials.token : undefined, otp: typeof credentials?.otp === "string" ? credentials.otp : undefined, phone: typeof credentials?.phone === "string" ? credentials.phone : undefined, organizationId: context.organizationId, origin: context.origin });
         return { id: customer.id, name: customer.name, role: "CUSTOMER", isTeamMember: false,
           locale: customer.locale, theme: customer.theme, organizationId: context.organizationId,
-          phoneSessionId: customer.phoneSessionId,
+          phoneSessionId: customer.phoneSessionId, customerOrigin: context.origin,
           credentialBinding: credentialBinding(customer.id, customer.password, nextAuthSecret!) };
       } catch { return null; }
     },
@@ -235,7 +253,7 @@ const buildProviders = (): Provider[] => {
         const customer = await customerSsoService.redeem({ ticket: credentials.ticket, organizationId: context.organizationId, origin: context.origin, verifier });
         return { id: customer.id, name: customer.name, role: "CUSTOMER", isTeamMember: false,
           locale: customer.locale, theme: customer.theme, organizationId: context.organizationId,
-          phoneSessionId: customer.phoneSessionId,
+          phoneSessionId: customer.phoneSessionId, customerOrigin: context.origin,
           credentialBinding: credentialBinding(customer.id, customer.password, nextAuthSecret!) };
       } catch { return null; }
     },
@@ -309,6 +327,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // later password fetched after a concurrent reset.
         token.credentialBinding = user.credentialBinding;
         token.phoneSessionId = user.phoneSessionId;
+        token.customerOrigin = user.customerOrigin;
         if (!user.credentialBinding) return null;
       }
       const current = await validateSessionCredential(token, nextAuthSecret!);
@@ -316,7 +335,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       token.credentialBinding = current.binding;
       token.role = current.user.role;
       if (token.phoneSessionId !== undefined) {
-        if (typeof token.phoneSessionId !== "string" || typeof token.organizationId !== "string" || current.user.role !== "CUSTOMER" ||
+        if (typeof token.phoneSessionId !== "string" || typeof token.customerOrigin !== "string" || typeof token.organizationId !== "string" || current.user.role !== "CUSTOMER" ||
           !await validateCustomerPhoneSession({ sessionId: token.phoneSessionId, userId: token.id as string, organizationId: token.organizationId })) return null;
         token.role = "CUSTOMER";
         token.isTeamMember = false;
@@ -337,6 +356,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.theme = token.theme as string;
         session.user.organizationId = token.organizationId as string | null;
         session.user.phoneSessionId = typeof token.phoneSessionId === "string" ? token.phoneSessionId : undefined;
+        session.user.customerOrigin = typeof token.customerOrigin === "string" ? token.customerOrigin : undefined;
       }
       //console.log("[Auth] session.user.name:", session.user.name);
 

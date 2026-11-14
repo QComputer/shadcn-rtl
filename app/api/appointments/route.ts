@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { appointmentService } from "@/lib/services/appointment.service";
 import { createAppointmentSchema } from "@/lib/validators";
 import { prisma } from "@/lib/db";
-import { ApiError, jsonError, getActiveMembership } from "@/lib/api-guards";
+import { ApiError, jsonError, getActiveMembership, requireAuthSession, requireOrgAccess } from "@/lib/api-guards";
 import { appCookiePath } from "@/lib/app-base-path";
 
 function splitName(fullName: string) {
@@ -16,7 +16,7 @@ function splitName(fullName: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession(request);
 
     if (!session?.user) {
       throw new ApiError(401, "Unauthorized");
@@ -49,10 +49,12 @@ export async function GET(request: NextRequest) {
 
     let appointments;
     if (session.user.role === "CUSTOMER") {
+      if (params.organizationId && params.organizationId !== session.customerContext!.organizationId) throw new ApiError(403, "Customer tenant context mismatch");
       appointments = await appointmentService.list({
         ...params,
         customerId: session.user.id,
         guestCustomerId: undefined,
+        organizationId: session.customerContext!.organizationId,
       });
     } else if (session.user.role === "STAFF") {
       const membership = await getActiveMembership(session.user.id);
@@ -60,6 +62,7 @@ export async function GET(request: NextRequest) {
         throw new ApiError(403, "Forbidden");
       }
 
+      await requireOrgAccess(session, membership.organizationId, ["ADMIN", "MANAGER", "STAFF"]);
       appointments = await appointmentService.list({
         ...params,
         organizationId: membership.organizationId,
@@ -75,6 +78,7 @@ export async function GET(request: NextRequest) {
       if (params.organizationId && params.organizationId !== membership.organizationId) {
         throw new ApiError(403, "Forbidden");
       }
+      await requireOrgAccess(session, membership.organizationId, ["ADMIN", "MANAGER", "STAFF"]);
       appointments = await appointmentService.list({
         ...params,
         organizationId: membership.organizationId,
@@ -90,11 +94,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const authenticated = await auth();
+    const session = authenticated?.user?.id ? await requireAuthSession(request) : null;
     const body = await request.json();
     const data = createAppointmentSchema.parse(body);
 
     if (session?.user?.id) {
+      if (session.user.role === "CUSTOMER") {
+        const service = await prisma.service.findFirst({ where: { id: data.serviceId, deletedAt: null, organizationId: session.customerContext!.organizationId }, select: { id: true } });
+        if (!service) throw new ApiError(403, "Customer tenant context mismatch");
+      }
       const appointment = await appointmentService.create(session.user.id, data);
       return NextResponse.json(appointment, { status: 201 });
     }

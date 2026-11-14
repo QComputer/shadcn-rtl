@@ -29,7 +29,7 @@ const changePasswordSchema = z
     path: ["newPassword"],
   });
 
-function publicUserSelect() {
+function publicUserSelect(customerOrganizationId?: string) {
   return {
     id: true,
     name: true,
@@ -46,6 +46,7 @@ function publicUserSelect() {
     createdAt: true,
     updatedAt: true,
     following: {
+      ...(customerOrganizationId ? { where: { organizationId: customerOrganizationId } } : {}),
       select: {
         id: true,
         organization: {
@@ -60,7 +61,10 @@ function publicUserSelect() {
       },
     },
     memberOf: {
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        ...(customerOrganizationId ? { organizationId: customerOrganizationId } : {}),
+      },
       orderBy: { joinedAt: "desc" as const },
       select: {
         id: true,
@@ -92,13 +96,15 @@ function normalizeProfilePayload(data: z.infer<typeof updateProfileSchema>) {
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await requireAuthSession();
+    const session = await requireAuthSession(request);
 
     const user = await prisma.user.findFirst({
       where: { id: session.user.id, deletedAt: null, isActive: true },
-      select: publicUserSelect(),
+      select: publicUserSelect(
+        session.user.role === "CUSTOMER" ? session.customerContext!.organizationId : undefined,
+      ),
     });
 
     if (!user) throw new ApiError(404, "User not found");
@@ -115,7 +121,8 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await requireAuthSession();
+    requireSameOriginMutation(request);
+    const session = await requireAuthSession(request);
     const body = await request.json();
     const data = updateProfileSchema.parse(body);
     const previous = await prisma.user.findFirst({
@@ -175,7 +182,7 @@ export async function POST(request: NextRequest) {
   let actorId: string | undefined;
   try {
     requireSameOriginMutation(request);
-    const session = await requireAuthSession();
+    const session = await requireAuthSession(request);
     actorId = session.user.id;
     const clientIp = getClientIp(request.headers);
     const rateLimit = checkRateLimit({

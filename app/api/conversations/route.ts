@@ -27,7 +27,9 @@ function checkConversationWriteLimit(request: NextRequest, userId: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await requireAuthSession();
+    const session = await requireAuthSession(request);
+    // Conversations are account-global; customer use requires a tenant-owned model.
+    if (session.user.role === "CUSTOMER") throw new ApiError(403, "Tenant-scoped customer messaging is not available");
     const { searchParams } = request.nextUrl;
     const page = parsePositiveInt(searchParams.get("page"), 1, 100000);
     const pageSize = parsePositiveInt(searchParams.get("pageSize"), 20, MAX_PAGE_SIZE);
@@ -45,7 +47,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await requireAuthSession();
+    const session = await requireAuthSession(request);
+    // Conversations are account-global; customer use requires a tenant-owned model.
+    if (session.user.role === "CUSTOMER") throw new ApiError(403, "Tenant-scoped customer messaging is not available");
     checkConversationWriteLimit(request, session.user.id);
 
     const body = await request.json();

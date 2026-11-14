@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { jsonError, requireAuthSession } from "@/lib/api-guards";
+import {
+  jsonError,
+  requireAuthSession,
+  requireCustomerRequestContext,
+  requireSameOriginMutation,
+} from "@/lib/api-guards";
 
 function readLimit(request: NextRequest) {
   const value = Number(request.nextUrl.searchParams.get("limit") || "50");
@@ -10,11 +15,13 @@ function readLimit(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const session = await requireAuthSession();
+    const context = await requireCustomerRequestContext(request, session);
     const includeRead = request.nextUrl.searchParams.get("scope") === "all";
 
     const notifications = await prisma.notification.findMany({
       where: {
         targetUserId: session.user.id,
+        organizationId: context.organizationId,
         ...(includeRead ? {} : { seen: false }),
       },
       orderBy: { createdAt: "desc" },
@@ -44,7 +51,9 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    requireSameOriginMutation(request);
     const session = await requireAuthSession();
+    const context = await requireCustomerRequestContext(request, session);
     const body = (await request.json().catch(() => ({}))) as { ids?: string[]; seen?: boolean };
     const ids = Array.isArray(body.ids)
       ? body.ids.filter((id): id is string => typeof id === "string" && id.length > 0)
@@ -59,6 +68,7 @@ export async function PATCH(request: NextRequest) {
       where: {
         id: { in: ids },
         targetUserId: session.user.id,
+        organizationId: context.organizationId,
       },
       data: {
         seen,

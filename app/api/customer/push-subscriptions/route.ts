@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { jsonError, requireAuthSession } from "@/lib/api-guards"
+import {
+  ApiError,
+  jsonError,
+  requireAuthSession,
+  requireCustomerRequestContext,
+  requireSameOriginMutation,
+} from "@/lib/api-guards"
 import { webPushFoundationService } from "@/lib/services/web-push-foundation.service"
-import { getRequestPushOrigin } from "@/lib/push-origin.server"
 
 const organizationSlugSchema = z.string().trim().min(1)
 
@@ -38,11 +43,13 @@ function getUserAgent(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const session = await requireAuthSession()
+    const context = await requireCustomerRequestContext(request, session)
     const organizationSlug = organizationSlugSchema.parse(request.nextUrl.searchParams.get("organizationSlug"))
+    if (organizationSlug !== context.slug) throw new ApiError(403, "Customer organization context mismatch")
     const status = await webPushFoundationService.getCustomerStatus(
       organizationSlug,
       session.user.id,
-      getRequestPushOrigin(request),
+      context.origin,
     )
     return NextResponse.json(status)
   } catch (error) {
@@ -52,15 +59,18 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    requireSameOriginMutation(request)
     const session = await requireAuthSession()
+    const context = await requireCustomerRequestContext(request, session)
     const body = subscribeSchema.parse(await request.json())
+    if (body.organizationSlug !== context.slug) throw new ApiError(403, "Customer organization context mismatch")
     const subscription = await webPushFoundationService.subscribe({
       organizationSlug: body.organizationSlug,
       customerId: session.user.id,
       subscription: body.subscription,
       userAgent: getUserAgent(request),
       source: "PUBLIC_SHOP",
-      origin: getRequestPushOrigin(request),
+      origin: context.origin,
     })
 
     return NextResponse.json({ subscription }, { status: 201 })
@@ -71,8 +81,11 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    requireSameOriginMutation(request)
     const session = await requireAuthSession()
+    const context = await requireCustomerRequestContext(request, session)
     const body = permissionEventSchema.parse(await request.json())
+    if (body.organizationSlug !== context.slug) throw new ApiError(403, "Customer organization context mismatch")
     const event = await webPushFoundationService.recordPermissionEvent({
       organizationSlug: body.organizationSlug,
       customerId: session.user.id,
@@ -80,7 +93,7 @@ export async function PATCH(request: NextRequest) {
       reason: body.reason,
       userAgent: getUserAgent(request),
       source: "PUBLIC_SHOP",
-      origin: getRequestPushOrigin(request),
+      origin: context.origin,
     })
 
     return NextResponse.json({ event }, { status: 201 })
@@ -91,15 +104,18 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    requireSameOriginMutation(request)
     const session = await requireAuthSession()
+    const context = await requireCustomerRequestContext(request, session)
     const body = unsubscribeSchema.parse(await request.json().catch(() => ({})))
+    if (body.organizationSlug !== context.slug) throw new ApiError(403, "Customer organization context mismatch")
     const result = await webPushFoundationService.unsubscribe({
       organizationSlug: body.organizationSlug,
       customerId: session.user.id,
       endpoint: body.endpoint,
       userAgent: getUserAgent(request),
       source: "PUBLIC_SHOP",
-      origin: getRequestPushOrigin(request),
+      origin: context.origin,
     })
 
     return NextResponse.json(result)

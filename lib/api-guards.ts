@@ -3,7 +3,10 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import type { UserRole } from "@/lib/types";
 
+export type CustomerRequestContext = { organizationId: string; slug: string; origin: string };
+
 export type SessionWithUser = {
+  customerContext?: CustomerRequestContext;
   user: {
     id: string;
     role: UserRole;
@@ -13,6 +16,8 @@ export type SessionWithUser = {
     isTeamMember?: boolean | null;
     theme?: string | null;
     organizationId?: string | null;
+    phoneSessionId?: string;
+    customerOrigin?: string;
   };
 };
 
@@ -73,7 +78,7 @@ export function requireSameOriginMutation(request: Request) {
   }
 }
 
-export async function requireAuthSession(): Promise<SessionWithUser> {
+export async function requireAuthSession(request?: Request): Promise<SessionWithUser> {
   const session = await auth();
   const user = session?.user;
 
@@ -81,20 +86,45 @@ export async function requireAuthSession(): Promise<SessionWithUser> {
     throw new ApiError(401, "Unauthorized");
   }
 
-  const current = await prisma.user.findFirst({ where: { id: user.id, isActive: true, deletedAt: null }, select: { role: true } });
+  const current = await prisma.user.findFirst({ where: { id: user.id, isActive: true, deletedAt: null }, select: { role: true, isTeamMember: true } });
   if (!current) throw new ApiError(401, "Unauthorized");
-  return {
+  const result: SessionWithUser = {
     user: {
       id: user.id,
       role: current.role as UserRole,
       name: user.name ?? null,
       email: user.email ?? null,
       locale: user.locale ?? null,
-      isTeamMember: user.isTeamMember ?? null,
+      isTeamMember: current.isTeamMember,
       theme: user.theme ?? null,
       organizationId: user.organizationId ?? null,
+      phoneSessionId: typeof user.phoneSessionId === "string" ? user.phoneSessionId : undefined,
+      customerOrigin: typeof user.customerOrigin === "string" ? user.customerOrigin : undefined,
     },
   };
+  if (request && result.user.role === "CUSTOMER") await requireCustomerRequestContext(request, result);
+  return result;
+}
+
+/** A global identity or another tenant's valid session is never customer authority here. */
+export async function requireCustomerRequestContext(request: Request, session: SessionWithUser): Promise<CustomerRequestContext> {
+  if (session.user.role !== "CUSTOMER" || session.user.isTeamMember || !session.user.phoneSessionId || !session.user.organizationId) {
+    throw new ApiError(403, "Domain-bound customer session required");
+  }
+  const [{ resolveCustomerAuthContext }, { validateCustomerPhoneSession }] = await Promise.all([
+    import("@/lib/customer-auth/context.server"), import("@/lib/customer-auth/core.server"),
+  ]);
+  const context = await resolveCustomerAuthContext(request);
+  if (!context || context.origin !== session.user.customerOrigin || context.organizationId !== session.user.organizationId ||
+    !await validateCustomerPhoneSession({ sessionId: session.user.phoneSessionId, userId: session.user.id, organizationId: context.organizationId })) {
+    throw new ApiError(403, "Customer tenant context mismatch");
+  }
+  if (!["GET", "HEAD", "OPTIONS"].includes(request.method.toUpperCase()) && request.headers.get("origin") !== context.origin) {
+    throw new ApiError(403, "Cross-origin customer request rejected");
+  }
+  const bound = { organizationId: context.organizationId, slug: context.slug, origin: context.origin };
+  session.customerContext = bound;
+  return bound;
 }
 
 export function requireRole(session: SessionWithUser, roles: UserRole[]) {
@@ -503,7 +533,7 @@ export async function requireOrderAccess(
   if (!order) throw new ApiError(404, "Order not found");
 
   if (session?.user?.role === "CUSTOMER") {
-    if (order.customerId !== session.user.id)
+    if (!allowedRoles.includes("CUSTOMER") || !session.customerContext || order.organizationSlug !== session.customerContext.slug || order.customerId !== session.user.id)
       throw new ApiError(403, "Forbidden");
     return order;
   }
@@ -541,7 +571,7 @@ export async function requireAppointmentAccess(
   if (!appointment) throw new ApiError(404, "Appointment not found");
 
   if (session?.user?.role === "CUSTOMER") {
-    if (appointment.customerId !== session.user.id)
+    if (!allowedRoles.includes("CUSTOMER") || !session.customerContext || appointment.service.organizationId !== session.customerContext.organizationId || appointment.customerId !== session.user.id)
       throw new ApiError(403, "Forbidden");
     return appointment;
   }

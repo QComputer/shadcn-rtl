@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { jsonError, requireAuthSession } from "@/lib/api-guards"
+import {
+  ApiError,
+  jsonError,
+  requireAuthSession,
+  requireCustomerRequestContext,
+  requireSameOriginMutation,
+} from "@/lib/api-guards"
 import { notificationPreferencesService } from "@/lib/services/notification-preferences.service"
 
 const organizationSlugSchema = z.string().trim().min(1)
@@ -24,7 +30,9 @@ const updatePreferencesSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     const session = await requireAuthSession()
+    const context = await requireCustomerRequestContext(request, session)
     const organizationSlug = organizationSlugSchema.parse(request.nextUrl.searchParams.get("organizationSlug"))
+    if (organizationSlug !== context.slug) throw new ApiError(403, "Customer organization context mismatch")
     const preferences = await notificationPreferencesService.getCustomerPreferences(organizationSlug, session.user.id)
     return NextResponse.json({ preferences })
   } catch (error) {
@@ -34,8 +42,11 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    requireSameOriginMutation(request)
     const session = await requireAuthSession()
+    const context = await requireCustomerRequestContext(request, session)
     const body = updatePreferencesSchema.parse(await request.json())
+    if (body.organizationSlug !== context.slug) throw new ApiError(403, "Customer organization context mismatch")
 
     const preferences = await Promise.all(
       body.preferences.map((preference) =>

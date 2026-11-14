@@ -1,7 +1,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { prisma as defaultPrisma } from "@/lib/db-runtime";
-import { canTransitionHotelGuestBookingRequest, type HotelGuestBookingRequestStatus } from "@/lib/hotel/domain/guest-booking-request";
+import { canTransitionHotelGuestBookingRequest, HOTEL_GUEST_REQUEST_STATUSES, type HotelGuestBookingRequestStatus } from "@/lib/hotel/domain/guest-booking-request";
 import { PrismaHotelRepositories } from "@/lib/hotel/persistence/prisma-hotel-repositories";
 import { searchPublicHotelAvailability } from "@/lib/hotel/services/public-availability.service";
 
@@ -150,13 +150,17 @@ export class HotelManagementService {
 
   async archivePhysicalRoom(principal: HotelManagementPrincipal, scope: HotelManagementScope, roomId: string) { await this.authorize(principal, scope); await this.assertNoRoomAllocations(roomId); return this.db.hotelRoom.updateMany({ where: { id: roomId, organizationId: scope.organizationId }, data: { isActive: false, deletedAt: new Date() } }); }
 
-  async listGuestBookingRequests(principal: HotelManagementPrincipal, scope: HotelManagementScope, propertyId: string, cursor?: string) {
+  async listGuestBookingRequests(principal: HotelManagementPrincipal, scope: HotelManagementScope, propertyId: string, options: { cursor?: string; status?: string } = {}) {
     await this.authorize(principal, scope);
     await this.assertProperty(scope, propertyId);
+    const status = options.status?.trim() || undefined;
+    if (status && !(HOTEL_GUEST_REQUEST_STATUSES as readonly string[]).includes(status)) {
+      throw new HotelManagementValidationError("Invalid booking request status filter");
+    }
     const rows = await this.db.hotelGuestBookingRequest.findMany({
-      where: { organizationId: scope.organizationId, propertyId },
+      where: { organizationId: scope.organizationId, propertyId, ...(status ? { status } : {}) },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
       take: 50,
       select: { id: true, status: true, checkIn: true, checkOut: true, adults: true, children: true, childAges: true, roomTypeSlug: true, ratePlanCode: true, availabilityHint: true, managerMessage: true, guestName: true, guestPhone: true, guestEmail: true, guestNote: true, version: true, createdAt: true, updatedAt: true },
     });

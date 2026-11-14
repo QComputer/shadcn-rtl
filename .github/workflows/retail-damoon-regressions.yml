@@ -59,6 +59,7 @@ jobs:
           tests/unit/retail-variant-matrix.test.tsx
           tests/unit/retail-draft-variant-generation.test.ts
           tests/unit/retail-variant-generation.test.ts
+          tests/unit/hotel-guest-booking-requests.test.ts
       - name: Damoon booking helpers and standalone HTTP module graph
         run: >-
           pnpm exec node --test tests/damoon-booking-flow.test.mjs

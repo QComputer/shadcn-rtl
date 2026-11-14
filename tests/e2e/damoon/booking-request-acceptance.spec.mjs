@@ -419,6 +419,84 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await expect(guestPage.locator("[data-track-result]")).toContainText(statusLabels.fa.OPTION_OFFERED);
   });
 
+  test("A status update finishing after a filter change refreshes the selected filter", async () => {
+    const checkIn = tomorrowISO();
+    const checkOut = dayAfterISO(checkIn);
+    const payload = faPayload(checkIn, checkOut);
+    payload.contact.email = `filter-race-${randomUUID()}@example.test`;
+    const { PrismaClient } = await import("@prisma/client");
+    const client = new PrismaClient();
+    const [identity] = await client.$queryRaw`SELECT current_database() AS name`;
+    expect(identity.name).toBe(new URL(env.DATABASE_URL).pathname.slice(1));
+    const fixtureId = `filter-race-${randomUUID()}`;
+    const fixtureHash = createHash("sha256").update(randomUUID()).digest("hex");
+    await client.hotelGuestBookingRequest.create({ data: {
+      id: fixtureId, organizationId, propertyId,
+      trackingReferenceHash: fixtureHash, idempotencyHash: fixtureHash, requestFingerprint: fixtureHash,
+      checkIn: new Date(`${checkIn}T00:00:00Z`), checkOut: new Date(`${checkOut}T00:00:00Z`),
+      adults: 2, children: 1, childAges: [8], roomTypeSlug, ratePlanCode,
+      guestName: payload.contact.fullName, guestPhone: payload.contact.phone, guestEmail: payload.contact.email,
+    } });
+
+    const inboxRequest = await waitForRequestInInbox(managerPage, payload.contact.email);
+    const patchUrl = `${appOrigin}${requestsApi}/${encodeURIComponent(inboxRequest.id)}`;
+    let releasePatch;
+    let patchFetched;
+    const patchFetchedPromise = new Promise((resolve) => { patchFetched = resolve; });
+    const releasePatchPromise = new Promise((resolve) => { releasePatch = resolve; });
+    const interceptPatch = (url) => url.href === patchUrl;
+    await managerPage.route(interceptPatch, async (route) => {
+      patchFetched();
+      await releasePatchPromise;
+      const response = await route.fetch();
+      await route.fulfill({ response });
+    });
+
+    try {
+      const patchResponsePromise = managerPage.waitForResponse((response) =>
+        response.url() === patchUrl && response.request().method() === "PATCH",
+      );
+      await managerPage.locator(`#request-status-${inboxRequest.id}`).selectOption("IN_REVIEW");
+      await patchFetchedPromise;
+
+      const selectedFilterResponsePromise = managerPage.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return url.pathname === requestsApi && url.searchParams.get("status") === "IN_REVIEW";
+      });
+      await managerPage.locator("#hotel-request-status-filter").selectOption("IN_REVIEW");
+      await selectedFilterResponsePromise;
+
+      const refreshAfterUpdatePromise = managerPage.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return url.pathname === requestsApi && url.searchParams.get("status") === "IN_REVIEW";
+      });
+      releasePatch();
+      const patchResponse = await patchResponsePromise;
+      expect(patchResponse.status()).toBe(200);
+      const refreshAfterUpdate = await refreshAfterUpdatePromise;
+      expect(refreshAfterUpdate.status()).toBe(200);
+      await expect(managerPage.locator("#hotel-request-status-filter")).toHaveValue("IN_REVIEW");
+      await expect(managerPage.locator(`#request-status-${inboxRequest.id}`)).toHaveCount(1);
+      const visibleStatuses = managerPage.locator("section[aria-labelledby='hotel-stay-requests-title'] article span.rounded-full");
+      for (let index = 0; index < await visibleStatuses.count(); index += 1) {
+        await expect(visibleStatuses.nth(index)).toHaveText("در حال بررسی");
+      }
+    } finally {
+      releasePatch();
+      await managerPage.unroute(interceptPatch);
+      await client.hotelGuestBookingRequest.deleteMany({ where: { id: fixtureId, organizationId, propertyId } });
+      await client.$disconnect();
+      const filterControl = managerPage.locator("#hotel-request-status-filter");
+      if (await filterControl.inputValue() !== "ALL") {
+        const allRequests = managerPage.waitForResponse((response) =>
+          response.url() === `${appOrigin}${requestsApi}` && response.request().method() === "GET",
+        );
+        await filterControl.selectOption("ALL");
+        await allRequests;
+      }
+    }
+  });
+
   test("Negative: Bad reference returns 404 on status check", async () => {
     const c = await newContext(browser);
     guestContexts.push(c);

@@ -16,7 +16,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ org
     const metadata = await getPersistentDiskAssetMetadata(reference);
     if (!metadata) throw new ApiError(404, "Media not found");
     // Receipts are served only through the established audited payment-receipt API.
-    if (key[0] === "retail-payment") throw new ApiError(404, "Media not found");
+    if (key[0] === "retail-payment" || key[0] === "hotel-payment") throw new ApiError(404, "Media not found");
     if (metadata.access === "private") {
       const session = await requireAuthSession();
       if (organizationId === PLATFORM_MEDIA_NAMESPACE) requireRole(session, ["SUPER_ADMIN"]);

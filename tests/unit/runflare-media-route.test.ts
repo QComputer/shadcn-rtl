@@ -77,14 +77,16 @@ test("cross-organization private access is denied", async () => {
   assert.equal(guardCalls.at(-1), "org:org-b:ADMIN,MANAGER");
 });
 
-test("receipt namespace stays hidden from merchant route even for authenticated admins", async () => {
-  const key = "retail-payment/org-a/receipt.png";
-  await (await import("../../lib/storage/persistent-disk-storage")).createPersistentDiskApplicationStorage().store({
-    organizationId: "org-a", key, buffer: png, mimeType: "image/png", access: "private", purpose: "receipt", checksumSha256: (await getPersistentDiskAssetMetadata({ organizationId: "org-a", key }))?.checksumSha256 ?? (await import("node:crypto")).createHash("sha256").update(png).digest("hex"), width: null, height: null,
-  });
-  session = { user: { id: "admin-a" } };
-  const response = await get("org-a", ["retail-payment", "org-a", "receipt.png"]);
-  assert.equal(response.status, 404);
+test("receipt namespaces stay hidden from merchant route even for authenticated admins", async () => {
+  for (const namespace of ["retail-payment", "hotel-payment"]) {
+    const key = `${namespace}/org-a/receipt.png`;
+    await (await import("../../lib/storage/persistent-disk-storage")).createPersistentDiskApplicationStorage().store({
+      organizationId: "org-a", key, buffer: png, mimeType: "image/png", access: "private", purpose: "receipt", checksumSha256: (await getPersistentDiskAssetMetadata({ organizationId: "org-a", key }))?.checksumSha256 ?? (await import("node:crypto")).createHash("sha256").update(png).digest("hex"), width: null, height: null,
+    });
+    session = { user: { id: "admin-a" } };
+    const response = await get("org-a", [namespace, "org-a", "receipt.png"]);
+    assert.equal(response.status, 404);
+  }
 });
 
 test("traversal, organization-key mismatch, missing asset, and disabled adapter return not found", async () => {

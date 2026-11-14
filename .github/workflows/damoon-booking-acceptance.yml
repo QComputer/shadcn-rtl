@@ -16,6 +16,8 @@ on:
       - "tests/damoon-booking-flow.test.mjs"
       - "tests/damoon-static-server.test.mjs"
       - "tests/damoon-public-bundle.test.mjs"
+      - "tests/damoon-public-booking-module.test.mjs"
+      - "public/damoon-front/**"
       - "playwright.damoon.config.mjs"
       - ".github/workflows/damoon-booking-acceptance.yml"
       - "pnpm-lock.yaml"
@@ -60,6 +62,7 @@ jobs:
       CUSTOMER_AUTH_SMS_WORKER_ENABLED: "0"
       DAMOON_E2E_ENABLED: "1"
       DAMOON_APP_URL: http://127.0.0.1:3000
+      DAMOON_SHARED_RUNTIME_URL: http://damoon-hotel.ir:3000
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4
@@ -100,7 +103,7 @@ jobs:
       - name: Typecheck source and CI fixtures
         run: pnpm exec tsc --noEmit --pretty false
       - name: Lint changed Damoon and acceptance files
-        run: pnpm exec eslint sites/damoon/api-proxy.mjs sites/damoon/booking.js sites/damoon/tests/standalone-api-proxy.test.mjs scripts/hotel/seed-damoon-booking-e2e.mts scripts/hotel/verify-damoon-disabled-request-gate.mjs tests/e2e/damoon/booking-request-acceptance.spec.mjs playwright.damoon.config.mjs
+        run: pnpm exec eslint sites/damoon/api-proxy.mjs sites/damoon/booking.js sites/damoon/tests/standalone-api-proxy.test.mjs scripts/hotel/seed-damoon-booking-e2e.mts scripts/hotel/verify-damoon-disabled-request-gate.mjs tests/e2e/damoon/booking-request-acceptance.spec.mjs tests/e2e/damoon/shared-runtime-booking-acceptance.spec.mjs playwright.damoon.config.mjs
       - name: Apply repository migrations to disposable PostgreSQL
         run: pnpm exec prisma migrate deploy
       - name: Seed synthetic Damoon and foreign tenant fixtures
@@ -130,6 +133,11 @@ jobs:
           done
           tail -n 100 "$RUNNER_TEMP/damoon-next.log"
           exit 1
+      - name: Verify shared public bundle against the real Next APIs and disposable database
+        shell: bash
+        env:
+          NODE_ENV: test
+        run: node --test tests/e2e/damoon/shared-runtime-booking-acceptance.spec.mjs
       - name: Start restricted standalone Damoon server
         shell: bash
         run: |

@@ -17,7 +17,7 @@ const paymentPath = (reservationId) => `${reservationsPath(organizationId, prope
 
 function assertTestTarget() {
   if (env.CI !== "true" || env.NODE_ENV !== "test" || env.DAMOON_E2E_ENABLED !== "1" || env.VERCEL_ENV === "production" || env.VERCEL) throw new Error("Damoon operational acceptance requires isolated CI test mode");
-  if (appOrigin !== "http://127.0.0.1:3000" || tenantHostname !== "damoon-hotel.ir" || standaloneOrigin !== "http://damoon-hotel.ir:8080") throw new Error("Only the synthetic loopback-mapped Damoon test origins are permitted");
+  if (appOrigin !== "http://127.0.0.1:3000" || tenantHostname !== "damoon-hotel.localhost" || standaloneOrigin !== "http://damoon-hotel.localhost:8080") throw new Error("Only the synthetic loopback-mapped Damoon test origins are permitted");
   if (!/^\/damoon_[a-f0-9]{16}$/i.test(new URL(env.DATABASE_URL || "https://invalid.local").pathname) || env.DATABASE_URL !== env.DIRECT_URL) throw new Error("Damoon operational acceptance requires the workflow-owned disposable database");
   for (const name of ["DAMOON_MANAGER_USERNAME", "DAMOON_MANAGER_PASSWORD", "DAMOON_ORGANIZATION_ID", "DAMOON_PROPERTY_ID", "DAMOON_FOREIGN_ORGANIZATION_ID", "DAMOON_FOREIGN_PROPERTY_ID", "DAMOON_STANDALONE_URL", "DAMOON_APP_URL"]) {
     if (!env[name]?.trim()) throw new Error(`${name} is required by the Damoon operational acceptance`);

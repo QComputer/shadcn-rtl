@@ -18,6 +18,7 @@ export function HotelGuestOfflinePayment({ organizationId, propertyId, reservati
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [receipts, setReceipts] = useState<Record<string, File | undefined>>({});
+  const [newReceipt, setNewReceipt] = useState<File | null>(null);
   const retry = useRef<{ fingerprint: string; key: string } | null>(null);
   const refresh = useCallback(async () => {
     const response = await fetch(endpoint, { credentials: "same-origin", cache: "no-store" });
@@ -27,27 +28,31 @@ export function HotelGuestOfflinePayment({ organizationId, propertyId, reservati
   }, [endpoint]);
   useEffect(() => { void refresh().catch(() => setError(t.error)); }, [refresh, t.error]);
   async function submit() {
-    if (!/^[1-9][0-9]{0,14}$/.test(amount) || !reference.trim() || reference.trim().length > 160 || !globalThis.crypto?.randomUUID) { setError(t.error); return; }
-    const fingerprint = JSON.stringify([amount, reference.trim()]);
+    if (!/^[1-9][0-9]{0,14}$/.test(amount) || (!reference.trim() && !newReceipt) || reference.trim().length > 160 || !globalThis.crypto?.randomUUID || (newReceipt && (newReceipt.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(newReceipt.type)))) { setError(t.error); return; }
+    const fingerprint = JSON.stringify([amount, reference.trim(), Boolean(newReceipt)]);
     const key = retry.current?.fingerprint === fingerprint ? retry.current.key : crypto.randomUUID();
     retry.current = { fingerprint, key };
     setBusy(true); setError("");
     try {
-      const response = await fetch(endpoint, { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json", "idempotency-key": key }, body: JSON.stringify({ action: "SUBMIT_BANK_TRANSFER", amountToman: amount, bankReference: reference.trim() }) });
+      const response = await fetch(endpoint, { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json", "idempotency-key": key }, body: JSON.stringify({ action: "SUBMIT_BANK_TRANSFER", amountToman: amount, bankReference: reference.trim() || null, receiptPending: Boolean(newReceipt) }) });
       const data = await response.json().catch(() => null);
-      if (!response.ok || !["APPLIED", "REPLAY"].includes(data?.outcome) || data?.entry?.status !== "SUBMITTED") throw new Error("Transfer submission failed");
-      retry.current = null; setAmount(""); setReference(""); await refresh();
+      if (!response.ok || !["APPLIED", "REPLAY"].includes(data?.outcome) || data?.entry?.status !== "SUBMITTED" || typeof data?.entry?.id !== "string") throw new Error("Transfer submission failed");
+      if (newReceipt && !data.entry.receiptAttached) await sendReceipt(data.entry.id, newReceipt);
+      retry.current = null; setAmount(""); setReference(""); setNewReceipt(null); await refresh();
     } catch { setError(t.error); } finally { setBusy(false); }
+  }
+  async function sendReceipt(entryId: string, file: File) {
+    const body = new FormData(); body.append("receipt", file);
+    const response = await fetch(`${endpoint}/${encodeURIComponent(entryId)}/receipt`, { method: "POST", credentials: "same-origin", body });
+    const data = await response.json().catch(() => null);
+    if (!response.ok || data?.attached !== true) throw new Error("Receipt upload failed");
   }
   async function uploadReceipt(entryId: string) {
     const file = receipts[entryId];
     if (!file || file.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) { setError(t.error); return; }
     setBusy(true); setError("");
     try {
-      const body = new FormData(); body.append("receipt", file);
-      const response = await fetch(`${endpoint}/${encodeURIComponent(entryId)}/receipt`, { method: "POST", credentials: "same-origin", body });
-      const data = await response.json().catch(() => null);
-      if (!response.ok || data?.attached !== true) throw new Error("Receipt upload failed");
+      await sendReceipt(entryId, file);
       setReceipts((current) => ({ ...current, [entryId]: undefined })); await refresh();
     } catch { setError(t.error); } finally { setBusy(false); }
   }
@@ -57,5 +62,6 @@ export function HotelGuestOfflinePayment({ organizationId, propertyId, reservati
       {entry.method === "BANK_TRANSFER" && entry.status === "SUBMITTED" && !entry.hasReceipt ? <div><label>{t.receipt}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setReceipts((current) => ({ ...current, [entry.id]: event.target.files?.[0] }))} /></label><button type="button" disabled={busy || !receipts[entry.id]} onClick={() => void uploadReceipt(entry.id)}>{t.upload}</button></div> : null}</li>)}</ul></> : null}
     <label className="block">{t.amount}<input className="block w-full rounded border p-2" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
     <label className="block">{t.reference}<input className="block w-full rounded border p-2" value={reference} onChange={(e) => setReference(e.target.value)} /></label>
+    <label className="block">{t.receipt}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setNewReceipt(e.target.files?.[0] ?? null)} /></label>
     <button type="button" disabled={busy} onClick={() => void submit()}>{t.submit}</button>{" "}<button type="button" disabled={busy} onClick={() => void refresh().catch(() => setError(t.error))}>{t.refresh}</button>{error ? <p role="alert">{error}</p> : null}</section>;
 }

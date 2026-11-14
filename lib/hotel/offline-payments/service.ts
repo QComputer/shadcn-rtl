@@ -36,6 +36,7 @@ export type OfflinePaymentCommand =
       readonly idempotencyKey: string;
       readonly amountToman: bigint;
       readonly bankReference: string;
+      readonly receiptPending: boolean;
       readonly now: Date;
     }
   | {
@@ -59,6 +60,7 @@ export type OfflinePaymentLedgerEntry = {
   readonly recordedByUserId: string;
   readonly verifiedByUserId?: string;
   readonly bankReference?: string;
+  readonly receiptAttached?: boolean;
   readonly createdAt: Date;
   readonly verifiedAt?: Date;
 };
@@ -82,7 +84,7 @@ export interface HotelOfflinePaymentRepository {
 
 export interface HotelOfflinePaymentService {
   recordCash(input: { actor: OfflinePaymentActor; reservationId: string; idempotencyKey: string; amountToman: bigint }): Promise<OfflinePaymentCommandResult>;
-  submitBankTransfer(input: { actor: OfflinePaymentActor; reservationId: string; idempotencyKey: string; amountToman: bigint; bankReference: string }): Promise<OfflinePaymentCommandResult>;
+  submitBankTransfer(input: { actor: OfflinePaymentActor; reservationId: string; idempotencyKey: string; amountToman: bigint; bankReference?: string | null; receiptPending?: boolean }): Promise<OfflinePaymentCommandResult>;
   verifyBankTransfer(input: { actor: OfflinePaymentActor; reservationId: string; ledgerEntryId: string; idempotencyKey: string }): Promise<OfflinePaymentCommandResult>;
 }
 
@@ -122,13 +124,14 @@ export function createHotelOfflinePaymentService(deps: {
       const invalid = validateCommon(input);
       if (invalid) return { outcome: invalid === "INVALID_ACTOR" ? "INVALID_INPUT" : invalid };
       if (!hasPermission(input.actor, PERMISSION.SUBMIT_BANK_TRANSFER)) return { outcome: "UNAUTHORIZED" };
-      const bankReference = input.bankReference.trim();
-      if (!bankReference || bankReference.length > 160) return { outcome: "INVALID_INPUT" };
+      const bankReference = input.bankReference?.trim() ?? "";
+      const receiptPending = input.receiptPending === true;
+      if ((!bankReference && !receiptPending) || bankReference.length > 160) return { outcome: "INVALID_INPUT" };
       return deps.repository.applyOfflinePaymentCommand({
         type: "SUBMIT_BANK_TRANSFER", organizationId: input.actor.organizationId,
         reservationId: input.reservationId, actorUserId: input.actor.userId,
         idempotencyKey: input.idempotencyKey, amountToman: input.amountToman,
-        bankReference, now: deps.now(),
+        bankReference, receiptPending, now: deps.now(),
       });
     },
     async verifyBankTransfer(input) {

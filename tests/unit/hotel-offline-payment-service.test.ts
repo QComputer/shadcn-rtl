@@ -32,6 +32,7 @@ class MemoryOfflinePaymentRepository implements HotelOfflinePaymentRepository {
   private readonly reservations = new Map([[`${ORG}:${RESERVATION}`, { total: TOTAL, paid: BigInt(0), status: "PENDING_PAYMENT" }]]);
   private readonly entries = new Map<string, OfflinePaymentLedgerEntry>();
   private readonly byIdempotency = new Map<string, string>();
+  private readonly receiptPendingByIdempotency = new Map<string, boolean>();
   private nextId = 0;
   private queue: Promise<void> = Promise.resolve();
 
@@ -58,7 +59,8 @@ class MemoryOfflinePaymentRepository implements HotelOfflinePaymentRepository {
       const same = command.type === "VERIFY_BANK_TRANSFER"
         ? existing.id === command.ledgerEntryId && existing.status === "VERIFIED"
         : existing.reservationId === command.reservationId && existing.method === (command.type === "RECORD_CASH" ? "CASH" : "BANK_TRANSFER")
-          && existing.amountToman === command.amountToman && existing.bankReference === (command.type === "SUBMIT_BANK_TRANSFER" ? command.bankReference : undefined);
+          && existing.amountToman === command.amountToman && existing.bankReference === (command.type === "SUBMIT_BANK_TRANSFER" ? command.bankReference || undefined : undefined)
+          && (command.type !== "SUBMIT_BANK_TRANSFER" || this.receiptPendingByIdempotency.get(idemScope) === command.receiptPending);
       return same ? { outcome: "REPLAY", entry: existing } : { outcome: "IDEMPOTENCY_CONFLICT" };
     }
 
@@ -67,6 +69,7 @@ class MemoryOfflinePaymentRepository implements HotelOfflinePaymentRepository {
       if (!entry || entry.reservationId !== command.reservationId) return { outcome: "NOT_FOUND" };
       if (entry.organizationId !== command.organizationId) return { outcome: "TENANT_MISMATCH" };
       if (entry.method !== "BANK_TRANSFER" || entry.status !== "SUBMITTED") return { outcome: "PAYMENT_NOT_PENDING" };
+      if (!entry.bankReference?.trim() && !entry.receiptAttached) return { outcome: "PAYMENT_NOT_PENDING" };
       if (reservation.paid + entry.amountToman > reservation.total) return { outcome: "OVERPAYMENT" };
       const verified = { ...entry, status: "VERIFIED" as const, verifiedByUserId: command.actorUserId, verifiedAt: command.now };
       this.entries.set(entry.id, verified);
@@ -93,6 +96,7 @@ class MemoryOfflinePaymentRepository implements HotelOfflinePaymentRepository {
     };
     this.entries.set(entry.id, entry);
     this.byIdempotency.set(idemScope, entry.id);
+    if (command.type === "SUBMIT_BANK_TRANSFER") this.receiptPendingByIdempotency.set(idemScope, command.receiptPending);
     if (entry.status === "VERIFIED") reservation.paid += entry.amountToman;
     return { outcome: "APPLIED", entry };
   }
@@ -103,6 +107,12 @@ class MemoryOfflinePaymentRepository implements HotelOfflinePaymentRepository {
 
   reservationStatus() {
     return this.reservations.get(`${ORG}:${RESERVATION}`)?.status;
+  }
+
+  attachReceipt(entryId: string) {
+    const entry = this.entries.get(entryId);
+    assert.ok(entry);
+    this.entries.set(entryId, { ...entry, receiptAttached: true });
   }
 }
 
@@ -129,6 +139,30 @@ describe("Hotel offline payment service contract", () => {
     assert.equal(result.outcome === "APPLIED" && result.entry.status, "SUBMITTED");
     assert.equal(repository.paidAmount(), BigInt(0));
     assert.equal(repository.reservationStatus(), "PENDING_PAYMENT");
+  });
+
+  it("accepts a reference-free transfer only when receiptPending is explicit, then requires an attached receipt to verify", async () => {
+    const { repository, service } = setup();
+    const missingFlag = await service.submitBankTransfer({ actor: SUBMITTER, reservationId: RESERVATION, amountToman: BigInt(250000), idempotencyKey: "receipt-missing-flag", bankReference: "" });
+    assert.equal(missingFlag.outcome, "INVALID_INPUT");
+    const submitted = await service.submitBankTransfer({ actor: SUBMITTER, reservationId: RESERVATION, amountToman: BigInt(250000), idempotencyKey: "receipt-pending", bankReference: null, receiptPending: true });
+    assert.equal(submitted.outcome, "APPLIED");
+    assert.equal(repository.paidAmount(), BigInt(0));
+    if (submitted.outcome !== "APPLIED") return;
+    const beforeReceipt = await service.verifyBankTransfer({ actor: VERIFIER, reservationId: RESERVATION, ledgerEntryId: submitted.entry.id, idempotencyKey: "receipt-verify" });
+    assert.equal(beforeReceipt.outcome, "PAYMENT_NOT_PENDING");
+    repository.attachReceipt(submitted.entry.id);
+    const withReceipt = await service.verifyBankTransfer({ actor: VERIFIER, reservationId: RESERVATION, ledgerEntryId: submitted.entry.id, idempotencyKey: "receipt-verify" });
+    assert.equal(withReceipt.outcome, "APPLIED");
+    assert.equal(repository.paidAmount(), BigInt(250000));
+  });
+
+  it("includes receiptPending in transfer idempotency fingerprints", async () => {
+    const { service } = setup();
+    const first = await service.submitBankTransfer({ actor: SUBMITTER, reservationId: RESERVATION, amountToman: BigInt(200000), idempotencyKey: "receipt-flag-fingerprint", bankReference: "trace-fingerprint", receiptPending: false });
+    const conflict = await service.submitBankTransfer({ actor: SUBMITTER, reservationId: RESERVATION, amountToman: BigInt(200000), idempotencyKey: "receipt-flag-fingerprint", bankReference: "trace-fingerprint", receiptPending: true });
+    assert.equal(first.outcome, "APPLIED");
+    assert.equal(conflict.outcome, "IDEMPOTENCY_CONFLICT");
   });
 
   it("adds transfer amount only when a staff actor verifies it", async () => {

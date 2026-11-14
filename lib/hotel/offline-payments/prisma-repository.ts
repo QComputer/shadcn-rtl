@@ -22,6 +22,7 @@ type RawLedger = {
   recordedByUserId: string;
   verifiedByUserId: string | null;
   bankReference: string | null;
+  receiptKey: string | null;
   createdAt: Date;
   verifiedAt: Date | null;
 };
@@ -49,7 +50,7 @@ function operation(command: OfflinePaymentCommand) {
 function fingerprint(command: OfflinePaymentCommand) {
   const payload = command.type === "VERIFY_BANK_TRANSFER"
     ? { type: command.type, organizationId: command.organizationId, reservationId: command.reservationId, ledgerEntryId: command.ledgerEntryId, actorUserId: command.actorUserId }
-    : { type: command.type, organizationId: command.organizationId, reservationId: command.reservationId, actorUserId: command.actorUserId, amountToman: command.amountToman.toString(), ...(command.type === "SUBMIT_BANK_TRANSFER" ? { bankReference: command.bankReference } : {}) };
+    : { type: command.type, organizationId: command.organizationId, reservationId: command.reservationId, actorUserId: command.actorUserId, amountToman: command.amountToman.toString(), ...(command.type === "SUBMIT_BANK_TRANSFER" ? { bankReference: command.bankReference, receiptPending: command.receiptPending } : {}) };
   return createHash("sha256").update(JSON.stringify(payload)).digest("hex");
 }
 
@@ -66,6 +67,7 @@ function mapEntry(row: RawLedger): OfflinePaymentLedgerEntry | null {
     recordedByUserId: row.recordedByUserId,
     ...(row.verifiedByUserId ? { verifiedByUserId: row.verifiedByUserId } : {}),
     ...(row.bankReference ? { bankReference: row.bankReference } : {}),
+    ...(row.method === "BANK_TRANSFER" ? { receiptAttached: Boolean(row.receiptKey?.trim()) } : {}),
     createdAt: row.createdAt,
     ...(row.verifiedAt ? { verifiedAt: row.verifiedAt } : {}),
   };
@@ -86,7 +88,7 @@ export class PrismaHotelOfflinePaymentRepository implements HotelOfflinePaymentR
     if (!command.organizationId.trim() || !command.reservationId.trim() || !command.actorUserId.trim() || !command.idempotencyKey.trim()) return { outcome: "INVALID_INPUT" };
     if (command.idempotencyKey.length > 200) return { outcome: "INVALID_INPUT" };
     if (command.type !== "VERIFY_BANK_TRANSFER" && command.amountToman <= BigInt(0)) return { outcome: "INVALID_AMOUNT" };
-    if (command.type === "SUBMIT_BANK_TRANSFER" && (!command.bankReference.trim() || command.bankReference.length > 160)) return { outcome: "INVALID_INPUT" };
+    if (command.type === "SUBMIT_BANK_TRANSFER" && ((!command.bankReference.trim() && !command.receiptPending) || command.bankReference.length > 160)) return { outcome: "INVALID_INPUT" };
 
     return this.client.$transaction((tx) => this.applyInTransaction(tx, command), {
       maxWait: 5_000,
@@ -128,7 +130,7 @@ export class PrismaHotelOfflinePaymentRepository implements HotelOfflinePaymentR
       const replayRows = await tx.$queryRaw<RawLedger[]>(Prisma.sql`
         SELECT p."id", p."organizationId", p."reservationId", p."method"::text AS "method", p."status"::text AS "status",
           p."amountToman", (SELECT c."idempotencyKey" FROM ${IDEMPOTENCY_TABLE} c WHERE c."ledgerEntryId" = p."id" AND c."operation"::text IN ('RECORD_CASH', 'SUBMIT_BANK_TRANSFER') LIMIT 1) AS "idempotencyKey",
-          p."recordedByUserId", p."verifiedByUserId", p."bankReference", p."createdAt", p."verifiedAt"
+          p."recordedByUserId", p."verifiedByUserId", p."bankReference", p."receiptKey", p."createdAt", p."verifiedAt"
         FROM ${TABLE} p
         WHERE p."id" = ${idempotency.ledgerEntryId} AND p."organizationId" = ${command.organizationId}
       `);
@@ -164,7 +166,7 @@ export class PrismaHotelOfflinePaymentRepository implements HotelOfflinePaymentR
       const candidateRows = await tx.$queryRaw<RawLedger[]>(Prisma.sql`
         SELECT p."id", p."organizationId", p."reservationId", p."method"::text AS "method", p."status"::text AS "status",
           p."amountToman", (SELECT c."idempotencyKey" FROM ${IDEMPOTENCY_TABLE} c WHERE c."ledgerEntryId" = p."id" AND c."operation"::text IN ('RECORD_CASH', 'SUBMIT_BANK_TRANSFER') LIMIT 1) AS "idempotencyKey",
-          p."recordedByUserId", p."verifiedByUserId", p."bankReference", p."createdAt", p."verifiedAt"
+          p."recordedByUserId", p."verifiedByUserId", p."bankReference", p."receiptKey", p."createdAt", p."verifiedAt"
         FROM ${TABLE} p
         WHERE p."id" = ${command.ledgerEntryId} AND p."organizationId" = ${command.organizationId}
           AND p."reservationId" = ${command.reservationId}
@@ -176,6 +178,10 @@ export class PrismaHotelOfflinePaymentRepository implements HotelOfflinePaymentR
         return { outcome: "NOT_FOUND" };
       }
       if (candidate.method !== "BANK_TRANSFER" || candidate.status !== "SUBMITTED") {
+        await this.removePlaceholder(tx, command);
+        return { outcome: "PAYMENT_NOT_PENDING" };
+      }
+      if (!candidate.bankReference?.trim() && !candidate.receiptKey?.trim()) {
         await this.removePlaceholder(tx, command);
         return { outcome: "PAYMENT_NOT_PENDING" };
       }
@@ -213,18 +219,20 @@ export class PrismaHotelOfflinePaymentRepository implements HotelOfflinePaymentR
       // idempotency keys at the same time. Hash collisions only serialize
       // unrelated references; they cannot permit a duplicate.
       const normalizedReference = command.bankReference.trim().toLocaleLowerCase("en-US");
-      await tx.$executeRaw(Prisma.sql`
-        SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify([command.organizationId, normalizedReference])}, 0))
-      `);
-      const existingReference = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-        SELECT "id" FROM ${TABLE}
-        WHERE "organizationId" = ${command.organizationId}
-          AND lower(btrim("bankReference")) = ${normalizedReference}
-        LIMIT 1
-      `);
-      if (existingReference.length > 0) {
-        await this.removePlaceholder(tx, command);
-        return { outcome: "PAYMENT_NOT_PENDING" };
+      if (normalizedReference) {
+        await tx.$executeRaw(Prisma.sql`
+          SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify([command.organizationId, normalizedReference])}, 0))
+        `);
+        const existingReference = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+          SELECT "id" FROM ${TABLE}
+          WHERE "organizationId" = ${command.organizationId}
+            AND lower(btrim("bankReference")) = ${normalizedReference}
+          LIMIT 1
+        `);
+        if (existingReference.length > 0) {
+          await this.removePlaceholder(tx, command);
+          return { outcome: "PAYMENT_NOT_PENDING" };
+        }
       }
     }
 
@@ -244,10 +252,10 @@ export class PrismaHotelOfflinePaymentRepository implements HotelOfflinePaymentR
         ${ledgerId}, ${command.organizationId}, ${command.reservationId}, ${method}::"HotelOfflinePaymentMethod",
         ${status}::"HotelOfflinePaymentStatus", ${command.amountToman},
         ${command.actorUserId}, ${isCash ? command.actorUserId : null},
-        ${command.type === "SUBMIT_BANK_TRANSFER" ? command.bankReference : null}, ${command.now}, ${isCash ? command.now : null}
+        ${command.type === "SUBMIT_BANK_TRANSFER" && command.bankReference ? command.bankReference : null}, ${command.now}, ${isCash ? command.now : null}
       )
       RETURNING "id", "organizationId", "reservationId", "method"::text AS "method", "status"::text AS "status",
-        "amountToman", "recordedByUserId", "verifiedByUserId", "bankReference", "createdAt", "verifiedAt"
+        "amountToman", "recordedByUserId", "verifiedByUserId", "bankReference", "receiptKey", "createdAt", "verifiedAt"
     `);
     const ledger = insertedRows[0];
     if (isCash) {

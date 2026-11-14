@@ -105,6 +105,8 @@ test("offline Hotel payments use tenant locks, staff authorization and partial v
     assert.equal(submitted.outcome, "APPLIED");
     if (submitted.outcome !== "APPLIED") return;
     assert.equal(submitted.entry.status, "SUBMITTED");
+    const receiptFlagConflict = await service.submitBankTransfer({ actor: submitter, reservationId: reservationA.id, amountToman: BigInt(300000), idempotencyKey: `transfer-${token}`, bankReference: `synthetic-${token}`, receiptPending: true });
+    assert.equal(receiptFlagConflict.outcome, "IDEMPOTENCY_CONFLICT", "receiptPending participates in the durable request fingerprint");
     assert.equal((await db.hotelReservation.findUniqueOrThrow({ where: { id: reservationA.id } })).paidAmount, BigInt(200000));
     const [referenceRaceA, referenceRaceB] = await Promise.all([
       service.submitBankTransfer({ actor: submitter, reservationId: reservationA.id, amountToman: BigInt(50000), idempotencyKey: `transfer-reference-race-a-${token}`, bankReference: ` concurrent-${token} ` }),
@@ -127,6 +129,22 @@ test("offline Hotel payments use tenant locks, staff authorization and partial v
     const finalReservation = await db.hotelReservation.findUniqueOrThrow({ where: { id: reservationA.id } });
     assert.ok(finalReservation.paidAmount <= finalReservation.totalAmount);
     assert.equal(finalReservation.status, "PENDING_PAYMENT");
+    const missingReceiptFlag = await service.submitBankTransfer({ actor: submitter, reservationId: reservationA.id, amountToman: BigInt(50000), idempotencyKey: `receipt-no-flag-${token}`, bankReference: null });
+    assert.equal(missingReceiptFlag.outcome, "INVALID_INPUT", "reference-free claims require explicit receiptPending");
+    const receiptOnly = await service.submitBankTransfer({ actor: submitter, reservationId: reservationA.id, amountToman: BigInt(50000), idempotencyKey: `receipt-pending-${token}`, bankReference: null, receiptPending: true });
+    assert.equal(receiptOnly.outcome, "APPLIED");
+    if (receiptOnly.outcome !== "APPLIED") return;
+    assert.equal(receiptOnly.entry.status, "SUBMITTED");
+    assert.equal(receiptOnly.entry.receiptAttached, false);
+    assert.equal((await db.hotelReservation.findUniqueOrThrow({ where: { id: reservationA.id } })).paidAmount, finalReservation.paidAmount, "receipt-only submission never changes paidAmount");
+    const verifyWithoutReceipt = await service.verifyBankTransfer({ actor: verifier, reservationId: reservationA.id, ledgerEntryId: receiptOnly.entry.id, idempotencyKey: `verify-receipt-before-${token}` });
+    assert.equal(verifyWithoutReceipt.outcome, "PAYMENT_NOT_PENDING");
+    const attachedReceipt = await db.hotelOfflinePayment.update({ where: { id: receiptOnly.entry.id }, data: { receiptKey: `hotel-payment/${orgA.id}/${token}.png` } });
+    assert.ok(attachedReceipt.receiptKey);
+    const verifyWithReceipt = await service.verifyBankTransfer({ actor: verifier, reservationId: reservationA.id, ledgerEntryId: receiptOnly.entry.id, idempotencyKey: `verify-receipt-after-${token}` });
+    assert.equal(verifyWithReceipt.outcome, "APPLIED");
+    assert.equal(verifyWithReceipt.outcome === "APPLIED" && verifyWithReceipt.entry.receiptAttached, true, "verification can rely on the receipt on that exact ledger row");
+    assert.equal((await db.hotelReservation.findUniqueOrThrow({ where: { id: reservationA.id } })).paidAmount, finalReservation.paidAmount + BigInt(50000));
     assert.equal((await service.recordCash({ actor: foreignCollector, reservationId: reservationA.id, amountToman: BigInt(1), idempotencyKey: `foreign-${token}` })).outcome, "NOT_FOUND");
     assert.equal((await service.submitBankTransfer({ actor: foreignGuest, reservationId: reservationA.id, amountToman: BigInt(1), idempotencyKey: `foreign-guest-${token}`, bankReference: `foreign-${token}` })).outcome, "UNAUTHORIZED");
 

@@ -11,7 +11,7 @@ import { readBoundedJson } from "@/lib/security/bounded-json";
 const command = z.discriminatedUnion("action", [
   z.object({ action: z.literal("RECORD_CASH"), amountToman: z.string().regex(/^[1-9][0-9]{0,14}$/) }).strict(),
   z.object({ action: z.literal("VERIFY_BANK_TRANSFER"), ledgerEntryId: z.string().min(1).max(200) }).strict(),
-  z.object({ action: z.literal("SUBMIT_BANK_TRANSFER"), amountToman: z.string().regex(/^[1-9][0-9]{0,14}$/), bankReference: z.string().trim().min(1).max(160) }).strict(),
+  z.object({ action: z.literal("SUBMIT_BANK_TRANSFER"), amountToman: z.string().regex(/^[1-9][0-9]{0,14}$/), bankReference: z.string().trim().max(160).nullable().optional(), receiptPending: z.boolean().optional() }).strict(),
 ]);
 type Params = { params: Promise<{ id: string; propertyId: string; reservationId: string }> };
 
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest, params: Params) {
     if (body.action === "VERIFY_BANK_TRANSFER" && !["ADMIN", "MANAGER"].includes(scope.role)) throw new ApiError(403, "Management access required");
     const permissions = body.action === "RECORD_CASH" ? ["hotel:offline-payment:record-cash" as const] : body.action === "VERIFY_BANK_TRANSFER" ? ["hotel:offline-payment:verify-transfer" as const] : ["hotel:offline-payment:submit-transfer" as const];
     const actor = { organizationId: scope.organizationId, userId: scope.userId, permissions };
-    const result = body.action === "RECORD_CASH" ? await service.recordCash({ actor, reservationId: scope.reservationId, idempotencyKey: key, amountToman: BigInt(body.amountToman) }) : body.action === "VERIFY_BANK_TRANSFER" ? await service.verifyBankTransfer({ actor, reservationId: scope.reservationId, idempotencyKey: key, ledgerEntryId: body.ledgerEntryId }) : await service.submitBankTransfer({ actor, reservationId: scope.reservationId, idempotencyKey: key, amountToman: BigInt(body.amountToman), bankReference: body.bankReference });
+    const result = body.action === "RECORD_CASH" ? await service.recordCash({ actor, reservationId: scope.reservationId, idempotencyKey: key, amountToman: BigInt(body.amountToman) }) : body.action === "VERIFY_BANK_TRANSFER" ? await service.verifyBankTransfer({ actor, reservationId: scope.reservationId, idempotencyKey: key, ledgerEntryId: body.ledgerEntryId }) : await service.submitBankTransfer({ actor, reservationId: scope.reservationId, idempotencyKey: key, amountToman: BigInt(body.amountToman), bankReference: body.bankReference, receiptPending: body.receiptPending });
     if (result.outcome !== "APPLIED" && result.outcome !== "REPLAY") throw new ApiError(result.outcome === "NOT_FOUND" ? 404 : result.outcome === "UNAUTHORIZED" ? 403 : 409, result.outcome);
     return NextResponse.json({ outcome: result.outcome, entry: { ...result.entry, amountToman: result.entry.amountToman.toString() } }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) { return jsonError(error); }

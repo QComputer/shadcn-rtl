@@ -137,6 +137,12 @@ test("role matrix allows staff cash recording and guest transfer submission but 
   const guestTransfer = await POST(request({ action: "SUBMIT_BANK_TRANSFER", amountToman: "125", bankReference: "trace-1" }), params);
   assert.equal(guestTransfer.status, 200);
   assert.equal(calls.some((call) => call.name === "submitBankTransfer"), true);
+  calls.length = 0;
+  const receiptOnly = await POST(request({ action: "SUBMIT_BANK_TRANSFER", amountToman: "125", bankReference: null, receiptPending: true }), params);
+  assert.equal(receiptOnly.status, 200);
+  const submitted = calls.find((call) => call.name === "submitBankTransfer")?.args[0] as { bankReference: string | null; receiptPending: boolean };
+  assert.equal(submitted.bankReference, null);
+  assert.equal(submitted.receiptPending, true);
 
   session = { user: { id: "admin-1", role: "ADMIN", organizationId: "org-1" } };
   calls.length = 0;

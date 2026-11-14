@@ -50,6 +50,8 @@ mock.module("@/lib/hotel/offline-payments/service", { namedExports: {
     recordCash: async (...args: unknown[]) => { calls.push({ name: "recordCash", args }); return serviceResult; },
     verifyBankTransfer: async (...args: unknown[]) => { calls.push({ name: "verifyBankTransfer", args }); return serviceResult; },
     submitBankTransfer: async (...args: unknown[]) => { calls.push({ name: "submitBankTransfer", args }); return serviceResult; },
+    rejectBankTransfer: async (...args: unknown[]) => { calls.push({ name: "rejectBankTransfer", args }); return serviceResult; },
+    reverseCash: async (...args: unknown[]) => { calls.push({ name: "reverseCash", args }); return serviceResult; },
   }),
 } });
 mock.module("@/lib/hotel/offline-payments/prisma-repository", { namedExports: {
@@ -130,6 +132,7 @@ test("role matrix allows staff cash recording and guest transfer submission but 
   calls.length = 0;
   const verification = await POST(request({ action: "VERIFY_BANK_TRANSFER", ledgerEntryId: "ledger-1" }), params);
   assert.equal(verification.status, 403);
+  assert.equal((await POST(request({ action: "REVERSE_CASH", ledgerEntryId: "ledger-1", reason: "correction" }), params)).status, 403);
   assert.equal(calls.some((call) => call.name === "verifyBankTransfer"), false);
 
   session = { user: { id: "guest-1", role: "CUSTOMER", organizationId: "org-1" }, customerContext: { organizationId: "org-1" } };
@@ -149,6 +152,11 @@ test("role matrix allows staff cash recording and guest transfer submission but 
   const verified = await POST(request({ action: "VERIFY_BANK_TRANSFER", ledgerEntryId: "ledger-1" }), params);
   assert.equal(verified.status, 200);
   assert.equal(calls.some((call) => call.name === "verifyBankTransfer"), true);
+  calls.length = 0;
+  assert.equal((await POST(request({ action: "REJECT_BANK_TRANSFER", ledgerEntryId: "ledger-1", reason: "not matched" }), params)).status, 200);
+  assert.equal((await POST(request({ action: "REVERSE_CASH", ledgerEntryId: "ledger-1", reason: "correction" }), params)).status, 200);
+  assert.equal(calls.some((call) => call.name === "rejectBankTransfer"), true);
+  assert.equal(calls.some((call) => call.name === "reverseCash"), true);
 });
 
 test("GET serializes money and does not expose database failures", async () => {

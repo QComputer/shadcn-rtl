@@ -22,6 +22,14 @@ const SUBMITTER: OfflinePaymentActor = {
 const VERIFIER: OfflinePaymentActor = {
   organizationId: ORG, userId: "staff-reviewer", permissions: ["hotel:offline-payment:verify-transfer"],
 };
+const REJECTOR: OfflinePaymentActor = {
+  organizationId: ORG, userId: "hotel-manager", permissions: ["hotel:offline-payment:reject-transfer"],
+};
+const REVERSER: OfflinePaymentActor = {
+  organizationId: ORG, userId: "hotel-manager", permissions: ["hotel:offline-payment:reverse-cash"],
+};
+
+type MemoryAuditEvent = { eventType: string; ledgerEntryId: string; actorUserId: string; amountToman: bigint; reason?: string };
 
 /**
  * In-memory contract double only. It serializes commands to approximate the
@@ -33,6 +41,8 @@ class MemoryOfflinePaymentRepository implements HotelOfflinePaymentRepository {
   private readonly entries = new Map<string, OfflinePaymentLedgerEntry>();
   private readonly byIdempotency = new Map<string, string>();
   private readonly receiptPendingByIdempotency = new Map<string, boolean>();
+  private readonly reasonByIdempotency = new Map<string, string>();
+  private readonly auditEvents: MemoryAuditEvent[] = [];
   private nextId = 0;
   private queue: Promise<void> = Promise.resolve();
 
@@ -52,12 +62,16 @@ class MemoryOfflinePaymentRepository implements HotelOfflinePaymentRepository {
     const reservation = this.reservations.get(`${command.organizationId}:${command.reservationId}`);
     if (!reservation) return { outcome: "NOT_FOUND" };
 
-    const idemScope = `${command.organizationId}:${command.idempotencyKey}`;
+    const idemScope = `${command.organizationId}:${command.type}:${command.idempotencyKey}`;
     const existingId = this.byIdempotency.get(idemScope);
     if (existingId) {
       const existing = this.entries.get(existingId)!;
       const same = command.type === "VERIFY_BANK_TRANSFER"
         ? existing.id === command.ledgerEntryId && existing.status === "VERIFIED"
+        : command.type === "REJECT_BANK_TRANSFER"
+          ? existing.id === command.ledgerEntryId && existing.status === "REJECTED" && this.reasonByIdempotency.get(idemScope) === command.reason
+          : command.type === "REVERSE_CASH"
+            ? existing.id === command.ledgerEntryId && existing.status === "REVERSED" && this.reasonByIdempotency.get(idemScope) === command.reason
         : existing.reservationId === command.reservationId && existing.method === (command.type === "RECORD_CASH" ? "CASH" : "BANK_TRANSFER")
           && existing.amountToman === command.amountToman && existing.bankReference === (command.type === "SUBMIT_BANK_TRANSFER" ? command.bankReference || undefined : undefined)
           && (command.type !== "SUBMIT_BANK_TRANSFER" || this.receiptPendingByIdempotency.get(idemScope) === command.receiptPending);
@@ -75,7 +89,34 @@ class MemoryOfflinePaymentRepository implements HotelOfflinePaymentRepository {
       this.entries.set(entry.id, verified);
       this.byIdempotency.set(idemScope, entry.id);
       reservation.paid += entry.amountToman;
+      this.auditEvents.push({ eventType: "BANK_TRANSFER_VERIFIED", ledgerEntryId: entry.id, actorUserId: command.actorUserId, amountToman: entry.amountToman });
       return { outcome: "APPLIED", entry: verified };
+    }
+
+    if (command.type === "REJECT_BANK_TRANSFER") {
+      const entry = this.entries.get(command.ledgerEntryId);
+      if (!entry || entry.reservationId !== command.reservationId || entry.organizationId !== command.organizationId) return { outcome: "NOT_FOUND" };
+      if (entry.method !== "BANK_TRANSFER" || entry.status !== "SUBMITTED") return { outcome: "PAYMENT_NOT_PENDING" };
+      const rejected = { ...entry, status: "REJECTED" as const };
+      this.entries.set(entry.id, rejected);
+      this.byIdempotency.set(idemScope, entry.id);
+      this.reasonByIdempotency.set(idemScope, command.reason);
+      this.auditEvents.push({ eventType: "BANK_TRANSFER_REJECTED", ledgerEntryId: entry.id, actorUserId: command.actorUserId, amountToman: entry.amountToman, reason: command.reason });
+      return { outcome: "APPLIED", entry: rejected };
+    }
+
+    if (command.type === "REVERSE_CASH") {
+      const entry = this.entries.get(command.ledgerEntryId);
+      if (!entry || entry.reservationId !== command.reservationId || entry.organizationId !== command.organizationId) return { outcome: "NOT_FOUND" };
+      if (entry.method !== "CASH" || entry.status !== "VERIFIED") return { outcome: "PAYMENT_NOT_PENDING" };
+      if (reservation.paid < entry.amountToman) return { outcome: "BALANCE_MISMATCH" };
+      const reversed = { ...entry, status: "REVERSED" as const };
+      this.entries.set(entry.id, reversed);
+      this.byIdempotency.set(idemScope, entry.id);
+      this.reasonByIdempotency.set(idemScope, command.reason);
+      reservation.paid -= entry.amountToman;
+      this.auditEvents.push({ eventType: "CASH_REVERSED", ledgerEntryId: entry.id, actorUserId: command.actorUserId, amountToman: entry.amountToman, reason: command.reason });
+      return { outcome: "APPLIED", entry: reversed };
     }
 
     if (command.type === "SUBMIT_BANK_TRANSFER" && [...this.entries.values()].some((entry) =>
@@ -98,11 +139,16 @@ class MemoryOfflinePaymentRepository implements HotelOfflinePaymentRepository {
     this.byIdempotency.set(idemScope, entry.id);
     if (command.type === "SUBMIT_BANK_TRANSFER") this.receiptPendingByIdempotency.set(idemScope, command.receiptPending);
     if (entry.status === "VERIFIED") reservation.paid += entry.amountToman;
+    this.auditEvents.push({ eventType: command.type === "RECORD_CASH" ? "CASH_RECORDED" : "BANK_TRANSFER_SUBMITTED", ledgerEntryId: entry.id, actorUserId: command.actorUserId, amountToman: entry.amountToman });
     return { outcome: "APPLIED", entry };
   }
 
   paidAmount(organizationId = ORG, reservationId = RESERVATION) {
     return this.reservations.get(`${organizationId}:${reservationId}`)?.paid ?? null;
+  }
+
+  setPaidAmountForTest(amount: bigint) {
+    this.reservations.get(`${ORG}:${RESERVATION}`)!.paid = amount;
   }
 
   reservationStatus() {
@@ -113,6 +159,10 @@ class MemoryOfflinePaymentRepository implements HotelOfflinePaymentRepository {
     const entry = this.entries.get(entryId);
     assert.ok(entry);
     this.entries.set(entryId, { ...entry, receiptAttached: true });
+  }
+
+  events() {
+    return this.auditEvents.map(event => ({ ...event }));
   }
 }
 
@@ -130,6 +180,7 @@ describe("Hotel offline payment service contract", () => {
     assert.equal(result.outcome === "APPLIED" && result.entry.status, "VERIFIED");
     assert.equal(repository.paidAmount(), BigInt(300000));
     assert.equal(repository.reservationStatus(), "PENDING_PAYMENT");
+    assert.equal(repository.events()[0]?.eventType, "CASH_RECORDED");
   });
 
   it("keeps a submitted transfer unverified and out of paidAmount", async () => {
@@ -139,6 +190,7 @@ describe("Hotel offline payment service contract", () => {
     assert.equal(result.outcome === "APPLIED" && result.entry.status, "SUBMITTED");
     assert.equal(repository.paidAmount(), BigInt(0));
     assert.equal(repository.reservationStatus(), "PENDING_PAYMENT");
+    assert.equal(repository.events()[0]?.eventType, "BANK_TRANSFER_SUBMITTED");
   });
 
   it("accepts a reference-free transfer only when receiptPending is explicit, then requires an attached receipt to verify", async () => {
@@ -175,6 +227,66 @@ describe("Hotel offline payment service contract", () => {
     assert.equal(verified.outcome === "APPLIED" && verified.entry.verifiedByUserId, VERIFIER.userId);
     assert.equal(repository.paidAmount(), BigInt(400000));
     assert.equal(repository.reservationStatus(), "PENDING_PAYMENT");
+    assert.ok(repository.events().some(event => event.eventType === "BANK_TRANSFER_VERIFIED" && event.actorUserId === VERIFIER.userId));
+  });
+
+  it("rejects a submitted transfer without counting it as paid and keeps an immutable rejection audit event", async () => {
+    const { repository, service } = setup();
+    const submitted = await service.submitBankTransfer({ actor: SUBMITTER, reservationId: RESERVATION, amountToman: BigInt(200000), idempotencyKey: "reject-submit", bankReference: "reject-ref" });
+    assert.equal(submitted.outcome, "APPLIED");
+    if (submitted.outcome !== "APPLIED") return;
+    const unauthorized = await service.rejectBankTransfer({ actor: SUBMITTER, reservationId: RESERVATION, ledgerEntryId: submitted.entry.id, idempotencyKey: "reject-unauthorized", reason: "not allowed" });
+    assert.equal(unauthorized.outcome, "UNAUTHORIZED");
+    assert.equal((await service.rejectBankTransfer({ actor: REJECTOR, reservationId: RESERVATION, ledgerEntryId: submitted.entry.id, idempotencyKey: "reject-empty-reason", reason: "   " })).outcome, "INVALID_INPUT");
+    const rejected = await service.rejectBankTransfer({ actor: REJECTOR, reservationId: RESERVATION, ledgerEntryId: submitted.entry.id, idempotencyKey: "reject-1", reason: "Receipt does not match" });
+    assert.equal(rejected.outcome, "APPLIED");
+    assert.equal(rejected.outcome === "APPLIED" && rejected.entry.status, "REJECTED");
+    assert.equal(repository.paidAmount(), BigInt(0));
+    assert.equal((await service.verifyBankTransfer({ actor: VERIFIER, reservationId: RESERVATION, ledgerEntryId: submitted.entry.id, idempotencyKey: "reject-then-verify" })).outcome, "PAYMENT_NOT_PENDING");
+    const replay = await service.rejectBankTransfer({ actor: REJECTOR, reservationId: RESERVATION, ledgerEntryId: submitted.entry.id, idempotencyKey: "reject-1", reason: "Receipt does not match" });
+    const conflict = await service.rejectBankTransfer({ actor: REJECTOR, reservationId: RESERVATION, ledgerEntryId: submitted.entry.id, idempotencyKey: "reject-1", reason: "Different reason" });
+    assert.equal(replay.outcome, "REPLAY");
+    assert.equal(conflict.outcome, "IDEMPOTENCY_CONFLICT");
+    assert.deepEqual(repository.events().filter(event => event.eventType === "BANK_TRANSFER_REJECTED"), [
+      { eventType: "BANK_TRANSFER_REJECTED", ledgerEntryId: submitted.entry.id, actorUserId: REJECTOR.userId, amountToman: BigInt(200000), reason: "Receipt does not match" },
+    ]);
+  });
+
+  it("reverses a verified cash collection once without a refund and never makes paidAmount negative", async () => {
+    const { repository, service } = setup();
+    const recorded = await service.recordCash({ actor: CASH_ACTOR, reservationId: RESERVATION, amountToman: BigInt(300000), idempotencyKey: "cash-to-reverse" });
+    assert.equal(recorded.outcome, "APPLIED");
+    if (recorded.outcome !== "APPLIED") return;
+    const unauthorized = await service.reverseCash({ actor: SUBMITTER, reservationId: RESERVATION, ledgerEntryId: recorded.entry.id, idempotencyKey: "reverse-unauthorized", reason: "not allowed" });
+    assert.equal(unauthorized.outcome, "UNAUTHORIZED");
+    assert.equal((await service.reverseCash({ actor: REVERSER, reservationId: RESERVATION, ledgerEntryId: recorded.entry.id, idempotencyKey: "reverse-empty-reason", reason: "   " })).outcome, "INVALID_INPUT");
+    const reversed = await service.reverseCash({ actor: REVERSER, reservationId: RESERVATION, ledgerEntryId: recorded.entry.id, idempotencyKey: "reverse-1", reason: "Cash was entered twice" });
+    assert.equal(reversed.outcome, "APPLIED");
+    assert.equal(reversed.outcome === "APPLIED" && reversed.entry.status, "REVERSED");
+    assert.equal(repository.paidAmount(), BigInt(0));
+    const replay = await service.reverseCash({ actor: REVERSER, reservationId: RESERVATION, ledgerEntryId: recorded.entry.id, idempotencyKey: "reverse-1", reason: "Cash was entered twice" });
+    const conflict = await service.reverseCash({ actor: REVERSER, reservationId: RESERVATION, ledgerEntryId: recorded.entry.id, idempotencyKey: "reverse-1", reason: "Different reason" });
+    const repeated = await service.reverseCash({ actor: REVERSER, reservationId: RESERVATION, ledgerEntryId: recorded.entry.id, idempotencyKey: "reverse-again", reason: "Second reversal attempt" });
+    assert.equal(replay.outcome, "REPLAY");
+    assert.equal(conflict.outcome, "IDEMPOTENCY_CONFLICT");
+    assert.equal(repeated.outcome, "PAYMENT_NOT_PENDING");
+    assert.ok(repository.paidAmount()! >= BigInt(0));
+    assert.deepEqual(repository.events().filter(event => event.eventType === "CASH_REVERSED"), [
+      { eventType: "CASH_REVERSED", ledgerEntryId: recorded.entry.id, actorUserId: REVERSER.userId, amountToman: BigInt(300000), reason: "Cash was entered twice" },
+    ]);
+    assert.equal(repository.events().some(event => event.eventType.includes("REFUND")), false);
+  });
+
+  it("leaves verified cash evidence unchanged if the reservation balance cannot cover its reversal", async () => {
+    const { repository, service } = setup();
+    const recorded = await service.recordCash({ actor: CASH_ACTOR, reservationId: RESERVATION, amountToman: BigInt(300000), idempotencyKey: "cash-mismatch-source" });
+    assert.equal(recorded.outcome, "APPLIED");
+    if (recorded.outcome !== "APPLIED") return;
+    repository.setPaidAmountForTest(BigInt(100000));
+    const result = await service.reverseCash({ actor: REVERSER, reservationId: RESERVATION, ledgerEntryId: recorded.entry.id, idempotencyKey: "cash-mismatch-reverse", reason: "Balance reconciliation required" });
+    assert.equal(result.outcome, "BALANCE_MISMATCH");
+    assert.equal(repository.paidAmount(), BigInt(100000));
+    assert.equal(repository.events().filter(event => event.eventType === "CASH_REVERSED").length, 0);
   });
 
   it("returns the same entry on replay and conflicts when the key is reused for a different amount", async () => {

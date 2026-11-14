@@ -288,6 +288,7 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
       if (orgs.length) {
         await db.hotelInventoryIdempotency.deleteMany({ where: { organizationId: { in: orgs } } });
         await db.hotelStayRequest.deleteMany({ where: { organizationId: { in: orgs } } });
+        await db.hotelOfflinePaymentAuditEvent.deleteMany({ where: { organizationId: { in: orgs } } });
         await db.hotelOfflinePaymentCommandIdempotency.deleteMany({ where: { organizationId: { in: orgs } } });
         await db.hotelOfflinePayment.deleteMany({ where: { organizationId: { in: orgs } } });
         await db.hotelReservation.deleteMany({ where: { organizationId: { in: orgs } } });

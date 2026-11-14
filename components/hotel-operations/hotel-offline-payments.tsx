@@ -164,7 +164,7 @@ export function HotelOfflinePayments({ organizationId, propertyId, reservationId
   };
   const reasonedAction = (entry: HotelOfflinePaymentEntry, action: "REJECT_BANK_TRANSFER" | "REVERSE_CASH") => {
     const command = buildReasonedHotelOfflinePaymentAction(entry, action, reasons[entry.id] ?? "");
-    if (!command) { setMessage(t.reasonRequired); return; }
+    if (!command) { setMessage(text.reasonRequired); return; }
     void send(action, { ledgerEntryId: command.ledgerEntryId, reason: command.reason }, `${action}:${entry.id}:${command.reason}`);
   };
 

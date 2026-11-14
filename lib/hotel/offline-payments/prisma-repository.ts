@@ -213,7 +213,7 @@ export class PrismaHotelOfflinePaymentRepository implements HotelOfflinePaymentR
       // idempotency keys at the same time. Hash collisions only serialize
       // unrelated references; they cannot permit a duplicate.
       const normalizedReference = command.bankReference.trim().toLocaleLowerCase("en-US");
-      await tx.$queryRaw(Prisma.sql`
+      await tx.$executeRaw(Prisma.sql`
         SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify([command.organizationId, normalizedReference])}, 0))
       `);
       const existingReference = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`

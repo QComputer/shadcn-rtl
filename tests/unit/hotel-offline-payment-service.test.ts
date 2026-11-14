@@ -12,7 +12,7 @@ import {
 const ORG = "hotel-a";
 const OTHER_ORG = "hotel-b";
 const RESERVATION = "reservation-1";
-const TOTAL = 1_000_000n;
+const TOTAL = BigInt(1000000);
 const CASH_ACTOR: OfflinePaymentActor = {
   organizationId: ORG, userId: "staff-cash", permissions: ["hotel:offline-payment:record-cash"],
 };
@@ -29,7 +29,7 @@ const VERIFIER: OfflinePaymentActor = {
  * constraints, rollback, or production persistence.
  */
 class MemoryOfflinePaymentRepository implements HotelOfflinePaymentRepository {
-  private readonly reservations = new Map([[`${ORG}:${RESERVATION}`, { total: TOTAL, paid: 0n, status: "PENDING_PAYMENT" }]]);
+  private readonly reservations = new Map([[`${ORG}:${RESERVATION}`, { total: TOTAL, paid: BigInt(0), status: "PENDING_PAYMENT" }]]);
   private readonly entries = new Map<string, OfflinePaymentLedgerEntry>();
   private readonly byIdempotency = new Map<string, string>();
   private nextId = 0;
@@ -115,39 +115,39 @@ function setup() {
 describe("Hotel offline payment service contract", () => {
   it("records cash as verified and updates paid total without confirming reservation", async () => {
     const { repository, service } = setup();
-    const result = await service.recordCash({ actor: CASH_ACTOR, reservationId: RESERVATION, amountToman: 300_000n, idempotencyKey: "cash-1" });
+    const result = await service.recordCash({ actor: CASH_ACTOR, reservationId: RESERVATION, amountToman: BigInt(300000), idempotencyKey: "cash-1" });
     assert.equal(result.outcome, "APPLIED");
     assert.equal(result.outcome === "APPLIED" && result.entry.status, "VERIFIED");
-    assert.equal(repository.paidAmount(), 300_000n);
+    assert.equal(repository.paidAmount(), BigInt(300000));
     assert.equal(repository.reservationStatus(), "PENDING_PAYMENT");
   });
 
   it("keeps a submitted transfer unverified and out of paidAmount", async () => {
     const { repository, service } = setup();
-    const result = await service.submitBankTransfer({ actor: SUBMITTER, reservationId: RESERVATION, amountToman: 400_000n, idempotencyKey: "transfer-1", bankReference: "trace-123" });
+    const result = await service.submitBankTransfer({ actor: SUBMITTER, reservationId: RESERVATION, amountToman: BigInt(400000), idempotencyKey: "transfer-1", bankReference: "trace-123" });
     assert.equal(result.outcome, "APPLIED");
     assert.equal(result.outcome === "APPLIED" && result.entry.status, "SUBMITTED");
-    assert.equal(repository.paidAmount(), 0n);
+    assert.equal(repository.paidAmount(), BigInt(0));
     assert.equal(repository.reservationStatus(), "PENDING_PAYMENT");
   });
 
   it("adds transfer amount only when a staff actor verifies it", async () => {
     const { repository, service } = setup();
-    const submitted = await service.submitBankTransfer({ actor: SUBMITTER, reservationId: RESERVATION, amountToman: 400_000n, idempotencyKey: "transfer-1", bankReference: "trace-123" });
+    const submitted = await service.submitBankTransfer({ actor: SUBMITTER, reservationId: RESERVATION, amountToman: BigInt(400000), idempotencyKey: "transfer-1", bankReference: "trace-123" });
     assert.equal(submitted.outcome, "APPLIED");
     if (submitted.outcome !== "APPLIED") return;
     const verified = await service.verifyBankTransfer({ actor: VERIFIER, reservationId: RESERVATION, ledgerEntryId: submitted.entry.id, idempotencyKey: "verify-1" });
     assert.equal(verified.outcome, "APPLIED");
     assert.equal(verified.outcome === "APPLIED" && verified.entry.verifiedByUserId, VERIFIER.userId);
-    assert.equal(repository.paidAmount(), 400_000n);
+    assert.equal(repository.paidAmount(), BigInt(400000));
     assert.equal(repository.reservationStatus(), "PENDING_PAYMENT");
   });
 
   it("returns the same entry on replay and conflicts when the key is reused for a different amount", async () => {
     const { service } = setup();
-    const first = await service.recordCash({ actor: CASH_ACTOR, reservationId: RESERVATION, amountToman: 300_000n, idempotencyKey: "cash-1" });
-    const replay = await service.recordCash({ actor: CASH_ACTOR, reservationId: RESERVATION, amountToman: 300_000n, idempotencyKey: "cash-1" });
-    const conflict = await service.recordCash({ actor: CASH_ACTOR, reservationId: RESERVATION, amountToman: 200_000n, idempotencyKey: "cash-1" });
+    const first = await service.recordCash({ actor: CASH_ACTOR, reservationId: RESERVATION, amountToman: BigInt(300000), idempotencyKey: "cash-1" });
+    const replay = await service.recordCash({ actor: CASH_ACTOR, reservationId: RESERVATION, amountToman: BigInt(300000), idempotencyKey: "cash-1" });
+    const conflict = await service.recordCash({ actor: CASH_ACTOR, reservationId: RESERVATION, amountToman: BigInt(200000), idempotencyKey: "cash-1" });
     assert.equal(first.outcome, "APPLIED");
     assert.equal(replay.outcome, "REPLAY");
     assert.equal(conflict.outcome, "IDEMPOTENCY_CONFLICT");
@@ -155,25 +155,25 @@ describe("Hotel offline payment service contract", () => {
 
   it("rejects calls without a trusted permission and rejects invalid amounts", async () => {
     const { service } = setup();
-    const unauthorized = await service.recordCash({ actor: SUBMITTER, reservationId: RESERVATION, amountToman: 1n, idempotencyKey: "x" });
-    const invalid = await service.recordCash({ actor: CASH_ACTOR, reservationId: RESERVATION, amountToman: 0n, idempotencyKey: "x" });
+    const unauthorized = await service.recordCash({ actor: SUBMITTER, reservationId: RESERVATION, amountToman: BigInt(1), idempotencyKey: "x" });
+    const invalid = await service.recordCash({ actor: CASH_ACTOR, reservationId: RESERVATION, amountToman: BigInt(0), idempotencyKey: "x" });
     assert.equal(unauthorized.outcome, "UNAUTHORIZED");
     assert.equal(invalid.outcome, "INVALID_AMOUNT");
   });
 
   it("does not accept an actor from a different tenant as a repository scope", async () => {
     const { service, repository } = setup();
-    const result = await service.recordCash({ actor: { ...CASH_ACTOR, organizationId: OTHER_ORG }, reservationId: RESERVATION, amountToman: 1n, idempotencyKey: "cross-tenant" });
+    const result = await service.recordCash({ actor: { ...CASH_ACTOR, organizationId: OTHER_ORG }, reservationId: RESERVATION, amountToman: BigInt(1), idempotencyKey: "cross-tenant" });
     assert.equal(result.outcome, "NOT_FOUND");
-    assert.equal(repository.paidAmount(), 0n);
+    assert.equal(repository.paidAmount(), BigInt(0));
     assert.equal(repository.paidAmount(OTHER_ORG), null);
   });
 
   it("serializes simultaneous commands so verified totals cannot exceed the reservation", async () => {
     const { service, repository } = setup();
     const results = await Promise.all([
-      service.recordCash({ actor: CASH_ACTOR, reservationId: RESERVATION, amountToman: 700_000n, idempotencyKey: "cash-a" }),
-      service.recordCash({ actor: CASH_ACTOR, reservationId: RESERVATION, amountToman: 500_000n, idempotencyKey: "cash-b" }),
+      service.recordCash({ actor: CASH_ACTOR, reservationId: RESERVATION, amountToman: BigInt(700000), idempotencyKey: "cash-a" }),
+      service.recordCash({ actor: CASH_ACTOR, reservationId: RESERVATION, amountToman: BigInt(500000), idempotencyKey: "cash-b" }),
     ]);
     assert.equal(results.filter((result) => result.outcome === "APPLIED").length, 1);
     assert.equal(results.filter((result) => result.outcome === "OVERPAYMENT").length, 1);

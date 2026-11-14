@@ -37,7 +37,7 @@ export async function GET(request: NextRequest, params: Params) {
       FROM "HotelOfflinePayment" WHERE "organizationId" = ${scope.organizationId} AND "reservationId" = ${scope.reservationId}
       ORDER BY "createdAt" DESC LIMIT 100
     `);
-    return NextResponse.json({ totalToman: reservation.totalAmount.toString(), paidToman: reservation.paidAmount.toString(), outstandingToman: (reservation.totalAmount > reservation.paidAmount ? reservation.totalAmount - reservation.paidAmount : 0n).toString(), entries: entries.map((entry) => ({ ...entry, amountToman: entry.amountToman.toString() })) }, { headers: { "Cache-Control": "private, no-store" } });
+    return NextResponse.json({ totalToman: reservation.totalAmount.toString(), paidToman: reservation.paidAmount.toString(), outstandingToman: (reservation.totalAmount > reservation.paidAmount ? reservation.totalAmount - reservation.paidAmount : BigInt(0)).toString(), entries: entries.map((entry) => ({ ...entry, amountToman: entry.amountToman.toString() })) }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) { return jsonError(error); }
 }
 

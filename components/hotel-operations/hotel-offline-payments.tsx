@@ -52,7 +52,7 @@ export function parseHotelOfflinePaymentSummary(value: unknown): HotelOfflinePay
     if (typeof entry.id !== "string" || !entry.id || (entry.method !== "CASH" && entry.method !== "BANK_TRANSFER") || (entry.status !== "SUBMITTED" && entry.status !== "VERIFIED") || amountToman === null) return null;
     entries.push({ id: entry.id, method: entry.method, status: entry.status, amountToman,
       ...(typeof entry.createdAt === "string" ? { createdAt: entry.createdAt } : {}),
-      ...(typeof entry.verifiedAt === "string" || entry.verifiedAt === null ? { verifiedAt: entry.verifiedAt } : {}) });
+      ...(typeof entry.verifiedAt === "string" ? { verifiedAt: entry.verifiedAt } : entry.verifiedAt === null ? { verifiedAt: null } : {}) });
   }
   return { totalToman, paidToman, outstandingToman, entries };
 }
@@ -156,7 +156,7 @@ export function HotelOfflinePayments({ organizationId, propertyId, reservationId
       </dl>
       <div className="flex flex-wrap items-end gap-2 rounded-lg border p-3">
         <label className="grid gap-1 text-sm"><span>{text.cashAmount}</span><input inputMode="numeric" pattern="[0-9]*" value={cashAmount} onChange={(event) => setCashAmount(event.target.value)} className="min-h-10 rounded-md border bg-background px-3" /></label>
-        <button type="button" className="min-h-10 rounded-md bg-primary px-4 text-primary-foreground disabled:opacity-50" disabled={busy || loading || BigInt(summary.outstandingToman) <= 0n} onClick={recordCash}>{busy ? text.busy : text.recordCash}</button>
+        <button type="button" className="min-h-10 rounded-md bg-primary px-4 text-primary-foreground disabled:opacity-50" disabled={busy || loading || BigInt(summary.outstandingToman) <= BigInt(0)} onClick={recordCash}>{busy ? text.busy : text.recordCash}</button>
       </div>
       {!summary.entries.length && <p className="rounded-lg border p-4 text-sm text-muted-foreground">{text.empty}</p>}
       <ul className="space-y-2">

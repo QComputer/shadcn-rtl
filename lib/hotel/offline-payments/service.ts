@@ -99,7 +99,7 @@ function hasPermission(actor: OfflinePaymentActor, permission: OfflinePaymentAct
 function validateCommon(input: { actor: OfflinePaymentActor; reservationId: string; idempotencyKey: string; amountToman?: bigint }) {
   if (!input.actor.organizationId.trim() || !input.actor.userId.trim()) return "INVALID_ACTOR" as const;
   if (!input.reservationId.trim() || !input.idempotencyKey.trim() || input.idempotencyKey.length > 200) return "INVALID_INPUT" as const;
-  if (input.amountToman !== undefined && input.amountToman <= 0n) return "INVALID_AMOUNT" as const;
+  if (input.amountToman !== undefined && input.amountToman <= BigInt(0)) return "INVALID_AMOUNT" as const;
   return null;
 }
 

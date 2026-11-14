@@ -9,14 +9,14 @@ let reservationExists = true;
 let customerIdentityActive = true;
 let rawEntries: Array<Record<string, unknown>> = [];
 let rawQueryError: Error | null = null;
-let serviceResult: unknown = { outcome: "APPLIED", entry: { id: "entry-1", method: "CASH", status: "VERIFIED", amountToman: 125n } };
+let serviceResult: unknown = { outcome: "APPLIED", entry: { id: "entry-1", method: "CASH", status: "VERIFIED", amountToman: BigInt(125) } };
 const calls: Array<{ name: string; args: unknown[] }> = [];
 
 class TestApiError extends Error { constructor(public status: number, message: string) { super(message); } }
 
 const prisma = {
   hotelReservation: {
-    findFirst: async (args: unknown) => { calls.push({ name: "reservation.findFirst", args: [args] }); return reservationExists ? { totalAmount: 500n, paidAmount: 125n, guestCustomerId: "guest-1" } : null; },
+    findFirst: async (args: unknown) => { calls.push({ name: "reservation.findFirst", args: [args] }); return reservationExists ? { totalAmount: BigInt(500), paidAmount: BigInt(125), guestCustomerId: "guest-1" } : null; },
   },
   customerIdentity: {
     findFirst: async (args: unknown) => { calls.push({ name: "customerIdentity.findFirst", args: [args] }); return customerIdentityActive ? { id: "identity-1" } : null; },
@@ -77,7 +77,7 @@ function reset() {
   customerIdentityActive = true;
   rawEntries = [];
   rawQueryError = null;
-  serviceResult = { outcome: "APPLIED", entry: { id: "entry-1", method: "CASH", status: "VERIFIED", amountToman: 125n } };
+  serviceResult = { outcome: "APPLIED", entry: { id: "entry-1", method: "CASH", status: "VERIFIED", amountToman: BigInt(125) } };
   calls.length = 0;
 }
 function request(body: unknown = { action: "RECORD_CASH", amountToman: "125" }, origin = "https://app.example") {
@@ -147,7 +147,7 @@ test("role matrix allows staff cash recording and guest transfer submission but 
 
 test("GET serializes money and does not expose database failures", async () => {
   reset();
-  rawEntries = [{ id: "entry-1", method: "CASH", status: "VERIFIED", amountToman: 125n, createdAt: new Date("2026-11-14T10:00:00.000Z"), verifiedAt: null }];
+  rawEntries = [{ id: "entry-1", method: "CASH", status: "VERIFIED", amountToman: BigInt(125), createdAt: new Date("2026-11-14T10:00:00.000Z"), verifiedAt: null }];
   const response = await GET(new NextRequest("https://app.example/api/offline-payments"), params);
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("cache-control"), "private, no-store");

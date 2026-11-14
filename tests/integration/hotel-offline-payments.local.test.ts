@@ -77,12 +77,12 @@ test("offline Hotel payments use tenant locks, staff authorization and partial v
     const propertyB = await db.hotelProperty.create({ data: { organizationId: orgB.id, organizationSlug: orgB.slug, slug: `property-b-${token}`, name: `Offline property B ${token}` } }); propertyIds.push(propertyB.id);
     const roomA = await db.hotelRoomType.create({ data: { organizationId: orgA.id, propertyId: propertyA.id, slug: `room-a-${token}`, name: "Room A", maxAdults: 2, maxChildren: 0, maxOccupancy: 2, beds: [] } }); roomTypeIds.push(roomA.id);
     const roomB = await db.hotelRoomType.create({ data: { organizationId: orgB.id, propertyId: propertyB.id, slug: `room-b-${token}`, name: "Room B", maxAdults: 2, maxChildren: 0, maxOccupancy: 2, beds: [] } }); roomTypeIds.push(roomB.id);
-    const rateA = await db.hotelRatePlan.create({ data: { organizationId: orgA.id, propertyId: propertyA.id, roomTypeId: roomA.id, code: `rate-a-${token}`, name: "Rate A", baseNightlyRate: 1_000_000n } }); ratePlanIds.push(rateA.id);
-    const rateB = await db.hotelRatePlan.create({ data: { organizationId: orgB.id, propertyId: propertyB.id, roomTypeId: roomB.id, code: `rate-b-${token}`, name: "Rate B", baseNightlyRate: 1_000_000n } }); ratePlanIds.push(rateB.id);
+    const rateA = await db.hotelRatePlan.create({ data: { organizationId: orgA.id, propertyId: propertyA.id, roomTypeId: roomA.id, code: `rate-a-${token}`, name: "Rate A", baseNightlyRate: BigInt(1000000) } }); ratePlanIds.push(rateA.id);
+    const rateB = await db.hotelRatePlan.create({ data: { organizationId: orgB.id, propertyId: propertyB.id, roomTypeId: roomB.id, code: `rate-b-${token}`, name: "Rate B", baseNightlyRate: BigInt(1000000) } }); ratePlanIds.push(rateB.id);
     const createReservation = (input: { organizationId: string; propertyId: string; roomTypeId: string; ratePlanId: string; guestCustomerId: string | null; label: string }) => db.hotelReservation.create({ data: {
       id: `offline-${input.label}-${token}`, organizationId: input.organizationId, propertyId: input.propertyId, roomTypeId: input.roomTypeId,
       ratePlanId: input.ratePlanId, reference: `offline-ref-${input.label}-${token}`, status: "PENDING_PAYMENT", checkIn: day("2027-12-10"),
-      checkOut: day("2027-12-12"), currency: "TOMAN", totalAmount: 1_000_000n, cancellationPolicyKey: "offline-test",
+      checkOut: day("2027-12-12"), currency: "TOMAN", totalAmount: BigInt(1000000), cancellationPolicyKey: "offline-test",
       cancellationPolicySnapshot: { key: "offline-test" }, guestCustomerId: input.guestCustomerId,
       idempotencyKey: `offline-res-${input.label}-${token}`,
     } });
@@ -95,20 +95,20 @@ test("offline Hotel payments use tenant locks, staff authorization and partial v
     const foreignCollector: OfflinePaymentActor = { organizationId: orgB.id, userId: staffB.id, permissions: ["hotel:offline-payment:record-cash"] };
     const foreignGuest: OfflinePaymentActor = { organizationId: orgA.id, userId: guestB.id, permissions: ["hotel:offline-payment:submit-transfer"] };
 
-    const cash = await service.recordCash({ actor: cashCollector, reservationId: reservationA.id, amountToman: 200_000n, idempotencyKey: `cash-${token}` });
+    const cash = await service.recordCash({ actor: cashCollector, reservationId: reservationA.id, amountToman: BigInt(200000), idempotencyKey: `cash-${token}` });
     assert.equal(cash.outcome, "APPLIED");
-    const cashReplay = await service.recordCash({ actor: cashCollector, reservationId: reservationA.id, amountToman: 200_000n, idempotencyKey: `cash-${token}` });
+    const cashReplay = await service.recordCash({ actor: cashCollector, reservationId: reservationA.id, amountToman: BigInt(200000), idempotencyKey: `cash-${token}` });
     assert.equal(cashReplay.outcome, "REPLAY");
-    const cashConflict = await service.recordCash({ actor: cashCollector, reservationId: reservationA.id, amountToman: 100_000n, idempotencyKey: `cash-${token}` });
+    const cashConflict = await service.recordCash({ actor: cashCollector, reservationId: reservationA.id, amountToman: BigInt(100000), idempotencyKey: `cash-${token}` });
     assert.equal(cashConflict.outcome, "IDEMPOTENCY_CONFLICT");
-    const submitted = await service.submitBankTransfer({ actor: submitter, reservationId: reservationA.id, amountToman: 300_000n, idempotencyKey: `transfer-${token}`, bankReference: `synthetic-${token}` });
+    const submitted = await service.submitBankTransfer({ actor: submitter, reservationId: reservationA.id, amountToman: BigInt(300000), idempotencyKey: `transfer-${token}`, bankReference: `synthetic-${token}` });
     assert.equal(submitted.outcome, "APPLIED");
     if (submitted.outcome !== "APPLIED") return;
     assert.equal(submitted.entry.status, "SUBMITTED");
-    assert.equal((await db.hotelReservation.findUniqueOrThrow({ where: { id: reservationA.id } })).paidAmount, 200_000n);
+    assert.equal((await db.hotelReservation.findUniqueOrThrow({ where: { id: reservationA.id } })).paidAmount, BigInt(200000));
     const [referenceRaceA, referenceRaceB] = await Promise.all([
-      service.submitBankTransfer({ actor: submitter, reservationId: reservationA.id, amountToman: 50_000n, idempotencyKey: `transfer-reference-race-a-${token}`, bankReference: ` concurrent-${token} ` }),
-      service.submitBankTransfer({ actor: submitter, reservationId: reservationA.id, amountToman: 50_000n, idempotencyKey: `transfer-reference-race-b-${token}`, bankReference: `CONCURRENT-${token.toUpperCase()}` }),
+      service.submitBankTransfer({ actor: submitter, reservationId: reservationA.id, amountToman: BigInt(50000), idempotencyKey: `transfer-reference-race-a-${token}`, bankReference: ` concurrent-${token} ` }),
+      service.submitBankTransfer({ actor: submitter, reservationId: reservationA.id, amountToman: BigInt(50000), idempotencyKey: `transfer-reference-race-b-${token}`, bankReference: `CONCURRENT-${token.toUpperCase()}` }),
     ]);
     assert.equal([referenceRaceA, referenceRaceB].filter((result) => result.outcome === "APPLIED").length, 1);
     assert.equal([referenceRaceA, referenceRaceB].filter((result) => result.outcome === "PAYMENT_NOT_PENDING").length, 1, "concurrent normalized references cannot both be claimed in one tenant");
@@ -116,19 +116,19 @@ test("offline Hotel payments use tenant locks, staff authorization and partial v
     assert.equal(verified.outcome, "APPLIED");
     const verifyReplay = await service.verifyBankTransfer({ actor: verifier, reservationId: reservationA.id, ledgerEntryId: submitted.entry.id, idempotencyKey: `verify-${token}` });
     assert.equal(verifyReplay.outcome, "REPLAY");
-    assert.equal((await db.hotelReservation.findUniqueOrThrow({ where: { id: reservationA.id } })).paidAmount, 500_000n);
+    assert.equal((await db.hotelReservation.findUniqueOrThrow({ where: { id: reservationA.id } })).paidAmount, BigInt(500000));
     assert.equal((await db.hotelReservation.findUniqueOrThrow({ where: { id: reservationA.id } })).status, "PENDING_PAYMENT");
     const [concurrentA, concurrentB] = await Promise.all([
-      service.recordCash({ actor: cashCollector, reservationId: reservationA.id, amountToman: 400_000n, idempotencyKey: `partial-a-${token}` }),
-      service.recordCash({ actor: cashCollector, reservationId: reservationA.id, amountToman: 200_000n, idempotencyKey: `partial-b-${token}` }),
+      service.recordCash({ actor: cashCollector, reservationId: reservationA.id, amountToman: BigInt(400000), idempotencyKey: `partial-a-${token}` }),
+      service.recordCash({ actor: cashCollector, reservationId: reservationA.id, amountToman: BigInt(200000), idempotencyKey: `partial-b-${token}` }),
     ]);
     assert.equal([concurrentA, concurrentB].filter((result) => result.outcome === "APPLIED").length, 1);
     assert.equal([concurrentA, concurrentB].filter((result) => result.outcome === "OVERPAYMENT").length, 1);
     const finalReservation = await db.hotelReservation.findUniqueOrThrow({ where: { id: reservationA.id } });
     assert.ok(finalReservation.paidAmount <= finalReservation.totalAmount);
     assert.equal(finalReservation.status, "PENDING_PAYMENT");
-    assert.equal((await service.recordCash({ actor: foreignCollector, reservationId: reservationA.id, amountToman: 1n, idempotencyKey: `foreign-${token}` })).outcome, "NOT_FOUND");
-    assert.equal((await service.submitBankTransfer({ actor: foreignGuest, reservationId: reservationA.id, amountToman: 1n, idempotencyKey: `foreign-guest-${token}`, bankReference: `foreign-${token}` })).outcome, "UNAUTHORIZED");
+    assert.equal((await service.recordCash({ actor: foreignCollector, reservationId: reservationA.id, amountToman: BigInt(1), idempotencyKey: `foreign-${token}` })).outcome, "NOT_FOUND");
+    assert.equal((await service.submitBankTransfer({ actor: foreignGuest, reservationId: reservationA.id, amountToman: BigInt(1), idempotencyKey: `foreign-guest-${token}`, bankReference: `foreign-${token}` })).outcome, "UNAUTHORIZED");
 
     let cancellationCommitted = false;
     const cancelTx = db.$transaction(async (tx) => {
@@ -140,7 +140,7 @@ test("offline Hotel payments use tenant locks, staff authorization and partial v
     });
     await cancelReady;
     let paymentSettled = false;
-    const afterLock = service.recordCash({ actor: cashCollector, reservationId: cancellationReservation.id, amountToman: 10_000n, idempotencyKey: `cancel-race-${token}` }).finally(() => { paymentSettled = true; });
+    const afterLock = service.recordCash({ actor: cashCollector, reservationId: cancellationReservation.id, amountToman: BigInt(10000), idempotencyKey: `cancel-race-${token}` }).finally(() => { paymentSettled = true; });
     await new Promise((resolve) => setTimeout(resolve, 50));
     assert.equal(paymentSettled, false, "payment writer must wait for the cancellation row lock");
     releaseCancel();
@@ -148,7 +148,7 @@ test("offline Hotel payments use tenant locks, staff authorization and partial v
     const afterCancelled = await afterLock;
     assert.equal(cancellationCommitted, true);
     assert.equal(afterCancelled.outcome, "PAYMENT_NOT_PENDING");
-    assert.equal((await db.hotelReservation.findUniqueOrThrow({ where: { id: cancellationReservation.id } })).paidAmount, 0n);
+    assert.equal((await db.hotelReservation.findUniqueOrThrow({ where: { id: cancellationReservation.id } })).paidAmount, BigInt(0));
 
     const recorded = await db.hotelOfflinePayment.findMany({ where: { organizationId: orgA.id, reservationId: reservationA.id }, orderBy: { createdAt: "asc" } });
     assert.equal(recorded.filter((row) => row.method === "CASH" && row.status === "VERIFIED").length, 2);

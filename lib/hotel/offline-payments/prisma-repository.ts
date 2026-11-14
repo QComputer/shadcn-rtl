@@ -85,7 +85,7 @@ export class PrismaHotelOfflinePaymentRepository implements HotelOfflinePaymentR
   async applyOfflinePaymentCommand(command: OfflinePaymentCommand): Promise<OfflinePaymentCommandResult> {
     if (!command.organizationId.trim() || !command.reservationId.trim() || !command.actorUserId.trim() || !command.idempotencyKey.trim()) return { outcome: "INVALID_INPUT" };
     if (command.idempotencyKey.length > 200) return { outcome: "INVALID_INPUT" };
-    if (command.type !== "VERIFY_BANK_TRANSFER" && command.amountToman <= 0n) return { outcome: "INVALID_AMOUNT" };
+    if (command.type !== "VERIFY_BANK_TRANSFER" && command.amountToman <= BigInt(0)) return { outcome: "INVALID_AMOUNT" };
     if (command.type === "SUBMIT_BANK_TRANSFER" && (!command.bankReference.trim() || command.bankReference.length > 160)) return { outcome: "INVALID_INPUT" };
 
     return this.client.$transaction((tx) => this.applyInTransaction(tx, command), {

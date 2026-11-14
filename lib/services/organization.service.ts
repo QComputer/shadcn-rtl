@@ -591,6 +591,8 @@ export class OrganizationService {
       const organizationMembers = await tx.organizationMember.findMany({
         where: { organizationId },
         select: { userId: true },
+        // Keep membership processing deterministic without changing which members are included.
+        orderBy: { userId: "asc" },
       });
 
       for (const member of organizationMembers) {

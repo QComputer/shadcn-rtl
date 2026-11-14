@@ -15,6 +15,11 @@ export function getDeploymentCommit(): string | null {
   )?.slice(0, 8) ?? null;
 }
 
+export function getDeploymentRevision(): string | null {
+  const revision = process.env.RUNFLARE_GIT_COMMIT_SHA || process.env.COMMIT_SHA || process.env.VERCEL_GIT_COMMIT_SHA;
+  return revision && /^[0-9a-f]{40}$/i.test(revision) ? revision.toLowerCase() : null;
+}
+
 export function getPlatformHost(): string | null {
   return (
     process.env.RUNFLARE_PLATFORM_HOST ||

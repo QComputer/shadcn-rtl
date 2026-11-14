@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { validateRuntimeEnvironment } from "@/lib/runtime-env";
+import { getDeploymentRevision } from "@/lib/deployment-context";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -52,6 +53,7 @@ export async function GET(request: NextRequest) {
     {
       status,
       service: "bazar-baz",
+      revision: getDeploymentRevision(),
       timestamp: nowIso(),
       uptimeSec,
       latencyMs: Date.now() - startedAt,

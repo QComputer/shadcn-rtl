@@ -72,6 +72,8 @@ jobs:
         run: pnpm exec node --test tests/unit/zod-oversized-collections.test.mjs
       - name: Bounded JSON request regression
         run: pnpm exec node --import tsx --experimental-test-module-mocks --test tests/unit/bounded-json-body.test.ts
+      - name: Lint business hours changes
+        run: pnpm exec eslint 'app/api/organizations/[id]/business-hours/route.ts' app/api/users/me/business-hours/route.ts lib/services/organization.service.ts tests/unit/organization-business-hours-route.test.ts tests/unit/organization-service-business-hours.test.ts
       - name: Business hours input and tenant-route regressions
         run: >-
           pnpm exec node --import tsx --require ./scripts/e2e/register-server-only.cjs

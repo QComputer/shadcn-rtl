@@ -9,13 +9,13 @@
  */
 
 export type OfflinePaymentMethod = "CASH" | "BANK_TRANSFER";
-export type OfflinePaymentStatus = "SUBMITTED" | "VERIFIED";
+export type OfflinePaymentStatus = "SUBMITTED" | "VERIFIED" | "REJECTED" | "REVERSED";
 
 export type OfflinePaymentActor = {
   /** Must be derived from the authenticated session, never request fields. */
   readonly organizationId: string;
   readonly userId: string;
-  readonly permissions: readonly ("hotel:offline-payment:record-cash" | "hotel:offline-payment:submit-transfer" | "hotel:offline-payment:verify-transfer")[];
+  readonly permissions: readonly ("hotel:offline-payment:record-cash" | "hotel:offline-payment:submit-transfer" | "hotel:offline-payment:verify-transfer" | "hotel:offline-payment:reject-transfer" | "hotel:offline-payment:reverse-cash")[];
 };
 
 export type OfflinePaymentCommand =
@@ -47,6 +47,26 @@ export type OfflinePaymentCommand =
       readonly actorUserId: string;
       readonly idempotencyKey: string;
       readonly now: Date;
+    }
+  | {
+      readonly type: "REJECT_BANK_TRANSFER";
+      readonly organizationId: string;
+      readonly reservationId: string;
+      readonly ledgerEntryId: string;
+      readonly actorUserId: string;
+      readonly idempotencyKey: string;
+      readonly reason: string;
+      readonly now: Date;
+    }
+  | {
+      readonly type: "REVERSE_CASH";
+      readonly organizationId: string;
+      readonly reservationId: string;
+      readonly ledgerEntryId: string;
+      readonly actorUserId: string;
+      readonly idempotencyKey: string;
+      readonly reason: string;
+      readonly now: Date;
     };
 
 export type OfflinePaymentLedgerEntry = {
@@ -68,7 +88,7 @@ export type OfflinePaymentLedgerEntry = {
 export type OfflinePaymentCommandResult =
   | { readonly outcome: "APPLIED"; readonly entry: OfflinePaymentLedgerEntry }
   | { readonly outcome: "REPLAY"; readonly entry: OfflinePaymentLedgerEntry }
-  | { readonly outcome: "NOT_FOUND" | "TENANT_MISMATCH" | "UNAUTHORIZED" | "INVALID_INPUT" | "INVALID_AMOUNT" | "IDEMPOTENCY_CONFLICT" | "PAYMENT_NOT_PENDING" | "OVERPAYMENT" };
+  | { readonly outcome: "NOT_FOUND" | "TENANT_MISMATCH" | "UNAUTHORIZED" | "INVALID_INPUT" | "INVALID_AMOUNT" | "IDEMPOTENCY_CONFLICT" | "PAYMENT_NOT_PENDING" | "OVERPAYMENT" | "BALANCE_MISMATCH" };
 
 export interface HotelOfflinePaymentRepository {
   /**
@@ -86,13 +106,19 @@ export interface HotelOfflinePaymentService {
   recordCash(input: { actor: OfflinePaymentActor; reservationId: string; idempotencyKey: string; amountToman: bigint }): Promise<OfflinePaymentCommandResult>;
   submitBankTransfer(input: { actor: OfflinePaymentActor; reservationId: string; idempotencyKey: string; amountToman: bigint; bankReference?: string | null; receiptPending?: boolean }): Promise<OfflinePaymentCommandResult>;
   verifyBankTransfer(input: { actor: OfflinePaymentActor; reservationId: string; ledgerEntryId: string; idempotencyKey: string }): Promise<OfflinePaymentCommandResult>;
+  rejectBankTransfer(input: { actor: OfflinePaymentActor; reservationId: string; ledgerEntryId: string; idempotencyKey: string; reason: string }): Promise<OfflinePaymentCommandResult>;
+  reverseCash(input: { actor: OfflinePaymentActor; reservationId: string; ledgerEntryId: string; idempotencyKey: string; reason: string }): Promise<OfflinePaymentCommandResult>;
 }
 
 const PERMISSION = {
   RECORD_CASH: "hotel:offline-payment:record-cash",
   SUBMIT_BANK_TRANSFER: "hotel:offline-payment:submit-transfer",
   VERIFY_BANK_TRANSFER: "hotel:offline-payment:verify-transfer",
+  REJECT_BANK_TRANSFER: "hotel:offline-payment:reject-transfer",
+  REVERSE_CASH: "hotel:offline-payment:reverse-cash",
 } as const;
+
+const MAX_AUDIT_REASON_LENGTH = 500;
 
 function hasPermission(actor: OfflinePaymentActor, permission: OfflinePaymentActor["permissions"][number]) {
   return Boolean(actor.organizationId.trim() && actor.userId.trim() && actor.permissions.includes(permission));
@@ -143,6 +169,30 @@ export function createHotelOfflinePaymentService(deps: {
         type: "VERIFY_BANK_TRANSFER", organizationId: input.actor.organizationId,
         reservationId: input.reservationId, ledgerEntryId: input.ledgerEntryId,
         actorUserId: input.actor.userId, idempotencyKey: input.idempotencyKey, now: deps.now(),
+      });
+    },
+    async rejectBankTransfer(input) {
+      const invalid = validateCommon(input);
+      if (invalid) return { outcome: invalid === "INVALID_ACTOR" ? "INVALID_INPUT" : invalid };
+      if (!hasPermission(input.actor, PERMISSION.REJECT_BANK_TRANSFER)) return { outcome: "UNAUTHORIZED" };
+      const reason = input.reason.trim();
+      if (!input.ledgerEntryId.trim() || !reason || reason.length > MAX_AUDIT_REASON_LENGTH) return { outcome: "INVALID_INPUT" };
+      return deps.repository.applyOfflinePaymentCommand({
+        type: "REJECT_BANK_TRANSFER", organizationId: input.actor.organizationId,
+        reservationId: input.reservationId, ledgerEntryId: input.ledgerEntryId,
+        actorUserId: input.actor.userId, idempotencyKey: input.idempotencyKey, reason, now: deps.now(),
+      });
+    },
+    async reverseCash(input) {
+      const invalid = validateCommon(input);
+      if (invalid) return { outcome: invalid === "INVALID_ACTOR" ? "INVALID_INPUT" : invalid };
+      if (!hasPermission(input.actor, PERMISSION.REVERSE_CASH)) return { outcome: "UNAUTHORIZED" };
+      const reason = input.reason.trim();
+      if (!input.ledgerEntryId.trim() || !reason || reason.length > MAX_AUDIT_REASON_LENGTH) return { outcome: "INVALID_INPUT" };
+      return deps.repository.applyOfflinePaymentCommand({
+        type: "REVERSE_CASH", organizationId: input.actor.organizationId,
+        reservationId: input.reservationId, ledgerEntryId: input.ledgerEntryId,
+        actorUserId: input.actor.userId, idempotencyKey: input.idempotencyKey, reason, now: deps.now(),
       });
     },
   };

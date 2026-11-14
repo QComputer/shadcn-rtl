@@ -44,24 +44,38 @@ function operation(command: OfflinePaymentCommand) {
     case "RECORD_CASH": return "RECORD_CASH" as const;
     case "SUBMIT_BANK_TRANSFER": return "SUBMIT_BANK_TRANSFER" as const;
     case "VERIFY_BANK_TRANSFER": return "VERIFY_BANK_TRANSFER" as const;
+    case "REJECT_BANK_TRANSFER": return "REJECT_BANK_TRANSFER" as const;
+    case "REVERSE_CASH": return "REVERSE_CASH" as const;
   }
 }
 
 function fingerprint(command: OfflinePaymentCommand) {
   const payload = command.type === "VERIFY_BANK_TRANSFER"
     ? { type: command.type, organizationId: command.organizationId, reservationId: command.reservationId, ledgerEntryId: command.ledgerEntryId, actorUserId: command.actorUserId }
-    : { type: command.type, organizationId: command.organizationId, reservationId: command.reservationId, actorUserId: command.actorUserId, amountToman: command.amountToman.toString(), ...(command.type === "SUBMIT_BANK_TRANSFER" ? { bankReference: command.bankReference, receiptPending: command.receiptPending } : {}) };
+    : command.type === "REJECT_BANK_TRANSFER" || command.type === "REVERSE_CASH"
+      ? { type: command.type, organizationId: command.organizationId, reservationId: command.reservationId, ledgerEntryId: command.ledgerEntryId, actorUserId: command.actorUserId, reason: command.reason }
+      : { type: command.type, organizationId: command.organizationId, reservationId: command.reservationId, actorUserId: command.actorUserId, amountToman: command.amountToman.toString(), ...(command.type === "SUBMIT_BANK_TRANSFER" ? { bankReference: command.bankReference, receiptPending: command.receiptPending } : {}) };
   return createHash("sha256").update(JSON.stringify(payload)).digest("hex");
 }
 
+function auditEventType(command: OfflinePaymentCommand) {
+  switch (command.type) {
+    case "RECORD_CASH": return "CASH_RECORDED" as const;
+    case "SUBMIT_BANK_TRANSFER": return "BANK_TRANSFER_SUBMITTED" as const;
+    case "VERIFY_BANK_TRANSFER": return "BANK_TRANSFER_VERIFIED" as const;
+    case "REJECT_BANK_TRANSFER": return "BANK_TRANSFER_REJECTED" as const;
+    case "REVERSE_CASH": return "CASH_REVERSED" as const;
+  }
+}
+
 function mapEntry(row: RawLedger): OfflinePaymentLedgerEntry | null {
-  if ((row.method !== "CASH" && row.method !== "BANK_TRANSFER") || (row.status !== "SUBMITTED" && row.status !== "VERIFIED") || !row.idempotencyKey) return null;
+  if ((row.method !== "CASH" && row.method !== "BANK_TRANSFER") || !["SUBMITTED", "VERIFIED", "REJECTED", "REVERSED"].includes(row.status) || !row.idempotencyKey) return null;
   return {
     id: row.id,
     organizationId: row.organizationId,
     reservationId: row.reservationId,
     method: row.method,
-    status: row.status,
+    status: row.status as OfflinePaymentLedgerEntry["status"],
     amountToman: row.amountToman,
     idempotencyKey: row.idempotencyKey,
     recordedByUserId: row.recordedByUserId,
@@ -87,8 +101,10 @@ export class PrismaHotelOfflinePaymentRepository implements HotelOfflinePaymentR
   async applyOfflinePaymentCommand(command: OfflinePaymentCommand): Promise<OfflinePaymentCommandResult> {
     if (!command.organizationId.trim() || !command.reservationId.trim() || !command.actorUserId.trim() || !command.idempotencyKey.trim()) return { outcome: "INVALID_INPUT" };
     if (command.idempotencyKey.length > 200) return { outcome: "INVALID_INPUT" };
-    if (command.type !== "VERIFY_BANK_TRANSFER" && command.amountToman <= BigInt(0)) return { outcome: "INVALID_AMOUNT" };
+    if ((command.type === "RECORD_CASH" || command.type === "SUBMIT_BANK_TRANSFER") && command.amountToman <= BigInt(0)) return { outcome: "INVALID_AMOUNT" };
     if (command.type === "SUBMIT_BANK_TRANSFER" && ((!command.bankReference.trim() && !command.receiptPending) || command.bankReference.length > 160)) return { outcome: "INVALID_INPUT" };
+    if ((command.type === "REJECT_BANK_TRANSFER" || command.type === "REVERSE_CASH") && (!command.ledgerEntryId.trim() || !command.reason.trim() || command.reason.trim().length > 500)) return { outcome: "INVALID_INPUT" };
+    if ((command.type === "VERIFY_BANK_TRANSFER" || command.type === "REJECT_BANK_TRANSFER" || command.type === "REVERSE_CASH") && !command.ledgerEntryId.trim()) return { outcome: "INVALID_INPUT" };
 
     return this.client.$transaction((tx) => this.applyInTransaction(tx, command), {
       maxWait: 5_000,
@@ -208,9 +224,80 @@ export class PrismaHotelOfflinePaymentRepository implements HotelOfflinePaymentR
       `);
       if (updatedBalance !== 1) throw new Error("Locked reservation balance changed during offline transfer verification.");
       await this.completeIdempotency(tx, command, candidate.id);
+      await this.appendAuditEvent(tx, command, candidate.id, candidate.amountToman, requestFingerprint);
       const verified = { ...candidate, status: "VERIFIED", verifiedByUserId: command.actorUserId, verifiedAt: command.now };
       const entry = mapEntry(verified);
       return entry ? { outcome: "APPLIED", entry } : { outcome: "NOT_FOUND" };
+    }
+
+    if (command.type === "REJECT_BANK_TRANSFER" || command.type === "REVERSE_CASH") {
+      const candidateRows = await tx.$queryRaw<RawLedger[]>(Prisma.sql`
+        SELECT p."id", p."organizationId", p."reservationId", p."method"::text AS "method", p."status"::text AS "status",
+          p."amountToman", (SELECT c."idempotencyKey" FROM ${IDEMPOTENCY_TABLE} c WHERE c."ledgerEntryId" = p."id" AND c."operation"::text IN ('RECORD_CASH', 'SUBMIT_BANK_TRANSFER') LIMIT 1) AS "idempotencyKey",
+          p."recordedByUserId", p."verifiedByUserId", p."bankReference", p."receiptKey", p."createdAt", p."verifiedAt"
+        FROM ${TABLE} p
+        WHERE p."id" = ${command.ledgerEntryId} AND p."organizationId" = ${command.organizationId}
+          AND p."reservationId" = ${command.reservationId}
+        FOR UPDATE
+      `);
+      const candidate = candidateRows[0];
+      if (!candidate) {
+        await this.removePlaceholder(tx, command);
+        return { outcome: "NOT_FOUND" };
+      }
+
+      if (command.type === "REJECT_BANK_TRANSFER") {
+        if (candidate.method !== "BANK_TRANSFER" || candidate.status !== "SUBMITTED") {
+          await this.removePlaceholder(tx, command);
+          return { outcome: "PAYMENT_NOT_PENDING" };
+        }
+        const changed = await tx.$executeRaw(Prisma.sql`
+          UPDATE ${TABLE}
+          SET "status" = 'REJECTED'::"HotelOfflinePaymentStatus"
+          WHERE "id" = ${candidate.id} AND "organizationId" = ${command.organizationId}
+            AND "reservationId" = ${command.reservationId} AND "method" = 'BANK_TRANSFER'::"HotelOfflinePaymentMethod"
+            AND "status" = 'SUBMITTED'::"HotelOfflinePaymentStatus"
+        `);
+        if (changed !== 1) {
+          await this.removePlaceholder(tx, command);
+          return { outcome: "PAYMENT_NOT_PENDING" };
+        }
+        await this.completeIdempotency(tx, command, candidate.id);
+        await this.appendAuditEvent(tx, command, candidate.id, candidate.amountToman, requestFingerprint);
+        const rejected = mapEntry({ ...candidate, status: "REJECTED" });
+        return rejected ? { outcome: "APPLIED", entry: rejected } : { outcome: "NOT_FOUND" };
+      }
+
+      if (candidate.method !== "CASH" || candidate.status !== "VERIFIED") {
+        await this.removePlaceholder(tx, command);
+        return { outcome: "PAYMENT_NOT_PENDING" };
+      }
+      if (reservation.paidAmount < candidate.amountToman) {
+        await this.removePlaceholder(tx, command);
+        return { outcome: "BALANCE_MISMATCH" };
+      }
+      const changed = await tx.$executeRaw(Prisma.sql`
+        UPDATE ${TABLE}
+        SET "status" = 'REVERSED'::"HotelOfflinePaymentStatus"
+        WHERE "id" = ${candidate.id} AND "organizationId" = ${command.organizationId}
+          AND "reservationId" = ${command.reservationId} AND "method" = 'CASH'::"HotelOfflinePaymentMethod"
+          AND "status" = 'VERIFIED'::"HotelOfflinePaymentStatus"
+      `);
+      if (changed !== 1) {
+        await this.removePlaceholder(tx, command);
+        return { outcome: "PAYMENT_NOT_PENDING" };
+      }
+      const balanceChanged = await tx.$executeRaw(Prisma.sql`
+        UPDATE "HotelReservation"
+        SET "paidAmount" = "paidAmount" - ${candidate.amountToman}, "updatedAt" = ${command.now}
+        WHERE "id" = ${command.reservationId} AND "organizationId" = ${command.organizationId}
+          AND "paidAmount" >= ${candidate.amountToman}
+      `);
+      if (balanceChanged !== 1) throw new Error("Locked reservation balance changed during cash reversal.");
+      await this.completeIdempotency(tx, command, candidate.id);
+      await this.appendAuditEvent(tx, command, candidate.id, candidate.amountToman, requestFingerprint);
+      const reversed = mapEntry({ ...candidate, status: "REVERSED" });
+      return reversed ? { outcome: "APPLIED", entry: reversed } : { outcome: "NOT_FOUND" };
     }
 
     if (command.type === "SUBMIT_BANK_TRANSFER") {
@@ -268,6 +355,7 @@ export class PrismaHotelOfflinePaymentRepository implements HotelOfflinePaymentR
       if (updated !== 1) throw new Error("Locked reservation balance changed during cash collection.");
     }
     await this.completeIdempotency(tx, command, ledgerId);
+    await this.appendAuditEvent(tx, command, ledgerId, command.amountToman, requestFingerprint);
     const entry = mapEntry({ ...ledger, idempotencyKey: command.idempotencyKey });
     return entry ? { outcome: "APPLIED", entry } : { outcome: "NOT_FOUND" };
   }
@@ -285,7 +373,7 @@ export class PrismaHotelOfflinePaymentRepository implements HotelOfflinePaymentR
       `);
       return identity.length === 1;
     }
-    const roles = command.type === "VERIFY_BANK_TRANSFER" ? ["ADMIN", "MANAGER"] : ["ADMIN", "MANAGER", "STAFF"];
+    const roles = command.type === "RECORD_CASH" ? ["ADMIN", "MANAGER", "STAFF"] : ["ADMIN", "MANAGER"];
     const membership = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
       SELECT om."id"
       FROM "OrganizationMember" om
@@ -307,6 +395,21 @@ export class PrismaHotelOfflinePaymentRepository implements HotelOfflinePaymentR
         AND "idempotencyKey" = ${command.idempotencyKey} AND "status" = 'PROCESSING'
     `);
     if (changed !== 1) throw new Error("Offline payment idempotency completion lost its locked row.");
+  }
+
+  private async appendAuditEvent(tx: Tx, command: OfflinePaymentCommand, ledgerEntryId: string, amountToman: bigint, requestFingerprint: string) {
+    await tx.hotelOfflinePaymentAuditEvent.create({ data: {
+      id: randomUUID(),
+      organizationId: command.organizationId,
+      ledgerEntryId,
+      eventType: auditEventType(command),
+      actorUserId: command.actorUserId,
+      amountToman,
+      ...(command.type === "REJECT_BANK_TRANSFER" || command.type === "REVERSE_CASH" ? { reason: command.reason } : {}),
+      idempotencyKey: command.idempotencyKey,
+      requestFingerprint,
+      createdAt: command.now,
+    } });
   }
 
   private async removePlaceholder(tx: Tx, command: OfflinePaymentCommand) {

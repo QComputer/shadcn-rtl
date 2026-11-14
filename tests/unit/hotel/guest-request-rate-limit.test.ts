@@ -14,11 +14,11 @@ function fakeDatabase(initialCount: number) {
 }
 
 test("guest limiter executes a tenant-scoped database upsert and enforces create budget in test mode", async () => {
-  const fixture = fakeDatabase(301);
+  const fixture = fakeDatabase(61);
   const rate = await checkHotelGuestRequestRateLimit({ organizationId: "verified-org", endpoint: "create", db: fixture.db });
   assert.equal(rate.allowed, false);
   assert.equal(rate.remaining, 0);
-  assert.equal(rate.retryAfterSeconds, 899);
+  assert.equal(rate.retryAfterSeconds, 59);
   assert.equal(fixture.calls.length, 1);
   assert.deepEqual(fixture.calls[0].values.slice(0, 2), ["verified-org", "create"]);
   assert.match(fixture.calls[0].sql, /ON CONFLICT/);
@@ -27,13 +27,13 @@ test("guest limiter executes a tenant-scoped database upsert and enforces create
 
 test("guest limiter uses separate endpoint budgets", async () => {
   const create = fakeDatabase(60);
-  const status = fakeDatabase(300);
+  const status = fakeDatabase(240);
   assert.equal((await checkHotelGuestRequestRateLimit({ organizationId: "org", endpoint: "create", db: create.db })).allowed, true);
   assert.equal((await checkHotelGuestRequestRateLimit({ organizationId: "org", endpoint: "status", db: status.db })).allowed, true);
-  assert.ok(create.calls[0].values.includes(301));
-  assert.ok(create.calls[0].values.includes(900_000));
-  assert.ok(status.calls[0].values.includes(1201));
-  assert.ok(status.calls[0].values.includes(600_000));
+  assert.ok(create.calls[0].values.includes(61));
+  assert.ok(create.calls[0].values.includes(60_000));
+  assert.ok(status.calls[0].values.includes(241));
+  assert.ok(status.calls[0].values.includes(60_000));
 });
 
 test("guest limiter fails closed when shared storage is unavailable", async () => {

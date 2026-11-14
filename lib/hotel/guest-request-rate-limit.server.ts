@@ -5,11 +5,12 @@ type Db = { $queryRaw(query: Prisma.Sql): Promise<unknown> };
 export type HotelGuestRequestRate = { allowed: boolean; remaining: number; resetAt: number; retryAfterSeconds: number; storeUnavailable: boolean };
 
 const budgets: Record<HotelGuestRequestEndpoint, { limit: number; windowMs: number }> = {
-  // Client IPs are intentionally not trusted or read. These larger tenant
-  // aggregates protect service availability, not per-guest fairness: one guest
-  // can affect others. Tune from operational traffic evidence.
-  create: { limit: 300, windowMs: 15 * 60_000 },
-  status: { limit: 1200, windowMs: 10 * 60_000 },
+  // Tenant aggregates (60 create/min, 240 status/min), not per-guest fairness:
+  // one guest can affect others; each fixed window lasts 60s, and sustained
+  // abuse can exhaust consecutive windows.
+  // Tune using operational traffic evidence. Client IP headers remain untrusted.
+  create: { limit: 60, windowMs: 60_000 },
+  status: { limit: 240, windowMs: 60_000 },
 };
 
 /**

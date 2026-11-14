@@ -40,17 +40,17 @@ test("PostgreSQL guest request upsert enforces limits across independent Prisma 
       endpoint: "create",
       db: index % 2 === 0 ? clientA : clientB,
     })));
-    assert.equal(attempts.filter((attempt) => attempt.allowed).length, 300);
-    assert.equal(attempts.filter((attempt) => !attempt.allowed).length, 100);
+    assert.equal(attempts.filter((attempt) => attempt.allowed).length, 60);
+    assert.equal(attempts.filter((attempt) => !attempt.allowed).length, 340);
     const counter = await clientB.hotelGuestRequestRateLimit.findUniqueOrThrow({ where: { organizationId_endpoint: { organizationId: organizationA.id, endpoint: "create" } } });
-    assert.equal(counter.count, 301, "over-limit increments are capped at limit plus one");
+    assert.equal(counter.count, 61, "over-limit increments are capped at limit plus one");
 
     await clientA.$transaction(async (tx) => {
       await tx.$executeRaw`SET LOCAL TIME ZONE 'Pacific/Honolulu'`;
       const rate = await checkHotelGuestRequestRateLimit({ organizationId: organizationA.id, endpoint: "status", db: tx });
       assert.equal(rate.allowed, true, "endpoint budgets are independent");
       const statusCounter = await tx.hotelGuestRequestRateLimit.findUniqueOrThrow({ where: { organizationId_endpoint: { organizationId: organizationA.id, endpoint: "status" } } });
-      assert.equal(rate.resetAt, statusCounter.windowStartedAt.getTime() + 10 * 60_000, "timestamptz reset remains correct under a non-UTC DB session");
+      assert.equal(rate.resetAt, statusCounter.windowStartedAt.getTime() + 60_000, "timestamptz reset remains correct under a non-UTC DB session");
     });
     assert.equal((await checkHotelGuestRequestRateLimit({ organizationId: organizationB.id, endpoint: "create", db: clientA })).allowed, true, "tenant budgets are independent");
     assert.equal(await clientA.hotelGuestRequestRateLimit.count({ where: { organizationId: { in: organizationIds } } }), 3, "rows stay bounded to one per tenant and endpoint");

@@ -23,7 +23,10 @@ function assertDisposableDatabaseTarget() {
 
 async function assertLiveDatabaseIdentity() {
   const [identity] = await prisma.$queryRaw`SELECT current_database() AS database, inet_server_addr()::text AS address, inet_server_port() AS port`;
-  if (identity.database !== "bazarbaaz_retail_r3" || identity.port !== 5432 || !["127.0.0.1", "::1"].includes(identity.address)) {
+  // The GitHub Actions PostgreSQL service is reached through the runner's loopback
+  // port mapping, while inet_server_addr() reports its private Docker bridge IP.
+  const localServiceAddress = ["127.0.0.1", "::1"].includes(identity.address) || /^172\.(1[6-9]|2[0-9]|3[01])\./.test(identity.address);
+  if (identity.database !== "bazarbaaz_retail_r3" || identity.port !== 5432 || !localServiceAddress) {
     throw new Error(`Refusing homepage fixture mutation against ${JSON.stringify(identity)}`);
   }
   return identity;

@@ -70,13 +70,18 @@ try {
         javascriptResourceCount: resources.filter((entry) => entry.name.includes(".js")).length,
         firstPaint: performance.getEntriesByName("first-paint")[0]?.startTime ?? null, firstContentfulPaint: performance.getEntriesByName("first-contentful-paint")[0]?.startTime ?? null,
         lcp: window.__bbLcp.at(-1)?.startTime ?? null, cls: window.__bbCls.reduce((sum, entry) => sum + (entry.hadRecentInput ? 0 : entry.value), 0),
+        paintEntries: performance.getEntriesByType("paint").map((entry) => ({ name: entry.name, startTime: entry.startTime })),
         currentTheme: document.documentElement.getAttribute("data-theme"), resolvedClass: document.documentElement.classList.contains("dark") ? "dark" : "light", paintRecord: window.__bbFirstPaint,
       };
     });
     const apiRequests = reqs.filter((item) => item.kind === "catalog-api" && item.phase === "request");
+    const paintThemes = metrics.paintRecord?.samples?.filter((sample) => sample.dataTheme && /\b(light|dark)\b/.test(sample.className)) ?? [];
+    const firstPaintTheme = paintThemes[0] ?? null;
     const themePass = metrics.currentTheme === args.theme && metrics.resolvedClass === args.expected
-      && metrics.paintRecord?.fcp?.dataTheme === args.theme
-      && metrics.paintRecord?.fcp?.className?.split(/\s+/).includes(args.expected) === true;
+      && metrics.firstContentfulPaint !== null
+      && firstPaintTheme?.dataTheme === args.theme
+      && firstPaintTheme?.className?.split(/\s+/).includes(args.expected) === true
+      && paintThemes.every((sample) => sample.dataTheme === args.theme && sample.className.split(/\s+/).includes(args.expected));
     const ssrCardCount = (html.match(/data-retail-product-card/g) ?? []).length;
     const output = { label: args.label, iteration: args.iteration ?? null, theme: args.theme, scheme: args.scheme, expected: args.expected, status: response.status(), ssrCardCount, products: metrics.cardCount, hydrationProductDelta: metrics.cardCount - ssrCardCount, initialCatalogApiRequestCount: apiRequests.length, apiRequests, documentBytes: Buffer.byteLength(html), metrics, errors, themePass };
     if (args.testTheme) {
@@ -85,7 +90,7 @@ try {
       results.requests.push(...reqs);
       results.console.push(...errors.map((item) => ({ scenario: args.label, ...item })));
       await fs.writeFile(path.join(artifactDir, "theme-progress.json"), JSON.stringify(results.themeRuns, null, 2));
-      if (sourceLabel === "pr77") assert.equal(themePass, true, `${args.label}: first paint already uses the selected theme and its resolved color scheme; observed=${JSON.stringify({ currentTheme: metrics.currentTheme, resolvedClass: metrics.resolvedClass, firstPaint: metrics.paintRecord?.fcp })}`);
+      if (sourceLabel === "pr77") assert.equal(themePass, true, `${args.label}: sampled pre-paint theme matches the selection through first contentful paint; observed=${JSON.stringify({ currentTheme: metrics.currentTheme, resolvedClass: metrics.resolvedClass, firstContentfulPaint: metrics.firstContentfulPaint, paintEntries: metrics.paintEntries, paintSamples: metrics.paintRecord?.samples?.slice(0, 8), firstPaintTheme })}`);
     } else {
       if (sourceLabel === "pr77") {
         assert.equal(output.initialCatalogApiRequestCount, 0, `${args.label}: hydration reuses the SSR product page without an initial list request`);

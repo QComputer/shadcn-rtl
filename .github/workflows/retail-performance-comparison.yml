@@ -1,0 +1,157 @@
+name: Retail main vs PR77 performance evidence
+
+on:
+  push:
+    branches:
+      - codex/bb-retail-perf-01-20261115
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-performance:
+    name: Browser performance (${{ matrix.label }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: merged-main
+            ref: main
+          - label: pr77
+            ref: ${{ github.sha }}
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: retail_perf
+          POSTGRES_DB: bazarbaaz_retail_r3
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U retail_perf -d bazarbaaz_retail_r3"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://retail_perf@127.0.0.1:55432/bazarbaaz_retail_r3?schema=public
+      DIRECT_URL: postgresql://retail_perf@127.0.0.1:55432/bazarbaaz_retail_r3?schema=public
+      DATABASE_RUNTIME_ADAPTER: postgresql
+      LOCAL_PRISMA_EXPECTED_PORT: "55432"
+      RETAIL_R3_EXPECTED_DATABASE: bazarbaaz_retail_r3
+      AI_MEDIA_LOCAL_DOCKER_E2E: "1"
+      AUTH_TRUST_HOST: "true"
+      AUTH_URL: http://127.0.0.1:3000
+      NEXTAUTH_URL: http://127.0.0.1:3000
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout measured source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
+
+      - name: Checkout candidate fixture and browser tooling
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: .acceptance-tools
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Create ephemeral credentials
+        run: |
+          echo "NEXTAUTH_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "RETAIL_R3_TEST_PASSWORD=$(openssl rand -hex 20)" >> "$GITHUB_ENV"
+
+      - name: Install measured-source dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client and apply migrations
+        run: |
+          pnpm exec prisma generate
+          pnpm exec prisma migrate deploy
+
+      - name: Seed isolated Retail tenants and 25-product fixture
+        run: |
+          pnpm exec tsx .acceptance-tools/scripts/retail/r3-fixtures.mjs seed
+          pnpm exec tsx .acceptance-tools/scripts/retail/homepage-fixtures.mjs seed
+
+      - name: Profile Persian search and facets on synthetic catalog rows
+        run: pnpm exec tsx .acceptance-tools/scripts/retail/catalog-query-profile.mjs
+
+      - name: Build measured source
+        run: pnpm run build
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Record source identity
+        run: |
+          mkdir -p artifacts/retail-performance
+          echo "label=${{ matrix.label }}" | tee artifacts/retail-performance/source.txt
+          source_sha="$(git rev-parse HEAD)"
+          echo "sha=$source_sha" | tee -a artifacts/retail-performance/source.txt
+          echo "ref=${{ matrix.ref }}" | tee -a artifacts/retail-performance/source.txt
+          echo "RETAIL_PERF_SOURCE_SHA=$source_sha" >> "$GITHUB_ENV"
+
+      - name: Start isolated production server
+        run: |
+          pnpm start --port 3000 > artifacts/retail-performance/next.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/fa/login >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat artifacts/retail-performance/next.log
+          exit 1
+
+      - name: Measure themes, hydration, requests and Web Vitals
+        env:
+          RETAIL_PERF_BASE_URL: http://127.0.0.1:3000
+          RETAIL_PERF_PLAYWRIGHT_ENTRY: ${{ github.workspace }}/node_modules/playwright/index.mjs
+          RETAIL_PERF_SOURCE_LABEL: ${{ matrix.label }}
+          RETAIL_PERF_ARTIFACT_DIR: artifacts/retail-performance
+        run: node .acceptance-tools/scripts/retail/performance-browser-acceptance.mjs
+
+      - name: Upload measurements and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: retail-performance-${{ matrix.label }}-${{ github.run_id }}
+          path: artifacts/retail-performance/
+          if-no-files-found: warn
+
+  compare:
+    name: Compare measured artifacts
+    if: always()
+    needs: browser-performance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Download main and PR77 evidence
+        uses: actions/download-artifact@v4
+        with:
+          pattern: retail-performance-*-${{ github.run_id }}
+          path: artifacts/retail-performance-comparison
+          merge-multiple: false
+
+      - name: Build equivalent comparison report
+        run: node scripts/retail/compare-performance-artifacts.mjs artifacts/retail-performance-comparison
+
+      - name: Upload comparison report
+        uses: actions/upload-artifact@v4
+        with:
+          name: retail-performance-comparison-${{ github.run_id }}
+          path: artifacts/retail-performance-comparison/comparison.json

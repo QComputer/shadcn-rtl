@@ -47,7 +47,7 @@ interface Product {
   description: string | null
   basePrice: number
   image: string | null
-  aiPrimaryMediaAssetId?: string | null
+  hasAiPrimaryMedia?: boolean
   images: string[]
   sku: string | null
 

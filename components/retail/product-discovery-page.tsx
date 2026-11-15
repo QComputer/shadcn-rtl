@@ -55,6 +55,7 @@ const loadDiscoveryData = cache(async (locale: string, organizationSlug: string,
       categories,
       facets,
       initial,
+      canReuseInitialProducts: !saved && parsed.success,
       canonical,
       storefront,
       query,
@@ -82,8 +83,8 @@ export async function discoveryMetadata(props: PageProps): Promise<Metadata> {
 }
 
 export async function ProductDiscoveryPage(props: PageProps) {
-  const { organization, facets, initial, storefront, query } = await getData(props);
-  return <ProductDiscovery organization={organization.identifier} storeName={organization.name}
+  const { organization, facets, initial, storefront, query, canReuseInitialProducts } = await getData(props);
+  return <ProductDiscovery key={organization.identifier} organization={organization.identifier} storeName={organization.name}
     logo={organization.logo} storefrontPath={storefront.path} previewOnly={organization.previewOnly} initialProducts={initial.products}
-    initialPagination={initial.pagination} facets={facets} initialQuery={getValue(query, "q") ?? ""} />;
+    initialPagination={initial.pagination} facets={facets} initialQuery={getValue(query, "q") ?? ""} canReuseInitialProducts={canReuseInitialProducts} />;
 }

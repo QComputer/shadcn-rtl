@@ -53,6 +53,21 @@ describe("Public Catalog API v1 contract", () => {
     assert.equal("provider" in product.media, false);
   });
 
+  it("rejects unsafe media schemes in the public product serializer", () => {
+    const product = serializePublicCatalogProduct({
+      ...productInput,
+      image: "javascript:alert(1)",
+      cardImage: "data:image/png;base64,AA==",
+      images: ["/uploads/tenant-a/valid.webp", "vbscript:msgbox(1)", "//foreign.example/image.webp"],
+    });
+    assert.deepEqual(product.media, {
+      card: null,
+      detail: null,
+      alt: productInput.name,
+      gallery: ["/uploads/tenant-a/valid.webp"],
+    });
+  });
+
   it("serializes typed product attributes and explicit variant options with reserved stock excluded", () => {
     const product = serializePublicCatalogProduct({
       ...productInput,

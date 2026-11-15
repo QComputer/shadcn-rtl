@@ -23,16 +23,26 @@ export function ThemeProvider({
   defaultTheme = "light",
   storageKey = "shadcn-rtl-theme",
 }: ThemeProviderProps) {
-  const [theme, setThemeState] = React.useState<Theme>(() => {
-    if (typeof window === "undefined") {
-      return defaultTheme
-    }
-    return (localStorage.getItem(storageKey) as Theme) || defaultTheme
-  })
+  const [theme, setThemeState] = React.useState<Theme>(defaultTheme)
+  const [preferenceLoaded, setPreferenceLoaded] = React.useState(false)
 
   const [resolvedTheme, setResolvedTheme] = React.useState<"light" | "dark">("dark")
 
   React.useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(storageKey)
+      if (saved === "light" || saved === "dark" || saved === "warm-cream" || saved === "charcoal-gray" || saved === "system") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Restore a browser-only preference after hydration to keep server and client markup identical.
+        setThemeState(saved)
+      }
+    } catch {
+      // Storage can be unavailable; the server default remains usable.
+    }
+    setPreferenceLoaded(true)
+  }, [storageKey])
+
+  React.useEffect(() => {
+    if (!preferenceLoaded) return
     const root = window.document.documentElement
 
     // Remove old theme class
@@ -61,7 +71,7 @@ export function ThemeProvider({
     
     // Also set data-theme attribute for custom themes
     root.setAttribute("data-theme", theme)
-  }, [theme])
+  }, [theme, preferenceLoaded])
 
   // Listen for system theme changes
   React.useEffect(() => {
@@ -84,7 +94,11 @@ export function ThemeProvider({
 
   const setTheme = React.useCallback((newTheme: Theme) => {
     setThemeState(newTheme)
-    localStorage.setItem(storageKey, newTheme)
+    try {
+      localStorage.setItem(storageKey, newTheme)
+    } catch {
+      // Keep the in-memory theme switch working when storage is unavailable.
+    }
   }, [storageKey])
 
   return (

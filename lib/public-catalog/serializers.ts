@@ -11,6 +11,7 @@ import {
   type PublicCatalogVariant,
   type PublicCatalogVariantMedia,
 } from "@/lib/public-catalog/contracts";
+import { isSafePublicMediaUrl } from "@/lib/public-catalog/media-policy";
 
 type MoneyLike = number | string | { toString(): string };
 
@@ -44,9 +45,11 @@ function discountedAmount(base: number, discountType?: string | null, discountVa
 }
 
 export function serializePublicCatalogMedia(input: { image?: string | null; cardImage?: string | null; images?: string[]; name: string }): PublicCatalogMedia {
-  const primary = input.image ?? null;
-  const gallery = (input.images ?? []).filter((url) => url !== primary);
-  return { card: input.cardImage === undefined ? primary : input.cardImage, detail: primary, alt: input.name, gallery };
+  const primary = input.image && isSafePublicMediaUrl(input.image) ? input.image : null;
+  const cardCandidate = input.cardImage === undefined ? primary : input.cardImage;
+  const card = cardCandidate && isSafePublicMediaUrl(cardCandidate) ? cardCandidate : null;
+  const gallery = [...new Set(input.images ?? [])].filter((url) => url !== primary && isSafePublicMediaUrl(url));
+  return { card, detail: primary, alt: input.name, gallery };
 }
 
 export function serializePublicCatalogCategory(input: {

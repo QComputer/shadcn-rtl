@@ -1,6 +1,7 @@
 import { readGallerySettings, orderedImages, isRetailSizeDefinition } from "@/lib/retail/product-galleries";
 import { getCardImage, type ImageDerivatives } from "@/lib/retail/image-derivatives";
 import "server-only";
+import { cache } from "react";
 
 import { ApiError } from "@/lib/api-guards";
 import { prisma } from "@/lib/db";
@@ -9,6 +10,7 @@ import { resolveOrganizationEndpointForTenant } from "@/lib/organization-endpoin
 import { buildProductPurchaseHandoff } from "@/lib/purchase-intent";
 import { PUBLIC_CATALOG_PRICE_UNIT, publicCatalogProductsPageSchema, publicCatalogSnapshotSchema, type PublicCatalogPagination, type PublicCatalogProductsPage, type PublicCatalogProduct, type PublicCatalogSnapshot } from "@/lib/public-catalog/contracts";
 import { serializePublicCatalogCategory, serializePublicCatalogProduct } from "@/lib/public-catalog/serializers";
+import { filterTenantPublicProductImages, isSafePublicMediaUrl } from "@/lib/public-catalog/media-policy";
 import { Prisma, RetailAttributeScope, type Prisma as PrismaTypes } from "@prisma/client";
 import { tagIdentityKey } from "@/lib/retail/product-taxonomy-utils";
 import { isSyntheticRetailLabel, normalizeRetailSearch } from "@/lib/retail/discovery";
@@ -34,11 +36,6 @@ function publicAttribute(value: { valueText: string | null; valueNumber: Prisma.
   return { key: value.definition.key, label: typeof labels.fa === "string" ? labels.fa : value.definition.label,
     valueType: value.definition.valueType, displayUnit: value.definition.displayUnit, filterable: value.definition.isFilterable,
     valueText: value.valueText, valueNumber: value.valueNumber, valueBoolean: value.valueBoolean };
-}
-
-function isSafePublicMediaUrl(value: string) {
-  if (value.startsWith("/") && !value.startsWith("//")) return true;
-  try { return new URL(value).protocol === "https:"; } catch { return false; }
 }
 
 function publicDerivatives(value: Prisma.JsonValue | null): ImageDerivatives | null {
@@ -83,7 +80,7 @@ async function loadAppearanceImages(products: PublicRetailProduct[], organizatio
 
 async function retailProduct(product: PublicRetailProduct, organizationId: string, preloadedAppearanceImages?: Map<string, PublicAppearanceImage>) {
   const gallerySettings = readGallerySettings(product.gallerySettings);
-  const eligibleImageRecords = orderedImages(product.images, gallerySettings?.productImageIds ?? []).filter((image) => image.access === "PUBLIC" && (!image.organizationId || image.organizationId === organizationId) && isSafePublicMediaUrl(image.url));
+  const eligibleImageRecords = filterTenantPublicProductImages(orderedImages(product.images, gallerySettings?.productImageIds ?? []), organizationId);
   const primaryRecord = gallerySettings ? eligibleImageRecords[0] : eligibleImageRecords.find(image => image.url === product.image) ?? eligibleImageRecords[0];
   const primary = primaryRecord?.url ?? null;
   const appearancesById = preloadedAppearanceImages ?? await loadAppearanceImages([product], organizationId);
@@ -157,8 +154,8 @@ async function retailProduct(product: PublicRetailProduct, organizationId: strin
       const groupDark = matchingGroup?.darkImageId ? appearancesById.get(matchingGroup.darkImageId) : undefined;
       const useVariantPair = Boolean(variantLight || variantDark);
       const useGroupPair = !useVariantPair && Boolean(groupLight || groupDark);
-      const originals = variant.galleryImages.filter(entry => entry.image.access === "PUBLIC" && entry.image.organizationId === organizationId && isSafePublicMediaUrl(entry.image.url));
-      const variantPrimary = originals[0]?.image;
+      const originals = filterTenantPublicProductImages(variant.galleryImages.map((entry) => entry.image), organizationId);
+      const variantPrimary = originals[0];
       const variantCard = variantPrimary ? getCardImage(publicDerivatives(variantPrimary.derivatives), variantPrimary.url) : null;
       const variantFallback = variantCard ?? cardImage;
       const appearance = useVariantPair ? pairCardAppearance(variantLight, variantDark, true, variantFallback)
@@ -166,12 +163,12 @@ async function retailProduct(product: PublicRetailProduct, organizationId: strin
           : productHasAppearance ? pairCardAppearance(baseLight, baseDark, false, variantFallback)
             : pairCardAppearance(undefined, undefined, false, variantFallback);
       const variantCardAppearance = appearance;
-      return { ...variant, cardAppearance: variantCardAppearance, media: { gallery: originals.map(entry => entry.image.url), cardAppearance: variantCardAppearance }, options: variant.optionValues.map((value) => publicAttribute(value, organizationId)).filter((value) => value !== null) };
+      return { ...variant, cardAppearance: variantCardAppearance, media: { gallery: originals.map((image) => image.url), cardAppearance: variantCardAppearance }, options: variant.optionValues.map((value) => publicAttribute(value, organizationId)).filter((value) => value !== null) };
     }),
   };
 }
 
-async function requirePublicShop(identifier: string) {
+const requirePublicShop = cache(async (identifier: string) => {
   const organization = await prisma.organization.findFirst({
     where: { slug: identifier, isActive: true, deletedAt: null, isPlatformOwner: false },
     select: {
@@ -184,7 +181,7 @@ async function requirePublicShop(identifier: string) {
     throw new ApiError(404, "Catalog not found");
   }
   return organization;
-}
+});
 
 async function purchaseBuilder(organization: { id: string; slug: string }) {
   const appEndpoint = await resolveOrganizationEndpointForTenant({ organizationId: organization.id, role: "APP" });

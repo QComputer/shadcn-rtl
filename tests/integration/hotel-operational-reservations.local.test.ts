@@ -326,7 +326,8 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     assert.equal(cancelFirstEntry.status, "SUBMITTED"); assert.equal(cancelFirstEntry.verifiedAt, null);
     assert.equal(await db.hotelOfflinePaymentAuditEvent.count({ where: { organizationId: a.id, ledgerEntryId: cancelFirst.entryId, eventType: "BANK_TRANSFER_VERIFIED" } }), 0);
     assert.equal(await db.hotelOfflinePaymentAuditEvent.count({ where: { organizationId: a.id, ledgerEntryId: cancelFirst.entryId, eventType: "BANK_TRANSFER_SUBMITTED" } }), 1);
-    assert.equal(await db.hotelBookingHold.count({ where: { organizationId: a.id, reservationId: cancelFirst.id, status: "RELEASED" } }), 1);
+    assert.ok(cancelFirstRow.holdId);
+    assert.equal((await db.hotelBookingHold.findUniqueOrThrow({ where: { id: cancelFirstRow.holdId } })).status, "RELEASED");
     const cancelAudit = await db.hotelInventoryIdempotency.findUnique({ where: { organizationId_operationScope_idempotencyKey: { organizationId: a.id, operationScope: "HOTEL_OPERATIONAL_ACTION", idempotencyKey: `cancel-${token}-lock-first` } } });
     assert.equal(cancelAudit?.status, "COMPLETED", "completed cancellation is retained in the operation audit/idempotency record");
     const cancelFirstAfter = await inventoryForStay();
@@ -358,7 +359,8 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     assert.equal(verifyFirstEntry.status, "VERIFIED");
     assert.equal(await db.hotelOfflinePaymentAuditEvent.count({ where: { organizationId: a.id, ledgerEntryId: verifyFirst.entryId, eventType: "BANK_TRANSFER_VERIFIED" } }), 1);
     assert.equal(await db.hotelOfflinePaymentAuditEvent.count({ where: { organizationId: a.id, ledgerEntryId: verifyFirst.entryId, eventType: "BANK_TRANSFER_SUBMITTED" } }), 1);
-    assert.equal(await db.hotelBookingHold.count({ where: { organizationId: a.id, reservationId: verifyFirst.id, status: "RELEASED" } }), 1);
+    assert.ok(verifyFirstRow.holdId);
+    assert.equal((await db.hotelBookingHold.findUniqueOrThrow({ where: { id: verifyFirstRow.holdId } })).status, "RELEASED");
     const verifyFirstAfter = await inventoryForStay();
     assert.deepEqual(verifyFirstAfter.map((row) => row.booked), verifyFirstBefore.map((row) => row.booked - 1));
     assert.equal(await db.hotelOfflinePaymentAuditEvent.count({ where: { organizationId: a.id, ledgerEntryId: verifyFirst.entryId } }), 2, "submission and verification are recorded once; cancellation does not invent a refund/reversal");

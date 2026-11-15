@@ -132,6 +132,14 @@ try {
   await page.waitForFunction(() => document.querySelectorAll("#products [data-retail-product-card]").length === 20);
   outcomes.push({ name: "category-filter-reset", result: "passed", filteredCards: 12, restoredCards: 20 });
 
+  const catalogRequestsBeforeRemount = records.filter((item) => item.kind === "catalog-api" && item.phase === "request").length;
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.locator("#products [data-retail-product-card]").first().waitFor();
+  await waitForRetailHydration(page);
+  const remountCatalogRequestCount = records.filter((item) => item.kind === "catalog-api" && item.phase === "request").length - catalogRequestsBeforeRemount;
+  assert.equal(remountCatalogRequestCount, 0, "page remount reuses the server snapshot without an initial browser catalog request");
+  outcomes.push({ name: "remount-no-duplicate-request", result: "passed" });
+
   const pageTwoMatcher = "**/api/public/v1/organizations/retail-r3-fashion-preview/products**";
   await context.route(pageTwoMatcher, async (route) => {
     const requested = new URL(route.request().url());
@@ -218,14 +226,6 @@ try {
   assert.equal(await page.getByRole("button", { name: "همه دسته‌بندی‌ها" }).getAttribute("aria-pressed"), "true");
   await context.unroute(delayedCategoryMatcher);
   outcomes.push({ name: "concurrent-category-stale-response", result: "passed", intercepted: staleStarted, staleRequestDisposition });
-
-  const catalogRequestsBeforeRemount = records.filter((item) => item.kind === "catalog-api" && item.phase === "request").length;
-  await page.reload({ waitUntil: "domcontentloaded" });
-  await page.locator("#products [data-retail-product-card]").first().waitFor();
-  await waitForRetailHydration(page);
-  const remountCatalogRequestCount = records.filter((item) => item.kind === "catalog-api" && item.phase === "request").length - catalogRequestsBeforeRemount;
-  assert.equal(remountCatalogRequestCount, 0, "page remount reuses the server snapshot without an initial browser catalog request");
-  outcomes.push({ name: "remount-no-duplicate-request", result: "passed" });
 
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.locator("#products [data-retail-product-card]").count(), 20, "mobile viewport retains the product grid");

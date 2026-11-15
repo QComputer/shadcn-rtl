@@ -25,6 +25,21 @@ async function waitForPostgresLockWait(db: PrismaClient, queryIncludes: string) 
   }
   throw new Error(`Timed out waiting for a verified PostgreSQL lock wait: ${queryIncludes}`);
 }
+async function waitForAdvisoryBarrierWait(db: PrismaClient, key: string) {
+  const keyValue = BigInt(key);
+  const classId = keyValue >> 32n;
+  const objectId = keyValue & 0xffff_ffffn;
+  const deadline = Date.now() + 15_000;
+  while (Date.now() < deadline) {
+    const rows = await db.$queryRaw<Array<{ waiting: boolean }>>`SELECT EXISTS (
+      SELECT 1 FROM pg_locks WHERE locktype='advisory' AND NOT granted
+        AND classid=${classId}::oid AND objid=${objectId}::oid AND objsubid=1
+    ) AS waiting`;
+    if (rows[0]?.waiting) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error("Timed out waiting for the test trigger to reach its PostgreSQL advisory barrier.");
+}
 type OperationalResult = {
   simulated?: boolean;
   confirmationPolicy?: { manualConfirmationPolicy?: string; allowedOfflinePaymentMethods?: string[]; minimumVerifiedDepositAmount?: string | null; pendingPaymentMinutes?: number };
@@ -297,7 +312,7 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     let verifyAfterCancelTask!: ReturnType<typeof payments.verifyBankTransfer>;
     try {
       cancelFirstTask = service.execute(guestA, a.id, pa.id, { action: "cancel", reservationId: cancelFirst.id }, `cancel-${token}-lock-first`);
-      await waitForPostgresLockWait(db, 'UPDATE "HotelReservation"');
+      await waitForAdvisoryBarrierWait(db, cancelLockKey);
       verifyAfterCancelTask = payments.verifyBankTransfer({ actor: verifyActor, reservationId: cancelFirst.id, ledgerEntryId: cancelFirst.entryId, idempotencyKey: `verify-${token}-cancel-first` });
       await waitForPostgresLockWait(db, 'FROM "HotelReservation"');
     } finally { await releaseCancelBarrier(); await removeCancelBarrier(); }
@@ -330,7 +345,7 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     let cancelAfterVerifyTask!: Promise<unknown>;
     try {
       verifyFirstTask = payments.verifyBankTransfer({ actor: verifyActor, reservationId: verifyFirst.id, ledgerEntryId: verifyFirst.entryId, idempotencyKey: `verify-${token}-verify-first` });
-      await waitForPostgresLockWait(db, 'UPDATE "HotelOfflinePayment"');
+      await waitForAdvisoryBarrierWait(db, verifyLockKey);
       cancelAfterVerifyTask = service.execute(guestA, a.id, pa.id, { action: "cancel", reservationId: verifyFirst.id }, `cancel-${token}-verify-first`);
       await waitForPostgresLockWait(db, 'FROM "HotelReservation"');
     } finally { await releaseVerifyBarrier(); await removeVerifyBarrier(); }

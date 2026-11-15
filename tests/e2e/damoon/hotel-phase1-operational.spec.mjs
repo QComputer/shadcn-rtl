@@ -107,7 +107,7 @@ test("authenticated Damoon guest lifecycle reaches reception check-out with tena
     expect(cash.body.outcome).toBe("APPLIED");
     expect(cash.body.entry?.method).toBe("CASH");
     expect(cash.body.entry?.status).toBe("VERIFIED");
-    await staffPage.reload();
+    await staffPage.reload({ waitUntil: "domcontentloaded", timeout: 15_000 });
     await expect(staffPage.getByText(reservation.reference, { exact: true })).toBeVisible({ timeout: 10_000 });
 
     const confirmed = await api(staffPage, reservationsPath(organizationId, propertyId), { method: "POST", key: key("confirm"), body: { action: "confirm-reservation", reservationId: reservation.id } });

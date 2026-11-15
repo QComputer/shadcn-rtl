@@ -13,9 +13,24 @@ const { chromium } = await import(pathToFileURL(entry).href);
 const browser = await chromium.launch({ headless: true });
 const records = [];
 const consoleRecords = [];
+const expectedInjectedConsole = [];
 const outcomes = [];
 const injectedFailures = [];
 const record = (item) => records.push({ at: new Date().toISOString(), ...item });
+async function captureScreenshot(page, filePath) {
+  const session = await page.context().newCDPSession(page);
+  try {
+    const dimensions = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight }));
+    const { data } = await session.send("Page.captureScreenshot", {
+      format: "png",
+      captureBeyondViewport: true,
+      clip: { x: 0, y: 0, width: dimensions.width, height: dimensions.height, scale: 1 },
+    });
+    await fs.writeFile(filePath, Buffer.from(data, "base64"));
+  } finally {
+    await session.detach();
+  }
+}
 let context;
 let traceStarted = false;
 try {
@@ -25,7 +40,7 @@ try {
   const page = await context.newPage();
   page.on("console", (msg) => {
     if (msg.type() === "error" && injectedFailures.length > 0 && /503 \(Service Unavailable\)/i.test(msg.text())) {
-      consoleRecords.push({ type: "expected-injected-api-failure", text: msg.text() });
+      expectedInjectedConsole.push({ type: "expected-injected-api-failure", text: msg.text() });
       return;
     }
     if (msg.type() === "error" || /hydration|did not match/i.test(msg.text())) consoleRecords.push({ type: msg.type(), text: msg.text() });
@@ -53,7 +68,7 @@ try {
   const response = await page.goto(`${baseUrl}/fa/retail/${encodeURIComponent(tenant)}`, { waitUntil: "domcontentloaded" });
   assert.equal(response?.status(), 200, "public homepage responds successfully");
   await page.locator("#products [data-retail-product-card]").first().waitFor();
-  await page.waitForTimeout(500);
+  await page.waitForLoadState("networkidle");
   const cards = page.locator("#products [data-retail-product-card]");
   const initialNames = await cards.locator("h3").allTextContents().catch(async () => cards.locator("article").allTextContents());
   const initialApi = records.filter((x) => x.kind === "catalog-api" && x.phase === "request");
@@ -204,7 +219,7 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.locator("#products [data-retail-product-card]").count(), 20, "mobile viewport retains the product grid");
   assert.equal(await page.getByRole("navigation", { name: "پیمایش موبایل فروشگاه" }).isVisible(), true, "mobile navigation is visible");
-  await page.screenshot({ path: path.join(outputDir, "homepage-mobile.png"), fullPage: true });
+  await captureScreenshot(page, path.join(outputDir, "homepage-mobile.png"));
   await page.setViewportSize({ width: 1280, height: 900 });
   assert.equal(await page.locator("#products [data-retail-product-card]").count(), 20, "desktop viewport retains the product grid");
   outcomes.push({ name: "mobile-desktop-smoke", result: "passed" });
@@ -241,13 +256,13 @@ try {
   assert.equal(consoleRecords.length, 0, "browser console and hydration errors absent");
 } catch (error) {
   outcomes.push({ name: "homepage-acceptance", result: "failed", error: error.stack ?? String(error) });
-  if (context) await context.pages()[0]?.screenshot({ path: path.join(outputDir, "failure.png"), fullPage: true }).catch(() => {});
+  if (context) await captureScreenshot(context.pages()[0], path.join(outputDir, "failure.png")).catch(() => {});
   throw error;
 } finally {
   if (context && traceStarted) await context.tracing.stop({ path: path.join(outputDir, "homepage-trace.zip") }).catch(() => {});
   await fs.writeFile(path.join(outputDir, "network-requests.json"), JSON.stringify(records, null, 2));
   await fs.writeFile(path.join(outputDir, "browser-console.json"), JSON.stringify(consoleRecords, null, 2));
-  await fs.writeFile(path.join(outputDir, "homepage-browser-results.json"), JSON.stringify({ baseUrl, tenant, outcomes, injectedFailures, consoleErrors: consoleRecords.length }, null, 2));
+  await fs.writeFile(path.join(outputDir, "homepage-browser-results.json"), JSON.stringify({ baseUrl, tenant, outcomes, injectedFailures, expectedInjectedConsole, consoleErrors: consoleRecords.length }, null, 2));
   await browser.close();
 }
 console.log(JSON.stringify({ outcomes, requestCount: records.length, artifacts: outputDir }, null, 2));

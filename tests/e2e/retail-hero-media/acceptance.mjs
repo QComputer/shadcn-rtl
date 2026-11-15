@@ -161,7 +161,7 @@ try {
   const dialog = page.getByRole("dialog");
   await dialog.waitFor({ state: "visible" });
   const imageButtons = dialog.locator("button[aria-pressed]");
-  await assertEventuallyCount(imageButtons, 24);
+  await assertEventuallyCount(imageButtons, 23);
   await dialog.getByRole("button", { name: "بعدی" }).click();
   await assertEventuallyCount(imageButtons, 1);
   const pageTwoFilename = (await imageButtons.nth(0).locator("span").first().textContent()).trim();

@@ -31,3 +31,12 @@ test("refresh keeps product grid visible while request is pending", () => {
   assert.match(source, /busy && <p role="status"/);
   assert.match(source, /products\.map\(renderProduct\)/);
 });
+
+test("storefront and both product detail routes pass snapshot pagination", async () => {
+  const [retailDetail, shopDetail] = await Promise.all([
+    readFile(new URL("app/[locale]/retail/[organization]/product/[product]/page.tsx", root), "utf8"),
+    readFile(new URL("app/[locale]/[slug]/shop/product/[productId]/page.tsx", root), "utf8"),
+  ]);
+  assert.match(retailDetail, /products, pagination: catalog\.pagination/);
+  assert.match(shopDetail, /products, pagination: catalog\.pagination/);
+});

@@ -31,9 +31,27 @@ try {
     await context.addInitScript((theme) => {
       localStorage.setItem("shadcn-rtl-theme", theme);
       window.__bbLcp = []; window.__bbCls = []; window.__bbFirstPaint = { samples: [], fcp: null };
-      const root = document.documentElement;
-      const sample = (phase) => window.__bbFirstPaint.samples.push({ phase, at: performance.now(), className: root.className, dataTheme: root.getAttribute("data-theme") });
-      new MutationObserver(() => sample("mutation")).observe(root, { attributes: true, attributeFilter: ["class", "data-theme"] });
+      const sample = (phase) => {
+        const root = document.documentElement;
+        if (root) window.__bbFirstPaint.samples.push({ phase, at: performance.now(), className: root.className, dataTheme: root.getAttribute("data-theme") });
+      };
+      let rootObserverAttached = false;
+      const rootObserver = new MutationObserver(() => {
+        const root = document.documentElement;
+        if (root && !rootObserverAttached) {
+          rootObserverAttached = true;
+          rootObserver.disconnect();
+          rootObserver.observe(root, { attributes: true, attributeFilter: ["class", "data-theme"] });
+          sample("root-attached");
+        } else if (root) sample("mutation");
+      });
+      rootObserver.observe(document, { childList: true, subtree: true });
+      if (document.documentElement) {
+        rootObserverAttached = true;
+        rootObserver.disconnect();
+        rootObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
+        sample("root-attached");
+      }
       try { new PerformanceObserver((list) => { for (const entry of list.getEntries()) { if (entry.name === "first-contentful-paint" && !window.__bbFirstPaint.fcp) window.__bbFirstPaint.fcp = { at: entry.startTime, className: root.className, dataTheme: root.getAttribute("data-theme") }; } }).observe({ type: "paint", buffered: true }); } catch {}
       try { new PerformanceObserver((list) => window.__bbLcp.push(...list.getEntries())).observe({ type: "largest-contentful-paint", buffered: true }); } catch {}
       try { new PerformanceObserver((list) => window.__bbCls.push(...list.getEntries())).observe({ type: "layout-shift", buffered: true }); } catch {}
@@ -75,7 +93,8 @@ try {
       };
     });
     const apiRequests = reqs.filter((item) => item.kind === "catalog-api" && item.phase === "request");
-    const paintThemes = metrics.paintRecord?.samples?.filter((sample) => sample.dataTheme && /\b(light|dark)\b/.test(sample.className)) ?? [];
+    const paintThemes = metrics.paintRecord?.samples?.filter((sample) => sample.phase === "frame" && sample.dataTheme && /\b(light|dark)\b/.test(sample.className)
+      && (metrics.firstContentfulPaint === null || sample.at <= metrics.firstContentfulPaint)) ?? [];
     const firstPaintTheme = paintThemes[0] ?? null;
     const themePass = metrics.currentTheme === args.theme && metrics.resolvedClass === args.expected
       && metrics.firstContentfulPaint !== null
@@ -90,7 +109,7 @@ try {
       results.requests.push(...reqs);
       results.console.push(...errors.map((item) => ({ scenario: args.label, ...item })));
       await fs.writeFile(path.join(artifactDir, "theme-progress.json"), JSON.stringify(results.themeRuns, null, 2));
-      if (sourceLabel === "pr77") assert.equal(themePass, true, `${args.label}: sampled pre-paint theme matches the selection through first contentful paint; observed=${JSON.stringify({ currentTheme: metrics.currentTheme, resolvedClass: metrics.resolvedClass, firstContentfulPaint: metrics.firstContentfulPaint, paintEntries: metrics.paintEntries, paintSamples: metrics.paintRecord?.samples?.slice(0, 8), firstPaintTheme })}`);
+      if (sourceLabel === "pr77") assert.equal(themePass, true, `${args.label}: pre-paint animation-frame samples match the selection through first contentful paint; observed=${JSON.stringify({ currentTheme: metrics.currentTheme, resolvedClass: metrics.resolvedClass, firstContentfulPaint: metrics.firstContentfulPaint, paintEntries: metrics.paintEntries, paintSamples: metrics.paintRecord?.samples?.slice(0, 10), firstPaintTheme })}`);
     } else {
       if (sourceLabel === "pr77") {
         assert.equal(output.initialCatalogApiRequestCount, 0, `${args.label}: hydration reuses the SSR product page without an initial list request`);

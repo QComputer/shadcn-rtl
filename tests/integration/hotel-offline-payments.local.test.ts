@@ -114,15 +114,21 @@ test("offline Hotel payments use tenant locks, staff authorization and partial v
     const receiptFlagConflict = await service.submitBankTransfer({ actor: submitter, reservationId: reservationA.id, amountToman: BigInt(300000), idempotencyKey: `transfer-${token}`, bankReference: `synthetic-${token}`, receiptPending: true });
     assert.equal(receiptFlagConflict.outcome, "IDEMPOTENCY_CONFLICT", "receiptPending participates in the durable request fingerprint");
     assert.equal((await db.hotelReservation.findUniqueOrThrow({ where: { id: reservationA.id } })).paidAmount, BigInt(200000));
+    const sequentialDuplicateReference = await service.submitBankTransfer({ actor: submitter, reservationId: reservationA.id, amountToman: BigInt(25000), idempotencyKey: `transfer-duplicate-reference-${token}`, bankReference: ` SYNTHETIC-${token.toUpperCase()} ` });
+    assert.equal(sequentialDuplicateReference.outcome, "PAYMENT_NOT_PENDING", "a previously claimed normalized bank reference cannot be submitted again");
     const [referenceRaceA, referenceRaceB] = await Promise.all([
       service.submitBankTransfer({ actor: submitter, reservationId: reservationA.id, amountToman: BigInt(50000), idempotencyKey: `transfer-reference-race-a-${token}`, bankReference: ` concurrent-${token} ` }),
       service.submitBankTransfer({ actor: submitter, reservationId: reservationA.id, amountToman: BigInt(50000), idempotencyKey: `transfer-reference-race-b-${token}`, bankReference: `CONCURRENT-${token.toUpperCase()}` }),
     ]);
     assert.equal([referenceRaceA, referenceRaceB].filter((result) => result.outcome === "APPLIED").length, 1);
     assert.equal([referenceRaceA, referenceRaceB].filter((result) => result.outcome === "PAYMENT_NOT_PENDING").length, 1, "concurrent normalized references cannot both be claimed in one tenant");
-    const verified = await service.verifyBankTransfer({ actor: verifier, reservationId: reservationA.id, ledgerEntryId: submitted.entry.id, idempotencyKey: `verify-${token}` });
-    assert.equal(verified.outcome, "APPLIED");
-    const verifyReplay = await service.verifyBankTransfer({ actor: verifier, reservationId: reservationA.id, ledgerEntryId: submitted.entry.id, idempotencyKey: `verify-${token}` });
+    const [verifiedA, verifiedB] = await Promise.all([
+      service.verifyBankTransfer({ actor: verifier, reservationId: reservationA.id, ledgerEntryId: submitted.entry.id, idempotencyKey: `verify-${token}` }),
+      service.verifyBankTransfer({ actor: verifier, reservationId: reservationA.id, ledgerEntryId: submitted.entry.id, idempotencyKey: `verify-concurrent-${token}` }),
+    ]);
+    assert.equal([verifiedA, verifiedB].filter((result) => result.outcome === "APPLIED").length, 1);
+    assert.equal([verifiedA, verifiedB].filter((result) => result.outcome === "PAYMENT_NOT_PENDING").length, 1, "concurrent verification with distinct idempotency keys applies once");
+    const verifyReplay = await service.verifyBankTransfer({ actor: verifier, reservationId: reservationA.id, ledgerEntryId: submitted.entry.id, idempotencyKey: verifiedA.outcome === "APPLIED" ? `verify-${token}` : `verify-concurrent-${token}` });
     assert.equal(verifyReplay.outcome, "REPLAY");
     assert.deepEqual((await db.hotelOfflinePaymentAuditEvent.findMany({ where: { organizationId: orgA.id, ledgerEntryId: submitted.entry.id }, orderBy: { createdAt: "asc" }, select: { eventType: true } })).map(event => event.eventType), ["BANK_TRANSFER_SUBMITTED", "BANK_TRANSFER_VERIFIED"]);
     assert.equal((await db.hotelReservation.findUniqueOrThrow({ where: { id: reservationA.id } })).paidAmount, BigInt(500000));

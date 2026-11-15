@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { lookup } from "node:dns/promises";
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { expect, test } from "playwright/test";
 import { seedOperationalGuestFixture } from "./operational-fixture.mjs";
 
@@ -130,5 +132,129 @@ test("authenticated Damoon guest lifecycle reaches reception check-out with tena
     expect([403, 404]).toContain(staffCrossTenant.status);
   } finally {
     await Promise.allSettled([guestContext.close(), staffContext.close()]);
+  }
+});
+
+test("guest submits a bank transfer and receipt for authorized reception verification", async ({ browser }) => {
+  test.setTimeout(90_000);
+  assertTestTarget();
+  const resolved = await lookup(tenantHostname, { all: true, verbatim: true });
+  if (!resolved.length || resolved.some(({ address }) => address !== "::1" && !/^127(?:\.\d{1,3}){3}$/.test(address))) throw new Error("Damoon test domain must resolve exclusively to loopback");
+
+  const fixture = await seedOperationalGuestFixture();
+  const databaseUrl = new URL(env.DATABASE_URL);
+  const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl.toString(), max: 2 }), log: [] });
+  const guestContext = await browser.newContext();
+  const staffContext = await browser.newContext();
+  let originalPolicy;
+  try {
+    await db.$connect();
+    const [identity] = await db.$queryRaw`SELECT current_database()::text AS database, current_user::text AS role, current_schema()::text AS schema, inet_server_port() AS port`;
+    const expectedDatabase = decodeURIComponent(databaseUrl.pathname.slice(1));
+    const expectedRole = decodeURIComponent(databaseUrl.username);
+    if (identity?.database !== expectedDatabase || identity.role !== expectedRole || identity.schema !== "public" || Number(identity.port) !== 5432) throw new Error("Bank-transfer fixture did not connect to its disposable loopback database");
+    const property = await db.hotelProperty.findFirst({ where: { id: propertyId, organizationId }, select: { allowedOfflinePaymentMethods: true, manualConfirmationPolicy: true, minimumVerifiedDepositAmount: true } });
+    if (!property) throw new Error("Synthetic Damoon property is unavailable");
+    originalPolicy = property;
+    await db.hotelProperty.update({ where: { id: propertyId }, data: { allowedOfflinePaymentMethods: ["CASH", "BANK_TRANSFER"], manualConfirmationPolicy: "MINIMUM_VERIFIED_DEPOSIT", minimumVerifiedDepositAmount: BigInt(1) } });
+
+    const guestPage = await guestContext.newPage();
+    const guestCallback = `/fa/hotel-reservations/${organizationId}/${propertyId}`;
+    await login(guestPage, guestOrigin, fixture.username, fixture.password, guestCallback);
+    await expect(guestPage.locator("section[aria-label='رزروهای هتل']")).toBeVisible();
+
+    const checkIn = daysFromNow(3);
+    const checkOut = daysFromNow(4);
+    const quote = await api(guestPage, reservationsPath(organizationId, propertyId), { method: "POST", key: key("transfer-quote"), body: {
+      action: "quote", roomTypeId: fixture.roomTypeId, ratePlanId: fixture.ratePlanId, checkIn, checkOut, adults: 1, childAges: [],
+    } });
+    expect(quote.status, JSON.stringify(quote.body)).toBe(200);
+    const hold = await api(guestPage, reservationsPath(organizationId, propertyId), { method: "POST", key: key("transfer-hold"), body: { action: "hold", quoteId: quote.body.quote.id } });
+    expect(hold.status, JSON.stringify(hold.body)).toBe(200);
+    const created = await api(guestPage, reservationsPath(organizationId, propertyId), { method: "POST", key: key("transfer-reserve"), body: {
+      action: "reserve", quoteId: quote.body.quote.id, holdId: hold.body.hold.id, guests: [{ fullName: "Synthetic Transfer Guest", isPrimary: true }],
+    } });
+    expect(created.status, JSON.stringify(created.body)).toBe(200);
+    const reservation = created.body.reservation;
+    expect(reservation.status).toBe("PENDING_PAYMENT");
+
+    await guestPage.reload({ waitUntil: "domcontentloaded", timeout: 15_000 });
+    await guestPage.getByRole("button", { name: "واریز بانکی" }).click();
+    const paymentPanel = guestPage.locator("section[aria-label='پرداخت اقامت']");
+    await expect(paymentPanel).toBeVisible();
+    const total = BigInt(reservation.totalAmount);
+    const partialAmount = (total / BigInt(2)).toString();
+    expect(BigInt(partialAmount)).toBeGreaterThan(BigInt(0));
+    await expect(paymentPanel).toContainText(`مانده (تومان): ${total}`);
+
+    await paymentPanel.getByLabel("مبلغ واریز (تومان)").fill(partialAmount);
+    const bankReference = `CI-${randomUUID()}`;
+    await paymentPanel.getByLabel("شماره پیگیری واریز").fill(bankReference);
+    const [transferResponse] = await Promise.all([
+      guestPage.waitForResponse((response) => response.url().includes(paymentPath(reservation.id)) && response.request().method() === "POST"),
+      paymentPanel.getByRole("button", { name: "ثبت واریز برای بررسی" }).click(),
+    ]);
+    expect(transferResponse.status()).toBe(200);
+    expect((await transferResponse.json()).entry.bankReference).toBe(bankReference);
+    await expect(paymentPanel).toContainText("ثبت‌شده؛ تأییدنشده");
+    await expect(paymentPanel).toContainText(`مانده (تومان): ${total}`);
+
+    const receiptInput = paymentPanel.locator('input[type="file"]').first();
+    await receiptInput.setInputFiles({ name: "synthetic-hotel-receipt.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l0sAAAAASUVORK5CYII=", "base64") });
+    await paymentPanel.getByRole("button", { name: "بارگذاری رسید" }).click();
+    await expect(paymentPanel.getByRole("link", { name: "مشاهده رسید" })).toBeVisible();
+
+    const receiptLink = paymentPanel.getByRole("link", { name: "مشاهده رسید" });
+    const receiptUrl = await receiptLink.getAttribute("href");
+    expect(receiptUrl).toBeTruthy();
+    const ownReceipt = await guestPage.request.get(`${guestOrigin}${receiptUrl}`);
+    expect(ownReceipt.status()).toBe(200);
+    const anonymousContext = await browser.newContext();
+    try {
+      const anonymousReceipt = await anonymousContext.request.get(`${guestOrigin}${receiptUrl}`);
+      expect(anonymousReceipt.status()).toBe(401);
+    } finally { await anonymousContext.close(); }
+
+    const staffPage = await staffContext.newPage();
+    await login(staffPage, appOrigin, env.DAMOON_MANAGER_USERNAME, env.DAMOON_MANAGER_PASSWORD, guestCallback);
+    const receptionCard = staffPage.locator("li").filter({ hasText: reservation.reference });
+    const receptionPanel = receptionCard.locator("section[aria-label='پرداخت‌های خارج از درگاه']");
+    await expect(receptionPanel).toBeVisible();
+    await expect(receptionPanel).toContainText("ثبت‌شده؛ تأییدنشده");
+    await expect(receptionPanel.getByRole("link", { name: "مشاهده رسید" })).toBeVisible();
+    const authorizedReceipt = await staffPage.request.get(`${appOrigin}${receiptUrl}`);
+    expect(authorizedReceipt.status()).toBe(200);
+    expect(authorizedReceipt.headers()["content-type"]).toContain("image/png");
+    await receptionPanel.getByRole("button", { name: "تأیید و ثبت واریز" }).click();
+    await expect(receptionPanel).toContainText("تأییدشده و پرداخت‌شده");
+    await expect(receptionPanel).toContainText(partialAmount);
+
+    const finalGuestSummary = await api(guestPage, paymentPath(reservation.id));
+    expect(finalGuestSummary.status).toBe(200);
+    expect(finalGuestSummary.body.paidToman).toBe(partialAmount);
+    expect(finalGuestSummary.body.outstandingToman).toBe((total - BigInt(partialAmount)).toString());
+    expect(finalGuestSummary.body.entries).toHaveLength(1);
+    expect(finalGuestSummary.body.entries[0]).toMatchObject({ method: "BANK_TRANSFER", status: "VERIFIED", hasReceipt: true });
+    const refreshedReservations = await api(guestPage, reservationsPath(organizationId, propertyId));
+    expect(refreshedReservations.body.reservations.find((item) => item.id === reservation.id)?.status).toBe("PENDING_PAYMENT");
+    await guestPage.reload({ waitUntil: "domcontentloaded", timeout: 15_000 });
+    const refreshedGuestPanel = guestPage.locator("section[aria-label='پرداخت اقامت']");
+    await expect(refreshedGuestPanel).toContainText("تأییدشده");
+    await expect(refreshedGuestPanel).toContainText(`مانده (تومان): ${total - BigInt(partialAmount)}`);
+
+    await receptionCard.getByRole("button", { name: "تأیید رزرو" }).click();
+    await expect(receptionCard).toContainText("CONFIRMED");
+    await receptionPanel.getByLabel("مبلغ نقدی (تومان)").fill((total - BigInt(partialAmount)).toString());
+    await receptionPanel.getByRole("button", { name: "ثبت دریافت نقدی" }).click();
+    await expect(receptionPanel).toContainText("نقدی");
+    const settled = await api(guestPage, paymentPath(reservation.id));
+    expect(settled.status).toBe(200);
+    expect(settled.body.paidToman).toBe(total.toString());
+    expect(settled.body.outstandingToman).toBe("0");
+    expect(settled.body.entries.filter((entry) => entry.status === "VERIFIED")).toHaveLength(2);
+  } finally {
+    await Promise.allSettled([guestContext.close(), staffContext.close()]);
+    if (originalPolicy) await db.hotelProperty.update({ where: { id: propertyId }, data: originalPolicy }).catch(() => undefined);
+    await db.$disconnect().catch(() => undefined);
   }
 });

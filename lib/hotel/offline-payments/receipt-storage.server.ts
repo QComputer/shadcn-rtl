@@ -47,7 +47,9 @@ export async function removeHotelPaymentReceipt(organizationId: string, key: str
 
 /** Shared transaction lock for attaching and reconciling a receipt object. */
 export function hotelPaymentReceiptLockId(organizationId: string, key: string) {
-  return createHash("sha256").update(`${organizationId}\0${key}`).digest().readBigInt64BE(0);
+  // PostgreSQL advisory locks accept signed BIGINT. Keep the derived value in
+  // the non-negative signed range while retaining 63 bits of key entropy.
+  return createHash("sha256").update(`${organizationId}\0${key}`).digest().readBigUInt64BE(0) >> 1n;
 }
 
 /** Checks the private object without reading its image bytes. */

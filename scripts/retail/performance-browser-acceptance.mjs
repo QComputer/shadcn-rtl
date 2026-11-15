@@ -80,9 +80,12 @@ try {
     const ssrCardCount = (html.match(/data-retail-product-card/g) ?? []).length;
     const output = { label: args.label, iteration: args.iteration ?? null, theme: args.theme, scheme: args.scheme, expected: args.expected, status: response.status(), ssrCardCount, products: metrics.cardCount, hydrationProductDelta: metrics.cardCount - ssrCardCount, initialCatalogApiRequestCount: apiRequests.length, apiRequests, documentBytes: Buffer.byteLength(html), metrics, errors, themePass };
     if (args.testTheme) {
-      if (sourceLabel === "pr77") assert.equal(themePass, true, `${args.label}: first paint already uses the selected theme and its resolved color scheme`);
       await page.screenshot({ path: path.join(artifactDir, `theme-${args.theme}-scheme-${args.scheme}.png`), fullPage: true });
       results.themeRuns.push(output);
+      results.requests.push(...reqs);
+      results.console.push(...errors.map((item) => ({ scenario: args.label, ...item })));
+      await fs.writeFile(path.join(artifactDir, "theme-progress.json"), JSON.stringify(results.themeRuns, null, 2));
+      if (sourceLabel === "pr77") assert.equal(themePass, true, `${args.label}: first paint already uses the selected theme and its resolved color scheme; observed=${JSON.stringify({ currentTheme: metrics.currentTheme, resolvedClass: metrics.resolvedClass, firstPaint: metrics.paintRecord?.fcp })}`);
     } else {
       if (sourceLabel === "pr77") {
         assert.equal(output.initialCatalogApiRequestCount, 0, `${args.label}: hydration reuses the SSR product page without an initial list request`);
@@ -90,8 +93,10 @@ try {
       }
       results.performanceRuns.push(output);
     }
-    results.console.push(...errors.map((item) => ({ scenario: args.label, ...item })));
-    results.requests.push(...reqs);
+    if (!args.testTheme) {
+      results.console.push(...errors.map((item) => ({ scenario: args.label, ...item })));
+      results.requests.push(...reqs);
+    }
     await context.close();
     return output;
   };

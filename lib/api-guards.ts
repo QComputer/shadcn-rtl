@@ -21,19 +21,39 @@ export type SessionWithUser = {
 
 export type CustomerRequestContext = { organizationId: string; slug: string; origin: string };
 
+export type ApiErrorDiagnostic = {
+  path: string;
+  mediaId: string;
+  reason: "UNAVAILABLE" | "LEGACY_REPLACEMENT_REQUIRED";
+};
+
+function safeApiDiagnostics(value: unknown): ApiErrorDiagnostic[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 32).flatMap((candidate): ApiErrorDiagnostic[] => {
+    if (!candidate || typeof candidate !== "object") return [];
+    const item = candidate as Record<string, unknown>;
+    if (typeof item.path !== "string" || item.path.length > 128 || !/^(?:hero\.[A-Za-z][A-Za-z0-9]*|sections\.\d{1,3}\.(?:imageId|imageIds\.\d{1,2}))$/.test(item.path)) return [];
+    if (typeof item.mediaId !== "string" || item.mediaId.length > 128 || /[\u0000-\u001f\u007f]/.test(item.mediaId)) return [];
+    if (item.reason !== "UNAVAILABLE" && item.reason !== "LEGACY_REPLACEMENT_REQUIRED") return [];
+    return [{ path: item.path, mediaId: item.mediaId, reason: item.reason }];
+  });
+}
+
 export class ApiError extends Error {
   status: number;
+  diagnostics: ApiErrorDiagnostic[];
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, diagnostics?: ApiErrorDiagnostic[]) {
     super(message);
     this.status = status;
+    this.diagnostics = safeApiDiagnostics(diagnostics);
   }
 }
 
 export function jsonError(error: unknown, fallback = "Internal server error") {
   if (error instanceof ApiError) {
     return NextResponse.json(
-      { error: error.message },
+      { error: error.message, ...(error.diagnostics.length ? { diagnostics: error.diagnostics } : {}) },
       { status: error.status },
     );
   }

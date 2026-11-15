@@ -179,6 +179,11 @@ test("publication requires an immutable revision owned by the tenant and current
   assert.equal(mediaRevoked.audit.length, 0);
   assert.equal(mediaRevoked.sql.length, 0);
 
+  const legacyHero = publicationService({ revisions: { r1: content({ desktopImageId: "brand:sample:/brand/tenants/sample/home/hero.webp" }) }, images: [] });
+  await assert.rejects(legacyHero.service.changePublication(principal, "org-1", publish("r1")), (error: unknown) => error instanceof ApiError && error.status === 422);
+  assert.equal(legacyHero.audit.length, 0, "a retained legacy reference is never made newly public");
+  assert.equal(legacyHero.sql.length, 0);
+
   const foreignDarkAsset = content({ darkDesktopImageId: "image-from-another-tenant" });
   const darkMediaRevoked = publicationService({ revisions: { r1: foreignDarkAsset } });
   await assert.rejects(darkMediaRevoked.service.changePublication(principal, "org-1", publish("r1")), (error: unknown) => error instanceof ApiError && error.status === 422);

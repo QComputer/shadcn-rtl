@@ -55,6 +55,19 @@ export function isEligibleRetailWebsiteMedia(image: WebsiteMedia): boolean {
 export function referencedWebsiteImages(content: RetailContent) {
   return [...new Set([...content.sections.flatMap((s) => s.kind === "GALLERY" ? s.imageIds : "imageId" in s && s.imageId ? [s.imageId] : []), ...[content.hero?.desktopImageId, content.hero?.mobileImageId, content.hero?.darkDesktopImageId, content.hero?.darkMobileImageId].filter(Boolean)])];
 }
+
+export function websiteImageReferences(content: RetailContent) {
+  const references: { path: string; id: string; section?: string }[] = [];
+  content.sections.forEach((section, index) => {
+    if (section.kind === "GALLERY") section.imageIds.forEach((id, imageIndex) => references.push({ path: `sections.${index}.imageIds.${imageIndex}`, id, section: section.kind }));
+    else if ((section.kind === "HERO" || section.kind === "ABOUT") && section.imageId) references.push({ path: `sections.${index}.imageId`, id: section.imageId, section: section.kind });
+  });
+  for (const field of ["desktopImageId", "mobileImageId", "darkDesktopImageId", "darkMobileImageId"] as const) {
+    const id = content.hero?.[field];
+    if (id) references.push({ path: `hero.${field}`, id, section: "HERO" });
+  }
+  return references;
+}
 export function initialRetailContent(org: { name: string; description: string | null; phone: string | null; address: string | null; email: string | null }): RetailContent {
   return { title: org.name, sections: [
     { key: "hero", kind: "HERO", order: 0, visible: true, heading: org.name, subtitle: "", body: "", ctaLabel: "", ctaHref: "", imageId: "" },

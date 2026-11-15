@@ -205,3 +205,21 @@ test("manageable organization resolution rejects a mismatched requested tenant",
   const current = session("CUSTOMER");
   await assert.rejects(guards.resolveManageableOrganizationId(current, "org-b"), hasStatus(403));
 });
+
+test("ApiError preserves the standard response unless sanitized diagnostics are explicitly supplied", async () => {
+  const plain = guards.jsonError(new guards.ApiError(409, "Conflict"));
+  assert.equal(plain.status, 409);
+  assert.deepEqual(await plain.json(), { error: "Conflict" });
+
+  const unsafe = [
+    { path: "hero.desktopImageId", mediaId: "media-1", reason: "UNAVAILABLE", error: "override", status: 200, foreignOrganization: "private" },
+    { path: "../../other-tenant", mediaId: "secret-path", reason: "UNAVAILABLE" },
+    { path: "sections.1.imageId", mediaId: "bad\nvalue", reason: "UNAVAILABLE" },
+  ] as unknown as import("@/lib/api-guards").ApiErrorDiagnostic[];
+  const detailed = guards.jsonError(new guards.ApiError(422, "Invalid image", unsafe));
+  assert.equal(detailed.status, 422);
+  assert.deepEqual(await detailed.json(), {
+    error: "Invalid image",
+    diagnostics: [{ path: "hero.desktopImageId", mediaId: "media-1", reason: "UNAVAILABLE" }],
+  });
+});

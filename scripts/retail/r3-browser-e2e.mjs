@@ -144,7 +144,10 @@ async function createAndPublish({ browser, email, locale, organization, category
   const availableMedia = (await availableMediaResponse.json()).images ?? [];
   const previewAsset = availableMedia.find((image) => image.filename === "PREVIEW-R3-synthetic-test-asset.png");
   assert.ok(previewAsset, `tenant-owned PREVIEW media missing from gallery: ${JSON.stringify(availableMedia.map(({ filename, purpose, access }) => ({ filename, purpose, access })))}`);
-  const previewImage = page.locator('button[aria-label$="PREVIEW-R3-synthetic-test-asset.png"]');
+  const productGallery = page.getByRole("region", { name: "تصاویر محصول" });
+  await productGallery.getByRole("button", { name: "انتخاب از کتابخانه تصاویر" }).click();
+  const mediaLibrary = page.getByRole("dialog", { name: "کتابخانه تصاویر" });
+  const previewImage = mediaLibrary.getByRole("button", { name: /PREVIEW-R3-synthetic-test-asset\.png/ });
   try {
     await previewImage.waitFor({ timeout: 15000 });
   } catch (error) {

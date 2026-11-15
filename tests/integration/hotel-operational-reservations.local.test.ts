@@ -239,6 +239,31 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     const depositedConfirmation = await service.execute(receptionist, a.id, pa.id, { action: "confirm-reservation", reservationId: depositReservation.reservation!.id }, `confirm-verified-${token}`) as OperationalResult;
     assert.equal(depositedConfirmation.reservation?.status, "CONFIRMED", "only the verified reservation balance satisfies minimum deposit policy");
 
+    // Exercise actual cancellation and manual verification concurrently against the same reservation.
+    const raceQuote = await quote(guestA, a.id, pa.id, roomA.id, rateA.id, `quote-${token}-verify-cancel`);
+    const raceHold = await service.execute(guestA, a.id, pa.id, { action: "hold", quoteId: raceQuote.id }, `hold-${token}-verify-cancel`) as OperationalResult;
+    const raceReservation = await service.execute(guestA, a.id, pa.id, { action: "reserve", quoteId: raceQuote.id, holdId: raceHold.hold!.id, guests }, `reserve-${token}-verify-cancel`) as OperationalResult;
+    const raceId = raceReservation.reservation!.id;
+    await service.execute(guestA, a.id, pa.id, { action: "select-payment-method", reservationId: raceId, method: "BANK_TRANSFER" }, `select-race-${token}`);
+    const raceTransfer = await payments.submitBankTransfer({ actor: { organizationId: a.id, userId: customer.id, permissions: ["hotel:offline-payment:submit-transfer"] }, reservationId: raceId, amountToman: BigInt(10_000), bankReference: `race-${token}`, idempotencyKey: `submit-race-${token}` });
+    assert.equal(raceTransfer.outcome, "APPLIED");
+    if (raceTransfer.outcome !== "APPLIED") throw new Error("Race transfer fixture was not submitted");
+    const beforeRace = await db.hotelInventory.findMany({ where: { organizationId: a.id, propertyId: pa.id, roomTypeId: roomA.id, date: { gte: new Date(`${stay.checkIn}T00:00:00.000Z`), lt: new Date(`${stay.checkOut}T00:00:00.000Z`) } }, orderBy: { date: "asc" } });
+    const [cancelRace, verifyRace] = await Promise.all([
+      service.execute(guestA, a.id, pa.id, { action: "cancel", reservationId: raceId }, `cancel-verify-race-${token}`),
+      payments.verifyBankTransfer({ actor: { organizationId: a.id, userId: staff.id, permissions: ["hotel:offline-payment:verify-transfer"] }, reservationId: raceId, ledgerEntryId: raceTransfer.entry.id, idempotencyKey: `verify-cancel-race-${token}` }),
+    ]);
+    assert.equal((cancelRace as OperationalResult).reservation?.status, "CANCELLED");
+    assert.ok(["APPLIED", "PAYMENT_NOT_PENDING"].includes(verifyRace.outcome));
+    const racePersisted = await db.hotelReservation.findUniqueOrThrow({ where: { id: raceId } });
+    assert.equal(racePersisted.status, "CANCELLED");
+    assert.equal(racePersisted.paidAmount, verifyRace.outcome === "APPLIED" ? BigInt(10_000) : BigInt(0));
+    const raceEntry = await db.hotelOfflinePayment.findUniqueOrThrow({ where: { id: raceTransfer.entry.id } });
+    assert.equal(raceEntry.status, verifyRace.outcome === "APPLIED" ? "VERIFIED" : "SUBMITTED");
+    const afterRace = await db.hotelInventory.findMany({ where: { organizationId: a.id, propertyId: pa.id, roomTypeId: roomA.id, date: { gte: new Date(`${stay.checkIn}T00:00:00.000Z`), lt: new Date(`${stay.checkOut}T00:00:00.000Z`) } }, orderBy: { date: "asc" } });
+    assert.equal(afterRace.length, 2);
+    assert.deepEqual(afterRace.map((row) => row.booked), beforeRace.map((row) => row.booked - 1), "cancellation releases exactly one booked unit per night");
+
     // Synthetic confirmation is test-only fixture setup; no gateway or payment request is involved.
     await db.hotelInventory.updateMany({ where: { organizationId: a.id, roomTypeId: roomA.id }, data: { allotment: 4 } });
     const [roomOne, roomTwo] = await Promise.all(["101", "102"].map(code => db.hotelRoom.create({ data: {

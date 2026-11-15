@@ -19,7 +19,7 @@ function failClosed() {
     throw new Error("Shared Damoon acceptance requires the exact CI postgres role/credential and workflow-owned disposable database");
   }
   const sharedUrl = new URL(env.DAMOON_SHARED_RUNTIME_URL || "");
-  if (sharedUrl.protocol !== "http:" || sharedUrl.hostname !== "damoon-hotel.localhost" || sharedUrl.port !== "3000" || sharedUrl.pathname !== "/") {
+  if (sharedUrl.protocol !== "http:" || sharedUrl.hostname !== "damoon-hotel.ir" || sharedUrl.port !== "3000" || sharedUrl.pathname !== "/") {
     throw new Error("Shared runtime URL must be the test-only Damoon host mapped to Next on port 3000");
   }
   for (const name of ["DAMOON_ORGANIZATION_ID", "DAMOON_PROPERTY_ID", "DAMOON_PROPERTY_SLUG", "DAMOON_ROOM_TYPE_SLUG", "DAMOON_RATE_PLAN_CODE"]) {

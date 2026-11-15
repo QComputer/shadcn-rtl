@@ -104,6 +104,13 @@ async function main() {
     const passwordB = randomBytes(24).toString("base64url");
     const suffix = target.suffix.toLowerCase();
     const tenantA = await createTenant(prisma, suffix, "a", "damoon-hotel.localhost", passwordA);
+    // The public-site routing test and domain-bound login test use separate
+    // loopback-mapped hostnames belonging to the same disposable tenant.
+    await prisma.organizationDomain.create({ data: {
+      organizationId: tenantA.organization.id, domain: "damoon-hotel.ir", normalizedDomain: "damoon-hotel.ir",
+      kind: "APEX", type: "CUSTOM", status: "ACTIVE", isPrimary: false,
+      providerVerified: true, dnsConfigured: true, sslReady: true, activatedAt: new Date(),
+    } });
     const tenantB = await createTenant(prisma, suffix, "b", `damoon-foreign-${suffix}.test`, passwordB);
 
     const adminSlug = `damoon-e2e-${suffix}-a-admin`;

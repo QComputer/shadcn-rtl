@@ -63,7 +63,7 @@ jobs:
       CUSTOMER_AUTH_SMS_WORKER_ENABLED: "0"
       DAMOON_E2E_ENABLED: "1"
       DAMOON_APP_URL: http://127.0.0.1:3000
-      DAMOON_SHARED_RUNTIME_URL: http://damoon-hotel.localhost:3000
+      DAMOON_SHARED_RUNTIME_URL: http://damoon-hotel.ir:3000
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4
@@ -111,7 +111,7 @@ jobs:
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs scripts/hotel/seed-damoon-booking-e2e.mts
       - name: Map synthetic tenant domains on runner loopback
         shell: bash
-        run: echo "127.0.0.1 damoon-hotel.localhost ${DAMOON_FOREIGN_HOST}" | sudo tee -a /etc/hosts >/dev/null
+        run: echo "127.0.0.1 damoon-hotel.ir damoon-hotel.localhost ${DAMOON_FOREIGN_HOST}" | sudo tee -a /etc/hosts >/dev/null
       - name: Install Chromium for isolated browser acceptance
         run: pnpm exec playwright install --with-deps chromium
       - name: Verify latest guest tracking response wins

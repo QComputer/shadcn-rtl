@@ -13,7 +13,7 @@ function assertGuardedDatabase() {
   const expectedPort = process.env.RETAIL_HERO_PG_PORT ?? "";
   const databaseName = process.env.RETAIL_HERO_PG_DATABASE ?? "";
   assert.match(expectedPort, /^55\d{3}$/, "the isolated PostgreSQL test port must be in the reserved 55xxx range");
-  assert.match(databaseName, /^retail_hero_test_[a-z0-9_]{8,32}$/i, "the database name must identify a disposable Retail Hero test database");
+  assert.match(databaseName, /^retail_hero_(?:test|e2e)_[a-z0-9_]{8,32}$/i, "the database name must identify a disposable Retail Hero test database");
   const expected = new URL(`postgresql://hero_test@127.0.0.1:${expectedPort}/${databaseName}`);
   for (const key of ["DATABASE_URL", "DIRECT_URL"]) {
     const url = new URL(process.env[key] ?? "");

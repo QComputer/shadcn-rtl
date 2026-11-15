@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { ArrowDown, ArrowUp, Check, Eye, LoaderCircle, Plus, RefreshCw, Save, Smartphone, Trash2, Monitor } from "lucide-react";
-import { isEligibleRetailWebsiteMedia, referencedWebsiteImages, retailContentSchema, type RetailContent, type RetailSection, type WebsiteMedia, type WebsiteRevision } from "@/lib/website-studio/retail-contract";
+import { isEligibleRetailWebsiteMedia, retailContentSchema, websiteImageReferences, type RetailContent, type RetailSection, type WebsiteMedia, type WebsiteRevision } from "@/lib/website-studio/retail-contract";
 import { moveWebsiteSection } from "@/lib/website-studio/core";
 import { StudioField } from "./studio-field";
 import styles from "./retail-studio.module.css";
@@ -12,6 +12,7 @@ import { retailHeroSchema, type RetailHeroPublication } from "@/lib/website-stud
 import type { PublicCatalogProduct } from "@/lib/public-catalog/contracts";
 import { RetailBrandColorEditor } from "./retail-brand-color-editor";
 
+type MediaIssue = { path: string; mediaId: string; reason: "LEGACY" | "UNAVAILABLE" | "LEGACY_REPLACEMENT_REQUIRED" };
 type ApiPayload = { organization: { id?: string; name: string }; revision: WebsiteRevision | null; content: RetailContent; media: WebsiteMedia[]; products: PublicCatalogProduct[]; publication: RetailHeroPublication | null; legacyHeroNeedsReplacement?: boolean };
 type Props = { organizationId: string; locale: string };
 const labels: Record<RetailSection["kind"], string> = { HERO: "معرفی اصلی", ABOUT: "درباره فروشگاه", GALLERY: "گالری تصاویر", FEATURES: "ویژگی‌ها", CONTACT: "راه‌های ارتباطی" };
@@ -20,6 +21,24 @@ function responseError(data: { error?: unknown; message?: unknown }, fallback: s
   if (data.error && typeof data.error === "object" && "message" in data.error && typeof data.error.message === "string") return data.error.message;
   if (typeof data.message === "string") return data.message;
   return fallback;
+}
+
+function mediaPathLabel(path: string) {
+  const heroSlots: Record<string, string> = { desktopImageId: "هیرو · تصویر رومیزی", mobileImageId: "هیرو · تصویر موبایل", darkDesktopImageId: "هیرو تیره · تصویر رومیزی", darkMobileImageId: "هیرو تیره · تصویر موبایل" };
+  const hero = path.match(/^hero\.(.+)$/);
+  if (hero) return heroSlots[hero[1]!] ?? "هیرو";
+  const section = path.match(/^sections\.(\d+)\.(imageId|imageIds\.(\d+))$/);
+  if (!section) return path;
+  const sectionName = section[2] === "imageId" ? "تصویر بخش" : `تصویر ${Number(section[3]) + 1} گالری`;
+  return `بخش ${Number(section[1]) + 1} · ${sectionName}`;
+}
+
+function isMediaIssue(value: unknown): value is MediaIssue {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Record<string, unknown>;
+  return typeof item.path === "string" && /^(?:hero\.[A-Za-z][A-Za-z0-9]*|sections\.\d{1,3}\.(?:imageId|imageIds\.\d{1,2}))$/.test(item.path)
+    && typeof item.mediaId === "string" && item.mediaId.length <= 128 && !/[\u0000-\u001f\u007f]/.test(item.mediaId)
+    && (item.reason === "UNAVAILABLE" || item.reason === "LEGACY_REPLACEMENT_REQUIRED");
 }
 
 function retailValidationMessage(content: RetailContent) {
@@ -52,6 +71,7 @@ export function RetailStudio({ organizationId, locale }: Props) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [mediaErrors, setMediaErrors] = useState<MediaIssue[]>([]);
   const [notice, setNotice] = useState("");
   const [dirty, setDirty] = useState(false);
   const [view, setView] = useState<"edit" | "preview">("edit");
@@ -59,7 +79,7 @@ export function RetailStudio({ organizationId, locale }: Props) {
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const [confirmPublication, setConfirmPublication] = useState<"publish" | "rollback" | null>(null);
   const usableMedia = useMemo(() => (payload?.media ?? []).filter(isEligibleRetailWebsiteMedia), [payload?.media]);
-  const missingMedia = content ? referencedWebsiteImages(content).filter((id) => !usableMedia.some((image) => image.id === id)) : [];
+  const missingMedia = content ? websiteImageReferences(content).filter((reference) => !usableMedia.some((image) => image.id === reference.id)).map((reference) => ({ path: reference.path, mediaId: reference.id.slice(0, 128), reason: reference.id.startsWith("brand:") ? "LEGACY" as const : "UNAVAILABLE" as const })) : [];
   const ordered = useMemo(() => [...(content?.sections ?? [])].sort((a, b) => a.order - b.order || a.key.localeCompare(b.key)), [content]);
 
   const fetchPayload = useCallback(async (signal?: AbortSignal): Promise<ApiPayload> => {
@@ -73,7 +93,7 @@ export function RetailStudio({ organizationId, locale }: Props) {
     const controller = new AbortController();
     void fetchPayload(controller.signal).then((result) => {
       if (controller.signal.aborted) return;
-      setPayload(result); setContent(result.content); setDirty(false); setNotice(""); setError("");
+      setPayload(result); setContent(result.content); setDirty(false); setNotice(""); setError(""); setMediaErrors([]);
     }).catch((cause) => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "بارگذاری وب‌سایت انجام نشد."); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [fetchPayload]);
@@ -84,7 +104,7 @@ export function RetailStudio({ organizationId, locale }: Props) {
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
-  const update = (transform: (current: RetailContent) => RetailContent) => { setContent((current) => current ? transform(current) : current); setDirty(true); setNotice(""); };
+  const update = (transform: (current: RetailContent) => RetailContent) => { setContent((current) => current ? transform(current) : current); setDirty(true); setNotice(""); setMediaErrors([]); };
   useEffect(() => {
     if (!dirty) return;
     const warnReload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
@@ -103,7 +123,7 @@ export function RetailStudio({ organizationId, locale }: Props) {
     setLoading(true); setBusy(true);
     try {
       const result = await fetchPayload();
-      setPayload(result); setContent(result.content); setDirty(false); setNotice(""); setError("");
+      setPayload(result); setContent(result.content); setDirty(false); setNotice(""); setError(""); setMediaErrors([]);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "بازخوانی انجام نشد."); } finally { setLoading(false); setBusy(false); }
   }
   async function save() {
@@ -114,11 +134,17 @@ export function RetailStudio({ organizationId, locale }: Props) {
       setError(message ?? "محتوا معتبر نیست. لطفاً بخش‌های ویرایش‌شده را بررسی کنید."); setNotice("");
       return;
     }
-    setBusy(true); setError(""); setNotice("");
+    setBusy(true); setError(""); setMediaErrors([]); setNotice("");
     try {
       const response = await fetch(endpoint, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: validation.data, baseRevisionId: payload?.revision?.id ?? null, requestId: crypto.randomUUID() }) });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(responseError(data, "ذخیره پیش‌نویس انجام نشد."));
+      if (!response.ok) {
+        if (Array.isArray(data.diagnostics)) {
+          const submitted = websiteImageReferences(validation.data);
+          setMediaErrors(data.diagnostics.filter(isMediaIssue).filter((item) => submitted.some((reference) => reference.path === item.path && reference.id === item.mediaId)));
+        }
+        throw new Error(responseError(data, "ذخیره پیش‌نویس انجام نشد."));
+      }
       const revision = (data.revision ?? data) as WebsiteRevision;
       setPayload((current) => current ? { ...current, revision, content: revision.content } : current);
       setContent(revision.content); setDirty(false); setNotice("پیش‌نویس خصوصی ذخیره شد. این نسخه منتشر نشده است.");
@@ -154,7 +180,8 @@ export function RetailStudio({ organizationId, locale }: Props) {
     <header className={styles.header}><div><p className={styles.eyebrow}>استودیوی وب‌سایت فروشگاه</p><h1>{payload?.organization.name ?? "مدیریت وب‌سایت"}</h1><p>محتوای صفحه فروشگاه را ویرایش و پیش‌نمایش خصوصی آن را بررسی کنید.</p></div><div className={styles.headerButtons}><span className={styles.privateBadge}>پیش‌نویس خصوصی</span><button type="button" disabled={busy || loading} onClick={() => void refresh()}><RefreshCw size={16} /> بازخوانی</button></div></header>
     <RetailBrandColorEditor key={organizationId} organizationId={organizationId} product={payload?.products[0]} storeName={payload?.organization.name} />
     {error && <div role="alert" className={styles.alert}>{error}<button type="button" disabled={busy} onClick={() => void refresh()}>تلاش دوباره</button></div>}
-    {missingMedia.length > 0 && <div role="status" className={styles.alert}>بعضی تصاویر نسخه ذخیره‌شده در این محیط در دسترس نیستند. برای ذخیره نسخه بعدی، تصویر جایگزین را از رسانه‌های همین فروشگاه انتخاب کنید.</div>}
+    {missingMedia.length > 0 && <div role="status" className={styles.alert}><strong>تصاویر نیازمند بررسی</strong><ul>{missingMedia.map((item, index) => <li key={`${item.path}-${index}`}>{mediaPathLabel(item.path)} · شناسه {item.mediaId} · {item.reason === "LEGACY" ? "تصویر ثابت قدیمی؛ برای تغییر جایگزین کنید" : "در این محیط در دسترس نیست؛ از گالری همین فروشگاه جایگزین کنید"}</li>)}</ul></div>}
+    {mediaErrors.length > 0 && <div role="alert" className={styles.alert}><strong>ذخیره انجام نشد؛ تصویرهای زیر را اصلاح کنید:</strong><ul>{mediaErrors.map((item, index) => <li key={`${item.path}-${index}`}>{mediaPathLabel(item.path)} · شناسه {item.mediaId} · {item.reason === "LEGACY_REPLACEMENT_REQUIRED" ? "تصویر قدیمی فقط در جایگاه قبلی قابل نگهداری است." : "تصویر عمومی و در دسترس از همین فروشگاه انتخاب کنید."}</li>)}</ul></div>}
     {notice && <div role="status" className={styles.success}><Check size={17} />{notice}</div>}
     {payload?.legacyHeroNeedsReplacement && <p role="status" className="mx-auto max-w-6xl rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm leading-6 text-amber-950">نسخهٔ منتشرشده یا پیش‌نویس به تصویر ثابت قدیمی اشاره می‌کند و برای انتشار بعدی باید با تصویری از گالری همین فروشگاه جایگزین شود. تصویر فعلی فروشگاه تا انتشار جایگزین معتبر حفظ می‌شود.</p>}
     <div className={styles.workspace}>

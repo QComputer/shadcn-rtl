@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { isCustomDomainApplicationPath } from "@/lib/custom-domain-routing";
+import { isCustomDomainApplicationPath, isHotelGuestApplicationPath } from "@/lib/custom-domain-routing";
 
 test("recovery stays on the shared application surface for tenant custom domains", () => {
   for (const path of ["/forgot-password", "/fa/forgot-password", "/en/forgot-password", "/ar/forgot-password"]) {
@@ -11,4 +11,13 @@ test("recovery stays on the shared application surface for tenant custom domains
   }
   assert.equal(isCustomDomainApplicationPath("/fa/login"), true);
   assert.equal(isCustomDomainApplicationPath("/fa/dashboard/settings"), true);
+});
+
+test("hotel guest accounts use only the explicit reservation route", () => {
+  for (const path of ["/hotel-reservations/org/property", "/fa/hotel-reservations/org/property", "/en/hotel-reservations/org/property", "/ar/hotel-reservations/org/property"]) {
+    assert.equal(isHotelGuestApplicationPath(path), true);
+  }
+  for (const path of ["/hotel-reservations", "/hotel-reservations/org", "/hotel-reservations/org/property/extra", "/hotel-reservations-extra/org/property"]) {
+    assert.equal(isHotelGuestApplicationPath(path), false);
+  }
 });

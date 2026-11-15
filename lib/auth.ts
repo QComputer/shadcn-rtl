@@ -13,13 +13,14 @@ import GoogleProvider from "next-auth/providers/google"
 import CredentialsProvider from "next-auth/providers/credentials"
 import prisma from "@/lib/db"
 import type { Provider } from "next-auth/providers"
+import type { DefaultSession } from "next-auth"
 import bcrypt from "bcryptjs";
 import type { UserRole } from "./types";
 import { appCookiePath, appPath } from "./app-base-path";
 import { credentialBinding } from "./security/credential-binding";
 import { validateSessionCredential } from "./security/session-credential.server";
 import { resolveCustomerAuthContext } from "./customer-auth/context.server";
-import { customerPhoneAuthService, validateCustomerPhoneSession, revokeCustomerPhoneSession } from "./customer-auth/core.server";
+import { customerPhoneAuthService, createCustomerPasswordSession, validateCustomerPhoneSession, revokeCustomerPhoneSession } from "./customer-auth/core.server";
 import { customerSsoService } from "./customer-auth/sso.server";
 
 /**
@@ -30,6 +31,7 @@ import { customerSsoService } from "./customer-auth/sso.server";
 declare module "next-auth" {
   interface User {
     phoneSessionId?: string;
+    customerOrigin?: string;
     credentialBinding?: string;
     role?: UserRole;
     locale?: string;
@@ -38,7 +40,16 @@ declare module "next-auth" {
     name?: string;
     organizationId?: string | null;
   }
-    interface Session{
+  interface Session {
+    user: DefaultSession["user"] & {
+      phoneSessionId?: string;
+      customerOrigin?: string;
+      role?: UserRole;
+      locale?: string;
+      isTeamMember?: boolean;
+      theme?: string;
+      organizationId?: string | null;
+    };
     role?: UserRole;
     locale?: string;
     isTeamMember?: boolean;
@@ -48,6 +59,8 @@ declare module "next-auth" {
   }
 
   interface JWT {
+    phoneSessionId?: string;
+    customerOrigin?: string;
     role?: UserRole;
     locale?: string;
     isTeamMember?: boolean;
@@ -94,7 +107,7 @@ const buildProviders = (): Provider[] => {
           placeholder: "Enter your password"
         }
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.username || !credentials?.password) {
           throw new Error("Invalid username or password");
         }
@@ -159,6 +172,21 @@ const buildProviders = (): Provider[] => {
           );
         }
 
+        let phoneSessionId: string | undefined;
+        let customerOrganizationId: string | undefined;
+        let customerOrigin: string | undefined;
+        if (user.role === "CUSTOMER") {
+          const context = await resolveCustomerAuthContext(request);
+          if (!context || request.headers.get("origin") !== context.origin) return null;
+          try {
+            phoneSessionId = await createCustomerPasswordSession(user.id, context.organizationId);
+            customerOrganizationId = context.organizationId;
+            customerOrigin = context.origin;
+          } catch {
+            return null;
+          }
+        }
+
         const organizationMember = user.isTeamMember
           ? await prisma.organizationMember.findFirst({
               where: {
@@ -194,7 +222,9 @@ const buildProviders = (): Provider[] => {
           locale: user.locale,
           theme: user.theme,
           isTeamMember: user.isTeamMember || false,
-          organizationId: organizationMember?.organizationId || null,
+          organizationId: customerOrganizationId ?? organizationMember?.organizationId ?? null,
+          phoneSessionId,
+          customerOrigin,
           credentialBinding: credentialBinding(user.id, user.password, nextAuthSecret!),
         };
       }
@@ -214,6 +244,7 @@ const buildProviders = (): Provider[] => {
         return { id: customer.id, name: customer.name, role: "CUSTOMER", isTeamMember: false,
           locale: customer.locale, theme: customer.theme, organizationId: context.organizationId,
           phoneSessionId: customer.phoneSessionId,
+          customerOrigin: context.origin,
           credentialBinding: credentialBinding(customer.id, customer.password, nextAuthSecret!) };
       } catch { return null; }
     },
@@ -236,6 +267,7 @@ const buildProviders = (): Provider[] => {
         return { id: customer.id, name: customer.name, role: "CUSTOMER", isTeamMember: false,
           locale: customer.locale, theme: customer.theme, organizationId: context.organizationId,
           phoneSessionId: customer.phoneSessionId,
+          customerOrigin: context.origin,
           credentialBinding: credentialBinding(customer.id, customer.password, nextAuthSecret!) };
       } catch { return null; }
     },
@@ -309,17 +341,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // later password fetched after a concurrent reset.
         token.credentialBinding = user.credentialBinding;
         token.phoneSessionId = user.phoneSessionId;
+        token.customerOrigin = user.customerOrigin;
         if (!user.credentialBinding) return null;
       }
       const current = await validateSessionCredential(token, nextAuthSecret!);
       if (!current) return null;
       token.credentialBinding = current.binding;
       token.role = current.user.role;
-      if (token.phoneSessionId !== undefined) {
-        if (typeof token.phoneSessionId !== "string" || typeof token.organizationId !== "string" || current.user.role !== "CUSTOMER" ||
+      if (current.user.role === "CUSTOMER") {
+        if (typeof token.phoneSessionId !== "string" || typeof token.customerOrigin !== "string" || typeof token.organizationId !== "string" ||
           !await validateCustomerPhoneSession({ sessionId: token.phoneSessionId, userId: token.id as string, organizationId: token.organizationId })) return null;
         token.role = "CUSTOMER";
         token.isTeamMember = false;
+      } else if (token.phoneSessionId !== undefined || token.customerOrigin !== undefined) {
+        return null;
       }
       return token;
     },
@@ -337,6 +372,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.theme = token.theme as string;
         session.user.organizationId = token.organizationId as string | null;
         session.user.phoneSessionId = typeof token.phoneSessionId === "string" ? token.phoneSessionId : undefined;
+        session.user.customerOrigin = typeof token.customerOrigin === "string" ? token.customerOrigin : undefined;
       }
       //console.log("[Auth] session.user.name:", session.user.name);
 
@@ -395,7 +431,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       if (account?.provider === "credentials") {
-        return true;
+        if (user.role !== "CUSTOMER") return true;
+        return user.isTeamMember === false && typeof user.phoneSessionId === "string" &&
+          typeof user.customerOrigin === "string" && typeof user.organizationId === "string" &&
+          await validateCustomerPhoneSession({ sessionId: user.phoneSessionId, userId: user.id as string, organizationId: user.organizationId });
       }
 
       return false;

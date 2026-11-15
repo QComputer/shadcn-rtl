@@ -19,7 +19,7 @@ type PersistentDiskAssetMetadata = {
   height: number | null;
 };
 
-const KEY_PREFIXES = new Set(["creative-studio", "tenants", "retail-payment"]);
+const KEY_PREFIXES = new Set(["creative-studio", "tenants", "retail-payment", "hotel-payment"]);
 const MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 function normalizeOrganizationId(value: string) {

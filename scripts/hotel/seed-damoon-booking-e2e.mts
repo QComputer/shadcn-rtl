@@ -103,7 +103,14 @@ async function main() {
     const passwordA = randomBytes(24).toString("base64url");
     const passwordB = randomBytes(24).toString("base64url");
     const suffix = target.suffix.toLowerCase();
-    const tenantA = await createTenant(prisma, suffix, "a", "damoon-hotel.ir", passwordA);
+    const tenantA = await createTenant(prisma, suffix, "a", "damoon-hotel.localhost", passwordA);
+    // The public-site routing test and domain-bound login test use separate
+    // loopback-mapped hostnames belonging to the same disposable tenant.
+    await prisma.organizationDomain.create({ data: {
+      organizationId: tenantA.organization.id, domain: "damoon-hotel.ir", normalizedDomain: "damoon-hotel.ir",
+      kind: "APEX", type: "CUSTOM", status: "ACTIVE", isPrimary: false,
+      providerVerified: true, dnsConfigured: true, sslReady: true, activatedAt: new Date(),
+    } });
     const tenantB = await createTenant(prisma, suffix, "b", `damoon-foreign-${suffix}.test`, passwordB);
 
     const adminSlug = `damoon-e2e-${suffix}-a-admin`;
@@ -184,9 +191,9 @@ async function main() {
       DAMOON_FOREIGN_HOST: `damoon-foreign-${suffix}.test`,
       DAMOON_FOREIGN_MANAGER_USERNAME: tenantB.username,
       DAMOON_FOREIGN_MANAGER_PASSWORD: passwordB,
-      DAMOON_PUBLIC_HOST: "damoon-hotel.ir:8080",
-      DAMOON_PUBLIC_HOSTS: `damoon-hotel.ir:8080,damoon-foreign-${suffix}.test:8080`,
-      DAMOON_STANDALONE_URL: "http://damoon-hotel.ir:8080",
+      DAMOON_PUBLIC_HOST: "damoon-hotel.localhost:8080",
+      DAMOON_PUBLIC_HOSTS: `damoon-hotel.localhost:8080,damoon-foreign-${suffix}.test:8080`,
+      DAMOON_STANDALONE_URL: "http://damoon-hotel.localhost:8080",
       DAMOON_E2E_PUBLIC_PORT: "8080",
     };
     for (const key of ["DAMOON_MANAGER_PASSWORD", "DAMOON_FOREIGN_MANAGER_PASSWORD"]) {

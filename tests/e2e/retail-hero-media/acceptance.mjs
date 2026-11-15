@@ -291,7 +291,7 @@ try {
   await fs.writeFile(path.join(output, "network.json"), JSON.stringify(report.network, null, 2));
   await fs.writeFile(path.join(output, "console.json"), JSON.stringify(report.console, null, 2));
   await fs.writeFile(path.join(output, "result.json"), JSON.stringify(report, null, 2));
-  console.log(JSON.stringify({ status: report.status, exitCode: report.exitCode, sourceSha: report.sourceSha, cases: report.cases, screenshots: report.screenshots, output }));
+  console.log(JSON.stringify({ status: report.status, exitCode: report.exitCode, sourceSha: report.sourceSha, cases: report.cases, screenshots: report.screenshots, error: report.error, output }));
 }
 process.exitCode = report.exitCode;
 

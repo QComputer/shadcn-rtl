@@ -54,13 +54,13 @@ jobs:
       APPLICATION_STORAGE_ADAPTER: persistent-disk
       MEDIA_STORAGE_ROOT: ${{ github.workspace }}/../retail-hero-media-storage-${{ github.run_id }}
       E2E_BASE_URL: http://127.0.0.1:3421/
-      E2E_OUTPUT_DIR: ${{ github.workspace }}/../retail-hero-media-browser-${{ github.run_id }}
+      E2E_OUTPUT_DIR: ${{ github.workspace }}/retail-hero-media-browser-${{ github.run_id }}
       AUTH_TRUST_HOST: 'true'
       AUTH_URL: http://127.0.0.1:3421
       NEXTAUTH_URL: http://127.0.0.1:3421
       NEXT_TELEMETRY_DISABLED: '1'
       AI_MEDIA_LOCAL_DOCKER_E2E: '1'
-      E2E_SOURCE_SHA: ${{ github.sha }}
+      E2E_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
 
@@ -189,6 +189,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: retail-hero-media-failure-${{ github.sha }}
-          path: ${{ github.workspace }}/../retail-hero-media-browser-${{ github.run_id }}/
+          path: ${{ github.workspace }}/retail-hero-media-browser-${{ github.run_id }}/
           if-no-files-found: warn
           retention-days: 7

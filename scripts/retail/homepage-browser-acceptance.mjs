@@ -88,6 +88,84 @@ try {
   } else {
     outcomes.push({ name: "page-1-2-1", result: "skipped", reason: "Seed tenant has no second page; dedicated 25-product fixture is required" });
   }
+
+  const categoryButton = page.getByRole("button", { name: "لوازم نمونه" });
+  const categoryResponse = page.waitForResponse((r) => r.url().includes("/api/public/v1/organizations/") && new URL(r.url()).searchParams.get("category") === "perf-home-accessories" && r.status() === 200);
+  await categoryButton.click();
+  await categoryResponse;
+  assert.equal(await cards.count(), 12, "category filter returns only its 12 assigned products");
+  const resetResponse = page.waitForResponse((r) => r.url().includes("/api/public/v1/organizations/") && !new URL(r.url()).searchParams.has("category") && r.status() === 200);
+  await page.getByRole("button", { name: "حذف فیلتر دسته‌بندی" }).click();
+  await resetResponse;
+  await page.waitForFunction(() => document.querySelectorAll("#products [data-retail-product-card]").length === 20);
+  outcomes.push({ name: "category-filter-reset", result: "passed", filteredCards: 12, restoredCards: 20 });
+
+  await page.route("**/api/public/v1/organizations/retail-r3-fashion-preview/products?page=2&limit=20**", async (route) => {
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "synthetic temporary failure" }) });
+  });
+  await page.getByRole("navigation", { name: "صفحه‌های محصولات" }).getByRole("button", { name: "بعدی" }).click();
+  await page.getByRole("alert").waitFor();
+  await page.unroute("**/api/public/v1/organizations/retail-r3-fashion-preview/products?page=2&limit=20**");
+  await page.getByRole("alert").getByRole("button", { name: "تلاش دوباره" }).click();
+  await page.getByText(/صفحه ۲ از/).waitFor();
+  await page.waitForFunction(() => document.querySelectorAll("#products [data-retail-product-card]").length === 5);
+  outcomes.push({ name: "failure-retry", result: "passed" });
+
+  await page.context().setOffline(true);
+  const reconnectResponse = page.waitForResponse((r) => r.url().includes("/api/public/v1/organizations/retail-r3-fashion-preview/products") && r.status() === 200);
+  await page.context().setOffline(false);
+  const reconnect = await reconnectResponse;
+  assert.equal(new URL(reconnect.url()).searchParams.get("limit"), "20");
+  outcomes.push({ name: "offline-online-reconnect", result: "passed" });
+
+  const returnResponse = page.waitForResponse((r) => r.url().includes("/api/public/v1/organizations/retail-r3-fashion-preview/products") && new URL(r.url()).searchParams.get("page") === "1" && r.status() === 200);
+  await page.getByRole("navigation", { name: "صفحه‌های محصولات" }).getByRole("button", { name: "قبلی" }).click();
+  await returnResponse;
+  let releaseRefresh;
+  let refreshRequestSeen;
+  const refreshSeen = new Promise((resolve) => { refreshRequestSeen = resolve; });
+  const refreshGate = new Promise((resolve) => { releaseRefresh = resolve; });
+  await page.route("**/api/public/v1/organizations/retail-r3-fashion-preview/products?page=2&limit=20**", async (route) => {
+    refreshRequestSeen();
+    await refreshGate;
+    await route.continue();
+  });
+  const firstPageHref = await cards.first().locator('a[href*="/product/"]').getAttribute("href");
+  await page.getByRole("navigation", { name: "صفحه‌های محصولات" }).getByRole("button", { name: "بعدی" }).click();
+  await refreshSeen;
+  assert.equal(await cards.count(), 20, "existing products stay visible during refresh");
+  assert.equal(await cards.first().locator('a[href*="/product/"]').getAttribute("href"), firstPageHref);
+  assert.equal(await page.getByRole("status").count() > 0, true, "refresh progress is announced without hiding the grid");
+  releaseRefresh();
+  await page.waitForFunction(() => document.querySelectorAll("#products [data-retail-product-card]").length === 5);
+  await page.unroute("**/api/public/v1/organizations/retail-r3-fashion-preview/products?page=2&limit=20**");
+  outcomes.push({ name: "background-refresh-keeps-grid", result: "passed" });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: path.join(outputDir, "homepage-mobile.png"), fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  outcomes.push({ name: "mobile-desktop-smoke", result: "passed" });
+
+  for (const routePath of [
+    "/fa/retail/retail-r3-fashion-preview/product/avid-preview",
+    "/fa/retail/retail-r3-fashion-preview/shop/product/avid-preview",
+  ]) {
+    const detail = await page.goto(`${baseUrl}${routePath}`, { waitUntil: "domcontentloaded" });
+    assert.equal(detail?.status(), 200, `product detail route renders: ${routePath}`);
+    await page.locator("main").waitFor();
+  }
+  outcomes.push({ name: "both-product-detail-routes", result: "passed" });
+
+  const tenantBResponse = await page.goto(`${baseUrl}/fa/retail/retail-r3-mobile-preview`, { waitUntil: "domcontentloaded" });
+  assert.equal(tenantBResponse?.status(), 200);
+  await page.locator("#products [data-retail-product-card]").first().waitFor();
+  assert.equal(await page.getByText("کتانی نمونه آوید").count(), 0, "Tenant A product is absent after switching to Tenant B");
+  const emptyResponse = await page.goto(`${baseUrl}/fa/retail/retail-home-empty-preview`, { waitUntil: "domcontentloaded" });
+  assert.equal(emptyResponse?.status(), 200);
+  await page.getByText("محصولی با این مشخصات پیدا نشد. فیلترها را تغییر دهید.").waitFor();
+  assert.equal(await page.getByRole("navigation", { name: "صفحه‌های محصولات" }).count(), 0, "empty catalog has no invalid pagination controls");
+  outcomes.push({ name: "tenant-switch-empty-catalog", result: "passed" });
+
   assert.equal(consoleRecords.length, 0, "browser console and hydration errors absent");
 } catch (error) {
   outcomes.push({ name: "homepage-acceptance", result: "failed", error: error.stack ?? String(error) });

@@ -107,16 +107,16 @@ try {
   await page.waitForFunction(() => document.querySelectorAll("#products [data-retail-product-card]").length === 20);
   outcomes.push({ name: "category-filter-reset", result: "passed", filteredCards: 12, restoredCards: 20 });
 
-  const pageTwoMatcher = "**/api/public/v1/organizations/retail-r3-fashion-preview/products";
+  const pageTwoMatcher = "**/*";
   expectedApiFailure = true;
-  await page.route(pageTwoMatcher, async (route) => {
+  await context.route(pageTwoMatcher, async (route) => {
     const requested = new URL(route.request().url());
-    if (requested.searchParams.get("page") !== "2" || requested.searchParams.get("limit") !== "20") return route.continue();
+    if (!requested.pathname.endsWith("/organizations/retail-r3-fashion-preview/products") || requested.searchParams.get("page") !== "2" || requested.searchParams.get("limit") !== "20") return route.continue();
     await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "synthetic temporary failure" }) });
   });
   await page.getByRole("navigation", { name: "صفحه‌های محصولات" }).getByRole("button", { name: "بعدی" }).click();
   await page.getByRole("alert").waitFor();
-  await page.unroute(pageTwoMatcher);
+  await context.unroute(pageTwoMatcher);
   expectedApiFailure = false;
   await page.getByRole("alert").getByRole("button", { name: "تلاش دوباره" }).click();
   await page.getByText(/صفحه ۲ از/).waitFor();
@@ -137,9 +137,9 @@ try {
   let refreshRequestSeen;
   const refreshSeen = new Promise((resolve) => { refreshRequestSeen = resolve; });
   const refreshGate = new Promise((resolve) => { releaseRefresh = resolve; });
-  await page.route(pageTwoMatcher, async (route) => {
+  await context.route(pageTwoMatcher, async (route) => {
     const requested = new URL(route.request().url());
-    if (requested.searchParams.get("page") !== "2" || requested.searchParams.get("limit") !== "20") return route.continue();
+    if (!requested.pathname.endsWith("/organizations/retail-r3-fashion-preview/products") || requested.searchParams.get("page") !== "2" || requested.searchParams.get("limit") !== "20") return route.continue();
     refreshRequestSeen();
     await refreshGate;
     await route.continue();
@@ -152,7 +152,7 @@ try {
   assert.equal(await page.getByRole("status").count() > 0, true, "refresh progress is announced without hiding the grid");
   releaseRefresh();
   await page.waitForFunction(() => document.querySelectorAll("#products [data-retail-product-card]").length === 5);
-  await page.unroute(pageTwoMatcher);
+  await context.unroute(pageTwoMatcher);
   outcomes.push({ name: "background-refresh-keeps-grid", result: "passed" });
 
   await page.setViewportSize({ width: 390, height: 844 });

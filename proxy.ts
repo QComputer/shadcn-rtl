@@ -13,6 +13,7 @@ import {
   getShopSubPathFromPlatformPath,
   getAppointmentSubPathFromPlatformPath,
   isCustomDomainApplicationPath,
+  isHotelGuestApplicationPath,
   isCustomDomainBypassPath,
   isPlatformHost,
   normalizeDomainHost,
@@ -473,7 +474,7 @@ export async function proxy(request: NextRequest) {
     // APPOINTMENT capabilities. Keep their active-domain root on the existing
     // organization route; the page and public APIs independently enforce
     // HOTEL_WEBSITE and publication state before returning content.
-    if (tenant.vertical === "HOTEL") {
+    if (tenant.vertical === "HOTEL" && !isCustomDomainApplicationPath(pathname) && !isHotelGuestApplicationPath(pathname)) {
       const splitPath = splitLocalePrefix(pathname);
       const locale = splitPath.locale || defaultLocale;
       const requestHeaders = buildTenantRewriteHeaders(
@@ -508,7 +509,7 @@ export async function proxy(request: NextRequest) {
 
     // Authentication and management pages stay on the custom-domain origin,
     // but they are application routes rather than storefront subpaths.
-    if (isCustomDomainApplicationPath(pathname)) {
+    if (isCustomDomainApplicationPath(pathname) || (tenant.vertical === "HOTEL" && isHotelGuestApplicationPath(pathname))) {
       if (!tenantPathLocale) {
         const localizedUrl = request.nextUrl.clone();
         localizedUrl.pathname = `/${defaultLocale}${pathname}`;

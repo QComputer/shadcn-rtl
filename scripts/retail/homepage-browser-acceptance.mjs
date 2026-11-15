@@ -147,20 +147,66 @@ try {
     await refreshGate;
     await route.continue();
   });
-  const firstPageHref = await cards.first().locator('a[href*="/product/"]').getAttribute("href");
+  const firstPageHref = await cards.first().locator('a[href*="/product/"]').first().getAttribute("href");
   await page.getByRole("navigation", { name: "صفحه‌های محصولات" }).getByRole("button", { name: "بعدی" }).click();
   await refreshSeen;
   assert.equal(await cards.count(), 20, "existing products stay visible during refresh");
-  assert.equal(await cards.first().locator('a[href*="/product/"]').getAttribute("href"), firstPageHref);
+  assert.equal(await cards.first().locator('a[href*="/product/"]').first().getAttribute("href"), firstPageHref);
   assert.equal(await page.getByRole("status").count() > 0, true, "refresh progress is announced without hiding the grid");
   releaseRefresh();
   await page.waitForFunction(() => document.querySelectorAll("#products [data-retail-product-card]").length === 5);
   await context.unroute(pageTwoMatcher);
   outcomes.push({ name: "background-refresh-keeps-grid", result: "passed" });
 
+  let releaseStaleCategory;
+  let staleCategoryStarted;
+  const staleCategorySeen = new Promise((resolve) => { staleCategoryStarted = resolve; });
+  const staleCategoryGate = new Promise((resolve) => { releaseStaleCategory = resolve; });
+  const delayedCategoryMatcher = "**/api/public/v1/organizations/retail-r3-fashion-preview/products**";
+  await context.route(delayedCategoryMatcher, async (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("category") !== "perf-home-accessories") return route.continue();
+    const upstream = await route.fetch();
+    const body = await upstream.text();
+    staleCategoryStarted({ url: route.request().url(), status: upstream.status() });
+    await staleCategoryGate;
+    await route.fulfill({ response: upstream, body });
+  });
+  const accessoryRequest = page.waitForRequest((request) => request.url().includes("category=perf-home-accessories"));
+  await page.getByRole("button", { name: "لوازم نمونه" }).click();
+  await accessoryRequest;
+  const staleStarted = await staleCategorySeen;
+  const staleRequestOutcome = Promise.race([
+    page.waitForEvent("requestfailed", (request) => request.url() === staleStarted.url).then(() => "aborted"),
+    page.waitForResponse((response) => response.url() === staleStarted.url && response.status() === 200).then(() => "completed"),
+  ]);
+  const resetAfterRace = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname.endsWith("/products") && !url.searchParams.has("category") && response.status() === 200;
+  });
+  await page.getByRole("button", { name: "حذف فیلتر دسته‌بندی" }).click();
+  await resetAfterRace;
+  await page.waitForFunction(() => document.querySelectorAll("#products [data-retail-product-card]").length === 20);
+  releaseStaleCategory();
+  const staleRequestDisposition = await staleRequestOutcome;
+  assert.equal(await cards.count(), 20, "the delayed category response cannot replace newer all-category results");
+  assert.equal(await page.getByRole("button", { name: "همه دسته‌بندی‌ها" }).getAttribute("aria-pressed"), "true");
+  await context.unroute(delayedCategoryMatcher);
+  outcomes.push({ name: "concurrent-category-stale-response", result: "passed", intercepted: staleStarted, staleRequestDisposition });
+
+  const catalogRequestsBeforeRemount = records.filter((item) => item.kind === "catalog-api" && item.phase === "request").length;
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.locator("#products [data-retail-product-card]").first().waitFor();
+  const remountCatalogRequestCount = records.filter((item) => item.kind === "catalog-api" && item.phase === "request").length - catalogRequestsBeforeRemount;
+  assert.equal(remountCatalogRequestCount, 0, "page remount reuses the server snapshot without an initial browser catalog request");
+  outcomes.push({ name: "remount-no-duplicate-request", result: "passed" });
+
   await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await page.locator("#products [data-retail-product-card]").count(), 20, "mobile viewport retains the product grid");
+  assert.equal(await page.getByRole("navigation", { name: "پیمایش موبایل فروشگاه" }).isVisible(), true, "mobile navigation is visible");
   await page.screenshot({ path: path.join(outputDir, "homepage-mobile.png"), fullPage: true });
   await page.setViewportSize({ width: 1280, height: 900 });
+  assert.equal(await page.locator("#products [data-retail-product-card]").count(), 20, "desktop viewport retains the product grid");
   outcomes.push({ name: "mobile-desktop-smoke", result: "passed" });
 
   for (const routePath of [
@@ -177,11 +223,20 @@ try {
   assert.equal(tenantBResponse?.status(), 200);
   await page.locator("#products [data-retail-product-card]").first().waitFor();
   assert.equal(await page.getByText("کتانی نمونه آوید").count(), 0, "Tenant A product is absent after switching to Tenant B");
+  assert.equal(await page.locator("#products [data-retail-product-card]").count(), 5, "Tenant B renders only its five published products");
+  const tenantBRequests = records.filter((item) => item.kind === "catalog-api" && item.phase === "request" && item.tenant === "retail-r3-mobile-preview");
+  assert.equal(tenantBRequests.length, 0, "tenant B uses its own SSR snapshot without a redundant fetch");
+  outcomes.push({ name: "tenant-a-to-b-isolation", result: "passed", visibleCards: 5, initialCatalogApiRequests: tenantBRequests.length });
   const emptyResponse = await page.goto(`${baseUrl}/fa/retail/retail-home-empty-preview`, { waitUntil: "domcontentloaded" });
   assert.equal(emptyResponse?.status(), 200);
   await page.getByText("محصولی با این مشخصات پیدا نشد. فیلترها را تغییر دهید.").waitFor();
   assert.equal(await page.getByRole("navigation", { name: "صفحه‌های محصولات" }).count(), 0, "empty catalog has no invalid pagination controls");
-  outcomes.push({ name: "tenant-switch-empty-catalog", result: "passed" });
+  const emptyCategoryResponse = page.waitForResponse((response) => response.url().includes("category=empty-category") && response.status() === 200);
+  await page.getByRole("button", { name: "دسته خالی" }).click();
+  await emptyCategoryResponse;
+  await page.getByText("محصولی با این مشخصات پیدا نشد. فیلترها را تغییر دهید.").waitFor();
+  assert.equal(await page.getByRole("navigation", { name: "صفحه‌های محصولات" }).count(), 0, "empty category has no invalid page controls");
+  outcomes.push({ name: "empty-catalog-and-category", result: "passed", visibleCards: 0, pageControls: 0 });
 
   assert.equal(consoleRecords.length, 0, "browser console and hydration errors absent");
 } catch (error) {

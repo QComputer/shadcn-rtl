@@ -14,12 +14,13 @@ const browser = await chromium.launch({ headless: true });
 const records = [];
 const consoleRecords = [];
 const outcomes = [];
+const injectedFailures = [];
 let expectedApiFailure = false;
 const record = (item) => records.push({ at: new Date().toISOString(), ...item });
 let context;
 let traceStarted = false;
 try {
-  context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  context = await browser.newContext({ viewport: { width: 1280, height: 900 }, serviceWorkers: "block" });
   await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
   traceStarted = true;
   const page = await context.newPage();
@@ -107,15 +108,19 @@ try {
   await page.waitForFunction(() => document.querySelectorAll("#products [data-retail-product-card]").length === 20);
   outcomes.push({ name: "category-filter-reset", result: "passed", filteredCards: 12, restoredCards: 20 });
 
-  const pageTwoMatcher = "**/*";
+  const pageTwoMatcher = "**/api/public/v1/organizations/retail-r3-fashion-preview/products**";
   expectedApiFailure = true;
   await context.route(pageTwoMatcher, async (route) => {
     const requested = new URL(route.request().url());
     if (!requested.pathname.endsWith("/organizations/retail-r3-fashion-preview/products") || requested.searchParams.get("page") !== "2" || requested.searchParams.get("limit") !== "20") return route.continue();
+    injectedFailures.push({ url: route.request().url(), method: route.request().method(), status: 503, at: new Date().toISOString() });
     await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "synthetic temporary failure" }) });
   });
+  const injectedResponse = page.waitForResponse((r) => r.status() === 503 && r.url().includes("/organizations/retail-r3-fashion-preview/products?page=2&limit=20"));
   await page.getByRole("navigation", { name: "صفحه‌های محصولات" }).getByRole("button", { name: "بعدی" }).click();
+  await injectedResponse;
   await page.getByRole("alert").waitFor();
+  assert.equal(injectedFailures.length, 1, "the intended page-two catalog request is intercepted exactly once");
   await context.unroute(pageTwoMatcher);
   expectedApiFailure = false;
   await page.getByRole("alert").getByRole("button", { name: "تلاش دوباره" }).click();
@@ -189,7 +194,7 @@ try {
   if (context && traceStarted) await context.tracing.stop({ path: path.join(outputDir, "homepage-trace.zip") }).catch(() => {});
   await fs.writeFile(path.join(outputDir, "network-requests.json"), JSON.stringify(records, null, 2));
   await fs.writeFile(path.join(outputDir, "browser-console.json"), JSON.stringify(consoleRecords, null, 2));
-  await fs.writeFile(path.join(outputDir, "homepage-browser-results.json"), JSON.stringify({ baseUrl, tenant, outcomes, consoleErrors: consoleRecords.length }, null, 2));
+  await fs.writeFile(path.join(outputDir, "homepage-browser-results.json"), JSON.stringify({ baseUrl, tenant, outcomes, injectedFailures, consoleErrors: consoleRecords.length }, null, 2));
   await browser.close();
 }
 console.log(JSON.stringify({ outcomes, requestCount: records.length, artifacts: outputDir }, null, 2));

@@ -6,8 +6,8 @@ on:
     paths:
       - '.github/workflows/retail-hero-media-acceptance.yml'
       - 'app/api/media/**'
-      - 'app/api/organizations/[[]id]/website/**'
-      - 'app/[[]locale]/dashboard/website-studio/**'
+      - 'app/api/organizations/**/website/**'
+      - 'app/**/dashboard/website-studio/**'
       - 'components/website-studio/**'
       - 'lib/api-guards.ts'
       - 'lib/website-studio/**'

@@ -123,6 +123,7 @@ async function createAndPublish({ browser, email, locale, organization, category
   const productAttr = attributeLabels[attribute];
   if (attribute === "material" || attribute === "display") await page.getByLabel(productAttr).selectOption({ index: 1 });
   else await page.getByLabel(productAttr).fill(attribute === "ram" ? "12" : "چرم مصنوعی");
+  const expectedProductAttribute = await page.getByLabel(productAttr).inputValue();
   if (attribute === "material") await page.getByLabel(attributeLabels.style).fill("روزمره");
   if (option === "color-size") {
     await page.getByRole("combobox", { name: /^رنگ\s/ }).fill("مشکی");
@@ -133,6 +134,7 @@ async function createAndPublish({ browser, email, locale, organization, category
   }
   await page.getByLabel("عنوان گونه").fill("پیش‌نمایش مشکی");
   await page.getByLabel("شناسه کالا (SKU)").fill(sku);
+  assert.equal(await page.getByRole("button", { name: "ذخیره پیش‌نویس", exact: true }).isDisabled(), true, "draft save must remain disabled until the required base price is entered");
   const basePriceInput = page.locator("label").filter({ hasText: /قیمت پایه محصول/ }).locator('input[type="number"]');
   assert.equal(await basePriceInput.count(), 1, "the product base price must be uniquely identifiable");
   await basePriceInput.fill(attribute === "ram" ? "45900000" : "650000");
@@ -147,6 +149,9 @@ async function createAndPublish({ browser, email, locale, organization, category
   const availableMedia = (await availableMediaResponse.json()).images ?? [];
   const previewAsset = availableMedia.find((image) => image.filename === "PREVIEW-R3-synthetic-test-asset.png");
   assert.ok(previewAsset, `tenant-owned PREVIEW media missing from gallery: ${JSON.stringify(availableMedia.map(({ filename, purpose, access }) => ({ filename, purpose, access })))}`);
+  assert.equal(previewAsset.access, "PUBLIC", "only public same-tenant media may be selected for a storefront product");
+  assert.equal(previewAsset.purpose, "retail-product", "selected asset must be eligible retail product media");
+  assert.ok(!availableMedia.some(({ purpose }) => purpose === "retail-r3-synthetic-foreign-media"), "another tenant's media must not appear in this manager's library");
   const productGallery = page.getByRole("region", { name: "گالری محصول" });
   await productGallery.getByRole("button", { name: "انتخاب از کتابخانه تصاویر" }).click();
   const mediaLibrary = page.getByRole("dialog", { name: "کتابخانه تصاویر" });
@@ -166,7 +171,27 @@ async function createAndPublish({ browser, email, locale, organization, category
     return segments.at(-2) === "retail-catalog" && segments.at(-1) !== "new";
   }, { timeout: 60000 });
   const productId = page.url().split("/").at(-1);
-  await page.getByRole("button", { name: "پیش‌نمایش" }).click();
+  const draftResponse = await context.request.get(`${baseUrl}/api/dashboard/retail/catalog/${productId}`);
+  assert.equal(draftResponse.status(), 200, "new product draft must be readable by its owning manager");
+  const draftProduct = (await draftResponse.json()).product;
+  assert.equal(draftProduct.isActive, false, "initial save must remain a private draft");
+  assert.equal(draftProduct.basePrice, attribute === "ram" ? 45900000 : 650000, "draft base price must persist");
+  assert.equal(draftProduct.category.name, category, "draft category must persist");
+  assert.ok(draftProduct.imageIds.includes(previewAsset.id), "same-tenant selected media must persist on the draft product");
+  const draftProductAttribute = draftProduct.attributes.find(({ key }) => key === attribute);
+  assert.ok(draftProductAttribute, `draft product attribute ${attribute} must persist`);
+  assert.equal(String(draftProductAttribute.value), expectedProductAttribute, `draft product attribute ${attribute} value must persist`);
+  const draftVariant = draftProduct.variants.find(({ sku: variantSku }) => variantSku === sku);
+  assert.ok(draftVariant, `new product variant ${sku} must persist`);
+  const expectedVariantOptions = option === "color-storage"
+    ? { r3_mobile_color: "آبی", r3_mobile_storage: 256 }
+    : { color: "مشکی", size: 41 };
+  for (const [key, value] of Object.entries(expectedVariantOptions)) {
+    assert.equal(String(draftVariant.options.find((entry) => entry.key === key)?.value), String(value), `draft variant option ${key} must persist`);
+  }
+  assert.equal(draftVariant.price, attribute === "ram" ? 45900000 : 650000, "draft variant price must persist");
+  assert.equal(draftVariant.inventory, 3, "draft variant inventory must persist");
+  await page.getByRole("button", { name: "پیش‌نمایش", exact: true }).click();
   await page.locator("div").filter({ hasText: /^پیش‌نمایش مدیر فروشگاه · این کالا هنوز برای مشتریان منتشر نشده است$/ }).waitFor();
   await captureRenderedViewport(page, path.join(evidenceDir, `${organization}-draft-preview.png`));
   await page.getByLabel("نام محصول").fill(`${name} ویرایش‌شده`);
@@ -175,8 +200,22 @@ async function createAndPublish({ browser, email, locale, organization, category
   assert.equal((await savedResponse).status(), 200, "product edit must persist");
   await page.reload();
   assert.equal(await page.getByLabel("نام محصول").inputValue(), `${name} ویرایش‌شده`, "edited name must persist after reload");
-  await page.getByRole("button", { name: "انتشار در فروشگاه" }).click();
-  await page.waitForTimeout(500);
+  const reloadedDraftResponse = await context.request.get(`${baseUrl}/api/dashboard/retail/catalog/${productId}`);
+  assert.equal(reloadedDraftResponse.status(), 200, "saved draft must remain readable after a full editor reload");
+  const reloadedDraft = (await reloadedDraftResponse.json()).product;
+  assert.equal(reloadedDraft.isActive, false, "draft reload must not publish the product");
+  assert.equal(reloadedDraft.basePrice, attribute === "ram" ? 45900000 : 650000, "base price must survive draft reload");
+  assert.ok(reloadedDraft.imageIds.includes(previewAsset.id), "selected tenant media must survive draft reload");
+  const reloadedVariant = reloadedDraft.variants.find(({ sku: variantSku }) => variantSku === sku);
+  assert.ok(reloadedVariant, `variant ${sku} must survive draft reload`);
+  assert.equal(reloadedVariant.price, attribute === "ram" ? 45900000 : 650000, "variant price must survive draft reload");
+  assert.equal(reloadedVariant.inventory, 3, "variant inventory must survive draft reload");
+  for (const [key, value] of Object.entries(expectedVariantOptions)) {
+    assert.equal(String(reloadedVariant.options.find((entry) => entry.key === key)?.value), String(value), `variant option ${key} must survive draft reload`);
+  }
+  const publishResponse = page.waitForResponse((response) => response.url().includes(`/api/dashboard/retail/catalog/${productId}`) && response.request().method() === "PATCH");
+  await page.getByRole("button", { name: "انتشار در فروشگاه", exact: true }).click();
+  assert.equal((await publishResponse).status(), 200, "product publication must be accepted by the catalog API");
   const publicDetail = await page.context().request.get(`${baseUrl}/api/public/v1/organizations/${organization}/products/${slug}`);
   assert.equal(publicDetail.status(), 200, "published product detail must be public");
   const detailBody = await publicDetail.json();
@@ -184,7 +223,19 @@ async function createAndPublish({ browser, email, locale, organization, category
   const managedDetailResponse = await page.context().request.get(`${baseUrl}/api/dashboard/retail/catalog/${productId}`);
   assert.equal(managedDetailResponse.status(), 200, `manager must still read product ${productId} after publication: ${await managedDetailResponse.text()}`);
   const managedProduct = (await managedDetailResponse.json()).product;
-  const managedVariant = managedProduct.variants[0];
+  const managedVariant = managedProduct.variants.find(({ sku: variantSku }) => variantSku === sku);
+  assert.ok(managedVariant, `published product must retain variant ${sku}`);
+  assert.equal(managedProduct.isActive, true, "published product must be active");
+  assert.equal(managedProduct.basePrice, attribute === "ram" ? 45900000 : 650000, "published product base price must be correct");
+  assert.equal(managedProduct.category.name, category, "published product category must be correct");
+  assert.equal(data.name, `${name} ویرایش‌شده`, "public detail must expose the saved product name");
+  assert.equal(data.category.name, category, "public detail must expose the selected category");
+  assert.equal(String(data.attributes.find(({ key }) => key === attribute)?.value), expectedProductAttribute, "public detail must expose the persisted product attribute");
+  assert.ok(managedProduct.imageIds.includes(previewAsset.id), "published product must retain its tenant-owned selected media");
+  assert.ok(data.media.gallery.includes(previewAsset.url), "published storefront detail must expose the exact selected public media");
+  for (const [key, value] of Object.entries(expectedVariantOptions)) {
+    assert.equal(String(managedVariant.options.find((entry) => entry.key === key)?.value), String(value), `published variant option ${key} must persist`);
+  }
   assert.equal(managedVariant.price, attribute === "ram" ? 45900000 : 650000, `persisted variant price mismatch: ${JSON.stringify({ price: managedVariant.price, inventory: managedVariant.inventory, reservedQuantity: managedVariant.reservedQuantity })}`);
   assert.equal(managedVariant.inventory, 3, `persisted variant inventory mismatch: ${JSON.stringify({ price: managedVariant.price, inventory: managedVariant.inventory, reservedQuantity: managedVariant.reservedQuantity })}`);
   assert.equal(data.variants[0].price.amount, attribute === "ram" ? 45900000 : 650000);
@@ -199,8 +250,9 @@ async function createAndPublish({ browser, email, locale, organization, category
   await captureRenderedViewport(storefrontPage, path.join(evidenceDir, `${organization}-published-catalog.png`));
   await storefrontPage.close();
   await page.goto(`${baseUrl}/fa/dashboard/retail-catalog/${productId}`);
-  await page.getByRole("button", { name: "برداشتن از فروشگاه" }).click();
-  await page.waitForTimeout(300);
+  const unpublishResponse = page.waitForResponse((response) => response.url().includes(`/api/dashboard/retail/catalog/${productId}`) && response.request().method() === "PATCH");
+  await page.getByRole("button", { name: "برداشتن از فروشگاه", exact: true }).click();
+  assert.equal((await unpublishResponse).status(), 200, "unpublishing must be accepted by the catalog API");
   const hidden = await page.context().request.get(`${baseUrl}/api/public/v1/organizations/${organization}/products/${slug}`);
   assert.equal(hidden.status(), 404, "unpublished product detail must disappear");
   await context.close();

@@ -43,7 +43,7 @@ try {
 
   const scenario = { name: "cold-homepage", result: "running" };
   outcomes.push(scenario);
-  const response = await page.goto(`${baseUrl}/fa/retail/${encodeURIComponent(tenant)}`, { waitUntil: "networkidle" });
+  const response = await page.goto(`${baseUrl}/fa/retail/${encodeURIComponent(tenant)}`, { waitUntil: "domcontentloaded" });
   assert.equal(response?.status(), 200, "public homepage responds successfully");
   await page.locator("#products [data-retail-product-card]").first().waitFor();
   await page.waitForTimeout(500);
@@ -66,17 +66,21 @@ try {
   if (navExists && await pageNav.getByRole("button", { name: "بعدی" }).isEnabled()) {
     const next = pageNav.getByRole("button", { name: "بعدی" });
     const before = records.filter((x) => x.kind === "catalog-api" && x.phase === "request").length;
+    const page2Response = page.waitForResponse((r) => r.url().includes("/api/public/v1/organizations/") && new URL(r.url()).searchParams.get("page") === "2" && r.status() === 200);
     await next.click();
+    await page2Response;
     await page.getByText(/صفحه ۲ از/).waitFor();
-    await page.waitForFunction(() => !document.querySelector('[role="status"]')?.textContent?.includes("به‌روزرسانی"));
-    const page2Cards = await cards.locator("a[aria-label]").evaluateAll((links) => links.map((a) => a.getAttribute("aria-label")));
+    await page.waitForFunction(() => document.querySelectorAll("#products [data-retail-product-card]").length === 5);
+    const page2Cards = await cards.evaluateAll((items) => items.map((item) => item.querySelector('a[href*="/product/"]')?.getAttribute("href")).filter(Boolean));
     assert.equal(records.filter((x) => x.kind === "catalog-api" && x.phase === "request").length, before + 1);
     const request = records.filter((x) => x.kind === "catalog-api" && x.phase === "request").at(-1);
     assert.equal(request.page, 2); assert.equal(request.limit, 20); assert.equal(request.tenant, tenant);
     assert.equal(page2Cards.length, 5, "page 2 renders the remaining five products");
     const page1Ids = await cards.evaluateAll((items) => items.map((item) => item.querySelector('a[href*="/product/"]')?.getAttribute("href")).filter(Boolean));
     assert.equal(new Set([...page1Ids, ...page2Cards]).size, 25, "both pages contain 25 unique product links");
+    const page1Response = page.waitForResponse((r) => r.url().includes("/api/public/v1/organizations/") && new URL(r.url()).searchParams.get("page") === "1" && r.status() === 200);
     await pageNav.getByRole("button", { name: "قبلی" }).click();
+    await page1Response;
     await page.getByText(/صفحه ۱ از/).waitFor();
     const backRequest = records.filter((x) => x.kind === "catalog-api" && x.phase === "request").at(-1);
     assert.equal(backRequest.page, 1); assert.equal(backRequest.limit, 20); assert.equal(backRequest.tenant, tenant);

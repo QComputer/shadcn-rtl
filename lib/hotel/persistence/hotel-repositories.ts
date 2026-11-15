@@ -227,6 +227,14 @@ export interface HotelBookingRepository {
   findReservationByReference(scope: TenantScope, reference: string): Promise<ReservationRecord | null>;
   findReservation(scope: TenantScope, reservationId: string): Promise<ReservationRecord | null>;
 
+  /** Atomically cancel a hold-backed reservation and return booked inventory; never issues a refund. */
+  cancelReservationAndReleaseInventory?(input: {
+    scope: TenantScope;
+    reservationId: string;
+    expectedStatus: readonly Reservation["status"][];
+    now: Date;
+  }): Promise<ReservationUpdateResult>;
+
   /**
    * Compare-and-set on status. Returns `CONFLICT` when another writer already
    * moved the row, which is what makes transitions idempotent under retry.

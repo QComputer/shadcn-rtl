@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { before, mock, test } from "node:test";
 
-type JwtSession = { user?: { id?: string; role?: string; name?: string | null; email?: string | null; locale?: string | null; isTeamMember?: boolean | null; theme?: string | null; organizationId?: string | null } } | null;
+type JwtSession = { user?: { id?: string; role?: string; name?: string | null; email?: string | null; locale?: string | null; isTeamMember?: boolean | null; theme?: string | null; organizationId?: string | null; phoneSessionId?: string; customerOrigin?: string } } | null;
 let jwtSession: JwtSession = null;
 let persistedRole: string | null = "CUSTOMER";
+let persistedTeamMember = false;
 let persistedActive = true;
 let membershipRole: string | null = "ADMIN";
 let membershipActive = true;
@@ -13,6 +14,9 @@ let memberUserActive = true;
 let memberUserDeletedAt: Date | null = null;
 const userQueries: Array<{ where: Record<string, unknown>; select?: Record<string, unknown> }> = [];
 const membershipQueries: Array<Record<string, unknown>> = [];
+let resolvedCustomerContext: { organizationId: string; slug: string; origin: string } | null = { organizationId: "org-a", slug: "shop-a", origin: "https://shop-a.example.test" };
+let phoneSessionValid = true;
+const customerSessionQueries: Array<Record<string, unknown>> = [];
 
 const prisma = {
   user: {
@@ -20,7 +24,7 @@ const prisma = {
       userQueries.push(query);
       if (!persistedActive || query.where.isActive !== true || query.where.deletedAt !== null) return null;
       if (query.where.role && query.where.role !== persistedRole) return null;
-      return query.where.role ? { id: "actor" } : { role: persistedRole };
+      return query.where.role ? { id: "actor" } : { role: persistedRole, isTeamMember: persistedTeamMember };
     },
   },
   organizationMember: {
@@ -41,10 +45,19 @@ const prisma = {
       };
     },
   },
+  order: {
+    findFirst: async () => ({ id: "order-1", organizationSlug: "shop-a", customerId: "actor", driverId: null }),
+  },
 };
 
 mock.module("@/lib/auth", { namedExports: { auth: async () => jwtSession } });
 mock.module("@/lib/db", { namedExports: { prisma, default: prisma } });
+mock.module("@/lib/customer-auth/context.server", { namedExports: {
+  resolveCustomerAuthContext: async () => resolvedCustomerContext,
+} });
+mock.module("@/lib/customer-auth/core.server", { namedExports: {
+  validateCustomerPhoneSession: async (query: Record<string, unknown>) => { customerSessionQueries.push(query); return phoneSessionValid; },
+} });
 
 let guards: typeof import("@/lib/api-guards");
 before(async () => { guards = await import("@/lib/api-guards"); });
@@ -52,6 +65,7 @@ before(async () => { guards = await import("@/lib/api-guards"); });
 function reset() {
   jwtSession = { user: { id: "actor", role: "CUSTOMER", name: "Actor", email: "actor@example.test", organizationId: "org-a" } };
   persistedRole = "CUSTOMER";
+  persistedTeamMember = false;
   persistedActive = true;
   membershipRole = "ADMIN";
   membershipActive = true;
@@ -61,6 +75,9 @@ function reset() {
   memberUserDeletedAt = null;
   userQueries.length = 0;
   membershipQueries.length = 0;
+  resolvedCustomerContext = { organizationId: "org-a", slug: "shop-a", origin: "https://shop-a.example.test" };
+  phoneSessionValid = true;
+  customerSessionQueries.length = 0;
 }
 
 const session = (role: string, organizationId: string | null = "org-a") => ({ user: { id: "actor", role, organizationId } }) as Parameters<typeof guards.requireOrgAccess>[0];
@@ -68,20 +85,72 @@ function hasStatus(status: number) {
   return (error: unknown) => error instanceof guards.ApiError && error.status === status;
 }
 
-test("requireAuthSession uses the persisted role instead of the JWT role", async () => {
+test("requireAuthSession uses the persisted role and team flag for staff sessions", async () => {
   reset();
   jwtSession = { user: { id: "actor", role: "CUSTOMER", name: "Actor", email: "actor@example.test", organizationId: "org-a" } };
   persistedRole = "MANAGER";
+  persistedTeamMember = true;
   const current = await guards.requireAuthSession();
   assert.equal(current.user.role, "MANAGER");
+  assert.equal(current.user.isTeamMember, true);
   assert.equal(current.user.organizationId, "org-a");
-  assert.deepEqual(userQueries[0], { where: { id: "actor", isActive: true, deletedAt: null }, select: { role: true } });
+  assert.deepEqual(userQueries[0], { where: { id: "actor", isActive: true, deletedAt: null }, select: { role: true, isTeamMember: true } });
 });
 
 test("requireAuthSession rejects inactive persisted users", async () => {
   reset();
   persistedActive = false;
   await assert.rejects(guards.requireAuthSession(), hasStatus(401));
+});
+
+test("requestless customer sessions remain compatible while domain requests require a persisted session", async () => {
+  reset();
+  const legacy = await guards.requireAuthSession();
+  assert.equal(legacy.user.role, "CUSTOMER");
+  assert.equal(legacy.customerContext, undefined);
+  assert.equal(customerSessionQueries.length, 0);
+  jwtSession = { user: { id: "actor", role: "CUSTOMER", isTeamMember: false, organizationId: "org-a", phoneSessionId: "session-a", customerOrigin: "https://shop-a.example.test" } };
+  const request = new Request("https://shop-a.example.test/api/private", { headers: { host: "shop-a.example.test" } });
+  phoneSessionValid = false;
+  await assert.rejects(guards.requireAuthSession(request), hasStatus(403));
+  assert.equal(customerSessionQueries.length, 1);
+});
+
+test("customer request context must match the trusted tenant, signed origin, and persisted session", async () => {
+  reset();
+  jwtSession = { user: { id: "actor", role: "CUSTOMER", isTeamMember: false, organizationId: "org-a", phoneSessionId: "session-a", customerOrigin: "https://shop-a.example.test" } };
+  const request = new Request("https://shop-a.example.test/api/private", { headers: { host: "shop-a.example.test" } });
+  const result = await guards.requireAuthSession(request);
+  assert.deepEqual(result.customerContext, { organizationId: "org-a", slug: "shop-a", origin: "https://shop-a.example.test" });
+  assert.deepEqual(customerSessionQueries[0], { sessionId: "session-a", userId: "actor", organizationId: "org-a" });
+
+  reset();
+  jwtSession = { user: { id: "actor", role: "CUSTOMER", isTeamMember: false, organizationId: "org-a", phoneSessionId: "session-a", customerOrigin: "https://other.example.test" } };
+  await assert.rejects(guards.requireAuthSession(request), hasStatus(403));
+
+  reset();
+  jwtSession = { user: { id: "actor", role: "CUSTOMER", isTeamMember: false, organizationId: "org-a", phoneSessionId: "session-a", customerOrigin: "https://shop-a.example.test" } };
+  resolvedCustomerContext = { organizationId: "org-b", slug: "shop-b", origin: "https://shop-b.example.test" };
+  await assert.rejects(guards.requireAuthSession(request), hasStatus(403));
+});
+
+test("customer unsafe methods require Origin to equal the resolved tenant origin", async () => {
+  reset();
+  jwtSession = { user: { id: "actor", role: "CUSTOMER", isTeamMember: false, organizationId: "org-a", phoneSessionId: "session-a", customerOrigin: "https://shop-a.example.test" } };
+  const request = new Request("https://shop-a.example.test/api/private", { method: "POST", headers: { host: "shop-a.example.test", origin: "https://attacker.example" } });
+  await assert.rejects(guards.requireAuthSession(request), hasStatus(403));
+});
+
+test("order access preserves legacy customerId checks but enforces tenant when request context is bound", async () => {
+  reset();
+  const legacy = await guards.requireAuthSession();
+  assert.equal((await guards.requireOrderAccess(legacy, "order-1", ["CUSTOMER"])).id, "order-1");
+
+  jwtSession = { user: { id: "actor", role: "CUSTOMER", isTeamMember: false, organizationId: "org-a", phoneSessionId: "session-a", customerOrigin: "https://shop-a.example.test" } };
+  const bound = await guards.requireAuthSession(new Request("https://shop-a.example.test/api/orders", { headers: { host: "shop-a.example.test" } }));
+  assert.equal((await guards.requireOrderAccess(bound, "order-1", ["CUSTOMER"])).id, "order-1");
+  bound.customerContext = { organizationId: "org-b", slug: "shop-b", origin: "https://shop-b.example.test" };
+  await assert.rejects(guards.requireOrderAccess(bound, "order-1", ["CUSTOMER"]), hasStatus(403));
 });
 
 test("scoped CUSTOMER can exercise active organization ADMIN and MANAGER membership grants", async () => {

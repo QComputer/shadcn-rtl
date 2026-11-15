@@ -2,7 +2,7 @@ name: Damoon booking request isolated acceptance
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, codex/damoon-public-booking-sync-20261114]
     paths:
       - "sites/damoon/**"
       - "app/api/hotel/v1/**"
@@ -16,7 +16,10 @@ on:
       - "tests/damoon-booking-flow.test.mjs"
       - "tests/damoon-static-server.test.mjs"
       - "tests/damoon-public-bundle.test.mjs"
+      - "tests/damoon-public-booking-module.test.mjs"
+      - "public/damoon-front/**"
       - "playwright.damoon.config.mjs"
+      - "playwright.damoon-operational.config.mjs"
       - ".github/workflows/damoon-booking-acceptance.yml"
       - "pnpm-lock.yaml"
   workflow_dispatch:
@@ -60,6 +63,7 @@ jobs:
       CUSTOMER_AUTH_SMS_WORKER_ENABLED: "0"
       DAMOON_E2E_ENABLED: "1"
       DAMOON_APP_URL: http://127.0.0.1:3000
+      DAMOON_SHARED_RUNTIME_URL: http://damoon-hotel.ir:3000
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4
@@ -80,9 +84,11 @@ jobs:
           url="postgresql://postgres:postgres@127.0.0.1:5432/${database}?schema=public"
           auth_secret="$(openssl rand -hex 32)"
           nextauth_secret="$(openssl rand -hex 32)"
+          receipt_root="$(mktemp -d "$RUNNER_TEMP/damoon-receipts.XXXXXXXX")"
           echo "::add-mask::${auth_secret}"
           echo "::add-mask::${nextauth_secret}"
           {
+            echo "MEDIA_STORAGE_ROOT=${receipt_root}"
             echo "DAMOON_CI_DATABASE_NAME=${database}"
             echo "DATABASE_URL=${url}"
             echo "DIRECT_URL=${url}"
@@ -100,22 +106,26 @@ jobs:
       - name: Typecheck source and CI fixtures
         run: pnpm exec tsc --noEmit --pretty false
       - name: Lint changed Damoon and acceptance files
-        run: pnpm exec eslint sites/damoon/api-proxy.mjs sites/damoon/booking.js sites/damoon/tests/standalone-api-proxy.test.mjs scripts/hotel/seed-damoon-booking-e2e.mts scripts/hotel/verify-damoon-disabled-request-gate.mjs tests/e2e/damoon/booking-request-acceptance.spec.mjs playwright.damoon.config.mjs
+        run: pnpm exec eslint sites/damoon/api-proxy.mjs sites/damoon/booking.js sites/damoon/tests/standalone-api-proxy.test.mjs scripts/hotel/seed-damoon-booking-e2e.mts scripts/hotel/verify-damoon-disabled-request-gate.mjs tests/e2e/damoon/booking-request-acceptance.spec.mjs tests/e2e/damoon/shared-runtime-booking-acceptance.spec.mjs playwright.damoon.config.mjs
       - name: Apply repository migrations to disposable PostgreSQL
         run: pnpm exec prisma migrate deploy
       - name: Seed synthetic Damoon and foreign tenant fixtures
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs scripts/hotel/seed-damoon-booking-e2e.mts
       - name: Map synthetic tenant domains on runner loopback
         shell: bash
-        run: echo "127.0.0.1 damoon-hotel.ir ${DAMOON_FOREIGN_HOST}" | sudo tee -a /etc/hosts >/dev/null
+        run: echo "127.0.0.1 damoon-hotel.ir damoon-hotel.localhost ${DAMOON_FOREIGN_HOST}" | sudo tee -a /etc/hosts >/dev/null
       - name: Install Chromium for isolated browser acceptance
         run: pnpm exec playwright install --with-deps chromium
       - name: Verify latest guest tracking response wins
         run: pnpm exec node --test sites/damoon/tests/booking-tracking-latest-submit.test.mjs
+      - name: Verify shared public guest booking bundle
+        run: pnpm exec node --test tests/damoon-public-booking-module.test.mjs
       - name: Start real Next API backend
         shell: bash
         run: |
           set -euo pipefail
+          export HOTEL_PUBLICATION_OPERATIONAL_ENABLED=1
+          export HOTEL_GUEST_BOOKING_REQUEST_ENABLED=1
           nohup env NODE_ENV=development ./node_modules/.bin/next dev --hostname 0.0.0.0 --port 3000 > "$RUNNER_TEMP/damoon-next.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/damoon-next.pid"
       - name: Wait for authenticated API backend
@@ -128,6 +138,12 @@ jobs:
           done
           tail -n 100 "$RUNNER_TEMP/damoon-next.log"
           exit 1
+      - name: Verify shared public bundle against the real Next APIs and disposable database
+        id: run_shared_browser
+        shell: bash
+        env:
+          NODE_ENV: test
+        run: node --test tests/e2e/damoon/shared-runtime-booking-acceptance.spec.mjs
       - name: Start restricted standalone Damoon server
         shell: bash
         run: |
@@ -145,6 +161,7 @@ jobs:
           cat "$RUNNER_TEMP/damoon-static.log"
           exit 1
       - name: Run focused standalone bridge and browser request acceptance
+        id: run_bridge_browser
         shell: bash
         env:
           NODE_ENV: test
@@ -153,6 +170,33 @@ jobs:
           pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/unit/hotel-cms/hotel-cms-dashboard-navigation.test.ts
           node --test sites/damoon/tests/standalone-api-proxy.test.mjs
           pnpm exec playwright test --config=playwright.damoon.config.mjs
+      - name: Restart isolated API with operational fixture gates
+        if: github.event_name == 'pull_request' && github.head_ref == 'codex/damoon-phase1-operational-20261114'
+        shell: bash
+        run: |
+          set -euo pipefail
+          kill "$(cat "$RUNNER_TEMP/damoon-next.pid")" 2>/dev/null || true
+          for attempt in $(seq 1 20); do
+            if ! curl --silent --max-time 1 http://127.0.0.1:3000/api/auth/csrf >/dev/null; then break; fi
+            sleep 1
+          done
+          nohup env NODE_ENV=development HOTEL_OPERATIONAL_RESERVATIONS_ENABLED=1 HOTEL_GUEST_PORTAL_ENABLED=1 HOTEL_OFFLINE_PAYMENT_OPERATIONAL_ENABLED=1 ./node_modules/.bin/next dev --hostname 0.0.0.0 --port 3000 > "$RUNNER_TEMP/damoon-next-operational.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/damoon-next.pid"
+          for attempt in $(seq 1 60); do
+            if curl --silent --show-error --max-time 3 http://127.0.0.1:3000/api/auth/csrf >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          tail -n 100 "$RUNNER_TEMP/damoon-next-operational.log"
+          exit 1
+      - name: Run isolated operational guest and reception browser acceptance
+        id: operational_browser
+        if: github.event_name == 'pull_request' && github.head_ref == 'codex/damoon-phase1-operational-20261114'
+        env:
+          NODE_ENV: test
+          HOTEL_OPERATIONAL_RESERVATIONS_ENABLED: "1"
+          HOTEL_GUEST_PORTAL_ENABLED: "1"
+          HOTEL_OFFLINE_PAYMENT_OPERATIONAL_ENABLED: "1"
+        run: pnpm exec playwright test --config=playwright.damoon-operational.config.mjs
       - name: Restart API with the guest-request gate disabled
         shell: bash
         run: |
@@ -165,6 +209,7 @@ jobs:
           nohup env NODE_ENV=development HOTEL_GUEST_BOOKING_REQUEST_ENABLED=0 ./node_modules/.bin/next dev --hostname 0.0.0.0 --port 3000 > "$RUNNER_TEMP/damoon-next-disabled.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/damoon-next.pid"
       - name: Verify disabled guest request gate over the real standalone bridge
+        id: verify_disabled_gate
         shell: bash
         env:
           NODE_ENV: test
@@ -176,13 +221,34 @@ jobs:
             sleep 2
           done
           node scripts/hotel/verify-damoon-disabled-request-gate.mjs
-      - name: Show sanitized service logs on failure
+      - name: Show sanitized service logs and identify the failed acceptance step
         if: failure()
         shell: bash
         run: |
-          for file in "$RUNNER_TEMP/damoon-next.log" "$RUNNER_TEMP/damoon-next-disabled.log" "$RUNNER_TEMP/damoon-static.log"; do
-            if [[ -f "$file" ]]; then tail -n 120 "$file"; fi
+          {
+            echo '## Damoon isolated acceptance failure'
+            echo '- Database: workflow-owned disposable PostgreSQL 17; cleanup runs unconditionally.'
+            if [[ '${{ steps.run_bridge_browser.outcome }}' == 'failure' ]]; then echo '- Failed step: Run focused standalone bridge and browser request acceptance'; fi
+            if [[ '${{ steps.run_shared_browser.outcome }}' == 'failure' ]]; then echo '- Failed step: Verify shared public bundle against the real Next APIs and disposable database'; fi
+            if [[ '${{ steps.operational_browser.outcome }}' == 'failure' ]]; then echo '- Failed step: Run isolated operational guest and reception browser acceptance'; fi
+            if [[ '${{ steps.verify_disabled_gate.outcome }}' == 'failure' ]]; then echo '- Failed step: Verify disabled guest request gate over the real standalone bridge'; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          for file in "$RUNNER_TEMP/damoon-next.log" "$RUNNER_TEMP/damoon-next-operational.log" "$RUNNER_TEMP/damoon-next-disabled.log" "$RUNNER_TEMP/damoon-static.log"; do
+            if [[ -f "$file" ]]; then
+              echo "Sanitized excerpt: $(basename "$file")"
+              tail -n 120 "$file" | sed -E 's/(authorization|cookie|set-cookie)(: ?)[^ ]*/\1\2[REDACTED]/Ig; s/(token|secret|password)=([^& ]+)/\1=[REDACTED]/Ig; s/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/[REDACTED-JWT]/g'
+            fi
           done
+      - name: Retain failure-only browser screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: damoon-browser-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            .tmp/damoon-operational-playwright-results/**/test-failed-*.png
+            .tmp/damoon-playwright-results/**/test-failed-*.png
+          if-no-files-found: ignore
+          retention-days: 3
       - name: Stop task-owned servers and drop only the disposable database
         if: always()
         shell: bash
@@ -193,4 +259,5 @@ jobs:
           done
           if [[ "${DAMOON_CI_DATABASE_NAME:-}" =~ ^damoon_[a-f0-9]{16}$ ]]; then
             psql "postgresql://postgres:postgres@127.0.0.1:5432/postgres" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS ${DAMOON_CI_DATABASE_NAME} WITH (FORCE)"
+            echo "Disposable database cleanup completed for ${DAMOON_CI_DATABASE_NAME}."
           fi

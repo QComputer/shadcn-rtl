@@ -31,6 +31,13 @@ async function captureScreenshot(page, filePath) {
     await session.detach();
   }
 }
+async function waitForRetailHydration(page) {
+  await page.waitForFunction(() => {
+    const control = document.querySelector("#categories button");
+    return control && Object.keys(control).some((key) => key.startsWith("__reactProps$"));
+  });
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+}
 let context;
 let traceStarted = false;
 try {
@@ -68,7 +75,7 @@ try {
   const response = await page.goto(`${baseUrl}/fa/retail/${encodeURIComponent(tenant)}`, { waitUntil: "domcontentloaded" });
   assert.equal(response?.status(), 200, "public homepage responds successfully");
   await page.locator("#products [data-retail-product-card]").first().waitFor();
-  await page.waitForLoadState("networkidle");
+  await waitForRetailHydration(page);
   const cards = page.locator("#products [data-retail-product-card]");
   const initialNames = await cards.locator("h3").allTextContents().catch(async () => cards.locator("article").allTextContents());
   const initialApi = records.filter((x) => x.kind === "catalog-api" && x.phase === "request");
@@ -104,9 +111,12 @@ try {
     await pageNav.getByRole("button", { name: "قبلی" }).click();
     await page1Response;
     await page.getByText(/صفحه ۱ از/).waitFor();
+    const returnedPage1Ids = await cards.evaluateAll((items) => items.map((item) => item.querySelector('a[href*="/product/"]')?.getAttribute("href")).filter(Boolean));
     const backRequest = records.filter((x) => x.kind === "catalog-api" && x.phase === "request").at(-1);
     assert.equal(backRequest.page, 1); assert.equal(backRequest.limit, 20); assert.equal(backRequest.tenant, tenant);
-    outcomes.push({ name: "page-1-2-1", result: "passed", page2VisibleCards: page2Cards.length, requests: [request, backRequest] });
+    assert.deepEqual(returnedPage1Ids, page1Ids, "page 1 product identity and order remain stable after returning from page 2");
+    assert.equal(new Set([...page1Ids, ...page2Cards]).size, 25, "page boundaries contain no duplicate or missing product identities");
+    outcomes.push({ name: "page-1-2-1", result: "passed", page2VisibleCards: page2Cards.length, orderedPage1Ids: page1Ids, orderedPage2Ids: page2Cards, requests: [request, backRequest] });
   } else {
     outcomes.push({ name: "page-1-2-1", result: "skipped", reason: "Seed tenant has no second page; dedicated 25-product fixture is required" });
   }
@@ -212,6 +222,7 @@ try {
   const catalogRequestsBeforeRemount = records.filter((item) => item.kind === "catalog-api" && item.phase === "request").length;
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.locator("#products [data-retail-product-card]").first().waitFor();
+  await waitForRetailHydration(page);
   const remountCatalogRequestCount = records.filter((item) => item.kind === "catalog-api" && item.phase === "request").length - catalogRequestsBeforeRemount;
   assert.equal(remountCatalogRequestCount, 0, "page remount reuses the server snapshot without an initial browser catalog request");
   outcomes.push({ name: "remount-no-duplicate-request", result: "passed" });
@@ -237,6 +248,7 @@ try {
   const tenantBResponse = await page.goto(`${baseUrl}/fa/retail/retail-r3-mobile-preview`, { waitUntil: "domcontentloaded" });
   assert.equal(tenantBResponse?.status(), 200);
   await page.locator("#products [data-retail-product-card]").first().waitFor();
+  await waitForRetailHydration(page);
   assert.equal(await page.getByText("کتانی نمونه آوید").count(), 0, "Tenant A product is absent after switching to Tenant B");
   assert.equal(await page.locator("#products [data-retail-product-card]").count(), 5, "Tenant B renders only its five published products");
   const tenantBRequests = records.filter((item) => item.kind === "catalog-api" && item.phase === "request" && item.tenant === "retail-r3-mobile-preview");
@@ -244,6 +256,7 @@ try {
   outcomes.push({ name: "tenant-a-to-b-isolation", result: "passed", visibleCards: 5, initialCatalogApiRequests: tenantBRequests.length });
   const emptyResponse = await page.goto(`${baseUrl}/fa/retail/retail-home-empty-preview`, { waitUntil: "domcontentloaded" });
   assert.equal(emptyResponse?.status(), 200);
+  await waitForRetailHydration(page);
   await page.getByText("محصولی با این مشخصات پیدا نشد. فیلترها را تغییر دهید.").waitFor();
   assert.equal(await page.getByRole("navigation", { name: "صفحه‌های محصولات" }).count(), 0, "empty catalog has no invalid pagination controls");
   const emptyCategoryResponse = page.waitForResponse((response) => response.url().includes("category=empty-category") && response.status() === 200);

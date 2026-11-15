@@ -14,9 +14,12 @@ const browser = await chromium.launch({ headless: true });
 const records = [];
 const consoleRecords = [];
 const expectedInjectedConsole = [];
+const expectedAuthConsole = [];
 const outcomes = [];
 const injectedFailures = [];
 const externalAssetStubs = [];
+const unsafeMediaRequests = [];
+const expectedAuthResponses = [];
 const record = (item) => records.push({ at: new Date().toISOString(), ...item });
 async function captureScreenshot(page, filePath) {
   const session = await page.context().newCDPSession(page);
@@ -51,15 +54,21 @@ try {
   });
   const page = await context.newPage();
   page.on("console", (msg) => {
+    const location = msg.location();
     if (msg.type() === "error" && injectedFailures.length > 0 && /503 \(Service Unavailable\)/i.test(msg.text())) {
       expectedInjectedConsole.push({ type: "expected-injected-api-failure", text: msg.text() });
       return;
     }
-    if (msg.type() === "error" || /hydration|did not match/i.test(msg.text())) consoleRecords.push({ type: msg.type(), text: msg.text() });
+    if (msg.type() === "error" && location.url.includes("/api/retail/v1/favorites") && /401|Unauthorized/i.test(msg.text())) {
+      expectedAuthConsole.push({ type: "expected-anonymous-auth-denial", text: msg.text(), url: location.url });
+      return;
+    }
+    if (msg.type() === "error" || /hydration|did not match/i.test(msg.text())) consoleRecords.push({ type: msg.type(), text: msg.text(), url: location.url });
   });
   page.on("pageerror", (error) => consoleRecords.push({ type: "pageerror", text: error.message }));
   page.on("request", (request) => {
     const url = new URL(request.url());
+    if (url.protocol === "javascript:") unsafeMediaRequests.push({ url: request.url(), referer: request.headers().referer ?? null });
     const catalog = /\/api\/public\/v1\/organizations\/([^/]+)\/products(?:\?|$)/.exec(url.pathname);
     const kind = catalog ? "catalog-api" : request.resourceType() === "document" ? "document" : request.headers()["rsc"] ? "rsc" : request.resourceType() === "image" ? "image-media" : null;
     if (!kind) return;
@@ -70,6 +79,10 @@ try {
     request.__homeRecord = item;
   });
   page.on("response", async (response) => {
+    const responseUrl = new URL(response.url());
+    if (responseUrl.pathname === "/api/retail/v1/favorites" && response.status() === 401) {
+      expectedAuthResponses.push({ url: response.url(), status: response.status() });
+    }
     const item = response.request().__homeRecord;
     if (item) record({ ...item, phase: "response", status: response.status() });
   });
@@ -244,10 +257,22 @@ try {
     "/fa/retail/retail-r3-fashion-preview/product/avid-preview",
     "/fa/retail-r3-fashion-preview/shop/product/avid-preview",
   ]) {
+    const legacyProductApi = routePath.includes("/shop/product/")
+      ? page.waitForResponse((response) => response.url().includes("/api/public/products/avid-preview?organizationSlug=retail-r3-fashion-preview") && response.status() === 200)
+      : null;
     const detail = await page.goto(`${baseUrl}${routePath}`, { waitUntil: "domcontentloaded" });
     assert.equal(detail?.status(), 200, `product detail route renders: ${routePath}`);
     await page.getByRole("heading", { name: "کتانی نمونه آوید", level: 1 }).waitFor();
+    if (legacyProductApi) {
+      const response = await legacyProductApi;
+      const payload = await response.json();
+      assert.equal(payload.product.image, "/retail-preview/preview-fashion-campaign.png", "legacy detail retains its tenant-owned safe primary image");
+      assert.deepEqual(payload.product.images, [], "legacy detail excludes duplicate, private and cross-tenant media");
+      assert.equal(JSON.stringify(payload).includes("javascript:"), false, "legacy public product payload excludes unsafe URL schemes");
+    }
   }
+  assert.equal(unsafeMediaRequests.length, 0, "no browser request uses an unsafe media URL scheme");
+  assert.equal(expectedAuthResponses.length >= 1, true, "anonymous favorites reads remain denied by the real API");
   outcomes.push({ name: "both-product-detail-routes", result: "passed" });
 
   const tenantBResponse = await page.goto(`${baseUrl}/fa/retail/retail-r3-mobile-preview`, { waitUntil: "domcontentloaded" });
@@ -280,7 +305,7 @@ try {
   if (context && traceStarted) await context.tracing.stop({ path: path.join(outputDir, "homepage-trace.zip") }).catch(() => {});
   await fs.writeFile(path.join(outputDir, "network-requests.json"), JSON.stringify(records, null, 2));
   await fs.writeFile(path.join(outputDir, "browser-console.json"), JSON.stringify(consoleRecords, null, 2));
-  await fs.writeFile(path.join(outputDir, "homepage-browser-results.json"), JSON.stringify({ baseUrl, tenant, outcomes, injectedFailures, expectedInjectedConsole, externalAssetStubs, consoleErrors: consoleRecords.length }, null, 2));
+  await fs.writeFile(path.join(outputDir, "homepage-browser-results.json"), JSON.stringify({ baseUrl, tenant, outcomes, injectedFailures, expectedInjectedConsole, expectedAuthResponses, expectedAuthConsole, externalAssetStubs, unsafeMediaRequests, consoleErrors: consoleRecords.length }, null, 2));
   await browser.close();
 }
 console.log(JSON.stringify({ outcomes, requestCount: records.length, artifacts: outputDir }, null, 2));

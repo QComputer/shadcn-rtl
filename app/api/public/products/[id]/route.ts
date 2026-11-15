@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { canReadAiMediaEntityAttachmentColumns } from "@/lib/services/ai-media-entity-attachment-service";
 
+function isSafePublicMediaUrl(value: string) {
+  if (value.startsWith("/") && !value.startsWith("//")) return true;
+  try { return new URL(value).protocol === "https:"; } catch { return false; }
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -43,7 +48,8 @@ export async function GET(
         description: true,
         basePrice: true,
         image: true,
-        images: { select: { url: true } },
+        organizationId: true,
+        images: { select: { url: true, organizationId: true, access: true } },
         ...(includeAiMediaAttachment ? { aiPrimaryMediaAssetId: true } : {}),
         sku: true,
         trackInventory: true,
@@ -85,6 +91,15 @@ export async function GET(
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
+    const publicImages = product.images.filter((image) => image.access === "PUBLIC"
+      && (!image.organizationId || image.organizationId === product.organizationId)
+      && isSafePublicMediaUrl(image.url));
+    const image = product.image && isSafePublicMediaUrl(product.image)
+      && (product.images.length === 0 || publicImages.some((candidate) => candidate.url === product.image))
+      ? product.image
+      : publicImages[0]?.url ?? null;
+    const images = [...new Set(publicImages.map((candidate) => candidate.url))];
+
     return NextResponse.json({
       product: {
         id: product.id,
@@ -92,8 +107,8 @@ export async function GET(
         name: product.name,
         description: product.description,
         basePrice: product.basePrice,
-        image: product.image,
-        images: product.images.map((img) => img.url),
+        image,
+        images: images.filter((url) => url !== image),
         aiPrimaryMediaAssetId: includeAiMediaAttachment ? product.aiPrimaryMediaAssetId ?? null : null,
         sku: product.sku,
         trackInventory: product.trackInventory,

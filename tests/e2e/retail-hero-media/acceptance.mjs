@@ -90,7 +90,6 @@ try {
   context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, baseURL: base.href });
   await context.addInitScript(() => localStorage.setItem("shadcn-rtl-theme", "system"));
   context.setDefaultNavigationTimeout(90_000);
-  await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
   page = await context.newPage();
   page.on("pageerror", error => report.console.push({ type: "pageerror", message: error.message.slice(0, 500) }));
   page.on("console", message => { if (message.type() === "error") report.console.push({ type: "console", message: message.text().slice(0, 500) }); });
@@ -110,7 +109,8 @@ try {
   await page.locator("#password").fill(password);
   await page.locator('form button[type="submit"]').click();
   await page.waitForURL(url => url.pathname === studioPath, { timeout: 60_000, waitUntil: "domcontentloaded" });
-  await context.tracing.start({ screenshots: true, snapshots: true, sources: true });`r`n  await page.getByText("استودیوی وب‌سایت فروشگاه", { exact: true }).waitFor({ state: "visible" });
+  await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
+  await page.getByText("استودیوی وب‌سایت فروشگاه", { exact: true }).waitFor({ state: "visible" });
   const hero = page.locator('section[aria-labelledby="retail-hero-title"]');
   await hero.waitFor({ state: "visible" });
   await hero.getByLabel("تیتر اصلی").fill("Synthetic Aka Shoes hero acceptance · first revision");
@@ -165,7 +165,7 @@ try {
   await dialog.getByRole("button", { name: "بعدی" }).click();
   await assertEventuallyCount(imageButtons, 2);
   const pageTwoFilename = (await imageButtons.nth(0).locator("span").first().textContent()).trim();
-  const selectedSearch = await context.request.get(new URL(`${websiteApiPath}/media?q=${encodeURIComponent("gallery-fixture-25")}`, base).href);
+  const selectedSearch = await context.request.get(new URL(`${websiteApiPath}/media?q=${encodeURIComponent(pageTwoFilename)}`, base).href);
   assert.equal(selectedSearch.status(), 200);
   const selectedMedia = (await selectedSearch.json()).images.find(image => image.filename === pageTwoFilename);
   assert.ok(selectedMedia?.id && selectedMedia.organizationId === orgId);

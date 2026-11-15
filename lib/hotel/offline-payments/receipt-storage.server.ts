@@ -49,7 +49,7 @@ export async function removeHotelPaymentReceipt(organizationId: string, key: str
 export function hotelPaymentReceiptLockId(organizationId: string, key: string) {
   // PostgreSQL advisory locks accept signed BIGINT. Keep the derived value in
   // the non-negative signed range while retaining 63 bits of key entropy.
-  return createHash("sha256").update(`${organizationId}\0${key}`).digest().readBigUInt64BE(0) >> 1n;
+  return createHash("sha256").update(`${organizationId}\0${key}`).digest().readBigUInt64BE(0) >> BigInt(1);
 }
 
 /** Checks the private object without reading its image bytes. */

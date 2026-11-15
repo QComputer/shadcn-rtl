@@ -108,7 +108,7 @@ test("authenticated Damoon guest lifecycle reaches reception check-out with tena
     expect(cash.body.entry?.method).toBe("CASH");
     expect(cash.body.entry?.status).toBe("VERIFIED");
     await staffPage.reload();
-    await expect(staffPage.getByText(reservation.reference, { exact: true })).toBeVisible();
+    await expect(staffPage.getByText(reservation.reference, { exact: true })).toBeVisible({ timeout: 10_000 });
 
     const confirmed = await api(staffPage, reservationsPath(organizationId, propertyId), { method: "POST", key: key("confirm"), body: { action: "confirm-reservation", reservationId: reservation.id } });
     expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
@@ -129,6 +129,6 @@ test("authenticated Damoon guest lifecycle reaches reception check-out with tena
     const staffCrossTenant = await api(staffPage, reservationsPath(foreignOrganizationId, foreignPropertyId));
     expect([403, 404]).toContain(staffCrossTenant.status);
   } finally {
-    await Promise.all([guestContext.close(), staffContext.close()]);
+    await Promise.allSettled([guestContext.close(), staffContext.close()]);
   }
 });

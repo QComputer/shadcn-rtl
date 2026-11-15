@@ -204,6 +204,7 @@ try {
   const previewFrame = page.frameLocator('iframe[title="پیش‌نمایش خصوصی وب‌سایت فروشگاه"]');
   const previewHero = previewFrame.locator("[data-retail-managed-hero]");
   await previewHero.waitFor({ state: "visible" });
+  await page.getByRole("button", { name: /رومیزی/ }).click();
   await waitForHeroImageCurrentSrc(previewHero.locator("img").first(), pageTwoFilename);
   await page.getByRole("button", { name: /موبایل/ }).click();
   await waitForHeroImageCurrentSrc(previewHero.locator("img").first(), "aka-lookbook-green-yellow.webp");
@@ -248,6 +249,7 @@ try {
   await page.getByRole("button", { name: "پیش‌نمایش ذخیره‌شده" }).click();
   const uploadedPreview = page.frameLocator('iframe[title="پیش‌نمایش خصوصی وب‌سایت فروشگاه"]').locator("[data-retail-managed-hero]");
   await uploadedPreview.waitFor({ state: "visible" });
+  await page.getByRole("button", { name: /رومیزی/ }).click();
   await waitForHeroImageCurrentSrc(uploadedPreview.locator("img").first(), pageTwoFilename);
   await page.getByRole("button", { name: /موبایل/ }).click();
   await waitForHeroImageCurrentSrc(uploadedPreview.locator("img").first(), uploaded.filename);

@@ -156,6 +156,7 @@ async function createAndPublish({ browser, email, locale, organization, category
   }
   await previewImage.click();
   assert.equal(await previewImage.getAttribute("aria-pressed"), "true", "same-tenant PREVIEW media must be attachable to a product");
+  await mediaLibrary.getByRole("button", { name: /^تأیید انتخاب/ }).click();
   await page.getByRole("button", { name: "ذخیره پیش‌نویس" }).click();
   await page.waitForURL((url) => {
     const segments = url.pathname.split("/").filter(Boolean);

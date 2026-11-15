@@ -66,6 +66,7 @@ try {
   if (navExists && await pageNav.getByRole("button", { name: "بعدی" }).isEnabled()) {
     const next = pageNav.getByRole("button", { name: "بعدی" });
     const before = records.filter((x) => x.kind === "catalog-api" && x.phase === "request").length;
+    const page1Ids = await cards.evaluateAll((items) => items.map((item) => item.querySelector('a[href*="/product/"]')?.getAttribute("href")).filter(Boolean));
     const page2Response = page.waitForResponse((r) => r.url().includes("/api/public/v1/organizations/") && new URL(r.url()).searchParams.get("page") === "2" && r.status() === 200);
     await next.click();
     await page2Response;
@@ -76,7 +77,6 @@ try {
     const request = records.filter((x) => x.kind === "catalog-api" && x.phase === "request").at(-1);
     assert.equal(request.page, 2); assert.equal(request.limit, 20); assert.equal(request.tenant, tenant);
     assert.equal(page2Cards.length, 5, "page 2 renders the remaining five products");
-    const page1Ids = await cards.evaluateAll((items) => items.map((item) => item.querySelector('a[href*="/product/"]')?.getAttribute("href")).filter(Boolean));
     assert.equal(new Set([...page1Ids, ...page2Cards]).size, 25, "both pages contain 25 unique product links");
     const page1Response = page.waitForResponse((r) => r.url().includes("/api/public/v1/organizations/") && new URL(r.url()).searchParams.get("page") === "1" && r.status() === 200);
     await pageNav.getByRole("button", { name: "قبلی" }).click();

@@ -231,7 +231,7 @@ test("guest submits a bank transfer and receipt for authorized reception verific
     expect(authorizedReceipt.headers()["content-type"]).toContain("image/png");
     await receptionPanel.getByRole("button", { name: "تأیید و ثبت واریز" }).click();
     await expect(receptionPanel).toContainText("تأییدشده و پرداخت‌شده");
-    await expect(receptionPanel).toContainText(partialAmount);
+    await expect(receptionPanel).toContainText(new Intl.NumberFormat("fa-IR").format(BigInt(partialAmount)));
 
     const finalGuestSummary = await api(guestPage, paymentPath(reservation.id));
     expect(finalGuestSummary.status).toBe(200);

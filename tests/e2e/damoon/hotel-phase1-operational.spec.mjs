@@ -116,13 +116,13 @@ test("authenticated Damoon guest creates a reservation through quote, hold, and 
     const checkIn = daysFromNow(15);
     const checkOut = daysFromNow(16);
     const reservation = await createReservationThroughGuestControls(guestPage, checkIn, checkOut, "Synthetic UI Guest", fixture);
-    expect(reservation.checkIn).toBe(checkIn);
-    expect(reservation.checkOut).toBe(checkOut);
     await guestPage.reload({ waitUntil: "domcontentloaded", timeout: 15_000 });
     await expect(guestPage.getByText(reservation.reference, { exact: true })).toBeVisible();
     const persisted = await api(guestPage, reservationsPath(organizationId, propertyId));
     expect(persisted.status).toBe(200);
-    expect(persisted.body.reservations.some((item) => item.id === reservation.id)).toBe(true);
+    const saved = persisted.body.reservations.find((item) => item.id === reservation.id);
+    expect(saved?.checkIn).toBe(checkIn);
+    expect(saved?.checkOut).toBe(checkOut);
   } finally {
     await Promise.allSettled([guestContext.close()]);
   }

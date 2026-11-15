@@ -112,10 +112,27 @@ export async function POST(request: NextRequest, params: Params) {
     if (!file.size || file.size > MAX_FILE_BYTES) throw new ApiError(413, "Receipt image must be 5 MB or smaller");
     if (!receiptTypes.has(file.type)) throw new ApiError(415, "Unsupported receipt image type");
     const key = await storeHotelPaymentReceipt(scope.organizationId, Buffer.from(await file.arrayBuffer()), file.type);
-    const updated = await offlinePaymentDelegate().updateMany({
-      where: { id: scope.paymentId, organizationId: scope.organizationId, reservationId: scope.reservationId, method: "BANK_TRANSFER", status: "SUBMITTED", receiptKey: null },
-      data: { receiptKey: key },
-    });
+    let updated: { count: number };
+    try {
+      updated = await offlinePaymentDelegate().updateMany({
+        where: { id: scope.paymentId, organizationId: scope.organizationId, reservationId: scope.reservationId, method: "BANK_TRANSFER", status: "SUBMITTED", receiptKey: null },
+        data: { receiptKey: key },
+      });
+    } catch (error) {
+      // A connection failure can happen after PostgreSQL committed. Re-read the exact
+      // tenant-scoped payment before deciding whether this request's private file is orphaned.
+      // If reconciliation itself is unavailable, retain the file; deleting it could break a commit.
+      try {
+        const current = await findPayment(scope);
+        if (current?.receiptKey === key) {
+          return NextResponse.json({ attached: true }, { status: 201, headers: { "Cache-Control": "private, no-store" } });
+        }
+        await removeHotelPaymentReceipt(scope.organizationId, key).catch(() => undefined);
+      } catch {
+        // Preserve an ambiguous private file for later bounded reconciliation.
+      }
+      throw error;
+    }
     if (updated.count !== 1) {
       // Only delete after a definite zero-row update; a database error can have an unknown commit outcome.
       await removeHotelPaymentReceipt(scope.organizationId, key).catch(() => undefined);

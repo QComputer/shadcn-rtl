@@ -96,16 +96,22 @@ jobs:
           pnpm exec prisma validate
           pnpm exec prisma generate
       - name: Apply repository migrations through the local guard
+        id: apply_migrations
         run: pnpm run db:migrate:local
       - name: Run atomic reservation repository acceptance
+        id: atomic_reservation
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-reservation-atomic.local.test.ts
       - name: Run operational reservation acceptance
+        id: operational_reservation
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-operational-reservations.local.test.ts
       - name: Run offline payment acceptance
+        id: offline_payment
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-offline-payments.local.test.ts
       - name: Run offline payment transactional rollback acceptance
+        id: payment_rollback
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-offline-payment-rollback.local.test.ts
       - name: Run private receipt attachment failure acceptance
+        id: receipt_failure
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --experimental-test-module-mocks --test tests/integration/hotel-offline-receipt-attachment-failure.local.test.ts
       - name: Run offline payment authorization tests
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --experimental-test-module-mocks --test tests/unit/hotel-offline-payment-route.test.ts
@@ -116,4 +122,20 @@ jobs:
       - name: Run guest reservation and policy tests
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --experimental-test-module-mocks --test tests/unit/hotel-guest-reservations-route.test.ts tests/unit/hotel-offline-policy-settings.test.tsx tests/unit/hotel-offline-payment-reversal-ui.test.tsx
       - name: Check TypeScript
+        id: hotel_typescript
         run: pnpm exec tsc --noEmit --incremental false
+      - name: Identify failed PostgreSQL acceptance step
+        if: failure()
+        shell: bash
+        run: |
+          {
+            echo '## Hotel PostgreSQL acceptance failure'
+            echo '- PostgreSQL 17 is a job-owned ephemeral service and is destroyed with the GitHub-hosted runner.'
+            if [[ '${{ steps.apply_migrations.outcome }}' == 'failure' ]]; then echo '- Failed step: Apply repository migrations through the local guard'; fi
+            if [[ '${{ steps.atomic_reservation.outcome }}' == 'failure' ]]; then echo '- Failed step: Run atomic reservation repository acceptance'; fi
+            if [[ '${{ steps.operational_reservation.outcome }}' == 'failure' ]]; then echo '- Failed step: Run operational reservation acceptance'; fi
+            if [[ '${{ steps.offline_payment.outcome }}' == 'failure' ]]; then echo '- Failed step: Run offline payment acceptance'; fi
+            if [[ '${{ steps.payment_rollback.outcome }}' == 'failure' ]]; then echo '- Failed step: Run offline payment transactional rollback acceptance'; fi
+            if [[ '${{ steps.receipt_failure.outcome }}' == 'failure' ]]; then echo '- Failed step: Run private receipt attachment failure acceptance'; fi
+            if [[ '${{ steps.hotel_typescript.outcome }}' == 'failure' ]]; then echo '- Failed step: Check TypeScript'; fi
+          } >> "$GITHUB_STEP_SUMMARY"

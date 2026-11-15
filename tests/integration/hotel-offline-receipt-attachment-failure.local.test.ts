@@ -125,18 +125,57 @@ test("receipt upload keeps a post-write database failure private and unattached"
     assert.equal(persistedPayment.status, "SUBMITTED");
 
     const files = await readdir(path.join(mediaRoot, "hotel-payment", org.id));
-    const metadata = files.find((file) => file.endsWith(".meta.json"));
-    assert.ok(metadata, "the real private file write completed before the database failure");
-    const key = metadata!.replace(/\.meta\.json$/, "");
-    const { getPersistentDiskAssetMetadata } = await import("../../lib/storage/persistent-disk-storage");
-    assert.equal((await getPersistentDiskAssetMetadata({ organizationId: org.id, key: `hotel-payment/${org.id}/${key}` }))?.access, "private");
-    const stored = await storage.readHotelPaymentReceipt(org.id, key);
-    assert.deepEqual(stored.buffer, png);
+    assert.equal(files.length, 0, "confirmed rollback removes only this upload's private orphan");
 
     const receiptRead = await GET(new NextRequest(`http://localhost/api/organizations/${org.id}/hotels/${property.id}/reservations/${reservation.id}/offline-payments/${payment.id}/receipt`), routeParams);
     assert.equal(receiptRead.status, 404, "receipt endpoint cannot serve an unattached private object");
-    const publicMedia = await mediaGET(new Request(`http://localhost/api/media/${org.id}/hotel-payment/${org.id}/${key}`), { params: Promise.resolve({ organizationId: org.id, key: ["hotel-payment", org.id, key] }) });
-    assert.equal(publicMedia.status, 404, "generic media route cannot publicly expose Hotel receipt storage");
+
+    // Simulate a lost response after a genuine PostgreSQL commit. Reconciliation must
+    // observe the association and retain the private object rather than deleting it.
+    await db.$executeRawUnsafe(`DROP TRIGGER IF EXISTS "${triggerName}" ON public."HotelOfflinePayment"`);
+    await db.$executeRawUnsafe(`DROP FUNCTION IF EXISTS public."${functionName}"()`);
+    triggerInstalled = false;
+    const retryForm = new FormData();
+    retryForm.append("receipt", new File([png], "receipt-retry.png", { type: "image/png" }));
+    const retry = await POST(new NextRequest(`http://localhost/api/organizations/${org.id}/hotels/${property.id}/reservations/${reservation.id}/offline-payments/${payment.id}/receipt`, {
+      method: "POST", headers: { origin: "http://localhost" }, body: retryForm,
+    }), routeParams);
+    assert.equal(retry.status, 201, "a later retry attaches successfully after confirmed cleanup of the failed attempt");
+    const retriedPayment = await db.hotelOfflinePayment.findUniqueOrThrow({ where: { id: payment.id } });
+    assert.ok(retriedPayment.receiptKey);
+    assert.deepEqual((await storage.readHotelPaymentReceipt(org.id, retriedPayment.receiptKey!)).buffer, png);
+
+    const committedPayment = await db.hotelOfflinePayment.create({ data: {
+      organizationId: org.id, reservationId, method: "BANK_TRANSFER", status: "SUBMITTED", amountToman: BigInt(25_000),
+      recordedByUserId: user.id, bankReference: `receipt-ambiguous-${token}`,
+    } });
+    const { prisma: applicationPrisma } = await import("../../lib/db-runtime");
+    const delegate = applicationPrisma.hotelOfflinePayment;
+    const originalUpdateMany = delegate.updateMany.bind(delegate);
+    let loseResponse = true;
+    delegate.updateMany = (async (...args: Parameters<typeof delegate.updateMany>) => {
+      const result = await originalUpdateMany(...args);
+      if (loseResponse) { loseResponse = false; throw new Error("injected lost database response after commit"); }
+      return result;
+    }) as unknown as typeof delegate.updateMany;
+    try {
+      const committedParams = { params: Promise.resolve({ id: org.id, propertyId: property.id, reservationId: reservation.id, paymentId: committedPayment.id }) };
+      const committedForm = new FormData();
+      committedForm.append("receipt", new File([png], "receipt.png", { type: "image/png" }));
+      const committedUpload = await POST(new NextRequest(`http://localhost/api/organizations/${org.id}/hotels/${property.id}/reservations/${reservation.id}/offline-payments/${committedPayment.id}/receipt`, {
+        method: "POST", headers: { origin: "http://localhost" }, body: committedForm,
+      }), committedParams);
+      assert.equal(committedUpload.status, 201, "a confirmed committed attachment is recovered as success");
+      const attached = await db.hotelOfflinePayment.findUniqueOrThrow({ where: { id: committedPayment.id } });
+      assert.ok(attached.receiptKey);
+      assert.deepEqual((await storage.readHotelPaymentReceipt(org.id, attached.receiptKey!)).buffer, png);
+      const publicMedia = await mediaGET(new Request(`http://localhost/api/media/${org.id}/hotel-payment/${org.id}/${attached.receiptKey}`), {
+        params: Promise.resolve({ organizationId: org.id, key: ["hotel-payment", org.id, attached.receiptKey!] }),
+      });
+      assert.equal(publicMedia.status, 404, "generic media route never exposes a committed private receipt");
+    } finally {
+      delegate.updateMany = originalUpdateMany;
+    }
   } finally {
     if (triggerInstalled) {
       await db.$executeRawUnsafe(`DROP TRIGGER IF EXISTS "${triggerName}" ON public."HotelOfflinePayment"`);

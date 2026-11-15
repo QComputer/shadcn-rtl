@@ -139,6 +139,7 @@ jobs:
           tail -n 100 "$RUNNER_TEMP/damoon-next.log"
           exit 1
       - name: Verify shared public bundle against the real Next APIs and disposable database
+        id: run_shared_browser
         shell: bash
         env:
           NODE_ENV: test
@@ -160,6 +161,7 @@ jobs:
           cat "$RUNNER_TEMP/damoon-static.log"
           exit 1
       - name: Run focused standalone bridge and browser request acceptance
+        id: run_bridge_browser
         shell: bash
         env:
           NODE_ENV: test
@@ -187,6 +189,7 @@ jobs:
           tail -n 100 "$RUNNER_TEMP/damoon-next-operational.log"
           exit 1
       - name: Run isolated operational guest and reception browser acceptance
+        id: operational_browser
         if: github.event_name == 'pull_request' && github.head_ref == 'codex/damoon-phase1-operational-20261114'
         env:
           NODE_ENV: test
@@ -206,6 +209,7 @@ jobs:
           nohup env NODE_ENV=development HOTEL_GUEST_BOOKING_REQUEST_ENABLED=0 ./node_modules/.bin/next dev --hostname 0.0.0.0 --port 3000 > "$RUNNER_TEMP/damoon-next-disabled.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/damoon-next.pid"
       - name: Verify disabled guest request gate over the real standalone bridge
+        id: verify_disabled_gate
         shell: bash
         env:
           NODE_ENV: test
@@ -217,13 +221,34 @@ jobs:
             sleep 2
           done
           node scripts/hotel/verify-damoon-disabled-request-gate.mjs
-      - name: Show sanitized service logs on failure
+      - name: Show sanitized service logs and identify the failed acceptance step
         if: failure()
         shell: bash
         run: |
+          {
+            echo '## Damoon isolated acceptance failure'
+            echo '- Database: workflow-owned disposable PostgreSQL 17; cleanup runs unconditionally.'
+            if [[ '${{ steps.run_bridge_browser.outcome }}' == 'failure' ]]; then echo '- Failed step: Run focused standalone bridge and browser request acceptance'; fi
+            if [[ '${{ steps.run_shared_browser.outcome }}' == 'failure' ]]; then echo '- Failed step: Verify shared public bundle against the real Next APIs and disposable database'; fi
+            if [[ '${{ steps.operational_browser.outcome }}' == 'failure' ]]; then echo '- Failed step: Run isolated operational guest and reception browser acceptance'; fi
+            if [[ '${{ steps.verify_disabled_gate.outcome }}' == 'failure' ]]; then echo '- Failed step: Verify disabled guest request gate over the real standalone bridge'; fi
+          } >> "$GITHUB_STEP_SUMMARY"
           for file in "$RUNNER_TEMP/damoon-next.log" "$RUNNER_TEMP/damoon-next-operational.log" "$RUNNER_TEMP/damoon-next-disabled.log" "$RUNNER_TEMP/damoon-static.log"; do
-            if [[ -f "$file" ]]; then tail -n 120 "$file"; fi
+            if [[ -f "$file" ]]; then
+              echo "Sanitized excerpt: $(basename "$file")"
+              tail -n 120 "$file" | sed -E 's/(authorization|cookie|set-cookie)(: ?)[^ ]*/\1\2[REDACTED]/Ig; s/(token|secret|password)=([^& ]+)/\1=[REDACTED]/Ig; s/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/[REDACTED-JWT]/g'
+            fi
           done
+      - name: Retain failure-only browser screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: damoon-browser-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            .tmp/damoon-operational-playwright-results/**/test-failed-*.png
+            .tmp/damoon-playwright-results/**/test-failed-*.png
+          if-no-files-found: ignore
+          retention-days: 3
       - name: Stop task-owned servers and drop only the disposable database
         if: always()
         shell: bash
@@ -234,4 +259,5 @@ jobs:
           done
           if [[ "${DAMOON_CI_DATABASE_NAME:-}" =~ ^damoon_[a-f0-9]{16}$ ]]; then
             psql "postgresql://postgres:postgres@127.0.0.1:5432/postgres" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS ${DAMOON_CI_DATABASE_NAME} WITH (FORCE)"
+            echo "Disposable database cleanup completed for ${DAMOON_CI_DATABASE_NAME}."
           fi

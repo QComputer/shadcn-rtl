@@ -11,6 +11,20 @@ import { createPrismaHotelOfflinePaymentRepository } from "../../lib/hotel/offli
 const enabled = process.env.HOTEL_OPERATIONAL_RESERVATION_ACCEPTANCE === "1";
 const day = (value: string) => new Date(`${value}T00:00:00.000Z`);
 const stay = { checkIn: "2027-12-10", checkOut: "2027-12-12", adults: 1, childAges: [] as number[] };
+function deferred<T = void>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((done) => { resolve = done; });
+  return { promise, resolve };
+}
+async function waitForPostgresLockWait(db: PrismaClient, queryIncludes: string) {
+  const deadline = Date.now() + 15_000;
+  while (Date.now() < deadline) {
+    const rows = await db.$queryRaw<Array<{ query: string }>>`SELECT query FROM pg_stat_activity WHERE datname=current_database() AND pid <> pg_backend_pid() AND wait_event_type='Lock'`;
+    if (rows.some((row) => row.query.includes(queryIncludes))) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(`Timed out waiting for a verified PostgreSQL lock wait: ${queryIncludes}`);
+}
 type OperationalResult = {
   simulated?: boolean;
   confirmationPolicy?: { manualConfirmationPolicy?: string; allowedOfflinePaymentMethods?: string[]; minimumVerifiedDepositAmount?: string | null; pendingPaymentMinutes?: number };
@@ -239,30 +253,105 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     const depositedConfirmation = await service.execute(receptionist, a.id, pa.id, { action: "confirm-reservation", reservationId: depositReservation.reservation!.id }, `confirm-verified-${token}`) as OperationalResult;
     assert.equal(depositedConfirmation.reservation?.status, "CONFIRMED", "only the verified reservation balance satisfies minimum deposit policy");
 
-    // Exercise actual cancellation and manual verification concurrently against the same reservation.
-    const raceQuote = await quote(guestA, a.id, pa.id, roomA.id, rateA.id, `quote-${token}-verify-cancel`);
-    const raceHold = await service.execute(guestA, a.id, pa.id, { action: "hold", quoteId: raceQuote.id }, `hold-${token}-verify-cancel`) as OperationalResult;
-    const raceReservation = await service.execute(guestA, a.id, pa.id, { action: "reserve", quoteId: raceQuote.id, holdId: raceHold.hold!.id, guests }, `reserve-${token}-verify-cancel`) as OperationalResult;
-    const raceId = raceReservation.reservation!.id;
-    await service.execute(guestA, a.id, pa.id, { action: "select-payment-method", reservationId: raceId, method: "BANK_TRANSFER" }, `select-race-${token}`);
-    const raceTransfer = await payments.submitBankTransfer({ actor: { organizationId: a.id, userId: customer.id, permissions: ["hotel:offline-payment:submit-transfer"] }, reservationId: raceId, amountToman: BigInt(10_000), bankReference: `race-${token}`, idempotencyKey: `submit-race-${token}` });
-    assert.equal(raceTransfer.outcome, "APPLIED");
-    if (raceTransfer.outcome !== "APPLIED") throw new Error("Race transfer fixture was not submitted");
-    const beforeRace = await db.hotelInventory.findMany({ where: { organizationId: a.id, propertyId: pa.id, roomTypeId: roomA.id, date: { gte: new Date(`${stay.checkIn}T00:00:00.000Z`), lt: new Date(`${stay.checkOut}T00:00:00.000Z`) } }, orderBy: { date: "asc" } });
-    const [cancelRace, verifyRace] = await Promise.all([
-      service.execute(guestA, a.id, pa.id, { action: "cancel", reservationId: raceId }, `cancel-verify-race-${token}`),
-      payments.verifyBankTransfer({ actor: { organizationId: a.id, userId: staff.id, permissions: ["hotel:offline-payment:verify-transfer"] }, reservationId: raceId, ledgerEntryId: raceTransfer.entry.id, idempotencyKey: `verify-cancel-race-${token}` }),
-    ]);
-    assert.equal((cancelRace as OperationalResult).reservation?.status, "CANCELLED");
-    assert.ok(["APPLIED", "PAYMENT_NOT_PENDING"].includes(verifyRace.outcome));
-    const racePersisted = await db.hotelReservation.findUniqueOrThrow({ where: { id: raceId } });
-    assert.equal(racePersisted.status, "CANCELLED");
-    assert.equal(racePersisted.paidAmount, verifyRace.outcome === "APPLIED" ? BigInt(10_000) : BigInt(0));
-    const raceEntry = await db.hotelOfflinePayment.findUniqueOrThrow({ where: { id: raceTransfer.entry.id } });
-    assert.equal(raceEntry.status, verifyRace.outcome === "APPLIED" ? "VERIFIED" : "SUBMITTED");
-    const afterRace = await db.hotelInventory.findMany({ where: { organizationId: a.id, propertyId: pa.id, roomTypeId: roomA.id, date: { gte: new Date(`${stay.checkIn}T00:00:00.000Z`), lt: new Date(`${stay.checkOut}T00:00:00.000Z`) } }, orderBy: { date: "asc" } });
-    assert.equal(afterRace.length, 2);
-    assert.deepEqual(afterRace.map((row) => row.booked), beforeRace.map((row) => row.booked - 1), "cancellation releases exactly one booked unit per night");
+    const createRaceFixture = async (suffix: string) => {
+      const q = await quote(guestA, a.id, pa.id, roomA.id, rateA.id, `quote-${token}-${suffix}`);
+      const h = await service.execute(guestA, a.id, pa.id, { action: "hold", quoteId: q.id }, `hold-${token}-${suffix}`) as OperationalResult;
+      const created = await service.execute(guestA, a.id, pa.id, { action: "reserve", quoteId: q.id, holdId: h.hold!.id, guests }, `reserve-${token}-${suffix}`) as OperationalResult;
+      const id = created.reservation!.id;
+      await service.execute(guestA, a.id, pa.id, { action: "select-payment-method", reservationId: id, method: "BANK_TRANSFER" }, `select-${token}-${suffix}`);
+      const submitted = await payments.submitBankTransfer({ actor: { organizationId: a.id, userId: customer.id, permissions: ["hotel:offline-payment:submit-transfer"] }, reservationId: id, amountToman: BigInt(10_000), bankReference: `race-${token}-${suffix}`, idempotencyKey: `submit-${token}-${suffix}` });
+      assert.equal(submitted.outcome, "APPLIED");
+      if (submitted.outcome !== "APPLIED") throw new Error("Race transfer fixture was not submitted");
+      return { id, entryId: submitted.entry.id };
+    };
+    const installBarrierTrigger = async (table: "HotelReservation" | "HotelOfflinePayment", rowId: string, field: "status", value: string, key: string) => {
+      const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
+      const fn = `hotel_race_barrier_fn_${suffix}`;
+      const trigger = `hotel_race_barrier_${suffix}`;
+      await db.$executeRawUnsafe(`CREATE FUNCTION public."${fn}"() RETURNS trigger LANGUAGE plpgsql AS $body$ BEGIN IF NEW."id" = '${rowId}' AND NEW."${field}"::text = '${value}' THEN PERFORM pg_advisory_xact_lock(${key}); END IF; RETURN NEW; END $body$`);
+      try { await db.$executeRawUnsafe(`CREATE TRIGGER "${trigger}" BEFORE UPDATE ON public."${table}" FOR EACH ROW EXECUTE FUNCTION public."${fn}"()`); }
+      catch (error) { await db.$executeRawUnsafe(`DROP FUNCTION IF EXISTS public."${fn}"()`); throw error; }
+      return async () => { await db.$executeRawUnsafe(`DROP TRIGGER IF EXISTS "${trigger}" ON public."${table}"`); await db.$executeRawUnsafe(`DROP FUNCTION IF EXISTS public."${fn}"()`); };
+    };
+    const acquireBarrier = async (key: string) => {
+      const held = deferred();
+      const release = deferred();
+      const transaction = db.$transaction(async (tx) => {
+        await tx.$queryRawUnsafe(`SELECT pg_advisory_xact_lock(${key})`);
+        held.resolve();
+        await release.promise;
+      }, { maxWait: 5_000, timeout: 25_000 });
+      await held.promise;
+      return async () => { release.resolve(); await transaction; };
+    };
+    const verifyActor = { organizationId: a.id, userId: staff.id, permissions: ["hotel:offline-payment:verify-transfer"] as const };
+    const inventoryForStay = () => db.hotelInventory.findMany({ where: { organizationId: a.id, propertyId: pa.id, roomTypeId: roomA.id, date: { gte: day(stay.checkIn), lt: day(stay.checkOut) } }, orderBy: { date: "asc" } });
+
+    // Ordering A: cancellation owns the reservation lock before verification starts.
+    const cancelFirst = await createRaceFixture("cancel-lock-first");
+    const cancelFirstBefore = await inventoryForStay();
+    const cancelLockKey = BigInt(`0x${randomUUID().replaceAll("-", "").slice(0, 12)}`).toString();
+    const removeCancelBarrier = await installBarrierTrigger("HotelReservation", cancelFirst.id, "status", "CANCELLED", cancelLockKey);
+    const releaseCancelBarrier = await acquireBarrier(cancelLockKey);
+    let cancelFirstTask!: Promise<unknown>;
+    let verifyAfterCancelTask!: ReturnType<typeof payments.verifyBankTransfer>;
+    try {
+      cancelFirstTask = service.execute(guestA, a.id, pa.id, { action: "cancel", reservationId: cancelFirst.id }, `cancel-${token}-lock-first`);
+      await waitForPostgresLockWait(db, 'UPDATE "HotelReservation"');
+      verifyAfterCancelTask = payments.verifyBankTransfer({ actor: verifyActor, reservationId: cancelFirst.id, ledgerEntryId: cancelFirst.entryId, idempotencyKey: `verify-${token}-cancel-first` });
+      await waitForPostgresLockWait(db, 'FROM "HotelReservation"');
+    } finally { await releaseCancelBarrier(); await removeCancelBarrier(); }
+    const cancelFirstResult = await cancelFirstTask as OperationalResult;
+    const verifyAfterCancel = await verifyAfterCancelTask!;
+    assert.equal(cancelFirstResult.reservation?.status, "CANCELLED");
+    assert.equal(verifyAfterCancel.outcome, "PAYMENT_NOT_PENDING");
+    const cancelFirstRow = await db.hotelReservation.findUniqueOrThrow({ where: { id: cancelFirst.id } });
+    const cancelFirstEntry = await db.hotelOfflinePayment.findUniqueOrThrow({ where: { id: cancelFirst.entryId } });
+    assert.equal(cancelFirstRow.status, "CANCELLED"); assert.equal(cancelFirstRow.paidAmount, BigInt(0));
+    assert.equal(cancelFirstEntry.status, "SUBMITTED"); assert.equal(cancelFirstEntry.verifiedAt, null);
+    assert.equal(await db.hotelOfflinePaymentAuditEvent.count({ where: { organizationId: a.id, ledgerEntryId: cancelFirst.entryId, eventType: "BANK_TRANSFER_VERIFIED" } }), 0);
+    assert.equal(await db.hotelOfflinePaymentAuditEvent.count({ where: { organizationId: a.id, ledgerEntryId: cancelFirst.entryId, eventType: "BANK_TRANSFER_SUBMITTED" } }), 1);
+    assert.equal(await db.hotelBookingHold.count({ where: { organizationId: a.id, reservationId: cancelFirst.id, status: "RELEASED" } }), 1);
+    const cancelAudit = await db.hotelInventoryIdempotency.findUnique({ where: { organizationId_operationScope_idempotencyKey: { organizationId: a.id, operationScope: "HOTEL_OPERATIONAL_ACTION", idempotencyKey: `cancel-${token}-lock-first` } } });
+    assert.equal(cancelAudit?.status, "COMPLETED", "completed cancellation is retained in the operation audit/idempotency record");
+    const cancelFirstAfter = await inventoryForStay();
+    assert.deepEqual(cancelFirstAfter.map((row) => row.booked), cancelFirstBefore.map((row) => row.booked - 1));
+    const cancelReplay = await service.execute(guestA, a.id, pa.id, { action: "cancel", reservationId: cancelFirst.id }, `cancel-${token}-lock-first`) as OperationalResult;
+    const verifyReplay = await payments.verifyBankTransfer({ actor: verifyActor, reservationId: cancelFirst.id, ledgerEntryId: cancelFirst.entryId, idempotencyKey: `verify-${token}-cancel-first` });
+    assert.equal(cancelReplay.reservation?.status, "CANCELLED"); assert.equal(verifyReplay.outcome, "PAYMENT_NOT_PENDING");
+
+    // Ordering B: verification owns the reservation lock before cancellation starts.
+    const verifyFirst = await createRaceFixture("verify-lock-first");
+    const verifyFirstBefore = await inventoryForStay();
+    const verifyLockKey = BigInt(`0x${randomUUID().replaceAll("-", "").slice(0, 12)}`).toString();
+    const removeVerifyBarrier = await installBarrierTrigger("HotelOfflinePayment", verifyFirst.entryId, "status", "VERIFIED", verifyLockKey);
+    const releaseVerifyBarrier = await acquireBarrier(verifyLockKey);
+    let verifyFirstTask!: ReturnType<typeof payments.verifyBankTransfer>;
+    let cancelAfterVerifyTask!: Promise<unknown>;
+    try {
+      verifyFirstTask = payments.verifyBankTransfer({ actor: verifyActor, reservationId: verifyFirst.id, ledgerEntryId: verifyFirst.entryId, idempotencyKey: `verify-${token}-verify-first` });
+      await waitForPostgresLockWait(db, 'UPDATE "HotelOfflinePayment"');
+      cancelAfterVerifyTask = service.execute(guestA, a.id, pa.id, { action: "cancel", reservationId: verifyFirst.id }, `cancel-${token}-verify-first`);
+      await waitForPostgresLockWait(db, 'FROM "HotelReservation"');
+    } finally { await releaseVerifyBarrier(); await removeVerifyBarrier(); }
+    const verifyBeforeCancel = await verifyFirstTask!;
+    const cancelAfterVerify = await cancelAfterVerifyTask as OperationalResult;
+    assert.equal(verifyBeforeCancel.outcome, "APPLIED"); assert.equal(cancelAfterVerify.reservation?.status, "CANCELLED");
+    const verifyFirstRow = await db.hotelReservation.findUniqueOrThrow({ where: { id: verifyFirst.id } });
+    const verifyFirstEntry = await db.hotelOfflinePayment.findUniqueOrThrow({ where: { id: verifyFirst.entryId } });
+    assert.equal(verifyFirstRow.status, "CANCELLED"); assert.equal(verifyFirstRow.paidAmount, BigInt(10_000));
+    assert.equal(verifyFirstEntry.status, "VERIFIED");
+    assert.equal(await db.hotelOfflinePaymentAuditEvent.count({ where: { organizationId: a.id, ledgerEntryId: verifyFirst.entryId, eventType: "BANK_TRANSFER_VERIFIED" } }), 1);
+    assert.equal(await db.hotelOfflinePaymentAuditEvent.count({ where: { organizationId: a.id, ledgerEntryId: verifyFirst.entryId, eventType: "BANK_TRANSFER_SUBMITTED" } }), 1);
+    assert.equal(await db.hotelBookingHold.count({ where: { organizationId: a.id, reservationId: verifyFirst.id, status: "RELEASED" } }), 1);
+    const verifyFirstAfter = await inventoryForStay();
+    assert.deepEqual(verifyFirstAfter.map((row) => row.booked), verifyFirstBefore.map((row) => row.booked - 1));
+    assert.equal(await db.hotelOfflinePaymentAuditEvent.count({ where: { organizationId: a.id, ledgerEntryId: verifyFirst.entryId } }), 2, "submission and verification are recorded once; cancellation does not invent a refund/reversal");
+    const verifyFirstCancelAudit = await db.hotelInventoryIdempotency.findUnique({ where: { organizationId_operationScope_idempotencyKey: { organizationId: a.id, operationScope: "HOTEL_OPERATIONAL_ACTION", idempotencyKey: `cancel-${token}-verify-first` } } });
+    assert.equal(verifyFirstCancelAudit?.status, "COMPLETED");
+    const verifyFirstReplay = await payments.verifyBankTransfer({ actor: verifyActor, reservationId: verifyFirst.id, ledgerEntryId: verifyFirst.entryId, idempotencyKey: `verify-${token}-verify-first` });
+    const cancelFirstReplay = await service.execute(guestA, a.id, pa.id, { action: "cancel", reservationId: verifyFirst.id }, `cancel-${token}-verify-first`) as OperationalResult;
+    assert.equal(verifyFirstReplay.outcome, "REPLAY"); assert.equal(cancelFirstReplay.reservation?.status, "CANCELLED");
 
     // Synthetic confirmation is test-only fixture setup; no gateway or payment request is involved.
     await db.hotelInventory.updateMany({ where: { organizationId: a.id, roomTypeId: roomA.id }, data: { allotment: 4 } });

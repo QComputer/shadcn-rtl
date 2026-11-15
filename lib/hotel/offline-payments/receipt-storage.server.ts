@@ -1,9 +1,11 @@
 import "server-only";
 
 import { createHash, randomUUID } from "node:crypto";
+import { lstat, opendir, realpath } from "node:fs/promises";
+import path from "node:path";
 import { ApiError } from "@/lib/api-guards";
 import { validateImageBuffer } from "@/lib/media-storage";
-import { createPersistentDiskApplicationStorage, readPersistentDiskAsset } from "@/lib/storage/persistent-disk-storage";
+import { createPersistentDiskApplicationStorage, getPersistentDiskAssetMetadata, readPersistentDiskAsset } from "@/lib/storage/persistent-disk-storage";
 
 const extensions = new Map([["image/jpeg", "jpg"], ["image/png", "png"], ["image/webp", "webp"]]);
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -41,4 +43,40 @@ export async function readHotelPaymentReceipt(organizationId: string, key: strin
 /** Used to remove a newly stored object if attaching it to the ledger fails. */
 export async function removeHotelPaymentReceipt(organizationId: string, key: string) {
   await createPersistentDiskApplicationStorage().remove(reference(organizationId, key));
+}
+
+/** Enumerates only aged, correctly-namespaced private receipt objects for one tenant. */
+export async function listStaleHotelPaymentReceipts(input: { organizationId: string; olderThan: Date; limit: number }) {
+  if (!/^[A-Za-z0-9_-]+$/.test(input.organizationId) || !Number.isInteger(input.limit) || input.limit < 1 || input.limit > 100
+    || !Number.isFinite(input.olderThan.getTime())) throw new ApiError(400, "Invalid receipt reconciliation scope");
+  const configuredRoot = process.env.MEDIA_STORAGE_ROOT?.trim();
+  if (!configuredRoot || !path.isAbsolute(configuredRoot)) throw new ApiError(503, "Private receipt storage is unavailable");
+  const root = path.resolve(configuredRoot);
+  const rootStat = await lstat(root);
+  if (rootStat.isSymbolicLink() || !rootStat.isDirectory()) throw new ApiError(503, "Private receipt storage is unavailable");
+  const canonicalRoot = await realpath(root);
+  const base = path.join(canonicalRoot, "hotel-payment");
+  const tenantDirectory = path.join(base, input.organizationId);
+  for (const directory of [base, tenantDirectory]) {
+    let stat;
+    try { stat = await lstat(directory); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return []; throw error; }
+    if (stat.isSymbolicLink() || !stat.isDirectory() || !path.resolve(await realpath(directory)).startsWith(`${canonicalRoot}${path.sep}`)) {
+      throw new ApiError(503, "Private receipt storage namespace is unsafe");
+    }
+  }
+  const candidates: Array<{ key: string; modifiedAt: Date }> = [];
+  const directoryHandle = await opendir(tenantDirectory);
+  let scanned = 0;
+  for await (const entry of directoryHandle) {
+    if (scanned >= 1000 || candidates.length >= input.limit) break;
+    scanned += 1;
+    if (!entry.isFile() || !/^[0-9a-f-]{36}\.(?:jpg|png|webp)$/.test(entry.name)) continue;
+    const metadata = await getPersistentDiskAssetMetadata({ organizationId: input.organizationId, key: `hotel-payment/${input.organizationId}/${entry.name}` });
+    if (!metadata || metadata.access !== "private") continue;
+    const stat = await lstat(path.join(tenantDirectory, entry.name));
+    if (stat.isSymbolicLink() || !stat.isFile() || stat.mtime > input.olderThan) continue;
+    candidates.push({ key: entry.name, modifiedAt: stat.mtime });
+  }
+  return candidates.sort((left, right) => left.modifiedAt.getTime() - right.modifiedAt.getTime()).slice(0, input.limit).map(({ key }) => key);
 }

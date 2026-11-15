@@ -27,8 +27,8 @@ async function waitForPostgresLockWait(db: PrismaClient, queryIncludes: string) 
 }
 async function waitForAdvisoryBarrierWait(db: PrismaClient, key: string) {
   const keyValue = BigInt(key);
-  const classId = keyValue >> 32n;
-  const objectId = keyValue & 0xffff_ffffn;
+  const classId = keyValue >> BigInt(32);
+  const objectId = keyValue & BigInt("4294967295");
   const deadline = Date.now() + 15_000;
   while (Date.now() < deadline) {
     const rows = await db.$queryRaw<Array<{ waiting: boolean }>>`SELECT EXISTS (

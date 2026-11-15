@@ -96,11 +96,11 @@ try {
   page.on("console", message => { if (message.type() === "error") report.console.push({ type: "console", message: message.text().slice(0, 500) }); });
   page.on("request", request => {
     const pathName = new URL(request.url()).pathname;
-    if (pathName === "/fa/login" || pathName.includes("/website") || pathName.startsWith("/api/media/")) report.network.push({ method: request.method(), path: pathName, phase: "request" });
+    if (pathName === "/fa/login" || pathName.startsWith("/api/auth/") || pathName.includes("/website") || pathName.startsWith("/api/media/")) report.network.push({ method: request.method(), path: pathName, phase: "request" });
   });
   page.on("response", response => {
     const pathName = new URL(response.url()).pathname;
-    if (pathName === "/fa/login" || pathName.includes("/website") || pathName.startsWith("/api/media/")) report.network.push({ method: response.request().method(), path: pathName, status: response.status(), phase: "response" });
+    if (pathName === "/fa/login" || pathName.startsWith("/api/auth/") || pathName.includes("/website") || pathName.startsWith("/api/media/")) report.network.push({ method: response.request().method(), path: pathName, status: response.status(), phase: "response" });
   });
 
   const login = new URL("/fa/login", base);
@@ -109,8 +109,8 @@ try {
   await page.locator("#username").fill(username);
   await page.locator("#password").fill(password);
   await page.locator('form button[type="submit"]').click();
-  await page.waitForURL(url => url.pathname === studioPath, { timeout: 60_000 });
-  await page.getByText("استودیوی وب‌سایت فروشگاه", { exact: true }).waitFor({ state: "visible" });
+  await page.waitForURL(url => url.pathname === studioPath, { timeout: 60_000, waitUntil: "domcontentloaded" });
+  await context.tracing.start({ screenshots: true, snapshots: true, sources: true });`r`n  await page.getByText("استودیوی وب‌سایت فروشگاه", { exact: true }).waitFor({ state: "visible" });
   const hero = page.locator('section[aria-labelledby="retail-hero-title"]');
   await hero.waitFor({ state: "visible" });
   await hero.getByLabel("تیتر اصلی").fill("Synthetic Aka Shoes hero acceptance · first revision");

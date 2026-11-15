@@ -43,6 +43,7 @@ try {
   } });
   await db.organizationCapability.createMany({ data: [organization.id, foreign.id].map(organizationId => ({ organizationId, key: "SHOP" as const, status: "ACTIVE" as const, enabledAt: new Date() })) });
   const password = await bcrypt.hash(managerPassword, 10);
+  assert.equal(await bcrypt.compare(managerPassword, password), true, "the synthetic browser credential must match its stored hash");
   const manager = await db.user.create({ data: { name: managerName, password, role: "MANAGER", isActive: true, isTeamMember: true, locale: "fa" } });
   await db.organizationMember.create({ data: { organizationId: organization.id, organizationSlug: slug, userId: manager.id, role: "MANAGER", isActive: true } });
   await db.organizationSettings.create({ data: { organizationSlug: slug, currency: "IRR", settings: { retailCatalog: { productExperience: "VARIANTS_V1" } } } });

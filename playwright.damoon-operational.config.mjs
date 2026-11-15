@@ -2,7 +2,7 @@ import { defineConfig } from "playwright/test";
 
 export default defineConfig({
   testDir: "./tests/e2e/damoon",
-  testMatch: "hotel-phase1-operational.spec.mjs",
+  testMatch: ["hotel-phase1-operational.spec.mjs", "hotel-phase1-localization.spec.mjs"],
   fullyParallel: false,
   workers: 1,
   retries: 0,

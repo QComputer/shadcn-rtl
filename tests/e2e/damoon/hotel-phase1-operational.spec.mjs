@@ -55,6 +55,78 @@ function daysFromNow(offset) {
   return date.toISOString().slice(0, 10);
 }
 
+async function createReservationThroughGuestControls(page, checkIn, checkOut, guestName, fixture) {
+  const reservations = page.locator("section[aria-label='رزروهای هتل']");
+  await expect(reservations).toBeVisible();
+  await expect(page.getByLabel("نوع اتاق").locator(`option[value="${fixture.roomTypeId}"]`)).toHaveCount(1);
+  await page.getByLabel("نوع اتاق").selectOption(fixture.roomTypeId);
+  await expect(page.getByLabel("طرح نرخ").locator(`option[value="${fixture.ratePlanId}"]`)).toHaveCount(1);
+  await page.getByLabel("طرح نرخ").selectOption(fixture.ratePlanId);
+  await page.getByLabel("تاریخ ورود").fill(checkIn);
+  await page.getByLabel("تاریخ خروج").fill(checkOut);
+
+  const quotePath = reservationsPath(organizationId, propertyId);
+  const [quoteResponse] = await Promise.all([
+    page.waitForResponse((response) => response.url().includes(quotePath) && response.request().method() === "POST" && response.request().postDataJSON()?.action === "quote"),
+    reservations.getByRole("button", { name: "دریافت قیمت" }).click(),
+  ]);
+  expect(quoteResponse.status(), await quoteResponse.text()).toBe(200);
+  const quoteBody = await quoteResponse.json();
+  expect(quoteBody.simulated).toBe(false);
+  expect(quoteBody.quote?.id).toBeTruthy();
+  await expect(reservations).toContainText(String(quoteBody.quote.totalAmount));
+
+  const [holdResponse] = await Promise.all([
+    page.waitForResponse((response) => response.url().includes(quotePath) && response.request().method() === "POST" && response.request().postDataJSON()?.action === "hold"),
+    reservations.getByRole("button", { name: "نگه‌داری موقت" }).click(),
+  ]);
+  expect(holdResponse.status(), await holdResponse.text()).toBe(200);
+  const holdBody = await holdResponse.json();
+  expect(holdBody.simulated).toBe(false);
+  expect(holdBody.hold?.id).toBeTruthy();
+  await expect(reservations).toContainText("انقضای نگه‌داری");
+
+  await reservations.getByLabel("نام کامل مهمان 1").fill(guestName);
+  const [reservationResponse] = await Promise.all([
+    page.waitForResponse((response) => response.url().includes(quotePath) && response.request().method() === "POST" && response.request().postDataJSON()?.action === "reserve"),
+    reservations.getByRole("button", { name: "ثبت رزرو" }).click(),
+  ]);
+  expect(reservationResponse.status(), await reservationResponse.text()).toBe(200);
+  const reservationBody = await reservationResponse.json();
+  const reservation = reservationBody.reservation;
+  expect(reservation?.id).toBeTruthy();
+  expect(reservation?.status).toBe("PENDING_PAYMENT");
+  expect(reservation?.simulated).toBe(false);
+  await expect(reservations.getByText(reservation.reference, { exact: true })).toBeVisible();
+  return reservation;
+}
+
+test("authenticated Damoon guest creates a reservation through quote, hold, and reservation controls", async ({ browser }) => {
+  test.setTimeout(60_000);
+  assertTestTarget();
+  const resolved = await lookup(tenantHostname, { all: true, verbatim: true });
+  if (!resolved.length || resolved.some(({ address }) => address !== "::1" && !/^127(?:\.\d{1,3}){3}$/.test(address))) throw new Error("Damoon test domain must resolve exclusively to loopback");
+  const fixture = await seedOperationalGuestFixture();
+  const guestContext = await browser.newContext();
+  try {
+    const guestPage = await guestContext.newPage();
+    const guestCallback = `/fa/hotel-reservations/${organizationId}/${propertyId}`;
+    await login(guestPage, guestOrigin, fixture.username, fixture.password, guestCallback);
+    const checkIn = daysFromNow(3);
+    const checkOut = daysFromNow(4);
+    const reservation = await createReservationThroughGuestControls(guestPage, checkIn, checkOut, "Synthetic UI Guest", fixture);
+    expect(reservation.checkIn).toBe(checkIn);
+    expect(reservation.checkOut).toBe(checkOut);
+    await guestPage.reload({ waitUntil: "domcontentloaded", timeout: 15_000 });
+    await expect(guestPage.getByText(reservation.reference, { exact: true })).toBeVisible();
+    const persisted = await api(guestPage, reservationsPath(organizationId, propertyId));
+    expect(persisted.status).toBe(200);
+    expect(persisted.body.reservations.some((item) => item.id === reservation.id)).toBe(true);
+  } finally {
+    await guestContext.close();
+  }
+});
+
 test("authenticated Damoon guest lifecycle reaches reception check-out with tenant isolation", async ({ browser }) => {
   test.setTimeout(90_000);
   assertTestTarget();

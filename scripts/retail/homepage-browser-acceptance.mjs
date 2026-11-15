@@ -107,10 +107,11 @@ try {
   await page.waitForFunction(() => document.querySelectorAll("#products [data-retail-product-card]").length === 20);
   outcomes.push({ name: "category-filter-reset", result: "passed", filteredCards: 12, restoredCards: 20 });
 
-  const failPageTwo = (url) => url.pathname.endsWith("/organizations/retail-r3-fashion-preview/products") && url.searchParams.get("page") === "2" && url.searchParams.get("limit") === "20";
-  const pageTwoMatcher = (url) => failPageTwo(url);
+  const pageTwoMatcher = "**/api/public/v1/organizations/retail-r3-fashion-preview/products";
   expectedApiFailure = true;
   await page.route(pageTwoMatcher, async (route) => {
+    const requested = new URL(route.request().url());
+    if (requested.searchParams.get("page") !== "2" || requested.searchParams.get("limit") !== "20") return route.continue();
     await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "synthetic temporary failure" }) });
   });
   await page.getByRole("navigation", { name: "صفحه‌های محصولات" }).getByRole("button", { name: "بعدی" }).click();
@@ -137,6 +138,8 @@ try {
   const refreshSeen = new Promise((resolve) => { refreshRequestSeen = resolve; });
   const refreshGate = new Promise((resolve) => { releaseRefresh = resolve; });
   await page.route(pageTwoMatcher, async (route) => {
+    const requested = new URL(route.request().url());
+    if (requested.searchParams.get("page") !== "2" || requested.searchParams.get("limit") !== "20") return route.continue();
     refreshRequestSeen();
     await refreshGate;
     await route.continue();

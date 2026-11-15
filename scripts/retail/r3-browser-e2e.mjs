@@ -125,7 +125,7 @@ async function createAndPublish({ browser, email, locale, organization, category
   else await page.getByLabel(productAttr).fill(attribute === "ram" ? "12" : "چرم مصنوعی");
   if (attribute === "material") await page.getByLabel(attributeLabels.style).fill("روزمره");
   if (option === "color-size") {
-    await page.locator("select#color").selectOption({ index: 1 });
+    await page.getByRole("combobox", { name: /^رنگ\s/ }).fill("مشکی");
     await page.getByLabel("سایز (EU)").fill("41");
   } else {
     await page.getByLabel(variantLabels.color).selectOption({ index: 1 });

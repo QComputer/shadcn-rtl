@@ -16,6 +16,7 @@ const consoleRecords = [];
 const expectedInjectedConsole = [];
 const outcomes = [];
 const injectedFailures = [];
+const externalAssetStubs = [];
 const record = (item) => records.push({ at: new Date().toISOString(), ...item });
 async function captureScreenshot(page, filePath) {
   const session = await page.context().newCDPSession(page);
@@ -44,6 +45,10 @@ try {
   context = await browser.newContext({ viewport: { width: 1280, height: 900 }, serviceWorkers: "block" });
   await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
   traceStarted = true;
+  await context.route("https://trustseal.enamad.ir/logo.aspx**", async (route) => {
+    externalAssetStubs.push({ url: route.request().url(), reason: "third-party trust-seal asset is outside the disposable browser test" });
+    await route.fulfill({ status: 200, contentType: "image/png", body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jWZcAAAAASUVORK5CYII=", "base64") });
+  });
   const page = await context.newPage();
   page.on("console", (msg) => {
     if (msg.type() === "error" && injectedFailures.length > 0 && /503 \(Service Unavailable\)/i.test(msg.text())) {
@@ -237,11 +242,11 @@ try {
 
   for (const routePath of [
     "/fa/retail/retail-r3-fashion-preview/product/avid-preview",
-    "/fa/retail/retail-r3-fashion-preview/shop/product/avid-preview",
+    "/fa/retail-r3-fashion-preview/shop/product/avid-preview",
   ]) {
     const detail = await page.goto(`${baseUrl}${routePath}`, { waitUntil: "domcontentloaded" });
     assert.equal(detail?.status(), 200, `product detail route renders: ${routePath}`);
-    await page.locator("main").waitFor();
+    await page.getByRole("heading", { name: "کتانی نمونه آوید", level: 1 }).waitFor();
   }
   outcomes.push({ name: "both-product-detail-routes", result: "passed" });
 
@@ -275,7 +280,7 @@ try {
   if (context && traceStarted) await context.tracing.stop({ path: path.join(outputDir, "homepage-trace.zip") }).catch(() => {});
   await fs.writeFile(path.join(outputDir, "network-requests.json"), JSON.stringify(records, null, 2));
   await fs.writeFile(path.join(outputDir, "browser-console.json"), JSON.stringify(consoleRecords, null, 2));
-  await fs.writeFile(path.join(outputDir, "homepage-browser-results.json"), JSON.stringify({ baseUrl, tenant, outcomes, injectedFailures, expectedInjectedConsole, consoleErrors: consoleRecords.length }, null, 2));
+  await fs.writeFile(path.join(outputDir, "homepage-browser-results.json"), JSON.stringify({ baseUrl, tenant, outcomes, injectedFailures, expectedInjectedConsole, externalAssetStubs, consoleErrors: consoleRecords.length }, null, 2));
   await browser.close();
 }
 console.log(JSON.stringify({ outcomes, requestCount: records.length, artifacts: outputDir }, null, 2));

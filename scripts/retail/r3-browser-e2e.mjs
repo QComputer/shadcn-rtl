@@ -133,6 +133,7 @@ async function createAndPublish({ browser, email, locale, organization, category
   }
   await page.getByLabel("عنوان گونه").fill("پیش‌نمایش مشکی");
   await page.getByLabel("شناسه کالا (SKU)").fill(sku);
+  await page.getByLabel("قیمت پایه محصول (تومان)", { exact: true }).fill(attribute === "ram" ? "45900000" : "650000");
   const variantPriceInput = page.locator("label").filter({ hasText: /^قیمت اختصاصی \(تومان\)/ }).locator('input[type="number"]');
   assert.equal(await variantPriceInput.count(), 1, "the variant price override must be uniquely identifiable");
   await variantPriceInput.fill(attribute === "ram" ? "45900000" : "650000");

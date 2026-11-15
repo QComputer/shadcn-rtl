@@ -11,8 +11,8 @@ const rial = (n: number) => new Intl.NumberFormat("fa-IR").format(n) + " توم�
 
 type LiveView = { managedHero?: { hero: PublishedRetailHero; products: PublicCatalogProduct[] } | null; identifier: string; name: string; description: string | null; branding: { logo: string | null; cover: string | null }; theme: "FASHION" | "ELECTRONICS" | "GENERAL"; previewOnly: boolean; categories: Array<{ id: string; name: string; slug: string | null; image?: string | null; darkImage?: string | null }>; products: PublicCatalogProduct[]; pagination: PublicCatalogPagination };
 
-export default function RetailPreview({ store, productId, liveView, storefrontPath, checkoutPath }: { store?: Store; productId?: string; liveView?: Omit<LiveView, "pagination"> & { pagination?: PublicCatalogPagination }; storefrontPath?: string; checkoutPath?: string }) {
-  if (liveView) return <RetailLiveCatalog view={{ ...liveView, pagination: liveView.pagination ?? { page: 1, limit: 20, total: liveView.products.length, totalPages: liveView.products.length ? 1 : 0 } }} productSlug={productId} storefrontPath={storefrontPath} checkoutPath={checkoutPath} />;
+export default function RetailPreview({ store, productId, liveView, storefrontPath, checkoutPath }: { store?: Store; productId?: string; liveView?: LiveView; storefrontPath?: string; checkoutPath?: string }) {
+  if (liveView) return <RetailLiveCatalog view={liveView} productSlug={productId} storefrontPath={storefrontPath} checkoutPath={checkoutPath} />;
   if (!store) return null;
   return <RetailPreviewFixture store={store} productId={productId} />;
 }

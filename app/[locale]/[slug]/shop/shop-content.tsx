@@ -64,5 +64,6 @@ export default async function ShopContent({
       previewOnly: catalog.organization.previewOnly,
       categories: catalog.categories.map(({ id, slug: categorySlug, name, image, darkImage }) => ({ id, slug: categorySlug, name, image, darkImage })),
       products: catalog.products,
+      pagination: catalog.pagination,
     }} storefrontPath={storefrontPath} checkoutPath={checkoutPath} embedded />;
 }

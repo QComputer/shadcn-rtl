@@ -37,5 +37,6 @@ export default async function PublicRetailStorefront({ params }: { params: Promi
     previewOnly: catalog.organization.previewOnly,
     categories: catalog.categories.map((category) => ({ id: category.id, slug: category.slug, name: category.name, image: category.image, darkImage: category.darkImage })),
     products: catalog.products,
+    pagination: catalog.pagination,
   }} />;
 }

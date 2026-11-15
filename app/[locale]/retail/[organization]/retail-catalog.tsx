@@ -13,6 +13,7 @@ import type { PublishedRetailHero } from "@/lib/website-studio/retail-hero-contr
 import { PremiumProductDetail } from "@/components/retail/premium-product-detail";
 import { appPath } from "@/lib/app-base-path";
 import type { RetailProduct } from "@/lib/retail/variant-selection";
+import type { PublicCatalogPagination } from "@/lib/public-catalog/contracts";
 
 
 type RetailView = {
@@ -25,9 +26,14 @@ type RetailView = {
   previewOnly: boolean;
   categories: Array<{ id: string; slug: string | null; name: string; image?: string | null; darkImage?: string | null }>;
   products: RetailProduct[];
+  pagination: PublicCatalogPagination;
 };
 
-export default function RetailLiveCatalog({ view, productSlug, storefrontPath, checkoutPath, embedded = false }: { view: RetailView; productSlug?: string; storefrontPath?: string; checkoutPath?: string; embedded?: boolean }) {
+export default function RetailLiveCatalog(props: { view: RetailView; productSlug?: string; storefrontPath?: string; checkoutPath?: string; embedded?: boolean }) {
+  return <RetailLiveCatalogState key={props.view.identifier} {...props} />;
+}
+
+function RetailLiveCatalogState({ view, productSlug, storefrontPath, checkoutPath, embedded = false }: { view: RetailView; productSlug?: string; storefrontPath?: string; checkoutPath?: string; embedded?: boolean }) {
   const [cardView, setCardView] = useRetailCardView(view.identifier);
   const [products, setProducts] = useState(view.products);
   const [category, setCategory] = useState("");
@@ -35,9 +41,10 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
 
 
   const [busy, setBusy] = useState(false);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(view.pagination.page);
   const [retryKey, setRetryKey] = useState(0);
-  const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
+  const [requestEnabled, setRequestEnabled] = useState(false);
+  const [pagination, setPagination] = useState(view.pagination);
   const [online, setOnline] = useState<boolean | null>(null);
   const [reconnected, setReconnected] = useState(false);
   const [standalone, setStandalone] = useState(false);
@@ -61,6 +68,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
     const onOnline = () => {
       setOnline(true);
       setReconnected(true);
+      setRequestEnabled(true);
       setRetryKey((current) => current + 1);
       if (reconnectTimer.current !== null) window.clearTimeout(reconnectTimer.current);
       reconnectTimer.current = window.setTimeout(() => setReconnected(false), 3200);
@@ -81,15 +89,18 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
 
   useEffect(() => {
     if (productSlug) return;
+    // The first unfiltered page is already in the server component payload.
+    // Keep this predicate state-derived so StrictMode cleanup/remount cannot consume a one-shot ref.
+    if (!requestEnabled) return;
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       setBusy(true);
-      const params = new URLSearchParams({ page: String(page), limit: "50" });
+      const params = new URLSearchParams({ page: String(page), limit: String(view.pagination.limit) });
       if (category) params.set("category", category);
       try {
         const response = await fetch(appPath(`/api/public/v1/organizations/${encodeURIComponent(view.identifier)}/products?${params}`), { signal: controller.signal, headers: { Accept: "application/json" } });
         if (!response.ok) throw new Error("catalog request failed");
-        const body = await response.json() as { version: string; data: { products: RetailProduct[]; pagination: { page: number; totalPages: number } } };
+        const body = await response.json() as { version: string; data: { products: RetailProduct[]; pagination: PublicCatalogPagination } };
         if (body.version !== "v1" || !Array.isArray(body.data.products)) throw new Error("catalog response invalid");
         setProducts(body.data.products);
         setPagination(body.data.pagination);
@@ -101,7 +112,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
       }
     }, 180);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [view.identifier, category, page, productSlug, retryKey]);
+  }, [view.identifier, category, page, productSlug, retryKey, requestEnabled, view.pagination.page, view.pagination.limit]);
 
 
 
@@ -112,6 +123,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
     if (value === category && page === 1) return;
     setBusy(true);
     setError(false);
+    setRequestEnabled(true);
     setCategory(value);
     setPage(1);
   };
@@ -180,7 +192,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
           {category && <button type="button" onClick={() => changeCategory("")} className="min-h-11 rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">حذف فیلتر دسته‌بندی</button>}
         </div>
       </div>
-      {error ? <div role="alert" className="mt-8 rounded-2xl bg-card p-8 text-center text-destructive"><p>{online === false ? "اتصال اینترنت برقرار نیست. پس از اتصال دوباره تلاش کنید." : "دریافت محصولات ممکن نشد. اتصال را بررسی کنید و دوباره تلاش کنید."}</p><button type="button" onClick={() => { setError(false); setRetryKey((current) => current + 1); }} className="mt-4 min-h-11 rounded-full border border-border px-5 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">تلاش دوباره</button></div> : busy ? <p role="status" className="mt-8 rounded-2xl bg-card p-10 text-center text-foreground">در حال دریافت محصولات…</p> : products.length ? <><div className="mt-7 grid auto-rows-fr grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 xl:grid-cols-4">{products.map(renderProduct)}</div><nav aria-label="صفحه‌های محصولات" className="mt-8 flex items-center justify-center gap-4"><button disabled={pagination.page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} className="min-h-11 rounded-full border border-border px-5 text-foreground disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">قبلی</button><span className="text-sm text-muted-foreground" aria-live="polite">صفحه {new Intl.NumberFormat("fa-IR").format(pagination.page)} از {new Intl.NumberFormat("fa-IR").format(pagination.totalPages)}</span><button disabled={pagination.page >= pagination.totalPages} onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))} className="min-h-11 rounded-full border border-border px-5 text-foreground disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">بعدی</button></nav></> : <div className="mt-8 rounded-2xl border border-dashed border-border bg-card p-10 text-center text-muted-foreground">محصولی با این مشخصات پیدا نشد. فیلترها را تغییر دهید.</div>}
+      {error ? <div role="alert" className="mt-8 rounded-2xl bg-card p-8 text-center text-destructive"><p>{online === false ? "اتصال اینترنت برقرار نیست. پس از اتصال دوباره تلاش کنید." : "دریافت محصولات ممکن نشد. اتصال را بررسی کنید و دوباره تلاش کنید."}</p><button type="button" onClick={() => { setError(false); setRequestEnabled(true); setRetryKey((current) => current + 1); }} className="mt-4 min-h-11 rounded-full border border-border px-5 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">تلاش دوباره</button></div> : products.length ? <>{busy && <p role="status" className="mt-3 text-center text-sm text-muted-foreground">در حال به‌روزرسانی فهرست…</p>}<div className="mt-7 grid auto-rows-fr grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 xl:grid-cols-4">{products.map(renderProduct)}</div><nav aria-label="صفحه‌های محصولات" className="mt-8 flex items-center justify-center gap-4"><button disabled={busy || pagination.page <= 1} onClick={() => { setRequestEnabled(true); setPage((current) => Math.max(1, current - 1)); }} className="min-h-11 rounded-full border border-border px-5 text-foreground disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">قبلی</button><span className="text-sm text-muted-foreground" aria-live="polite">صفحه {new Intl.NumberFormat("fa-IR").format(pagination.page)} از {new Intl.NumberFormat("fa-IR").format(pagination.totalPages)}</span><button disabled={busy || pagination.page >= pagination.totalPages} onClick={() => { setRequestEnabled(true); setPage((current) => Math.min(pagination.totalPages, current + 1)); }} className="min-h-11 rounded-full border border-border px-5 text-foreground disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">بعدی</button></nav></> : <div className="mt-8 rounded-2xl border border-dashed border-border bg-card p-10 text-center text-muted-foreground">محصولی با این مشخصات پیدا نشد. فیلترها را تغییر دهید.</div>}
       <p className="mt-6 text-center text-xs text-[#77736a]">قیمت و وضعیت موجودی از فهرست منتشرشده فروشگاه دریافت شده‌اند.</p>
     </section>
     </>}

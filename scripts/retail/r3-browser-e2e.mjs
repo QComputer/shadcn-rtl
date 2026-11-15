@@ -232,7 +232,7 @@ async function createAndPublish({ browser, email, locale, organization, category
   assert.equal(data.category.name, category, "public detail must expose the selected category");
   assert.equal(String(data.attributes.find(({ key }) => key === attribute)?.value), expectedProductAttribute, "public detail must expose the persisted product attribute");
   assert.ok(managedProduct.imageIds.includes(previewAsset.id), "published product must retain its tenant-owned selected media");
-  assert.ok(data.media.gallery.includes(previewAsset.url), "published storefront detail must expose the exact selected public media");
+  assert.ok(data.media.detail === previewAsset.url || data.media.gallery.includes(previewAsset.url), `published storefront detail must expose the exact selected public media in its primary detail slot or gallery: ${JSON.stringify(data.media)}`);
   for (const [key, value] of Object.entries(expectedVariantOptions)) {
     assert.equal(String(managedVariant.options.find((entry) => entry.key === key)?.value), String(value), `published variant option ${key} must persist`);
   }

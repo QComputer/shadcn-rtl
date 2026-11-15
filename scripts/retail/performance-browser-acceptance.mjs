@@ -52,7 +52,7 @@ try {
         rootObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
         sample("root-attached");
       }
-      try { new PerformanceObserver((list) => { for (const entry of list.getEntries()) { if (entry.name === "first-contentful-paint" && !window.__bbFirstPaint.fcp) window.__bbFirstPaint.fcp = { at: entry.startTime, className: root.className, dataTheme: root.getAttribute("data-theme") }; } }).observe({ type: "paint", buffered: true }); } catch {}
+      try { new PerformanceObserver((list) => { for (const entry of list.getEntries()) { if (entry.name === "first-contentful-paint" && !window.__bbFirstPaint.fcp) { const root = document.documentElement; window.__bbFirstPaint.fcp = { at: entry.startTime, className: root?.className ?? "", dataTheme: root?.getAttribute("data-theme") ?? null }; } } }).observe({ type: "paint", buffered: true }); } catch {}
       try { new PerformanceObserver((list) => window.__bbLcp.push(...list.getEntries())).observe({ type: "largest-contentful-paint", buffered: true }); } catch {}
       try { new PerformanceObserver((list) => window.__bbCls.push(...list.getEntries())).observe({ type: "layout-shift", buffered: true }); } catch {}
       const frames = () => { if (!window.__bbFirstPaint.fcp && window.__bbFirstPaint.samples.length < 40) { sample("frame"); requestAnimationFrame(frames); } };
@@ -77,6 +77,9 @@ try {
     await page.locator("#products [data-retail-product-card]").first().waitFor();
     await page.waitForFunction(() => { const category = document.querySelector("#categories button"); return category && Object.keys(category).some((key) => key.startsWith("__reactProps$")); });
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    // Wait for the browser's request queue to settle so the baseline's delayed
+    // 180 ms initial page fetch is included, without guessing a sleep duration.
+    await page.waitForLoadState("networkidle");
     const metrics = await page.evaluate(() => {
       const navigation = performance.getEntriesByType("navigation")[0]; const resources = performance.getEntriesByType("resource");
       const cards = [...document.querySelectorAll("#products [data-retail-product-card]")];
@@ -143,6 +146,7 @@ try {
   await fs.writeFile(path.join(artifactDir, "network-requests.json"), JSON.stringify(results.requests, null, 2));
   await fs.writeFile(path.join(artifactDir, "browser-console.json"), JSON.stringify(results.console, null, 2));
   process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
+  if (sourceLabel === "pr77") assert.equal(results.console.length, 0, "PR77 theme and cold-load runs have no browser console or hydration errors");
 } finally {
   await browser.close();
 }

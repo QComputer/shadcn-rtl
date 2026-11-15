@@ -1,0 +1,194 @@
+name: Retail Website Studio hero media acceptance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/retail-hero-media-acceptance.yml'
+      - 'app/api/media/**'
+      - 'app/api/organizations/[[]id]/website/**'
+      - 'app/[[]locale]/dashboard/website-studio/**'
+      - 'components/website-studio/**'
+      - 'lib/api-guards.ts'
+      - 'lib/website-studio/**'
+      - 'lib/storage/**'
+      - 'tests/e2e/retail-hero-media/**'
+      - 'tests/integration/retail-hero-publication.local.test.ts'
+      - 'tests/unit/api-guards-release-safety.test.ts'
+      - 'tests/unit/website-studio/**'
+      - 'prisma/schema.prisma'
+      - 'prisma/migrations/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  retail-hero-media:
+    name: Retail Website Studio unit, PostgreSQL, and browser acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: hero_test
+          POSTGRES_DB: retail_hero_e2e_acceptance
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U hero_test -d retail_hero_e2e_acceptance"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_RUNTIME_ADAPTER: postgresql
+      DATABASE_URL: postgresql://hero_test@127.0.0.1:55432/retail_hero_e2e_acceptance
+      DIRECT_URL: postgresql://hero_test@127.0.0.1:55432/retail_hero_e2e_acceptance
+      RETAIL_HERO_MEDIA_DISPOSABLE: 'true'
+      RETAIL_HERO_MEDIA_DB_PORT: '55432'
+      RETAIL_HERO_MEDIA_DB_DATABASE: retail_hero_e2e_acceptance
+      APPLICATION_STORAGE_ADAPTER: persistent-disk
+      MEDIA_STORAGE_ROOT: ${{ runner.temp }}/retail-hero-media-storage-${{ github.run_id }}
+      E2E_BASE_URL: http://127.0.0.1:3421/
+      E2E_OUTPUT_DIR: ${{ runner.temp }}/retail-hero-media-browser-${{ github.run_id }}
+      AUTH_TRUST_HOST: 'true'
+      AUTH_URL: http://127.0.0.1:3421
+      NEXTAUTH_URL: http://127.0.0.1:3421
+      NEXT_TELEMETRY_DISABLED: '1'
+      AI_MEDIA_LOCAL_DOCKER_E2E: '1'
+      E2E_SOURCE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Create one-run synthetic credentials
+        shell: bash
+        run: |
+          auth_secret="$(openssl rand -hex 32)"
+          manager_password="$(openssl rand -hex 20)"
+          echo "::add-mask::$auth_secret"
+          echo "::add-mask::$manager_password"
+          echo "AUTH_SECRET=$auth_secret" >> "$GITHUB_ENV"
+          echo "NEXTAUTH_SECRET=$auth_secret" >> "$GITHUB_ENV"
+          echo "RETAIL_HERO_MEDIA_MANAGER_PASSWORD=$manager_password" >> "$GITHUB_ENV"
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate
+
+      - name: Apply migrations to disposable PostgreSQL 17
+        run: pnpm exec prisma migrate deploy
+
+      - name: TypeScript
+        run: pnpm run typecheck
+
+      - name: Lint Retail Website Studio and acceptance files
+        run: >-
+          pnpm exec eslint
+          components/website-studio/retail-studio.tsx
+          lib/api-guards.ts
+          lib/website-studio/retail-contract.ts
+          lib/website-studio/retail.service.ts
+          tests/e2e/retail-hero-media/acceptance.mjs
+          tests/e2e/retail-hero-media/seed.mts
+          tests/integration/retail-hero-publication.local.test.ts
+          tests/unit/api-guards-release-safety.test.ts
+          tests/unit/website-studio/retail-hero-publication.test.ts
+          tests/unit/website-studio/retail-service.test.ts
+          tests/unit/website-studio/route.test.ts
+
+      - name: Website Studio and shared ApiError unit regressions
+        run: >-
+          pnpm exec node --import tsx --require ./scripts/e2e/register-server-only.cjs
+          --experimental-test-module-mocks --test
+          tests/unit/api-guards-release-safety.test.ts
+          tests/unit/website-studio/brand-media.test.ts
+          tests/unit/website-studio/retail-hero-publication.test.ts
+          tests/unit/website-studio/retail-service.test.ts
+          tests/unit/website-studio/route.test.ts
+        env:
+          DATABASE_URL: postgresql://hero_test@127.0.0.1:55432/retail_hero_e2e_acceptance
+          DIRECT_URL: postgresql://hero_test@127.0.0.1:55432/retail_hero_e2e_acceptance
+
+      - name: Isolated PostgreSQL and persistent disk integration
+        run: >-
+          pnpm exec node --import tsx --require ./scripts/e2e/register-server-only.cjs
+          --test tests/integration/retail-hero-publication.local.test.ts
+        env:
+          RETAIL_HERO_PG_ACCEPTANCE: '1'
+          RETAIL_HERO_PG_PORT: '55432'
+          RETAIL_HERO_PG_DATABASE: retail_hero_e2e_acceptance
+
+      - name: Install the locked Playwright Chromium browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Seed synthetic Aka Shoes legacy and media fixtures
+        id: seed
+        shell: bash
+        run: |
+          fixture="$(pnpm exec tsx --require ./scripts/e2e/register-server-only.cjs tests/e2e/retail-hero-media/seed.mts)"
+          echo "$fixture" > "$RUNNER_TEMP/retail-hero-media-seed.json"
+          echo "organization_id=$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).organizationId)' "$fixture")" >> "$GITHUB_OUTPUT"
+          echo "organization_slug=$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).slug)' "$fixture")" >> "$GITHUB_OUTPUT"
+          echo "manager_name=$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).managerName)' "$fixture")" >> "$GITHUB_OUTPUT"
+          echo "foreign_organization_id=$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).foreignOrganizationId)' "$fixture")" >> "$GITHUB_OUTPUT"
+          echo "foreign_image_id=$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).foreignImageId)' "$fixture")" >> "$GITHUB_OUTPUT"
+          echo "private_image_id=$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).privateImageId)' "$fixture")" >> "$GITHUB_OUTPUT"
+          echo "revoked_image_id=$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).revokedImageId)' "$fixture")" >> "$GITHUB_OUTPUT"
+          echo "missing_disk_image_id=$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).missingDiskImageId)' "$fixture")" >> "$GITHUB_OUTPUT"
+          echo "missing_disk_filename=$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).missingDiskFilename)' "$fixture")" >> "$GITHUB_OUTPUT"
+          echo "legacy_revision_id=$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).legacyRevisionId)' "$fixture")" >> "$GITHUB_OUTPUT"
+          echo "legacy_about_id=$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).legacyAbout)' "$fixture")" >> "$GITHUB_OUTPUT"
+          echo "legacy_new_id=$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).legacyNew)' "$fixture")" >> "$GITHUB_OUTPUT"
+
+      - name: Start the isolated Website Studio server
+        shell: bash
+        run: |
+          mkdir -p "$E2E_OUTPUT_DIR" "$MEDIA_STORAGE_ROOT"
+          pnpm exec next dev --hostname 127.0.0.1 --port 3421 > "$E2E_OUTPUT_DIR/next.log" 2>&1 &
+          echo "$!" > "$RUNNER_TEMP/retail-hero-media-next.pid"
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3421/fa/login >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat "$E2E_OUTPUT_DIR/next.log"
+          exit 1
+
+      - name: Authenticated Retail hero media browser acceptance
+        env:
+          RETAIL_HERO_MEDIA_ORGANIZATION_ID: ${{ steps.seed.outputs.organization_id }}
+          RETAIL_HERO_MEDIA_SLUG: ${{ steps.seed.outputs.organization_slug }}
+          RETAIL_HERO_MEDIA_MANAGER: ${{ steps.seed.outputs.manager_name }}
+          RETAIL_HERO_MEDIA_FOREIGN_ORGANIZATION_ID: ${{ steps.seed.outputs.foreign_organization_id }}
+          RETAIL_HERO_MEDIA_FOREIGN_IMAGE_ID: ${{ steps.seed.outputs.foreign_image_id }}
+          RETAIL_HERO_MEDIA_PRIVATE_IMAGE_ID: ${{ steps.seed.outputs.private_image_id }}
+          RETAIL_HERO_MEDIA_REVOKED_IMAGE_ID: ${{ steps.seed.outputs.revoked_image_id }}
+          RETAIL_HERO_MEDIA_MISSING_DISK_IMAGE_ID: ${{ steps.seed.outputs.missing_disk_image_id }}
+          RETAIL_HERO_MEDIA_MISSING_DISK_FILENAME: ${{ steps.seed.outputs.missing_disk_filename }}
+          RETAIL_HERO_MEDIA_LEGACY_REVISION_ID: ${{ steps.seed.outputs.legacy_revision_id }}
+          RETAIL_HERO_MEDIA_LEGACY_ABOUT_ID: ${{ steps.seed.outputs.legacy_about_id }}
+          RETAIL_HERO_MEDIA_LEGACY_NEW_ID: ${{ steps.seed.outputs.legacy_new_id }}
+        run: node tests/e2e/retail-hero-media/acceptance.mjs
+
+      - name: Upload failure diagnostics only
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: retail-hero-media-failure-${{ github.sha }}
+          path: ${{ runner.temp }}/retail-hero-media-browser-${{ github.run_id }}/
+          if-no-files-found: warn
+          retention-days: 7

@@ -108,7 +108,7 @@ test("saving rejects newly introduced legacy references with field and media dia
   const { service, calls } = mockService({ organization: { ...org, slug: "aka-shoes" }, images: [] });
   await assert.rejects(service.save(principal, "org-1", draft(undefined, null, edited)), (error: unknown) => {
     assert.ok(error instanceof ApiError && error.status === 422);
-    assert.deepEqual(error.details?.diagnostics, [{ path: "sections.1.imageId", mediaId: selected.id, reason: "LEGACY_REPLACEMENT_REQUIRED", message: "تصویر ثابت قدیمی فقط در همان جایگاه نسخه قبلی قابل نگهداری است؛ برای تغییر آن تصویری از رسانه‌های همین فروشگاه انتخاب کنید." }]);
+    assert.deepEqual(error.diagnostics, [{ path: "sections.1.imageId", mediaId: selected.id, reason: "LEGACY_REPLACEMENT_REQUIRED" }]);
     return true;
   });
   assert.equal(calls.insert, 0);

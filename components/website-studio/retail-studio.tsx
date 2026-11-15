@@ -33,6 +33,14 @@ function mediaPathLabel(path: string) {
   return `بخش ${Number(section[1]) + 1} · ${sectionName}`;
 }
 
+function isMediaIssue(value: unknown): value is MediaIssue {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Record<string, unknown>;
+  return typeof item.path === "string" && /^(?:hero\.[A-Za-z][A-Za-z0-9]*|sections\.\d{1,3}\.(?:imageId|imageIds\.\d{1,2}))$/.test(item.path)
+    && typeof item.mediaId === "string" && item.mediaId.length <= 128 && !/[\u0000-\u001f\u007f]/.test(item.mediaId)
+    && (item.reason === "UNAVAILABLE" || item.reason === "LEGACY_REPLACEMENT_REQUIRED");
+}
+
 function retailValidationMessage(content: RetailContent) {
   const result = retailContentSchema.safeParse(content);
   if (result.success) return null;
@@ -131,7 +139,10 @@ export function RetailStudio({ organizationId, locale }: Props) {
       const response = await fetch(endpoint, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: validation.data, baseRevisionId: payload?.revision?.id ?? null, requestId: crypto.randomUUID() }) });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        if (Array.isArray(data.diagnostics)) setMediaErrors(data.diagnostics.filter((item: unknown): item is MediaIssue => Boolean(item && typeof item === "object" && "path" in item && "mediaId" in item)));
+        if (Array.isArray(data.diagnostics)) {
+          const submitted = websiteImageReferences(validation.data);
+          setMediaErrors(data.diagnostics.filter(isMediaIssue).filter((item) => submitted.some((reference) => reference.path === item.path && reference.id === item.mediaId)));
+        }
         throw new Error(responseError(data, "ذخیره پیش‌نویس انجام نشد."));
       }
       const revision = (data.revision ?? data) as WebsiteRevision;

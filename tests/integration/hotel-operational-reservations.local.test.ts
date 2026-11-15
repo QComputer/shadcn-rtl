@@ -277,7 +277,7 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
       const held = deferred();
       const release = deferred();
       const transaction = db.$transaction(async (tx) => {
-        await tx.$queryRawUnsafe(`SELECT pg_advisory_xact_lock(${key})`);
+        await tx.$queryRawUnsafe(`SELECT pg_advisory_xact_lock(${key}) IS NULL AS acquired`);
         held.resolve();
         await release.promise;
       }, { maxWait: 5_000, timeout: 25_000 });

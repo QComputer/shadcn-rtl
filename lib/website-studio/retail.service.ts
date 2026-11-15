@@ -4,10 +4,11 @@ import { Prisma, type PrismaClient, type UserRole } from "@prisma/client";
 import { prisma } from "@/lib/db-runtime";
 import { ApiError } from "@/lib/api-guards";
 import { retailWebsiteMedia } from "./brand-media";
-import { initialRetailContent, referencedWebsiteImages, retailContentSchema, saveRetailDraftSchema, type WebsiteMedia, type WebsiteRevision } from "./retail-contract";
+import { initialRetailContent, referencedWebsiteImages, retailContentSchema, saveRetailDraftSchema, websiteImageReferences, type RetailContent, type WebsiteMedia, type WebsiteRevision } from "./retail-contract";
 import { changeRetailHeroPublicationSchema, readRetailHeroPublication } from "./retail-hero-contract";
 import { readTenantDiskImage } from "@/lib/storage/tenant-image-storage.server";
 import { RETAIL_MEDIA_PAGE_SIZE } from "./retail-media-gallery.server";
+import { legacyPublishedRetailHeroMedia } from "./legacy-retail-hero-media.server";
 
 export type StudioPrincipal = { userId: string; role: UserRole; organizationId?: string | null };
 type Tx = Prisma.TransactionClient;
@@ -55,13 +56,13 @@ export class RetailWebsiteService {
     return retailWebsiteMedia(organizationId, [...unique.values()]);
   }
 
-  private async assertMediaDeliverable(organizationId: string, media: WebsiteMedia[], ids: string[]) {
+  private async assertMediaDeliverable(organizationId: string, media: WebsiteMedia[], ids: string[], references?: ReturnType<typeof websiteImageReferences>) {
     for (const image of media) {
       if (!ids.includes(image.id) || !image.url.startsWith("/api/media/")) continue;
-      if (!image.filename) throw new ApiError(422, "تصویر هیرو در دسترس نیست یا متعلق به این فروشگاه نیست.");
+      if (!image.filename) throw new ApiError(422, "تصویر در دسترس نیست.", references ? { diagnostics: references.filter((reference) => reference.id === image.id).map((reference) => ({ path: reference.path, mediaId: image.id, reason: "UNAVAILABLE", message: "فایل تصویر در دسترس نیست." })) } : undefined);
       const asset = await readTenantDiskImage(organizationId, image.filename);
       if (!asset || asset.metadata.organizationId !== organizationId || asset.metadata.access !== "public" || asset.metadata.mimeType !== image.mimeType) {
-        throw new ApiError(422, "تصویر هیرو در دسترس نیست یا متعلق به این فروشگاه نیست.");
+        throw new ApiError(422, "تصویر در دسترس نیست.", references ? { diagnostics: references.filter((reference) => reference.id === image.id).map((reference) => ({ path: reference.path, mediaId: image.id, reason: "UNAVAILABLE", message: "فایل تصویر در دسترس نیست." })) } : undefined);
       }
     }
   }
@@ -101,7 +102,10 @@ export class RetailWebsiteService {
         return parsedContent.success && [parsedContent.data.hero?.desktopImageId, parsedContent.data.hero?.mobileImageId, parsedContent.data.hero?.darkDesktopImageId, parsedContent.data.hero?.darkMobileImageId].some((id) => Boolean(id?.startsWith("brand:")));
       };
       const legacyHeroNeedsReplacement = hasLegacyHeroReference(content) || hasLegacyHeroReference(publishedRevision?.content);
-      return { organization, revision, content, publication, legacyHeroNeedsReplacement, media };
+      // Keep positively mapped, same-tenant static references renderable in private previews.
+      // They are not gallery choices and are never accepted for publication.
+      const referencedLegacyMedia = legacyPublishedRetailHeroMedia(organization.slug).filter((image) => referencedWebsiteImages(content).includes(image.id));
+      return { organization, revision, content, publication, legacyHeroNeedsReplacement, media: [...media, ...referencedLegacyMedia] };
     });
   }
 
@@ -116,12 +120,29 @@ export class RetailWebsiteService {
         if (previous[0].createdBy !== principal.userId || JSON.stringify(retailContentSchema.parse(previous[0].content)) !== JSON.stringify(parsed.content)) throw new ApiError(409, "شناسه ذخیره قبلاً استفاده شده است.");
         return { id: previous[0].id, createdAt: previous[0].createdAt.toISOString(), content: parsed.content };
       }
-      const latest = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "TenantWebsiteRevision" WHERE "organizationId"=${organizationId} ORDER BY "createdAt" DESC, id DESC LIMIT 1`;
+      const latest = await tx.$queryRaw<RevisionRow[]>`SELECT * FROM "TenantWebsiteRevision" WHERE "organizationId"=${organizationId} ORDER BY "createdAt" DESC, id DESC LIMIT 1`;
       if ((latest[0]?.id ?? null) !== parsed.baseRevisionId) throw new ApiError(409, "نسخه جدیدتری ذخیره شده است. صفحه را بازخوانی کنید.");
-      const imageIds = referencedWebsiteImages(parsed.content);
+      const references = websiteImageReferences(parsed.content);
+      const imageIds = [...new Set(references.map((reference) => reference.id))];
       const media = await this.media(tx, organizationId, imageIds, false);
-      if (imageIds.some((id) => !media.some((image) => image.id === id))) throw new ApiError(422, "تصویر باید عمومی و متعلق به همین سازمان باشد.");
-      await this.assertMediaDeliverable(organizationId, media, imageIds);
+      const deliverableIds = new Set(media.map((image) => image.id));
+      const oldContent = latest[0] ? retailContentSchema.parse(latest[0].content) : null;
+      const oldByPath = new Map(oldContent ? websiteImageReferences(oldContent).map((reference) => [reference.path, reference.id]) : []);
+      const legacyIds = new Set(legacyPublishedRetailHeroMedia(org.slug).map((image) => image.id));
+      const diagnostics = [] as { path: string; mediaId: string; reason: "UNAVAILABLE" | "LEGACY_REPLACEMENT_REQUIRED"; message: string }[];
+      for (const reference of references) {
+        if (deliverableIds.has(reference.id)) continue;
+        const isUnchangedVerifiedLegacy = reference.id.startsWith("brand:") && legacyIds.has(reference.id) && oldByPath.get(reference.path) === reference.id;
+        if (isUnchangedVerifiedLegacy) continue;
+        diagnostics.push({
+          path: reference.path,
+          mediaId: reference.id.slice(0, 128),
+          reason: reference.id.startsWith("brand:") ? "LEGACY_REPLACEMENT_REQUIRED" : "UNAVAILABLE",
+          message: reference.id.startsWith("brand:") ? "تصویر ثابت قدیمی فقط در همان جایگاه نسخه قبلی قابل نگهداری است؛ برای تغییر آن تصویری از رسانه‌های همین فروشگاه انتخاب کنید." : "تصویر باید عمومی، متعلق به همین فروشگاه و در دسترس باشد. از رسانه‌های همین فروشگاه تصویر دیگری انتخاب کنید.",
+        });
+      }
+      if (diagnostics.length) throw new ApiError(422, "برخی تصاویر قابل ذخیره نیستند.", { diagnostics });
+      await this.assertMediaDeliverable(organizationId, media, imageIds, references);
       const id = randomUUID();
       const [row] = await tx.$queryRaw<RevisionRow[]>`INSERT INTO "TenantWebsiteRevision" (id,"organizationId",content,"createdBy","requestId","createdAt") VALUES (${id},${organizationId},${JSON.stringify(parsed.content)}::jsonb,${principal.userId},${parsed.requestId},GREATEST(clock_timestamp(),COALESCE((SELECT MAX("createdAt") + INTERVAL '1 millisecond' FROM "TenantWebsiteRevision" WHERE "organizationId"=${organizationId}),clock_timestamp()))) RETURNING *`;
       await tx.auditLog.create({ data: { action: "CREATE", entityType: "TenantWebsiteRevision", entityId: id, organizationId, organizationSlug: org.slug, userId: principal.userId, description: "Private Retail website draft saved" } });

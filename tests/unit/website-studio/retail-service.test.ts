@@ -3,6 +3,7 @@ import test from "node:test";
 import { ApiError } from "@/lib/api-guards";
 import { RetailWebsiteService, retailWebsiteScope, type StudioPrincipal } from "@/lib/website-studio/retail.service";
 import { initialRetailContent, type RetailContent } from "@/lib/website-studio/retail-contract";
+import { legacyPublishedRetailHeroMedia } from "@/lib/website-studio/legacy-retail-hero-media.server";
 
 const org = { id: "org-1", name: "نمونه", slug: "sample", description: null, phone: null, email: null, address: null };
 const principal: StudioPrincipal = { userId: "user-1", role: "ADMIN", organizationId: "org-1" };
@@ -11,6 +12,7 @@ const media = [{ id: "image-1", url: "/uploads/one.jpg", filename: "one.jpg", mi
 
 type MockOptions = {
   currentRevision?: string | null;
+  latestContent?: RetailContent;
   previous?: { id: string; content: RetailContent; requestId: string; createdBy: string; createdAt: Date } | null;
   member?: boolean;
   userRole?: string;
@@ -38,7 +40,7 @@ function mockService(options: MockOptions = {}) {
         return [{ id: "new-revision", content: JSON.parse(String(values[2])) as RetailContent, createdAt: new Date("2026-10-18T10:00:00Z"), requestId: String(values[4]), createdBy: principal.userId }];
       }
       if (sql.includes('"requestId"')) return previous ? [previous] : [];
-      if (sql.includes('ORDER BY "createdAt" DESC, id DESC')) return revisionId ? [{ id: revisionId }] : [];
+      if (sql.includes('ORDER BY "createdAt" DESC, id DESC')) return revisionId ? [{ id: revisionId, content: options.latestContent ?? content, createdAt: new Date(), requestId: "latest", createdBy: principal.userId }] : [];
       return [];
     },
   };
@@ -87,12 +89,28 @@ test("saving rejects media outside the eligible public organization set", async 
   assert.equal(calls.insert, 0);
 });
 
-test("saving rejects legacy tenant brand IDs even when they match known static assets", async () => {
-  const selected = { id: "brand:aka-shoes:/brand/tenants/aka-shoes/home/hero-desktop.webp" };
-  const withBrandImage = structuredClone(content);
-  withBrandImage.sections = withBrandImage.sections.map((section) => section.kind === "HERO" ? { ...section, imageId: selected.id } : section);
+test("saving allows only unchanged same-tenant legacy references in their original field", async () => {
+  const selected = legacyPublishedRetailHeroMedia("aka-shoes")[0]!;
+  const prior = structuredClone(content);
+  prior.sections = prior.sections.map((section) => section.kind === "ABOUT" ? { ...section, imageId: selected.id } : section);
+  const edited = structuredClone(prior);
+  edited.title = "Updated draft";
+  const { service, calls } = mockService({ organization: { ...org, slug: "aka-shoes" }, images: [], currentRevision: "revision-1", latestContent: prior });
+  const result = await service.save(principal, "org-1", draft(undefined, "revision-1", edited));
+  assert.deepEqual(result.content, edited);
+  assert.equal(calls.insert, 1);
+});
+
+test("saving rejects newly introduced legacy references with field and media diagnostics", async () => {
+  const selected = legacyPublishedRetailHeroMedia("aka-shoes")[0]!;
+  const edited = structuredClone(content);
+  edited.sections = edited.sections.map((section) => section.kind === "ABOUT" ? { ...section, imageId: selected.id, visible: false } : section);
   const { service, calls } = mockService({ organization: { ...org, slug: "aka-shoes" }, images: [] });
-  await assert.rejects(service.save(principal, "org-1", draft(undefined, null, withBrandImage)), (error: unknown) => error instanceof ApiError && error.status === 422);
+  await assert.rejects(service.save(principal, "org-1", draft(undefined, null, edited)), (error: unknown) => {
+    assert.ok(error instanceof ApiError && error.status === 422);
+    assert.deepEqual(error.details?.diagnostics, [{ path: "sections.1.imageId", mediaId: selected.id, reason: "LEGACY_REPLACEMENT_REQUIRED", message: "تصویر ثابت قدیمی فقط در همان جایگاه نسخه قبلی قابل نگهداری است؛ برای تغییر آن تصویری از رسانه‌های همین فروشگاه انتخاب کنید." }]);
+    return true;
+  });
   assert.equal(calls.insert, 0);
 });
 

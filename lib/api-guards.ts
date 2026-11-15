@@ -18,17 +18,19 @@ export type SessionWithUser = {
 
 export class ApiError extends Error {
   status: number;
+  details?: Record<string, unknown>;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, details?: Record<string, unknown>) {
     super(message);
     this.status = status;
+    this.details = details;
   }
 }
 
 export function jsonError(error: unknown, fallback = "Internal server error") {
   if (error instanceof ApiError) {
     return NextResponse.json(
-      { error: error.message },
+      { error: error.message, ...(error.details ?? {}) },
       { status: error.status },
     );
   }

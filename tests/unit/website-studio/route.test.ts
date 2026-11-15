@@ -12,13 +12,13 @@ let heroChoiceCalls: Array<{ slug: string; selectedIds: string[] | undefined }> 
 let serviceError: unknown = null;
 
 class TestApiError extends Error {
-  constructor(public status: number, message: string) { super(message); }
+  constructor(public status: number, message: string, public details?: Record<string, unknown>) { super(message); }
 }
 
 mock.module("@/lib/api-guards", { namedExports: {
   ApiError: TestApiError,
   jsonError: (error: unknown, fallback: string) => Response.json(
-    { error: error instanceof Error ? error.message : fallback },
+    { error: error instanceof Error ? error.message : fallback, ...(error instanceof TestApiError ? error.details : {}) },
     { status: error instanceof TestApiError ? error.status : 500 },
   ),
   requireAuthSession: async () => {
@@ -163,6 +163,11 @@ test("website API converts service validation errors to uncached 422 responses",
   serviceError = null;
   assert.equal(response.status, 422);
   assert.equal(response.headers.get("cache-control"), "private, no-store, max-age=0");
+  serviceError = new TestApiError(422, "Image unavailable", { diagnostics: [{ path: "hero.desktopImageId", mediaId: "safe-id", reason: "UNAVAILABLE" }] });
+  const detailed = await POST(request("POST", "{}"), context);
+  serviceError = null;
+  assert.equal(detailed.status, 422);
+  assert.deepEqual((await detailed.json()).diagnostics, [{ path: "hero.desktopImageId", mediaId: "safe-id", reason: "UNAVAILABLE" }]);
 });
 
 test("publication PATCH binds session and route tenant, returns no-store, and maps conflicts", async () => {

@@ -84,9 +84,11 @@ jobs:
           url="postgresql://postgres:postgres@127.0.0.1:5432/${database}?schema=public"
           auth_secret="$(openssl rand -hex 32)"
           nextauth_secret="$(openssl rand -hex 32)"
+          receipt_root="$(mktemp -d "$RUNNER_TEMP/damoon-receipts.XXXXXXXX")"
           echo "::add-mask::${auth_secret}"
           echo "::add-mask::${nextauth_secret}"
           {
+            echo "MEDIA_STORAGE_ROOT=${receipt_root}"
             echo "DAMOON_CI_DATABASE_NAME=${database}"
             echo "DATABASE_URL=${url}"
             echo "DIRECT_URL=${url}"

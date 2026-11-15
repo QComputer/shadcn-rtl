@@ -201,7 +201,11 @@ test("guest submits a bank transfer and receipt for authorized reception verific
 
     const receiptInput = paymentPanel.locator('input[type="file"]').first();
     await receiptInput.setInputFiles({ name: "synthetic-hotel-receipt.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l0sAAAAASUVORK5CYII=", "base64") });
-    await paymentPanel.getByRole("button", { name: "بارگذاری رسید" }).click();
+    const [uploadResponse] = await Promise.all([
+      guestPage.waitForResponse((response) => response.url().endsWith("/receipt") && response.request().method() === "POST"),
+      paymentPanel.getByRole("button", { name: "بارگذاری رسید" }).click(),
+    ]);
+    expect(uploadResponse.status(), await uploadResponse.text()).toBe(201);
     await expect(paymentPanel.getByRole("link", { name: "مشاهده رسید" })).toBeVisible();
 
     const receiptLink = paymentPanel.getByRole("link", { name: "مشاهده رسید" });

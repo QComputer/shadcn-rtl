@@ -95,6 +95,7 @@ test("guest reservation and offline payment UI preserve fa/en/ar direction acros
         const guestPanel = guest.getByRole("region", { name: t.title });
         await assertUI(guestPanel).toBeVisible();
         await assertUI(guestPanel).toHaveAttribute("dir", t.direction);
+        expect(await guestPanel.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
         await assertUI(guestPanel.getByText(t.reservation, { exact: true })).toBeVisible();
         const checkIn = daysFromNow(checkInOffset);
         await guestPanel.getByLabel(t.checkIn).fill(checkIn, { timeout: actionTimeout });
@@ -157,6 +158,8 @@ test("guest reservation and offline payment UI preserve fa/en/ar direction acros
         expect(verifyResponse.status()).toBe(200);
         const verified = locale === "fa" ? "تأییدشده و پرداخت‌شده" : locale === "ar" ? "مؤكد ومدفوع" : "Verified and paid";
         await assertUI(ledger).toContainText(verified);
+        await assertUI(ledger).toContainText(new Intl.NumberFormat(locale === "fa" ? "fa-IR" : locale === "ar" ? "ar" : "en").format(100));
+        expect(await reception.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
         const confirmLabel = locale === "fa" ? "تأیید رزرو" : locale === "ar" ? "تأكيد الحجز" : "Confirm reservation";
         await staffCard.getByRole("button", { name: confirmLabel }).click({ timeout: actionTimeout });
         await assertUI(staffCard).toContainText("CONFIRMED");

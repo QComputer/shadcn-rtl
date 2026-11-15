@@ -75,6 +75,7 @@ jobs:
         run: >-
           pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test
           tests/unit/public-catalog-contract.test.ts
+          tests/unit/public-catalog-media-policy.test.ts
           tests/unit/retail-attribute-validation.test.ts
           tests/unit/tenant-capabilities-and-push.test.ts
           tests/unit/shop-menu-filter.test.ts

@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { filterTenantPublicProductImages, isSafePublicMediaUrl } from "@/lib/public-catalog/media-policy";
 import { canReadAiMediaEntityAttachmentColumns } from "@/lib/services/ai-media-entity-attachment-service";
-
-function isSafePublicMediaUrl(value: string) {
-  if (value.startsWith("/") && !value.startsWith("//")) return true;
-  try { return new URL(value).protocol === "https:"; } catch { return false; }
-}
 
 export async function GET(
   request: NextRequest,
@@ -15,6 +11,9 @@ export async function GET(
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const organizationSlug = searchParams.get("organizationSlug");
+    if (!organizationSlug) {
+      return NextResponse.json({ error: "Organization is required" }, { status: 400 });
+    }
     const includeAiMediaAttachment = canReadAiMediaEntityAttachmentColumns();
 
     // Build the where clause
@@ -25,18 +24,15 @@ export async function GET(
     };
 
     // If organization slug is provided, filter by it
-    if (organizationSlug) {
-      const organization = await prisma.organization.findUnique({
-        where: { slug: organizationSlug },
-        select: { id: true },
-      });
+    const organization = await prisma.organization.findUnique({
+      where: { slug: organizationSlug },
+      select: { id: true },
+    });
 
-      if (!organization) {
-        return NextResponse.json({ error: "Organization not found" }, { status: 404 });
-      }
-
-      where.organizationId = organization.id;
+    if (!organization) {
+      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
     }
+    where.organizationId = organization.id;
 
     // Get product with details
     const product = await prisma.product.findFirst({
@@ -91,9 +87,7 @@ export async function GET(
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    const publicImages = product.images.filter((image) => image.access === "PUBLIC"
-      && (!image.organizationId || image.organizationId === product.organizationId)
-      && isSafePublicMediaUrl(image.url));
+    const publicImages = filterTenantPublicProductImages(product.images, product.organizationId);
     const image = product.image && isSafePublicMediaUrl(product.image)
       && (product.images.length === 0 || publicImages.some((candidate) => candidate.url === product.image))
       ? product.image
@@ -109,7 +103,7 @@ export async function GET(
         basePrice: product.basePrice,
         image,
         images: images.filter((url) => url !== image),
-        aiPrimaryMediaAssetId: includeAiMediaAttachment ? product.aiPrimaryMediaAssetId ?? null : null,
+        hasAiPrimaryMedia: includeAiMediaAttachment && Boolean(product.aiPrimaryMediaAssetId),
         sku: product.sku,
         trackInventory: product.trackInventory,
         lowStockThreshold: product.lowStockThreshold,
@@ -117,7 +111,7 @@ export async function GET(
         variants: product.variants,
       },
       organization: product.organization,
-    });
+    }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     console.error("Error getting product:", error);
     return NextResponse.json(

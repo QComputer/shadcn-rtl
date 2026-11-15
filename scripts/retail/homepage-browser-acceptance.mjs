@@ -92,6 +92,9 @@ try {
   outcomes.push(scenario);
   const response = await page.goto(`${baseUrl}/fa/retail/${encodeURIComponent(tenant)}`, { waitUntil: "domcontentloaded" });
   assert.equal(response?.status(), 200, "public homepage responds successfully");
+  const homepageSsr = await response.text();
+  assert.equal(homepageSsr.includes("javascript:alert(1)"), false, "SSR does not serialize rejected media schemes");
+  assert.equal(homepageSsr.includes("/retail-preview/preview-mobile-campaign.png"), false, "SSR does not serialize another tenant's media reference");
   await page.locator("#products [data-retail-product-card]").first().waitFor();
   await waitForRetailHydration(page);
   const cards = page.locator("#products [data-retail-product-card]");
@@ -105,6 +108,40 @@ try {
   scenario.imageRequests = records.filter((x) => x.kind === "image-media" && x.phase === "request").length;
   assert.equal(initialApi.length, 0, "SSR snapshot hydration must not redundantly request the initial product list");
   assert.equal(scenario.productCardCount, 20, "SSR renders exactly the first 20 products");
+  const publicProjection = await page.evaluate(async (organization) => {
+    const [listResponse, detailResponse, legacyUnscopedResponse, legacyWrongTenantResponse, sharedAssetResponse] = await Promise.all([
+      fetch(`/api/public/v1/organizations/${encodeURIComponent(organization)}/products?page=1&limit=20`),
+      fetch(`/api/public/v1/organizations/${encodeURIComponent(organization)}/products/avid-preview`),
+      fetch("/api/public/products/avid-preview"),
+      fetch("/api/public/products/avid-preview?organizationSlug=retail-r3-mobile-preview"),
+      fetch("/retail-preview/preview-mobile-campaign.png"),
+    ]);
+    return {
+      listStatus: listResponse.status,
+      list: await listResponse.json(),
+      detailStatus: detailResponse.status,
+      detail: await detailResponse.json(),
+      legacyUnscopedStatus: legacyUnscopedResponse.status,
+      legacyWrongTenantStatus: legacyWrongTenantResponse.status,
+      crossTenantFixtureAssetStatus: sharedAssetResponse.status,
+    };
+  }, tenant);
+  assert.equal(publicProjection.listStatus, 200);
+  assert.equal(publicProjection.detailStatus, 200);
+  assert.equal(publicProjection.legacyUnscopedStatus, 400, "legacy public product API requires an explicit tenant context");
+  assert.equal(publicProjection.legacyWrongTenantStatus, 404, "legacy public product API cannot resolve Tenant A's product under Tenant B");
+  assert.equal(publicProjection.crossTenantFixtureAssetStatus, 200, "the referenced URL is a publicly served shared fixture asset, not a tenant-private media endpoint");
+  assert.equal(publicProjection.list.data.products.some((product) => product.media.card === "/retail-preview/preview-fashion-campaign.png"), true, "Tenant A's valid public image remains available");
+  assert.equal(publicProjection.detail.data.media.detail, "/retail-preview/preview-fashion-campaign.png", "the valid same-tenant detail image remains available");
+  const serializedProjection = JSON.stringify({ list: publicProjection.list, detail: publicProjection.detail });
+  assert.equal(serializedProjection.includes("javascript:alert(1)"), false, "v1 list and product API bodies exclude unsafe media schemes");
+  assert.equal(serializedProjection.includes("/retail-preview/preview-mobile-campaign.png"), false, "v1 list and product API bodies exclude another tenant's image reference");
+  scenario.publicProjectionAudit = {
+    listStatus: publicProjection.listStatus,
+    productDetailStatus: publicProjection.detailStatus,
+    unsafeOrForeignReferences: 0,
+    sharedStaticFixtureUrlStatus: publicProjection.crossTenantFixtureAssetStatus,
+  };
   await page.screenshot({ path: path.join(outputDir, "homepage-cold.png"), fullPage: true });
   scenario.result = "passed";
 
@@ -262,13 +299,21 @@ try {
       : null;
     const detail = await page.goto(`${baseUrl}${routePath}`, { waitUntil: "domcontentloaded" });
     assert.equal(detail?.status(), 200, `product detail route renders: ${routePath}`);
+    const detailSsrRsc = await detail.text();
+    assert.equal(detailSsrRsc.includes("javascript:alert(1)"), false, `SSR/RSC payload excludes unsafe media: ${routePath}`);
+    assert.equal(detailSsrRsc.includes("/retail-preview/preview-mobile-campaign.png"), false, `SSR/RSC payload excludes foreign media: ${routePath}`);
     await page.getByRole("heading", { name: "کتانی نمونه آوید", level: 1 }).waitFor();
+    const detailHtml = await page.content();
+    assert.equal(detailHtml.includes("javascript:alert(1)"), false, `SSR/RSC detail rendering excludes unsafe media: ${routePath}`);
+    assert.equal(detailHtml.includes("/retail-preview/preview-mobile-campaign.png"), false, `SSR/RSC detail rendering excludes foreign media: ${routePath}`);
     if (legacyProductApi) {
       const response = await legacyProductApi;
       const payload = await response.json();
+      assert.equal(response.headers()["cache-control"], "private, no-store", "tenant-scoped legacy product projection is not shared-cached");
       assert.equal(payload.product.image, "/retail-preview/preview-fashion-campaign.png", "legacy detail retains its tenant-owned safe primary image");
       assert.deepEqual(payload.product.images, [], "legacy detail excludes duplicate, private and cross-tenant media");
       assert.equal(JSON.stringify(payload).includes("javascript:"), false, "legacy public product payload excludes unsafe URL schemes");
+      assert.equal("aiPrimaryMediaAssetId" in payload.product, false, "legacy public product payload omits internal AI media identifiers");
     }
   }
   assert.equal(unsafeMediaRequests.length, 0, "no browser request uses an unsafe media URL scheme");
@@ -281,6 +326,7 @@ try {
   await waitForRetailHydration(page);
   assert.equal(await page.getByText("کتانی نمونه آوید").count(), 0, "Tenant A product is absent after switching to Tenant B");
   assert.equal(await page.locator("#products [data-retail-product-card]").count(), 5, "Tenant B renders only its five published products");
+  assert.equal((await page.content()).includes("perf-home-a-"), false, "Tenant B SSR contains no Tenant A product identifiers");
   const tenantBRequests = records.filter((item) => item.kind === "catalog-api" && item.phase === "request" && item.tenant === "retail-r3-mobile-preview");
   assert.equal(tenantBRequests.length, 0, "tenant B uses its own SSR snapshot without a redundant fetch");
   outcomes.push({ name: "tenant-a-to-b-isolation", result: "passed", visibleCards: 5, initialCatalogApiRequests: tenantBRequests.length });
@@ -289,6 +335,7 @@ try {
   await waitForRetailHydration(page);
   await page.getByText("محصولی با این مشخصات پیدا نشد. فیلترها را تغییر دهید.").waitFor();
   assert.equal(await page.getByRole("navigation", { name: "صفحه‌های محصولات" }).count(), 0, "empty catalog has no invalid pagination controls");
+  assert.equal((await page.content()).includes("perf-home-a-"), false, "empty Tenant C SSR contains no Tenant A products");
   const emptyCategoryResponse = page.waitForResponse((response) => response.url().includes("category=empty-category") && response.status() === 200);
   await page.getByRole("button", { name: "دسته خالی" }).click();
   await emptyCategoryResponse;

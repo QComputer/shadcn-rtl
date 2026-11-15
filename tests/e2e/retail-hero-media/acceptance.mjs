@@ -163,7 +163,7 @@ try {
   const imageButtons = dialog.locator("button[aria-pressed]");
   await assertEventuallyCount(imageButtons, 23);
   await dialog.getByRole("button", { name: "بعدی" }).click();
-  await assertEventuallyCount(imageButtons, 1);
+  await assertEventuallyCount(imageButtons, 2);
   const pageTwoFilename = (await imageButtons.nth(0).locator("span").first().textContent()).trim();
   const selectedSearch = await context.request.get(new URL(`${websiteApiPath}/media?q=${encodeURIComponent("gallery-fixture-25")}`, base).href);
   assert.equal(selectedSearch.status(), 200);

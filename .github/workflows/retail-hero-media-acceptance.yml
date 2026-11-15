@@ -58,7 +58,6 @@ jobs:
       AUTH_TRUST_HOST: 'true'
       AUTH_URL: http://127.0.0.1:3421
       NEXTAUTH_URL: http://127.0.0.1:3421
-      NEXTAUTH_URL_INTERNAL: http://127.0.0.1:3421
       NEXT_TELEMETRY_DISABLED: '1'
       AI_MEDIA_LOCAL_DOCKER_E2E: '1'
       E2E_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}

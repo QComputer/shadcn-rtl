@@ -102,13 +102,20 @@ try {
     if (pathName === "/fa/login" || pathName.startsWith("/api/auth/") || pathName.includes("/website") || pathName.startsWith("/api/media/")) report.network.push({ method: response.request().method(), path: pathName, status: response.status(), phase: "response" });
   });
 
-  const login = new URL("/fa/login", base);
-  login.searchParams.set("callbackUrl", studioPath);
-  await page.goto(login.href, { waitUntil: "domcontentloaded" });
-  await page.locator("#username").fill(username);
-  await page.locator("#password").fill(password);
-  await page.locator('form button[type="submit"]').click();
-  await page.waitForURL(url => url.pathname === studioPath, { timeout: 60_000, waitUntil: "domcontentloaded" });
+  const csrfResponse = await context.request.get(new URL("/api/auth/csrf", base).href);
+  assert.equal(csrfResponse.status(), 200, "synthetic manager sign-in must obtain a CSRF token");
+  const { csrfToken } = await csrfResponse.json();
+  assert.equal(typeof csrfToken, "string");
+  const signInResponse = await context.request.post(new URL("/api/auth/callback/credentials", base).href, {
+    headers: { origin: base.origin },
+    form: { csrfToken, callbackUrl: new URL(studioPath, base).href, username, password },
+  });
+  assert.equal(signInResponse.status(), 200, "synthetic manager credentials callback must complete");
+  const sessionResponse = await context.request.get(new URL("/api/auth/session", base).href);
+  assert.equal(sessionResponse.status(), 200);
+  const session = await sessionResponse.json();
+  assert.equal(session?.user?.organizationId, orgId, "the browser session must belong to the synthetic Aka Shoes tenant");
+  await page.goto(new URL(studioPath, base).href, { waitUntil: "domcontentloaded" });
   await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
   await page.getByText("استودیوی وب‌سایت فروشگاه", { exact: true }).waitFor({ state: "visible" });
   const hero = page.locator('section[aria-labelledby="retail-hero-title"]');

@@ -15,6 +15,7 @@ const records = [];
 const consoleRecords = [];
 const expectedInjectedConsole = [];
 const expectedAuthConsole = [];
+const expectedProjectionRejectionConsole = [];
 const outcomes = [];
 const injectedFailures = [];
 const externalAssetStubs = [];
@@ -61,6 +62,14 @@ try {
     }
     if (msg.type() === "error" && location.url.includes("/api/retail/v1/favorites") && /401|Unauthorized/i.test(msg.text())) {
       expectedAuthConsole.push({ type: "expected-anonymous-auth-denial", text: msg.text(), url: location.url });
+      return;
+    }
+    const projectionUrl = (() => { try { return new URL(location.url); } catch { return null; } })();
+    const expectedProjectionRejection = projectionUrl?.pathname === "/api/public/products/avid-preview"
+      && ((projectionUrl.search === "" && /400 \(Bad Request\)/i.test(msg.text()))
+        || (projectionUrl.searchParams.get("organizationSlug") === "retail-r3-mobile-preview" && /404 \(Not Found\)/i.test(msg.text())));
+    if (msg.type() === "error" && expectedProjectionRejection) {
+      expectedProjectionRejectionConsole.push({ type: "expected-tenant-projection-rejection", text: msg.text(), url: location.url });
       return;
     }
     if (msg.type() === "error" || /hydration|did not match/i.test(msg.text())) consoleRecords.push({ type: msg.type(), text: msg.text(), url: location.url });
@@ -352,7 +361,7 @@ try {
   if (context && traceStarted) await context.tracing.stop({ path: path.join(outputDir, "homepage-trace.zip") }).catch(() => {});
   await fs.writeFile(path.join(outputDir, "network-requests.json"), JSON.stringify(records, null, 2));
   await fs.writeFile(path.join(outputDir, "browser-console.json"), JSON.stringify(consoleRecords, null, 2));
-  await fs.writeFile(path.join(outputDir, "homepage-browser-results.json"), JSON.stringify({ baseUrl, tenant, outcomes, injectedFailures, expectedInjectedConsole, expectedAuthResponses, expectedAuthConsole, externalAssetStubs, unsafeMediaRequests, consoleErrors: consoleRecords.length }, null, 2));
+  await fs.writeFile(path.join(outputDir, "homepage-browser-results.json"), JSON.stringify({ baseUrl, tenant, outcomes, injectedFailures, expectedInjectedConsole, expectedAuthResponses, expectedAuthConsole, expectedProjectionRejectionConsole, externalAssetStubs, unsafeMediaRequests, consoleErrors: consoleRecords.length }, null, 2));
   await browser.close();
 }
 console.log(JSON.stringify({ outcomes, requestCount: records.length, artifacts: outputDir }, null, 2));

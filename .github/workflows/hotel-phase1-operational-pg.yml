@@ -102,6 +102,8 @@ jobs:
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-offline-payments.local.test.ts
       - name: Run offline payment authorization tests
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --experimental-test-module-mocks --test tests/unit/hotel-offline-payment-route.test.ts
+      - name: Run private receipt storage tests
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/unit/hotel-offline-receipt-storage.test.ts
       - name: Run private receipt authorization tests
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --experimental-test-module-mocks --test tests/unit/hotel-offline-receipt-route.test.ts
       - name: Run guest reservation and policy tests

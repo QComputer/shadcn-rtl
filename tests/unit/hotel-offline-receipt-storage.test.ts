@@ -16,7 +16,11 @@ test("hotel receipts remain private and scoped to the owning tenant", async () =
     assert.deepEqual((await readHotelPaymentReceipt("tenant_a", key)).buffer, png);
     await assert.rejects(readHotelPaymentReceipt("tenant_b", key));
     await assert.rejects(readHotelPaymentReceipt("tenant_a", "../receipt.png"));
+    await assert.rejects(readHotelPaymentReceipt("tenant_a", "not-a-uuid.png"));
+    await assert.rejects(readHotelPaymentReceipt("tenant_a", "11111111-1111-4111-8111-111111111111.gif"));
     await assert.rejects(storeHotelPaymentReceipt("tenant_a", Buffer.from("not an image"), "image/png"));
+    await assert.rejects(storeHotelPaymentReceipt("tenant_a", Buffer.from("\x89PNG\r\n\x1a\n<script>alert(1)</script>"), "image/jpeg"));
+    await assert.rejects(storeHotelPaymentReceipt("tenant_a", Buffer.alloc(0), "image/png"));
   } finally {
     if (original === undefined) delete process.env.MEDIA_STORAGE_ROOT;
     else process.env.MEDIA_STORAGE_ROOT = original;

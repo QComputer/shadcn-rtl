@@ -142,10 +142,12 @@ test("guest submits a bank transfer and receipt for authorized reception verific
   if (!resolved.length || resolved.some(({ address }) => address !== "::1" && !/^127(?:\.\d{1,3}){3}$/.test(address))) throw new Error("Damoon test domain must resolve exclusively to loopback");
 
   const fixture = await seedOperationalGuestFixture();
+  const otherGuestFixture = await seedOperationalGuestFixture();
   const databaseUrl = new URL(env.DATABASE_URL);
   const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl.toString(), max: 2 }), log: [] });
   const guestContext = await browser.newContext();
   const staffContext = await browser.newContext();
+  const otherGuestContext = await browser.newContext();
   let originalPolicy;
   try {
     await db.$connect();
@@ -213,6 +215,17 @@ test("guest submits a bank transfer and receipt for authorized reception verific
     expect(receiptUrl).toBeTruthy();
     const ownReceipt = await guestPage.request.get(`${guestOrigin}${receiptUrl}`);
     expect(ownReceipt.status()).toBe(200);
+    const otherGuestPage = await otherGuestContext.newPage();
+    await login(otherGuestPage, guestOrigin, otherGuestFixture.username, otherGuestFixture.password, guestCallback);
+    const otherGuestReceipt = await otherGuestPage.request.get(`${guestOrigin}${receiptUrl}`);
+    expect([403, 404]).toContain(otherGuestReceipt.status());
+    const foreignPaymentPath = `${reservationsPath(foreignOrganizationId, foreignPropertyId)}/${encodeURIComponent(reservation.id)}/offline-payments`;
+    const foreignPayment = await api(guestPage, foreignPaymentPath);
+    expect([403, 404]).toContain(foreignPayment.status);
+    const foreignReceiptPath = receiptUrl.replace(reservationsPath(organizationId, propertyId), reservationsPath(foreignOrganizationId, foreignPropertyId));
+    expect(foreignReceiptPath).not.toBe(receiptUrl);
+    const foreignReceipt = await guestPage.request.get(`${guestOrigin}${foreignReceiptPath}`);
+    expect([403, 404]).toContain(foreignReceipt.status());
     const anonymousContext = await browser.newContext();
     try {
       const anonymousReceipt = await anonymousContext.request.get(`${guestOrigin}${receiptUrl}`);
@@ -257,7 +270,7 @@ test("guest submits a bank transfer and receipt for authorized reception verific
     expect(settled.body.outstandingToman).toBe("0");
     expect(settled.body.entries.filter((entry) => entry.status === "VERIFIED")).toHaveLength(2);
   } finally {
-    await Promise.allSettled([guestContext.close(), staffContext.close()]);
+    await Promise.allSettled([guestContext.close(), staffContext.close(), otherGuestContext.close()]);
     if (originalPolicy) await db.hotelProperty.update({ where: { id: propertyId }, data: originalPolicy }).catch(() => undefined);
     await db.$disconnect().catch(() => undefined);
   }

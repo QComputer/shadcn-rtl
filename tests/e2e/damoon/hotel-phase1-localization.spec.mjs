@@ -119,6 +119,9 @@ test("guest reservation and offline payment UI preserve fa/en/ar direction acros
         await reservationCard.getByRole("button", { name: t.transfer }).click({ timeout: actionTimeout });
         const payment = reservationCard.getByRole("region", { name: t.payment });
         await assertUI(payment).toBeVisible();
+        const errorMessage = locale === "fa" ? "دریافت یا ثبت اطلاعات پرداخت انجام نشد." : locale === "ar" ? "تعذر تحميل معلومات الدفع أو إرسالها." : "Payment information could not be loaded or submitted.";
+        await payment.getByRole("button", { name: t.submit }).click({ timeout: actionTimeout });
+        await assertUI(payment.getByRole("alert")).toContainText(errorMessage);
         await payment.getByLabel(t.amount).fill("100", { timeout: actionTimeout });
         await payment.getByLabel(t.reference).fill(`TEST-${locale}-${viewport.name}`, { timeout: actionTimeout });
         const [transferResponse] = await Promise.all([
@@ -127,6 +130,15 @@ test("guest reservation and offline payment UI preserve fa/en/ar direction acros
         ]);
         expect(transferResponse.status()).toBe(200);
         await assertUI(payment).toContainText(t.submitted);
+        const upload = locale === "fa" ? "بارگذاری رسید" : locale === "ar" ? "رفع الإيصال" : "Upload receipt";
+        const viewReceipt = locale === "fa" ? "مشاهده رسید" : locale === "ar" ? "عرض الإيصال" : "View receipt";
+        await payment.locator('input[type="file"]').first().setInputFiles({ name: "synthetic.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l0sAAAAASUVORK5CYII=", "base64") });
+        const [receiptResponse] = await Promise.all([
+          guest.waitForResponse((response) => response.url().endsWith("/receipt") && response.request().method() === "POST", { timeout: 12_000 }),
+          payment.getByRole("button", { name: upload }).click({ timeout: actionTimeout }),
+        ]);
+        expect(receiptResponse.status()).toBe(201);
+        await assertUI(payment.getByRole("link", { name: viewReceipt })).toBeVisible();
 
         const staff = await context.newPage();
         staff.setDefaultTimeout(actionTimeout);
@@ -145,6 +157,9 @@ test("guest reservation and offline payment UI preserve fa/en/ar direction acros
         expect(verifyResponse.status()).toBe(200);
         const verified = locale === "fa" ? "تأییدشده و پرداخت‌شده" : locale === "ar" ? "مؤكد ومدفوع" : "Verified and paid";
         await assertUI(ledger).toContainText(verified);
+        const confirmLabel = locale === "fa" ? "تأیید رزرو" : locale === "ar" ? "تأكيد الحجز" : "Confirm reservation";
+        await staffCard.getByRole("button", { name: confirmLabel }).click({ timeout: actionTimeout });
+        await assertUI(staffCard).toContainText("CONFIRMED");
         const cancelLabel = locale === "fa" ? "لغو رزرو" : locale === "ar" ? "إلغاء الحجز" : "Cancel reservation";
         await staffCard.getByRole("button", { name: cancelLabel }).click();
         await assertUI(staffCard).toContainText("CANCELLED");

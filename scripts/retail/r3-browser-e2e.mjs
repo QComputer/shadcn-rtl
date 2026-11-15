@@ -128,7 +128,7 @@ async function createAndPublish({ browser, email, locale, organization, category
     await page.getByRole("combobox", { name: /^رنگ\s/ }).fill("مشکی");
     await page.getByLabel("سایز (EU)").fill("41");
   } else {
-    await page.getByLabel(variantLabels.color).selectOption({ index: 1 });
+    await page.getByRole("combobox", { name: /^رنگ دستگاه آزمایشی\s/ }).fill("آبی");
     await page.getByLabel(variantLabels.dimension).fill("256");
   }
   await page.getByLabel("عنوان گونه").fill("پیش‌نمایش مشکی");

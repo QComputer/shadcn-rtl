@@ -45,6 +45,17 @@ export async function removeHotelPaymentReceipt(organizationId: string, key: str
   await createPersistentDiskApplicationStorage().remove(reference(organizationId, key));
 }
 
+/** Shared transaction lock for attaching and reconciling a receipt object. */
+export function hotelPaymentReceiptLockId(organizationId: string, key: string) {
+  return createHash("sha256").update(`${organizationId}\0${key}`).digest().readBigInt64BE(0);
+}
+
+/** Checks the private object without reading its image bytes. */
+export async function hasPrivateHotelPaymentReceipt(organizationId: string, key: string) {
+  const asset = await getPersistentDiskAssetMetadata(reference(organizationId, key));
+  return asset?.access === "private";
+}
+
 /** Enumerates only aged, correctly-namespaced private receipt objects for one tenant. */
 export async function listStaleHotelPaymentReceipts(input: { organizationId: string; olderThan: Date; limit: number }) {
   if (!/^[A-Za-z0-9_-]+$/.test(input.organizationId) || !Number.isInteger(input.limit) || input.limit < 1 || input.limit > 100

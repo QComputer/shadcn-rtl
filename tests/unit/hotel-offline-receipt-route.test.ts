@@ -14,14 +14,19 @@ let receiptType = "image/png";
 const calls: Array<{ name: string; args: unknown[] }> = [];
 class TestApiError extends Error { constructor(public status: number, message: string) { super(message); } }
 
+const hotelOfflinePayment = {
+  findFirst: async (args: unknown) => { calls.push({ name: "payment.findFirst", args: [args] }); return payment; },
+  updateMany: async (args: unknown) => { calls.push({ name: "payment.updateMany", args: [args] }); return { count: updateCount }; },
+  count: async (args: unknown) => { calls.push({ name: "payment.count", args: [args] }); return 0; },
+};
 const prisma = {
-  hotelOfflinePayment: {
-    findFirst: async (args: unknown) => { calls.push({ name: "payment.findFirst", args: [args] }); return payment; },
-    updateMany: async (args: unknown) => { calls.push({ name: "payment.updateMany", args: [args] }); return { count: updateCount }; },
-  },
+  hotelOfflinePayment,
   customerIdentity: {
     findFirst: async (args: unknown) => { calls.push({ name: "identity.findFirst", args: [args] }); return guestIdentityActive ? { id: "identity-1" } : null; },
   },
+  $transaction: async <T>(callback: (tx: { $queryRaw: (query: TemplateStringsArray, ...values: unknown[]) => Promise<unknown>; hotelOfflinePayment: typeof hotelOfflinePayment }) => Promise<T>) => callback({
+    $queryRaw: async () => [{ acquired: true }], hotelOfflinePayment,
+  }),
 };
 
 mock.module("@/lib/api-guards", { namedExports: {
@@ -51,6 +56,8 @@ mock.module("@/lib/hotel/offline-payments/receipt-storage.server", { namedExport
     return { buffer: receiptBytes, contentType: receiptType };
   },
   removeHotelPaymentReceipt: async (organizationId: string, key: string) => { calls.push({ name: "removeReceipt", args: [organizationId, key] }); },
+  hotelPaymentReceiptLockId: () => BigInt(1),
+  hasPrivateHotelPaymentReceipt: async () => true,
 } });
 
 let GET: typeof import("../../app/api/organizations/[id]/hotels/[propertyId]/reservations/[reservationId]/offline-payments/[paymentId]/receipt/route").GET;

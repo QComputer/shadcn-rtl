@@ -16,6 +16,8 @@ on:
       - "tests/integration/hotel-offline-payments.local.test.ts"
       - "tests/integration/hotel-offline-payment-rollback.local.test.ts"
       - "tests/integration/hotel-offline-receipt-attachment-failure.local.test.ts"
+      - "tests/integration/hotel-offline-receipt-reconciliation.local.test.ts"
+      - "scripts/hotel/reconcile-orphaned-payment-receipts.mts"
       - "tests/unit/hotel-offline-payment-route.test.ts"
       - "tests/unit/hotel-offline-receipt-route.test.ts"
       - "tests/unit/hotel-guest-reservations-route.test.ts"
@@ -80,6 +82,7 @@ jobs:
       HOTEL_OPERATIONAL_RESERVATION_ACCEPTANCE: "1"
       HOTEL_OFFLINE_PAYMENT_PG_ACCEPTANCE: "1"
       HOTEL_OFFLINE_RECEIPT_PG_ACCEPTANCE: "1"
+      HOTEL_RECEIPT_RECONCILIATION_PG_ACCEPTANCE: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -113,6 +116,9 @@ jobs:
       - name: Run private receipt attachment failure acceptance
         id: receipt_failure
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --experimental-test-module-mocks --test tests/integration/hotel-offline-receipt-attachment-failure.local.test.ts
+      - name: Run private receipt reconciliation acceptance
+        id: receipt_reconciliation
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-offline-receipt-reconciliation.local.test.ts
       - name: Run offline payment authorization tests
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --experimental-test-module-mocks --test tests/unit/hotel-offline-payment-route.test.ts
       - name: Run private receipt storage tests

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ApiError, jsonError, requireAuthSession, requireSameOriginMutation } from "@/lib/api-guards";
 import { prisma } from "@/lib/db-runtime";
 import { authorizeHotelBookingActor } from "@/lib/hotel/services/booking-context";
-import { readHotelPaymentReceipt, removeHotelPaymentReceipt, storeHotelPaymentReceipt } from "@/lib/hotel/offline-payments/receipt-storage.server";
+import { hasPrivateHotelPaymentReceipt, hotelPaymentReceiptLockId, readHotelPaymentReceipt, removeHotelPaymentReceipt, storeHotelPaymentReceipt } from "@/lib/hotel/offline-payments/receipt-storage.server";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const MAX_MULTIPART_BYTES = MAX_FILE_BYTES + 64 * 1024;
@@ -114,28 +114,43 @@ export async function POST(request: NextRequest, params: Params) {
     const key = await storeHotelPaymentReceipt(scope.organizationId, Buffer.from(await file.arrayBuffer()), file.type);
     let updated: { count: number };
     try {
-      updated = await offlinePaymentDelegate().updateMany({
-        where: { id: scope.paymentId, organizationId: scope.organizationId, reservationId: scope.reservationId, method: "BANK_TRANSFER", status: "SUBMITTED", receiptKey: null },
-        data: { receiptKey: key },
+      updated = await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(${hotelPaymentReceiptLockId(scope.organizationId, key)}) IS NULL AS acquired`;
+        if (!await hasPrivateHotelPaymentReceipt(scope.organizationId, key)) throw new ApiError(409, "Receipt is no longer available");
+        return tx.hotelOfflinePayment.updateMany({
+          where: { id: scope.paymentId, organizationId: scope.organizationId, reservationId: scope.reservationId, method: "BANK_TRANSFER", status: "SUBMITTED", receiptKey: null },
+          data: { receiptKey: key },
+        });
       });
     } catch (error) {
       // A connection failure can happen after PostgreSQL committed. Re-read the exact
       // tenant-scoped payment before deciding whether this request's private file is orphaned.
       // If reconciliation itself is unavailable, retain the file; deleting it could break a commit.
       try {
-        const current = await findPayment(scope);
-        if (current?.receiptKey === key) {
+        const state = await prisma.$transaction(async (tx) => {
+          await tx.$queryRaw`SELECT pg_advisory_xact_lock(${hotelPaymentReceiptLockId(scope.organizationId, key)}) IS NULL AS acquired`;
+          const current = await tx.hotelOfflinePayment.findFirst({ where: { id: scope.paymentId, organizationId: scope.organizationId, reservationId: scope.reservationId }, select: { receiptKey: true } });
+          if (current?.receiptKey === key) return "ATTACHED" as const;
+          const referenceCount = await tx.hotelOfflinePayment.count({ where: { organizationId: scope.organizationId, receiptKey: key } });
+          if (referenceCount === 0) await removeHotelPaymentReceipt(scope.organizationId, key);
+          return "NOT_ATTACHED" as const;
+        });
+        if (state === "ATTACHED") {
           return NextResponse.json({ attached: true }, { status: 201, headers: { "Cache-Control": "private, no-store" } });
         }
-        await removeHotelPaymentReceipt(scope.organizationId, key).catch(() => undefined);
       } catch {
         // Preserve an ambiguous private file for later bounded reconciliation.
       }
       throw error;
     }
     if (updated.count !== 1) {
-      // Only delete after a definite zero-row update; a database error can have an unknown commit outcome.
-      await removeHotelPaymentReceipt(scope.organizationId, key).catch(() => undefined);
+      // A definite no-op is reconciled under the same lock as cleanup. Never unlink a key
+      // that may have become referenced by a concurrent attachment.
+      await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(${hotelPaymentReceiptLockId(scope.organizationId, key)}) IS NULL AS acquired`;
+        const references = await tx.hotelOfflinePayment.count({ where: { organizationId: scope.organizationId, receiptKey: key } });
+        if (references === 0) await removeHotelPaymentReceipt(scope.organizationId, key);
+      }).catch(() => undefined);
       throw new ApiError(409, "Receipt could not be attached");
     }
     return NextResponse.json({ attached: true }, { status: 201, headers: { "Cache-Control": "private, no-store" } });

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/db-runtime";
-import { listStaleHotelPaymentReceipts, removeHotelPaymentReceipt } from "@/lib/hotel/offline-payments/receipt-storage.server";
+import { hotelPaymentReceiptLockId, listStaleHotelPaymentReceipts, removeHotelPaymentReceipt } from "@/lib/hotel/offline-payments/receipt-storage.server";
 
 function option(name: string) {
   const prefix = `--${name}=`;
@@ -28,23 +28,23 @@ async function main() {
     }
     const cutoff = new Date(Date.now() - olderThanHours * 60 * 60 * 1000);
     const candidates = await listStaleHotelPaymentReceipts({ organizationId, olderThan: cutoff, limit });
-    const keys = candidates.map((key) => key.replace(/\.(?:jpg|png|webp)$/, ""));
-    const referenced = keys.length ? await prisma.hotelOfflinePayment.findMany({
-      where: { organizationId, receiptKey: { in: keys } }, select: { receiptKey: true },
-    }) : [];
-    const referencedKeys = new Set(referenced.map((row) => row.receiptKey).filter((key): key is string => Boolean(key)));
     let deleted = 0;
     for (const key of candidates) {
-      const receiptId = key.replace(/\.(?:jpg|png|webp)$/, "");
-      const isReferenced = referencedKeys.has(receiptId);
-      const action = !isReferenced && apply ? "DELETE" : isReferenced ? "PRESERVE_REFERENCED" : "DRY_RUN_ELIGIBLE";
-      if (action === "DELETE") {
+      const lockId = hotelPaymentReceiptLockId(organizationId, key);
+      const action = await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(${lockId}) IS NULL AS acquired`;
+        const referenced = await tx.hotelOfflinePayment.findFirst({ where: { organizationId, receiptKey: key }, select: { id: true } });
+        if (referenced) return "PRESERVE_REFERENCED" as const;
+        if (!apply) return "DRY_RUN_ELIGIBLE" as const;
+        // Keep the tenant/key lock until deletion commits so upload association
+        // cannot race the reference check and leave a dangling DB key.
         await removeHotelPaymentReceipt(organizationId, key);
-        deleted += 1;
-      }
-      console.log(JSON.stringify({ action, organizationId, receiptFingerprint: createHash("sha256").update(key).digest("hex").slice(0, 12), reason: isReferenced ? "DATABASE_REFERENCE_EXISTS" : "OLDER_THAN_GRACE_AND_UNREFERENCED" }));
+        return "DELETE" as const;
+      });
+      if (action === "DELETE") deleted += 1;
+      console.log(JSON.stringify({ action, organizationId, receiptFingerprint: createHash("sha256").update(key).digest("hex").slice(0, 12), reason: action === "PRESERVE_REFERENCED" ? "DATABASE_REFERENCE_EXISTS" : "OLDER_THAN_GRACE_AND_UNREFERENCED" }));
     }
-    console.log(JSON.stringify({ result: "COMPLETE", databaseVerified: true, organizationId, candidateCount: candidates.length, referencedCount: referencedKeys.size, deletedCount: deleted, apply }));
+    console.log(JSON.stringify({ result: "COMPLETE", databaseVerified: true, organizationId, candidateCount: candidates.length, deletedCount: deleted, apply }));
   } finally {
     await prisma.$disconnect();
   }

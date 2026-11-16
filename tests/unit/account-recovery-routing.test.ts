@@ -13,11 +13,14 @@ test("recovery stays on the shared application surface for tenant custom domains
   assert.equal(isCustomDomainApplicationPath("/fa/dashboard/settings"), true);
 });
 
-test("hotel guest accounts use only the explicit reservation route", () => {
+test("hotel guest accounts use only the explicit reservation routes", () => {
   for (const path of ["/hotel-reservations/org/property", "/fa/hotel-reservations/org/property", "/en/hotel-reservations/org/property", "/ar/hotel-reservations/org/property"]) {
     assert.equal(isHotelGuestApplicationPath(path), true);
   }
-  for (const path of ["/hotel-reservations", "/hotel-reservations/org", "/hotel-reservations/org/property/extra", "/hotel-reservations-extra/org/property"]) {
+  for (const path of ["/hotel-reservations/start", "/fa/hotel-reservations/start", "/en/hotel-reservations/start", "/ar/hotel-reservations/start"]) {
+    assert.equal(isHotelGuestApplicationPath(path), true);
+  }
+  for (const path of ["/hotel-reservations", "/hotel-reservations/org", "/hotel-reservations/start/extra", "/hotel-reservations/org/property/extra", "/hotel-reservations-extra/org/property"]) {
     assert.equal(isHotelGuestApplicationPath(path), false);
   }
 });

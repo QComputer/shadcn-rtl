@@ -5,14 +5,20 @@ on:
     branches: [main, codex/damoon-public-booking-sync-20261114]
     paths:
       - "sites/damoon/**"
+      - "app/[locale]/hotel-reservations/**"
+      - "app/[locale]/login/**"
       - "app/api/hotel/v1/**"
       - "app/api/organizations/**/hotels/**/booking-requests/**"
       - "components/hotel-operations/hotel-guest-booking-requests.tsx"
       - "lib/hotel/**"
+      - "lib/auth.ts"
+      - "lib/customer-auth/context.server.ts"
+      - "lib/custom-domain-routing.ts"
       - "prisma/**"
       - "scripts/hotel/seed-damoon-booking-e2e.mts"
       - "scripts/hotel/verify-damoon-disabled-request-gate.mjs"
       - "tests/e2e/damoon/**"
+      - "tests/unit/account-recovery-routing.test.ts"
       - "tests/damoon-booking-flow.test.mjs"
       - "tests/damoon-static-server.test.mjs"
       - "tests/damoon-public-bundle.test.mjs"
@@ -20,6 +26,7 @@ on:
       - "public/damoon-front/**"
       - "playwright.damoon.config.mjs"
       - "playwright.damoon-operational.config.mjs"
+      - "next.config.ts"
       - ".github/workflows/damoon-booking-acceptance.yml"
       - "pnpm-lock.yaml"
   workflow_dispatch:
@@ -119,7 +126,7 @@ jobs:
       - name: Verify latest guest tracking response wins
         run: pnpm exec node --test sites/damoon/tests/booking-tracking-latest-submit.test.mjs
       - name: Verify shared public guest booking bundle
-        run: pnpm exec node --test tests/damoon-public-booking-module.test.mjs
+        run: pnpm exec node --test tests/damoon-public-booking-module.test.mjs sites/damoon/tests/booking-reservation-entry.test.mjs sites/damoon/tests/virtual-tour-security.test.mjs
       - name: Start real Next API backend
         shell: bash
         run: |
@@ -171,7 +178,7 @@ jobs:
           node --test sites/damoon/tests/standalone-api-proxy.test.mjs
           pnpm exec playwright test --config=playwright.damoon.config.mjs
       - name: Restart isolated API with operational fixture gates
-        if: github.event_name == 'pull_request' && github.head_ref == 'codex/damoon-phase1-operational-20261114'
+        if: (github.event_name == 'pull_request' && (github.head_ref == 'codex/damoon-phase1-operational-20261114' || github.head_ref == 'codex/hotel-damoon-phase1-20261116')) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/codex/hotel-damoon-phase1-20261116')
         shell: bash
         run: |
           set -euo pipefail
@@ -190,12 +197,13 @@ jobs:
           exit 1
       - name: Run isolated operational guest and reception browser acceptance
         id: operational_browser
-        if: github.event_name == 'pull_request' && github.head_ref == 'codex/damoon-phase1-operational-20261114'
+        if: (github.event_name == 'pull_request' && (github.head_ref == 'codex/damoon-phase1-operational-20261114' || github.head_ref == 'codex/hotel-damoon-phase1-20261116')) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/codex/hotel-damoon-phase1-20261116')
         env:
           NODE_ENV: test
           HOTEL_OPERATIONAL_RESERVATIONS_ENABLED: "1"
           HOTEL_GUEST_PORTAL_ENABLED: "1"
           HOTEL_OFFLINE_PAYMENT_OPERATIONAL_ENABLED: "1"
+          DAMOON_OPERATIONAL_RUNTIME_URL: http://damoon-hotel.ir:3000
         run: pnpm exec playwright test --config=playwright.damoon-operational.config.mjs
       - name: Restart API with the guest-request gate disabled
         shell: bash
@@ -239,14 +247,18 @@ jobs:
               tail -n 120 "$file" | sed -E 's/(authorization|cookie|set-cookie)(: ?)[^ ]*/\1\2[REDACTED]/Ig; s/(token|secret|password)=([^& ]+)/\1=[REDACTED]/Ig; s/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/[REDACTED-JWT]/g'
             fi
           done
-      - name: Retain failure-only browser screenshots
+      - name: Retain failure-only browser diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: damoon-browser-failure-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             .tmp/damoon-operational-playwright-results/**/test-failed-*.png
+            .tmp/damoon-operational-playwright-results/**/trace.zip
+            .tmp/damoon-operational-playwright-results/**/error-context.md
             .tmp/damoon-playwright-results/**/test-failed-*.png
+            .tmp/damoon-playwright-results/**/trace.zip
+            .tmp/damoon-playwright-results/**/error-context.md
           if-no-files-found: ignore
           retention-days: 3
       - name: Stop task-owned servers and drop only the disposable database

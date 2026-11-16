@@ -4,13 +4,16 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { signIn } from "@/lib/auth";
 import { organizationService } from "@/lib/services/organization.service";
+import { requireSameOriginMutation } from "@/lib/api-guards";
+import { resolveHotelTenantForHost } from "@/lib/hotel/services/hotel-publication.service";
 
 // Validation schema for registration - only username and password required
 const registerSchema = z.object({
   username: z.string().trim().min(3, "Username must be at least 3 characters").max(50, "Username must be less than 50 characters")
     .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/, "Username contains unsupported characters").transform((value) => value.toLowerCase()),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  orgSlug: z.string().optional()
+  orgSlug: z.string().optional(),
+  hotelGuest: z.boolean().optional().default(false),
 });
 
 export async function POST(request: NextRequest) {
@@ -27,7 +30,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { username, password, orgSlug } = validation.data;
+    const { username, password, orgSlug, hotelGuest } = validation.data;
+    if (hotelGuest && orgSlug?.trim()) return NextResponse.json({ error: "Choose one membership flow" }, { status: 400 });
+
+    const hotelTenant = hotelGuest ? await resolveHotelTenantForHost(request.headers.get("host")) : null;
+    if (hotelGuest) {
+      requireSameOriginMutation(request);
+      if (!hotelTenant) return NextResponse.json({ error: "Hotel registration is unavailable for this host" }, { status: 404 });
+      if (process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED !== "1" || process.env.HOTEL_GUEST_PORTAL_ENABLED !== "1") {
+        return NextResponse.json({ error: "Hotel guest registration is not enabled" }, { status: 503 });
+      }
+    }
 
     // Check if username already exists
     const existingUser = await prisma.user.findFirst({
@@ -45,23 +58,26 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12);
 
     // Create user with CUSTOMER role
-    const user = await prisma.user.create({
-      data: {
-        name: username,
-        password: hashedPassword,
-        role: "CUSTOMER",
-        isActive: true,
-        isTeamMember: false,
-        locale: "fa",
-        theme: "system",
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-      },
+    const user = await prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          name: username,
+          password: hashedPassword,
+          role: "CUSTOMER",
+          isActive: true,
+          isTeamMember: false,
+          locale: "fa",
+          theme: "system",
+        },
+        select: { id: true, name: true, email: true, role: true, createdAt: true },
+      });
+      if (hotelTenant) {
+        await tx.customerClubMembership.create({
+          data: { organizationId: hotelTenant.organizationId, customerId: created.id, status: "ACTIVE", source: "PUBLIC_SHOP" },
+          select: { id: true },
+        });
+      }
+      return created;
     });
 
     if (orgSlug && user) {

@@ -33,6 +33,7 @@ test("Damoon standalone server serves its complete browser module graph", { time
       }
     }
     assert.ok(visited.has("/booking-flow.js"), "booking flow is a transitive app dependency");
+    assert.ok(visited.has("/virtual-tour.js"), "virtual tour origin validation is part of the served app module graph");
     for (const pathname of ["/fa/contact", "/en/contact", "/ar/contact"]) {
       assert.equal((await fetch(`${base}${pathname}`)).status, 200);
     }

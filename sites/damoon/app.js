@@ -6,6 +6,7 @@ import translations from "./translations.js";
 import { palettes, readPalette, applyPalette } from "./themes.js";
 import { mountBooking, readStaySelection } from "./booking.js";
 import { parseChildAges, withStaySelection } from "./booking-flow.js";
+import { allowedVirtualTourUrl } from "./virtual-tour.js";
 
 const root = document.querySelector("#app");
 if (!root) throw new Error("Damoon app mount #app was not found");
@@ -144,11 +145,13 @@ function galleryGrid() {
 function virtualTourUrl() {
   try {
     const fromQuery = new URLSearchParams(location.search).get("tour");
-    if (fromQuery) return fromQuery;
+    const allowedQuery = allowedVirtualTourUrl(fromQuery);
+    if (allowedQuery) return allowedQuery;
     const stored = localStorage.getItem("damoon-vtour-url");
-    if (stored) return stored;
+    const allowedStored = allowedVirtualTourUrl(stored);
+    if (allowedStored) return allowedStored;
   } catch { /* ignore */ }
-  return window.DAMOON_VTOUR_URL || "";
+  return allowedVirtualTourUrl(window.DAMOON_VTOUR_URL);
 }
 function virtualTourSection() {
   const url = virtualTourUrl();
@@ -216,7 +219,7 @@ function wireInteractions() {
   applyPalette(readPalette(paletteStorage), document, paletteStorage);
   document.querySelectorAll("button[data-palette]").forEach(button => button.addEventListener("click", () => applyPalette(button.dataset.palette, document, paletteStorage)));
   const bookingSlot = document.querySelector("[data-booking-slot]");
-  if (bookingSlot) mountBooking(bookingSlot, { routeHref, locale, coordinationOnly: false, requestOnly: true });
+  if (bookingSlot) mountBooking(bookingSlot, { routeHref, locale, coordinationOnly: false, requestOnly: true, reservationEntry: true });
   const homeSlides = gallery.slice(1, 5);
   const homeImage = document.querySelector("[data-home-slide]");
   if (homeImage && homeSlides.length) {

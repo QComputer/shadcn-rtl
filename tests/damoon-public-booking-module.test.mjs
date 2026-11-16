@@ -7,6 +7,7 @@ import test from "node:test";
 import { chromium } from "playwright";
 import { mountBooking } from "../public/damoon-front/booking.js";
 import {
+  buildReservationEntryUrl,
   buildGuestRequestPayload,
   createIdempotencyKey,
   requestAttemptFingerprint,
@@ -14,6 +15,7 @@ import {
 
 test("shared Damoon browser module graph loads its guest-request entry points", () => {
   assert.equal(typeof mountBooking, "function");
+  assert.equal(typeof buildReservationEntryUrl, "function");
   assert.equal(typeof buildGuestRequestPayload, "function");
   assert.equal(typeof requestAttemptFingerprint, "function");
 });
@@ -50,7 +52,7 @@ test("shared guest request payload carries the selected stay without hold or pay
   assert.match(createIdempotencyKey(), /^damoon-[a-f0-9]{64}$/);
 });
 
-test("shared-runtime home page opts into guest requests and includes tracking UI styles", async () => {
+test("shared-runtime home page opens the authenticated preview and preserves request tracking", async () => {
   const root = new URL("../public/damoon-front/", import.meta.url);
   const [home, app, booking, styles] = await Promise.all([
     readFile(new URL("index.html", root), "utf8"),
@@ -60,8 +62,11 @@ test("shared-runtime home page opts into guest requests and includes tracking UI
   ]);
 
   assert.match(home, /src="\/damoon-front\/app\.js"/);
-  assert.match(app, /mountBooking\(bookingSlot, \{ routeHref, locale, coordinationOnly: false, requestOnly: true \}\)/);
+  assert.match(app, /mountBooking\(bookingSlot, \{ routeHref, locale, coordinationOnly: false, requestOnly: true, reservationEntry: true \}\)/);
   assert.match(booking, /\/api\/hotel\/v1\/requests/);
+  assert.match(booking, /data-reservation-entry/);
+  assert.match(booking, /postJson\("\/api\/hotel\/v1\/availability\/search"/);
+  assert.match(booking, /buildReservationEntryUrl\(new URL\(routeHref\("\/hotel-reservations\/start"\)/);
   assert.match(booking, /data-create-\$\{requestOnly \? "request" : "hold"\}/);
   assert.match(booking, /data-track-request/);
   assert.match(styles, /booking-step--confirmed/);

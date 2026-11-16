@@ -26,9 +26,21 @@ function RegisterForm({ locale }: { locale: string }) {
   const [success, setSuccess] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
+  const [callbackUrl, setCallbackUrl] = useState("")
+  const [hotelGuestSignup, setHotelGuestSignup] = useState(false)
 
   useEffect(() => {
     setMounted(true)
+    const rawCallback = new URLSearchParams(window.location.search).get("callbackUrl")
+    if (rawCallback?.startsWith(`/${locale}/`) && !rawCallback.startsWith("//") && !rawCallback.includes("\\")) {
+      try {
+        const parsed = new URL(rawCallback, window.location.origin)
+        if (parsed.origin === window.location.origin && !parsed.searchParams.has("token") && !parsed.hash.toLowerCase().includes("token=")) {
+          setCallbackUrl(`${parsed.pathname}${parsed.search}${parsed.hash}`)
+          setHotelGuestSignup(parsed.pathname === `/${locale}/hotel-reservations/start`)
+        }
+      } catch { /* ignore unsafe callback */ }
+    }
     import("@/lib/dictionary").then(({ getDictionary }) => {
       setDict(getDictionary(locale))
     })
@@ -66,7 +78,7 @@ function RegisterForm({ locale }: { locale: string }) {
         body: JSON.stringify({
           username: username.trim().toLowerCase(),
           password,
-          orgSlug,
+          ...(hotelGuestSignup ? { hotelGuest: true } : { orgSlug }),
         }),
       })
 
@@ -83,11 +95,13 @@ function RegisterForm({ locale }: { locale: string }) {
       // Otherwise redirect to login page
       if (data.autoLogin) {
         setTimeout(() => {
-          router.push(`/${locale}/dashboard`)
+          router.push(callbackUrl || `/${locale}/dashboard`)
         }, 1500)
       } else {
         setTimeout(() => {
-          router.push(`/${locale}/login?registered=true`)
+          const loginQuery = new URLSearchParams({ registered: "true" })
+          if (callbackUrl) loginQuery.set("callbackUrl", callbackUrl)
+          router.push(`/${locale}/login?${loginQuery.toString()}`)
         }, 1500)
       }
     } catch (err) {
@@ -167,7 +181,9 @@ function RegisterForm({ locale }: { locale: string }) {
               {t("auth.register") || "ثبت نام"}
             </CardTitle>
             <CardDescription>
-              {t("auth.registerDesc") || "ایجاد حساب کاربری جدید"}
+              {hotelGuestSignup
+                ? locale === "fa" ? "ایجاد حساب مهمان هتل؛ عضویت فقط برای دامنه هتل انتخاب‌شده ثبت می‌شود." : locale === "ar" ? "إنشاء حساب ضيف؛ تُسجّل العضوية للفندق المرتبط بهذا النطاق فقط." : "Create a hotel guest account; membership is added only to the hotel serving this domain."
+                : t("auth.registerDesc") || "ایجاد حساب کاربری جدید"}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -199,7 +215,7 @@ function RegisterForm({ locale }: { locale: string }) {
                   dir="ltr"
                 />
               </div>
-   <div className="space-y-2">
+   {!hotelGuestSignup && <div className="space-y-2">
                 <Label htmlFor="orgSlug">
                   {t("auth.orgSlug") || "اسلاگ سازمان (اختیاری)"}
                 </Label>
@@ -213,7 +229,7 @@ function RegisterForm({ locale }: { locale: string }) {
                   className="h-10"
                   dir="ltr"
                 />
-              </div>
+              </div>}
 
 
               <div className="space-y-2">
@@ -289,7 +305,7 @@ function RegisterForm({ locale }: { locale: string }) {
                 {t("auth.alreadyHaveAccount") || "حساب کاربری دارید؟"}{" "}
               </span>
               <Link
-                href={`/${locale}/login`}
+                href={`/${locale}/login${callbackUrl ? `?callbackUrl=${encodeURIComponent(callbackUrl)}` : ""}`}
                 className="text-primary hover:underline font-medium"
               >
                 {t("auth.login") || "ورود"}

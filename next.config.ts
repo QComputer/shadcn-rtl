@@ -32,6 +32,7 @@ const nextConfig: NextConfig = {
   },
   allowedDevOrigins: [
     "192.168.1.6",
+    ...(process.env.CI === "true" && process.env.DAMOON_E2E_ENABLED === "1" ? ["damoon-hotel.ir"] : []), // Exact synthetic host, only in isolated browser CI.
     "*.localtest.me",
     configuredDevelopmentHost(),
   ],

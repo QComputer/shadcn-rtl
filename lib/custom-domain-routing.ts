@@ -653,7 +653,7 @@ export function isCustomDomainBypassPath(pathname: string) {
 /** Hotel account routes remain on the verified tenant host; APIs enforce ownership. */
 export function isHotelGuestApplicationPath(pathname: string) {
   const { pathnameWithoutLocale } = splitLocalePrefix(pathname);
-  return /^\/hotel-reservations\/[^/]+\/[^/]+\/?$/.test(pathnameWithoutLocale);
+  return pathnameWithoutLocale === "/hotel-reservations/start" || /^\/hotel-reservations\/[^/]+\/[^/]+\/?$/.test(pathnameWithoutLocale);
 }
 
 export function isCustomDomainApplicationPath(pathname: string) {

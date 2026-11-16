@@ -18,6 +18,16 @@ export function withStaySelection(target, { range, adults, guests, children, chi
   return url;
 }
 
+/** Build a same-origin, host-bound entry into the authenticated hotel booking flow. */
+export function buildReservationEntryUrl(target, propertySlug, stay) {
+  if (typeof propertySlug !== "string" || !/^[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?$/.test(propertySlug)) {
+    throw new TypeError("A valid property slug is required");
+  }
+  const url = withStaySelection(target, stay);
+  url.searchParams.set("property", propertySlug);
+  return url;
+}
+
 export function parseChildAges(inputs, expectedCount) {
   if (expectedCount === 0) return { ok: true, ages: [] };
   if (!Array.isArray(inputs) || inputs.length !== expectedCount) return { ok: false, ages: [] };

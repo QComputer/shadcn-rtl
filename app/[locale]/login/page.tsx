@@ -17,10 +17,21 @@ import { ThemeSwitcher } from "@/components/ui/theme-switcher"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { BazarbaazLogo } from "@/components/brand/BazarbaazLogo"
 
+function safeLocalCallback(value: string | null, fallback: string, currentOrigin: string) {
+  if (!value || value.startsWith("//") || value.includes("\\")) return fallback;
+  try {
+    const parsed = new URL(value, currentOrigin);
+    if (parsed.origin !== currentOrigin || parsed.username || parsed.password || parsed.searchParams.has("token") || parsed.hash.toLowerCase().includes("token=")) return fallback;
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch { return fallback; }
+}
+
 function LoginForm({ locale }: { locale: string }) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get("callbackUrl") || appPath(`/${locale}/dashboard`)
+  const fallbackCallbackUrl = appPath(`/${locale}/dashboard`)
+  const requestedCallbackUrl = searchParams.get("callbackUrl")
+  const [callbackUrl, setCallbackUrl] = useState(fallbackCallbackUrl)
   const organizationHint = searchParams.get("organization")
   const phoneLoginParams = new URLSearchParams()
   if (organizationHint) phoneLoginParams.set("organization", organizationHint)
@@ -31,12 +42,14 @@ function LoginForm({ locale }: { locale: string }) {
     } catch { /* ignore malformed callback context */ }
   }
   const phoneLoginHref = `/${locale}/login/phone${phoneLoginParams.size ? `?${phoneLoginParams.toString()}` : ""}`
+  const registerHref = `/${locale}/register${callbackUrl.startsWith(`/${locale}/`) ? `?callbackUrl=${encodeURIComponent(callbackUrl)}` : ""}`
   const passwordChanged = searchParams.get("security") === "password-changed"
 
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
+  const [joinHotelOnLogin, setJoinHotelOnLogin] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [mounted, setMounted] = useState(false)
@@ -44,11 +57,12 @@ function LoginForm({ locale }: { locale: string }) {
 
   useEffect(() => {
     setMounted(true)
+    if (typeof window !== "undefined") setCallbackUrl(safeLocalCallback(requestedCallbackUrl, fallbackCallbackUrl, window.location.origin))
     // Load dictionary client-side
     import("@/lib/dictionary").then(({ getDictionary }) => {
       setDict(getDictionary(locale))
     })
-  }, [locale])
+  }, [locale, requestedCallbackUrl, fallbackCallbackUrl])
 
   const t = (key: string): string => {
     if (!dict) return key
@@ -65,12 +79,13 @@ function LoginForm({ locale }: { locale: string }) {
         username: username.trim().toLowerCase(),
         password,
         redirect: false,
+        ...(joinHotelOnLogin ? { hotelGuestJoin: "true" } : {}),
       })
 
       if (result?.error) {
         setError(t("auth.invalidCredentials") || "ایمیل یا رمز عبور اشتباه است")
       } else {
-        router.push(callbackUrl)
+        router.push(safeLocalCallback(requestedCallbackUrl, fallbackCallbackUrl, window.location.origin))
       }
     } catch (err) {
       setError(t("auth.error") || "خطایی رخ داد. لطفاً دوباره تلاش کنید")
@@ -204,6 +219,19 @@ function LoginForm({ locale }: { locale: string }) {
                 </div>
               </div>
 
+              {requestedCallbackUrl?.startsWith(`/${locale}/hotel-reservations/start`) && (
+                <div className="flex items-start gap-2 rounded-md border p-3">
+                  <Checkbox id="join-hotel" checked={joinHotelOnLogin} onCheckedChange={(checked) => setJoinHotelOnLogin(checked === true)} />
+                  <label htmlFor="join-hotel" className="cursor-pointer text-sm leading-6 text-muted-foreground">
+                    {locale === "en"
+                      ? "If I am not already a member, I agree to join the hotel on this domain to continue my reservation."
+                      : locale === "ar"
+                        ? "إذا لم أكن عضواً، أوافق على الانضمام إلى الفندق المرتبط بهذا النطاق لمتابعة الحجز."
+                        : "اگر هنوز عضو نیستم، با عضویت در هتل همین دامنه برای ادامهٔ رزرو موافقم."}
+                  </label>
+                </div>
+              )}
+
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="remember"
@@ -272,7 +300,7 @@ function LoginForm({ locale }: { locale: string }) {
           </p>
           <p className="text-sm text-muted-foreground">
             {t("auth.noAccount") || "حساب کاربری ندارید؟"}
-            <Link href={`/${locale}/register`} className="text-primary hover:underline font-medium p-1">
+            <Link href={registerHref} className="text-primary hover:underline font-medium p-1">
               {t("auth.register") || "ثبت نام کاربر"}
             </Link>
           </p>

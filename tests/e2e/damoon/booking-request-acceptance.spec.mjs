@@ -164,7 +164,9 @@ const dayAfterISO = (base) => {
 };
 
 async function chooseStayDates(page, checkIn, checkOut) {
-  await page.locator('[data-date-field="checkIn"]').click();
+  const arrival = page.locator('[data-date-field="checkIn"]');
+
+  await arrival.click();
   let moves = 0;
   while (!(await page.locator(`[data-calendar-day="${checkIn}"]`).count()) && moves++ < 3) {
     await page.locator("[data-month-next]").click();
@@ -220,6 +222,23 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
   test.afterAll(async () => {
     await Promise.all(guestContexts.map((c) => c.close().catch(() => {})));
     await managerContext?.close().catch(() => {});
+  });
+
+  test("Mobile guest can select stay dates and search availability with ordinary controls", async () => {
+    const checkIn = tomorrowISO();
+    const checkOut = dayAfterISO(checkIn);
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    guestContexts.push(context);
+    const page = await context.newPage();
+    await page.goto(`${standaloneUrl.origin}/fa/`, { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-booking-slot]")).toBeVisible();
+    await chooseStayDates(page, checkIn, checkOut);
+    await page.locator("[data-adult-count]").selectOption("2");
+    const searchResponsePromise = page.waitForResponse((response) => response.url().includes("/api/hotel/v1/availability/search") && response.request().method() === "POST");
+    await page.locator(".booking-form .booking-submit[type=submit]").click();
+    const searchResponse = await searchResponsePromise;
+    expect(searchResponse.status()).toBe(200);
+    await expect(page.locator("[data-booking-flow] .booking-options")).toBeVisible();
   });
 
   test("FA: Guest submits stay request via Damoon standalone and tracks status", async () => {

@@ -40,7 +40,12 @@ function dateAtOffset(offset) {
 }
 
 async function chooseStayDates(page, checkIn, checkOut) {
-  await page.locator('[data-date-field="checkIn"]').click();
+  const arrival = page.locator('[data-date-field="checkIn"]');
+  // The landing page uses smooth scrolling and layers its header over the hero.
+  // Move the control instantly below the header, then prove its pointer target
+  // is exposed before using a normal Playwright click.
+
+  await arrival.click();
   let moves = 0;
   while (!(await page.locator(`[data-calendar-day="${checkIn}"]`).count()) && moves++ < 3) await page.locator("[data-month-next]").click();
   await page.locator(`[data-calendar-day="${checkIn}"]`).click();

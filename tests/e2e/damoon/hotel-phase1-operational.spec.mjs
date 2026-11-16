@@ -8,6 +8,7 @@ import { seedOperationalGuestFixture } from "./operational-fixture.mjs";
 const env = process.env;
 const appOrigin = new URL(env.DAMOON_APP_URL || "").origin;
 const standaloneOrigin = new URL(env.DAMOON_STANDALONE_URL || "").origin;
+const publicRuntimeOrigin = new URL(env.DAMOON_OPERATIONAL_RUNTIME_URL || "").origin;
 const tenantHostname = new URL(standaloneOrigin).hostname;
 const guestOrigin = `http://${tenantHostname}:3000`;
 const organizationId = env.DAMOON_ORGANIZATION_ID;
@@ -19,13 +20,25 @@ const paymentPath = (reservationId) => `${reservationsPath(organizationId, prope
 
 function assertTestTarget() {
   if (env.CI !== "true" || env.NODE_ENV !== "test" || env.DAMOON_E2E_ENABLED !== "1" || env.VERCEL_ENV === "production" || env.VERCEL) throw new Error("Damoon operational acceptance requires isolated CI test mode");
-  if (appOrigin !== "http://127.0.0.1:3000" || tenantHostname !== "damoon-hotel.localhost" || standaloneOrigin !== "http://damoon-hotel.localhost:8080") throw new Error("Only the synthetic loopback-mapped Damoon test origins are permitted");
+  if (appOrigin !== "http://127.0.0.1:3000" || tenantHostname !== "damoon-hotel.localhost" || standaloneOrigin !== "http://damoon-hotel.localhost:8080" || publicRuntimeOrigin !== "http://damoon-hotel.ir:3000") throw new Error("Only the synthetic loopback-mapped Damoon test origins are permitted");
   if (!/^\/damoon_[a-f0-9]{16}$/i.test(new URL(env.DATABASE_URL || "https://invalid.local").pathname) || env.DATABASE_URL !== env.DIRECT_URL) throw new Error("Damoon operational acceptance requires the workflow-owned disposable database");
-  for (const name of ["DAMOON_MANAGER_USERNAME", "DAMOON_MANAGER_PASSWORD", "DAMOON_ORGANIZATION_ID", "DAMOON_PROPERTY_ID", "DAMOON_FOREIGN_ORGANIZATION_ID", "DAMOON_FOREIGN_PROPERTY_ID", "DAMOON_STANDALONE_URL", "DAMOON_APP_URL"]) {
+  for (const name of ["DAMOON_MANAGER_USERNAME", "DAMOON_MANAGER_PASSWORD", "DAMOON_ORGANIZATION_ID", "DAMOON_PROPERTY_ID", "DAMOON_FOREIGN_ORGANIZATION_ID", "DAMOON_FOREIGN_PROPERTY_ID", "DAMOON_STANDALONE_URL", "DAMOON_APP_URL", "DAMOON_OPERATIONAL_RUNTIME_URL"]) {
     if (!env[name]?.trim()) throw new Error(`${name} is required by the Damoon operational acceptance`);
   }
   if (env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED !== "1" || env.HOTEL_GUEST_PORTAL_ENABLED !== "1" || env.HOTEL_OFFLINE_PAYMENT_OPERATIONAL_ENABLED !== "1") throw new Error("Operational reservation, guest portal, and offline payment gates must be enabled for this disposable acceptance");
   if (env.HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED === "1" || env.HOTEL_PAYMENT_OPERATIONAL_ENABLED === "1" || env.HOTEL_PAYMENT_SIMULATOR_ENABLED === "1" || env.HOTEL_SMS_ENABLED === "1" || env.CUSTOMER_AUTH_SMS_WORKER_ENABLED === "1") throw new Error("Anonymous holds, payment processing/simulation, and SMS must stay disabled");
+}
+
+async function choosePublicStayDates(page, checkIn, checkOut) {
+  const arrival = page.locator('[data-date-field="checkIn"]');
+
+  await arrival.click();
+  let moves = 0;
+  while (!(await page.locator(`[data-calendar-day="${checkIn}"]`).count()) && moves++ < 3) await page.locator("[data-month-next]").click();
+  await page.locator(`[data-calendar-day="${checkIn}"]`).click();
+  moves = 0;
+  while (!(await page.locator(`[data-calendar-day="${checkOut}"]`).count()) && moves++ < 3) await page.locator("[data-month-next]").click();
+  await page.locator(`[data-calendar-day="${checkOut}"]`).click();
 }
 
 async function login(page, origin, username, password, callbackPath) {
@@ -54,6 +67,142 @@ function daysFromNow(offset) {
   date.setUTCDate(date.getUTCDate() + offset);
   return date.toISOString().slice(0, 10);
 }
+
+test("new Damoon customer registers, joins the host-bound tenant, and resumes the selected stay", async ({ browser }) => {
+  test.setTimeout(90_000);
+  assertTestTarget();
+  const resolved = await lookup(new URL(publicRuntimeOrigin).hostname, { all: true, verbatim: true });
+  if (!resolved.length || resolved.some(({ address }) => address !== "::1" && !/^127(?:\.\d{1,3}){3}$/.test(address))) throw new Error("Public Damoon runtime must resolve exclusively to loopback");
+  const fixture = await seedOperationalGuestFixture();
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    await page.goto(`${publicRuntimeOrigin}/fa/`, { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-booking-slot]")).toBeVisible();
+    const checkIn = daysFromNow(15);
+    const checkOut = daysFromNow(16);
+    await choosePublicStayDates(page, checkIn, checkOut);
+    await page.getByLabel("تعداد بزرگسالان").selectOption("1");
+    const startPath = "/fa/hotel-reservations/start";
+    await Promise.all([
+      page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === "/fa/login"),
+      page.getByRole("button", { name: /ادامه برای رزرو و مشاهده جزئیات نمونه/ }).click(),
+    ]);
+    const loginUrl = new URL(page.url());
+    const callbackValue = loginUrl.searchParams.get("callbackUrl");
+    expect(callbackValue).toBeTruthy();
+    const callbackUrl = new URL(callbackValue || "", publicRuntimeOrigin);
+    expect(callbackUrl.origin).toBe(publicRuntimeOrigin);
+    expect(callbackUrl.pathname).toBe(startPath);
+    expect(callbackUrl.searchParams.get("property")).toBe("damoon-hotel");
+    expect(callbackUrl.searchParams.get("checkIn")).toBe(checkIn);
+    expect(callbackUrl.searchParams.get("checkOut")).toBe(checkOut);
+    expect(callbackUrl.searchParams.get("adults")).toBe("1");
+
+    const callbackPath = `${callbackUrl.pathname}${callbackUrl.search}`;
+    const registerLink = page.getByRole("link", { name: "ثبت نام", exact: true });
+    const registerUrl = new URL(await registerLink.getAttribute("href") || "", publicRuntimeOrigin);
+    expect(registerUrl.searchParams.get("callbackUrl")).toBe(callbackPath);
+    await registerLink.click();
+    await page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === "/fa/register");
+    const newUsername = `${fixture.username}-new`;
+    await page.locator("#username").fill(newUsername);
+    await page.locator("#password").fill(fixture.password);
+    await page.locator("#confirmPassword").fill(fixture.password);
+    const guestReservationsResponses = [];
+    page.on("response", (response) => {
+      if (new URL(response.url()).pathname === reservationsPath(organizationId, propertyId) && response.request().method() === "GET") {
+        guestReservationsResponses.push(response);
+      }
+    });
+    const registrationResponsePromise = page.waitForResponse((response) => response.url().endsWith("/api/auth/register") && response.request().method() === "POST", { timeout: 20_000 });
+    await page.getByRole("button", { name: "ثبت نام" }).click();
+    const registrationResponse = await registrationResponsePromise;
+    const registration = await registrationResponse.json();
+    expect(registrationResponse.status(), JSON.stringify(registration)).toBe(201);
+    let guestResponse;
+    const isGuestReservationsSnapshot = (response) => new URL(response.url()).pathname === reservationsPath(organizationId, propertyId) && response.request().method() === "GET";
+    if (registration.autoLogin) {
+      await page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === startPath && url.searchParams.get("checkIn") === checkIn, { timeout: 45_000 });
+      guestResponse = guestReservationsResponses.at(-1) ?? await page.waitForResponse(isGuestReservationsSnapshot, { timeout: 20_000 });
+    } else {
+      await page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === "/fa/login", { timeout: 30_000 });
+      await page.locator("#username").fill(newUsername);
+      await page.locator("#password").fill(fixture.password);
+      const guestReservationsResponse = page.waitForResponse(isGuestReservationsSnapshot, { timeout: 20_000 });
+      await page.locator("form button[type='submit']").click();
+      await page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === startPath && url.searchParams.get("checkIn") === checkIn, { timeout: 45_000 });
+      guestResponse = guestReservationsResponses.at(-1) ?? await guestReservationsResponse;
+    }
+    expect(guestResponse.status(), await guestResponse.text()).toBe(200);
+    await expect(page.getByRole("note")).toContainText("پیش‌نمایش هتل دامون");
+    await expect(page.locator("section[aria-label='رزروهای هتل']")).toBeVisible();
+    await expect(page.getByLabel("تاریخ ورود")).toHaveValue(checkIn);
+    await expect(page.getByLabel("تاریخ خروج")).toHaveValue(checkOut);
+
+    const reservation = await createReservationThroughGuestControls(page, checkIn, checkOut, "Synthetic Public Journey Guest", fixture);
+    expect(reservation.status).toBe("PENDING_PAYMENT");
+  } finally {
+    await context.close();
+  }
+});
+
+test("existing Damoon customer without membership can join this host tenant and keep the selected stay", async ({ browser }) => {
+  test.setTimeout(60_000);
+  assertTestTarget();
+  const fixture = await seedOperationalGuestFixture();
+  const checkIn = daysFromNow(18);
+  const checkOut = daysFromNow(19);
+  const returnPath = `/fa/hotel-reservations/start?property=damoon-hotel&checkIn=${checkIn}&checkOut=${checkOut}&adults=1`;
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    const browserErrors = [];
+    const expectedHttpCoopWarnings = [];
+    const nextAssetStatuses = [];
+    const nextSockets = [];
+    const socketErrors = [];
+    page.on("pageerror", (error) => browserErrors.push(error.message));
+    page.on("console", (message) => {
+      if (message.type() !== "error") return;
+      const text = message.text();
+      if (text.startsWith("The Cross-Origin-Opener-Policy header has been ignored, because the URL's origin was untrustworthy.")) expectedHttpCoopWarnings.push(text);
+      else browserErrors.push(text);
+    });
+    page.on("response", (response) => { if (response.url().includes("/_next/static/") && response.request().resourceType() === "script") nextAssetStatuses.push(response.status()); });
+    page.on("websocket", (socket) => {
+      if (socket.url().includes("/_next/")) {
+        nextSockets.push(socket.url());
+        socket.on("socketerror", (error) => socketErrors.push(error));
+      }
+    });
+    await page.goto(`${publicRuntimeOrigin}${returnPath}`);
+    await page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === "/fa/login");
+    await expect(page.locator("#username")).toBeVisible();
+    await expect(page.locator("#username")).toBeEnabled();
+    expect(nextAssetStatuses.length, "Next client assets should load before login interaction").toBeGreaterThan(0);
+    expect(nextAssetStatuses.every((status) => status === 200), JSON.stringify(nextAssetStatuses)).toBe(true);
+    expect(nextSockets.some((url) => url.includes("/_next/")), JSON.stringify(nextSockets)).toBe(true);
+    await page.locator("#username").fill(fixture.unjoinedUsername);
+    await page.locator("#password").fill(fixture.password);
+    await expect(page.getByRole("checkbox", { name: /اگر هنوز عضو نیستم/ })).toBeVisible();
+    await page.getByRole("checkbox", { name: /اگر هنوز عضو نیستم/ }).check();
+    await page.locator("form button[type='submit']").click();
+    await page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === "/fa/hotel-reservations/start" && url.searchParams.get("checkIn") === checkIn, { timeout: 30_000 });
+
+    await expect(page.locator("section[aria-label='رزروهای هتل']")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByLabel("تاریخ ورود")).toHaveValue(checkIn);
+    await expect(page.getByLabel("تاریخ خروج")).toHaveValue(checkOut);
+    const guestReservations = await page.request.get(`${publicRuntimeOrigin}/api/hotel/v1/guest-reservations?property=damoon-hotel`);
+    expect(guestReservations.status(), await guestReservations.text()).toBe(200);
+    expect(socketErrors, "The allowed Next development HMR socket should not fail").toEqual([]);
+    expect(expectedHttpCoopWarnings.length, "Only the known COOP warning from the synthetic HTTP host may be present").toBeGreaterThan(0);
+    expect(expectedHttpCoopWarnings.every((warning) => warning.startsWith("The Cross-Origin-Opener-Policy header has been ignored, because the URL's origin was untrustworthy."))).toBe(true);
+    expect(browserErrors, "The interactive login and onboarding flow should hydrate without application errors").toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
 
 async function createReservationThroughGuestControls(page, checkIn, checkOut, guestName, fixture) {
   const reservations = page.locator("section[aria-label='رزروهای هتل']");

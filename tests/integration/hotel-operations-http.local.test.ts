@@ -415,7 +415,7 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   const claimedHold = racingHolds.find((result) => result.isClaimed);
   assert.ok(claimedHold?.hold?.id);
   const cannotDisableCommittedRoom = await apiJson(`${roomPath}/${roomIds[0]}`, cookie, "PATCH", { isOutOfService: true });
-  assert.equal(cannotDisableCommittedRoom.response.status, 400, "manager cannot remove capacity beneath an active hold");
+  assert.equal(cannotDisableCommittedRoom.response.status, 422, "manager cannot remove capacity beneath an active hold");
   const released = await repository.releaseHold({ organizationId: orgAId }, claimedHold!.hold!.id, new Date("2027-01-01T00:01:00.000Z"));
   assert.equal(released.isReleased, true);
 

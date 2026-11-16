@@ -160,6 +160,8 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     contactUrl.searchParams.set("checkIn", range.checkIn); contactUrl.searchParams.set("checkOut", range.checkOut);
     contactUrl.searchParams.set("adults", String(adults)); contactUrl.searchParams.set("children", String(children));
     if (childAges.length === children && children) contactUrl.searchParams.set("childAges", childAges.join(","));
+    const selectedRoom = normalizePath(window.location.pathname).match(/^\/rooms\/(single|double|suite-3-bed|suite-4-5-bed)$/)?.[1];
+    if (selectedRoom) contactUrl.searchParams.set("room", selectedRoom);
     slot.innerHTML = `<section class="booking-summary" aria-labelledby="booking-summary-title"><div class="booking-summary__details"><p class="booking-kicker">${escapeHtml(ui.bookingSummary)}</p><h2 id="booking-summary-title">${escapeHtml(rangeSummary(range, locale))}</h2><p>${escapeHtml(adultsCountLabel(adults, locale, ui))} · ${escapeHtml(ui.datePlanningOnly)}</p></div><a class="booking-submit" href="${escapeHtml(contactUrl.href)}">${escapeHtml(ui.contactForStay)}</a></section>`;
     persist();
     return () => {};

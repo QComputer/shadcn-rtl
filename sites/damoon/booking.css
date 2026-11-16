@@ -212,3 +212,5 @@ button.booking-field { cursor: pointer; }
 .booking-step--confirmed p { margin: 0; font-size: 13px; }
 .booking-message.is-error { color: #8a2d1d; }
 @media (max-width: 760px) { .booking-option { flex-direction: column; } .booking-option__price { justify-items: start; text-align: start; } }
+
+.booking-field--text textarea { width: 100%; min-height: 88px; padding: 10px 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); font: inherit; font-size: 13px; resize: vertical; }

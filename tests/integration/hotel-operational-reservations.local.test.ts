@@ -372,9 +372,10 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
 
     // Synthetic confirmation is test-only fixture setup; no gateway or payment request is involved.
     await db.hotelInventory.updateMany({ where: { organizationId: a.id, roomTypeId: roomA.id }, data: { allotment: 4 } });
-    const [roomOne, roomTwo] = await Promise.all(["101", "102"].map(code => db.hotelRoom.create({ data: {
+    const receptionRooms = await Promise.all(["101", "102", "103", "104"].map(code => db.hotelRoom.create({ data: {
       organizationId: a.id, propertyId: pa.id, roomTypeId: roomA.id, code,
     } })));
+    const [roomOne, roomTwo] = receptionRooms;
     const makeConfirmedReservation = async (suffix: string) => {
       const reservationQuote = await quote(guestA, a.id, pa.id, roomA.id, rateA.id, `quote-${token}-${suffix}`);
       const reservationHold = await service.execute(guestA, a.id, pa.id, { action: "hold", quoteId: reservationQuote.id }, `hold-${token}-${suffix}`) as OperationalResult;

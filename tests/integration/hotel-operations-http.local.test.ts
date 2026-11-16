@@ -353,7 +353,7 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   assert.equal(operations.response.status, 200);
   assert.equal(operations.data?.property.id, propertyAId);
   assert.equal(operations.data?.range.nights, 2);
-  assert.ok(operations.data?.roomTypes.some((roomType) => roomType.id === roomTypeId && roomType.rooms.length === 1));
+  assert.ok(operations.data?.roomTypes.some((roomType) => roomType.id === roomTypeId && roomType.rooms.length === 2), "operations reload includes both configured physical rooms");
   assert.ok(operations.data?.ratePlans.some((plan) => plan.id === ratePlanId && plan.baseNightlyRate === "250000" && plan.nightlyRates.some((rate) => rate.nightlyRate === "275000")));
   assert.equal(operations.data?.inventory.length, 2);
   assert.ok(operations.data?.inventory.every((night) => night.roomTypeId === roomTypeId && night.allotment === 3 && night.available === 2));

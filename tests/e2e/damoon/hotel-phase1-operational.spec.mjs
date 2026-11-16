@@ -37,22 +37,18 @@ async function choosePublicStayDates(page, checkIn, checkOut) {
     const safeTop = Math.max(headerBottom + 24, Math.round(window.innerHeight * 0.35));
     window.scrollTo({ top: Math.max(0, window.scrollY + rect.top - safeTop), behavior: "instant" });
   });
-  try {
-    await expect.poll(() => arrival.evaluate((element) => {
-    const rect = element.getBoundingClientRect();
-    const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-    return hit === element || element.contains(hit);
-    }), { message: "public calendar control center must be unobstructed before a real pointer click" }).toBe(true);
-  } catch {
-    const geometry = await arrival.evaluate((element) => {
+  const clickPoint = await arrival.evaluate((element) => {
       const rect = element.getBoundingClientRect();
       const header = document.querySelector(".site-header")?.getBoundingClientRect();
-      const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-      return { scrollY: window.scrollY, viewport: [window.innerWidth, window.innerHeight], target: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, header: header && { x: header.x, y: header.y, width: header.width, height: header.height }, hit: hit && { tag: hit.tagName, className: typeof hit.className === "string" ? hit.className : "", id: hit.id } };
+      const x = rect.width / 2;
+      const centerY = rect.height / 2;
+      const safeDocumentY = Math.max(rect.top + centerY, (header?.bottom ?? 0) + 4);
+      const y = Math.min(rect.height - 2, Math.max(centerY, safeDocumentY - rect.top));
+      const hit = document.elementFromPoint(rect.left + x, rect.top + y);
+      return { position: { x, y }, exposed: hit === element || element.contains(hit), scrollY: window.scrollY, target: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, header: header && { y: header.y, height: header.height }, hit: hit && { tag: hit.tagName, className: typeof hit.className === "string" ? hit.className : "", id: hit.id } };
     });
-    throw new Error(`Public calendar button remained occluded after instant scroll: ${JSON.stringify(geometry)}`);
-  }
-  await arrival.click();
+  if (!clickPoint.exposed) throw new Error(`Public calendar button has no unobstructed pointer target: ${JSON.stringify(clickPoint)}`);
+  await arrival.click({ position: clickPoint.position });
   let moves = 0;
   while (!(await page.locator(`[data-calendar-day="${checkIn}"]`).count()) && moves++ < 3) await page.locator("[data-month-next]").click();
   await page.locator(`[data-calendar-day="${checkIn}"]`).click();

@@ -1,7 +1,9 @@
 # Hotel Damoon Phase 1 — Final Closure
 
-**Status: `HOTEL_PHASE1_CLOSED`**  
-**Closure date:** 2026-11-16  
+**Status: `HOTEL_PHASE1_CLOSED`**
+
+**Closure date:** 2026-11-16
+
 **Production:** Runflare PostgreSQL and Runflare application; no Production credentials are recorded here.
 
 ## Accepted source and implementation

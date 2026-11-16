@@ -14,7 +14,6 @@ function dateOnly(value: string) {
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string; propertyId: string }> }) {
   const { id: organizationId, propertyId } = await params;
   return managementRequest(request, organizationId, initializationSchema, async (principal, body) => {
-    if (process.env.HOTEL_INVENTORY_IDEMPOTENCY_ENABLED !== "1") throw new ApiError(503, "Inventory idempotency is not enabled");
     const idempotencyKey = request.headers.get("idempotency-key")?.trim();
     if (!idempotencyKey) throw new ApiError(400, "Idempotency-Key is required");
     const from = dateOnly(body.from); const to = dateOnly(body.to);

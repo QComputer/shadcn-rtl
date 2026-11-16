@@ -94,7 +94,6 @@ function isolatedServerEnv(): NodeJS.ProcessEnv {
     NEXT_PUBLIC_APP_URL: baseUrl,
     NEXT_PUBLIC_DEPLOYED_APP_URL: baseUrl,
     BAZAR_BAZ_PLATFORM_HOSTS: "localhost,127.0.0.1",
-    HOTEL_INVENTORY_IDEMPOTENCY_ENABLED: "1",
     SMS_PROVIDER: "DRY_RUN",
     SMS_DRY_RUN: "true",
     SMS_REAL_SEND_ENABLED: "false",

@@ -83,16 +83,21 @@ test("public Damoon booking entry preserves stay choices into the authenticated 
     await page.getByLabel("تعداد بزرگسالان").selectOption("1");
     const startPath = "/fa/hotel-reservations/start";
     await Promise.all([
-      page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === startPath && url.searchParams.get("property") === "damoon-hotel"),
+      page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === "/fa/login"),
       page.getByRole("button", { name: /ادامه برای بررسی اتاق و نرخ نمونه/ }).click(),
     ]);
-    const startUrl = new URL(page.url());
-    expect(startUrl.searchParams.get("checkIn")).toBe(checkIn);
-    expect(startUrl.searchParams.get("checkOut")).toBe(checkOut);
-    expect(startUrl.searchParams.get("adults")).toBe("1");
+    const loginUrl = new URL(page.url());
+    const callbackValue = loginUrl.searchParams.get("callbackUrl");
+    expect(callbackValue).toBeTruthy();
+    const callbackUrl = new URL(callbackValue || "", publicRuntimeOrigin);
+    expect(callbackUrl.origin).toBe(publicRuntimeOrigin);
+    expect(callbackUrl.pathname).toBe(startPath);
+    expect(callbackUrl.searchParams.get("property")).toBe("damoon-hotel");
+    expect(callbackUrl.searchParams.get("checkIn")).toBe(checkIn);
+    expect(callbackUrl.searchParams.get("checkOut")).toBe(checkOut);
+    expect(callbackUrl.searchParams.get("adults")).toBe("1");
 
-    const callbackPath = `${startPath}${startUrl.search}`;
-    await page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === "/fa/login");
+    const callbackPath = `${callbackUrl.pathname}${callbackUrl.search}`;
     await login(page, publicRuntimeOrigin, fixture.username, fixture.password, callbackPath);
     await expect(page.getByRole("note")).toContainText("پیش‌نمایش هتل دامون");
     await expect(page.locator("section[aria-label='رزروهای هتل']")).toBeVisible();

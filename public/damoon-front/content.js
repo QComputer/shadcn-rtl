@@ -22,8 +22,7 @@ export const site = {
 export const rooms = [
   { slug: "single", title: "اتاق یک‌نفره", description: "گروه اتاق یک‌نفره؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-1.webp" },
   { slug: "double", title: "اتاق دونفره", description: "گروه اتاق دونفره؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-2.webp" },
-  { slug: "suite-3-bed", title: "سوئیت", description: "گروه سوئیت؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-3.webp" },
-  { slug: "suite-4-5-bed", title: "سوئیت", description: "گروه سوئیت؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/damoon-front/assets/lobby-concept.webp" },
+  { slug: "suite", title: "سوئیت", description: "گروه سوئیت؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-3.webp" },
 ];
 
 export const gallery = [
@@ -136,6 +135,7 @@ export function normalizePath(pathname) {
   let path = decodeURIComponent(pathname || "/").replace(/\/+$/, "") || "/";
   const prefix = path.match(/^\/(fa|en|ar)(?=\/|$)/)?.[1];
   if (prefix) path = path.slice(prefix.length + 1) || "/";
+  if (path === "/rooms/suite-3-bed" || path === "/rooms/suite-4-5-bed") path = "/rooms/suite";
   return path;
 }
 

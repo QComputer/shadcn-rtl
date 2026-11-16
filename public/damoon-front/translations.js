@@ -21,8 +21,7 @@ export const translations = {
     rooms: {
       single: { title: "Single room", description: "Single room category; confirm exact capacity and in-room details with reception.", image: "/damoon-front/assets/room-concept-1.webp" },
       double: { title: "Double room", description: "Double room category; confirm exact capacity and in-room details with reception.", image: "/damoon-front/assets/room-concept-2.webp" },
-      "suite-3-bed": { title: "Suite", description: "Suite category; confirm exact capacity and in-room details with reception.", image: "/damoon-front/assets/room-concept-3.webp" },
-      "suite-4-5-bed": { title: "Suite", description: "Suite category; confirm exact capacity and in-room details with reception.", image: "/damoon-front/assets/lobby-concept.webp" },
+      "suite": { title: "Suite", description: "Suite category; confirm exact capacity and in-room details with reception.", image: "/damoon-front/assets/room-concept-3.webp" },
     },
     gallery: [
       { src: "/damoon-front/assets/architecture-concept.webp", alt: "Concept architectural illustration for the page layout" },
@@ -48,8 +47,7 @@ export const translations = {
         sections: [
           { ...{ heading: "Single room", text: "Single room category; confirm exact capacity and in-room details with reception." }, link: "/rooms/single", label: "Details", note: "Concept image; not an actual room photo." },
           { heading: "Double room", text: "Double room category; confirm exact capacity and in-room details with reception.", link: "/rooms/double", label: "Details", note: "Concept image; not an actual room photo." },
-          { heading: "Suite", text: "Suite category; confirm exact capacity and in-room details with reception.", link: "/rooms/suite-3-bed", label: "Details", note: "Concept image; not an actual room photo." },
-          { heading: "Suite", text: "Suite category; confirm exact capacity and in-room details with reception.", link: "/rooms/suite-4-5-bed", label: "Details", note: "Concept image; not an actual room photo." },
+          { heading: "Suite", text: "Suite category; confirm exact capacity and in-room details with reception.", link: "/rooms/suite", label: "Details", note: "Concept image; not an actual room photo." },
         ],
       },
       "/restaurant": {
@@ -138,8 +136,7 @@ export const translations = {
     rooms: {
       single: { title: "غرفة مفردة", description: "فئة غرفة مفردة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/damoon-front/assets/room-concept-1.webp" },
       double: { title: "غرفة مزدوجة", description: "فئة غرفة مزدوجة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/damoon-front/assets/room-concept-2.webp" },
-      "suite-3-bed": { title: "جناح", description: "فئة جناح؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/damoon-front/assets/room-concept-3.webp" },
-      "suite-4-5-bed": { title: "جناح", description: "فئة جناح؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/damoon-front/assets/lobby-concept.webp" },
+      "suite": { title: "جناح", description: "فئة جناح؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/damoon-front/assets/room-concept-3.webp" },
     },
     gallery: [
       { src: "/damoon-front/assets/architecture-concept.webp", alt: "رسم معماري تصوري لتصميم الصفحة" },
@@ -165,8 +162,7 @@ export const translations = {
         sections: [
           { heading: "غرفة مفردة", text: "فئة غرفة مفردة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", link: "/rooms/single", label: "التفاصيل", note: "صورة تصورية؛ وليست صورة حقيقية للغرفة." },
           { heading: "غرفة مزدوجة", text: "فئة غرفة مزدوجة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", link: "/rooms/double", label: "التفاصيل", note: "صورة تصورية؛ وليست صورة حقيقية للغرفة." },
-          { heading: "جناح", text: "فئة جناح؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", link: "/rooms/suite-3-bed", label: "التفاصيل", note: "صورة تصورية؛ وليست صورة حقيقية للغرفة." },
-          { heading: "جناح", text: "فئة جناح؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", link: "/rooms/suite-4-5-bed", label: "التفاصيل", note: "صورة تصورية؛ وليست صورة حقيقية للغرفة." },
+          { heading: "جناح", text: "فئة جناح؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", link: "/rooms/suite", label: "التفاصيل", note: "صورة تصورية؛ وليست صورة حقيقية للغرفة." },
         ],
       },
       "/restaurant": {

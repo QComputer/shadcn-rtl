@@ -80,7 +80,7 @@ const locales = [
 ];
 const paths = [
   "/", "/rooms", "/restaurant", "/cafe", "/facilities", "/gallery", "/about", "/contact", "/policies",
-  "/rooms/single", "/rooms/double", "/rooms/suite-3-bed", "/rooms/suite-4-5-bed",
+  "/rooms/single", "/rooms/double", "/rooms/suite", "/rooms/suite-3-bed", "/rooms/suite-4-5-bed",
 ];
 function localizedPath(locale, path) {
   return locale === "fa" ? path : `/${locale}${path === "/" ? "/" : path}`;

@@ -27,7 +27,7 @@ function prefixFor(localeCode = locale) {
 const routeHref = (href) => `${prefixFor()}${href === "/" ? "/" : href}`;
 function stayHref(href) {
   const target = withStaySelection(new URL(routeHref(href), window.location.origin), readStaySelection());
-  const room = normalizePath(window.location.pathname).match(/^\/rooms\/(single|double|suite-3-bed|suite-4-5-bed)$/)?.[1];
+  const room = normalizePath(window.location.pathname).match(/^\/rooms\/(single|double|suite)$/)?.[1];
   if (room && normalizePath(target.pathname) === '/contact' && !target.searchParams.has('room')) target.searchParams.set('room', room);
   return target.pathname + target.search + target.hash;
 }

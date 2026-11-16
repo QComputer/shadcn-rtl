@@ -36,8 +36,7 @@ const copy = {
 const roomImages = {
   single: "/damoon-front/assets/room-concept-1.webp",
   double: "/damoon-front/assets/room-concept-2.webp",
-  "suite-3-bed": "/damoon-front/assets/room-concept-3.webp",
-  "suite-4-5-bed": "/damoon-front/assets/room-concept-3.webp",
+  suite: "/damoon-front/assets/room-concept-3.webp",
 };
 
 function t(locale) { return copy[locale] || copy.fa; }
@@ -56,7 +55,7 @@ export function renderAccommodation({ path, page, locale = "fa", site, routeHref
   const ui = t(locale);
   const slug = path.match(/^\/rooms\/([a-z0-9-]+)$/i)?.[1];
   if (!slug) {
-    const localizedRooms = rooms.map((room) => roomForLocale(room.slug, locale) || room).filter((room) => room.slug !== "suite-4-5-bed");
+    const localizedRooms = rooms.map((room) => roomForLocale(room.slug, locale) || room);
     return `<div class="accommodation-page accommodation-listing" lang="${escapeHtml(locale)}" dir="${locale === "en" ? "ltr" : "rtl"}">
       <header class="accommodation-heading">${breadcrumb(ui.crumbsRooms, locale, routeHref, escapeHtml)}<p class="accommodation-kicker">${escapeHtml(ui.room)}</p><h1>${escapeHtml(page?.title || ui.crumbsRooms)}</h1><p>${escapeHtml(ui.listingLead)}</p></header>
       ${bookingSlot()}

@@ -636,7 +636,7 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   page.off("request", capturePreviewRequest);
   await previewPanel.getByLabel("Adults").fill("2");
   await previewPanel.getByLabel("Children").fill("0");
-  assert.deepEqual(await readPreviewMutationSnapshot(orgAId), beforePreview, "multi-occupancy preview requests remain read-only");
+  assert.deepEqual(await readPreviewMutationSnapshot(orgAId), beforeBrowserPreview, "multi-occupancy preview requests remain read-only");
 
   let signalDelayedResponse: (() => void) | undefined;
   let releaseDelayedResponse: (() => void) | undefined;

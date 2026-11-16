@@ -1,10 +1,10 @@
 {
   "site": "damoon",
   "contentMode": "DEVELOPMENT_WITH_CONCEPT_IMAGES",
-  "builtAt": "2026-11-16T22:26:40.898Z",
+  "builtAt": "2026-11-16T22:29:48.961Z",
   "files": {
     "about/index.html": "cbb46db3aaa1df3f7eb5c4f96311510bfe204c5ba665d09f8a81793fc6c118c2",
-    "accommodation.css": "2cb0da4f2d0e7342c16e318898a41c05427be11b3599fe67b7c5282ea56de586",
+    "accommodation.css": "0702cee61ee4eb98716852f92ecf2dbeae66bdcfd64899ab901eb5474d038d01",
     "accommodation.js": "cfccd85ea857d8d463bfc915a79cb939ec149559ac6c2a5c9188b658888a6bc9",
     "app.js": "b633dc3dab7eeee3a864cfc7a13cb8b0c7a68efc173ba99c669ef60499ba9267",
     "ar/about/index.html": "cbb46db3aaa1df3f7eb5c4f96311510bfe204c5ba665d09f8a81793fc6c118c2",

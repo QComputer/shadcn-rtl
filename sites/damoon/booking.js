@@ -132,7 +132,6 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   }
   if (reservationEntry) {
     ui.datePlanningOnly = locale === "fa" ? "این پیش‌نمایش نمونه است؛ موجودی، نرخ و قوانین باید پیش از استفاده واقعی توسط هتل تأیید شوند." : locale === "ar" ? "هذه معاينة تجريبية؛ يجب أن يؤكد الفندق التوفر والأسعار والسياسات قبل الاستخدام الفعلي." : "This is a preview; the hotel must confirm inventory, rates, and policies before real use.";
-    ui.bookingSubmit = locale === "fa" ? "ادامه برای بررسی اتاق و نرخ نمونه" : locale === "ar" ? "المتابعة لمراجعة الغرف والأسعار التجريبية" : "Continue to preview rooms and rates";
   }
   const weekdays = weekdayLabels(locale);
   const today = todayLocalISO();
@@ -176,6 +175,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
         <label class="booking-field booking-field--children"><span>${escapeHtml(ui.children)}</span><select data-child-count aria-label="${escapeHtml(ui.children)}">${CHILD_OPTIONS.map((c) => `<option value="${c}">${escapeHtml(formattedCount(c, locale))}</option>`).join("")}</select><span class="booking-field__icon" aria-hidden="true">⌄</span></label>
         <button class="booking-submit" type="submit">${escapeHtml(ui.bookingSubmit)}${submitArrow}</button>
       </div>
+      ${reservationEntry ? `<button class="booking-link" type="button" data-reservation-entry>${escapeHtml(locale === "fa" ? "ادامه برای رزرو و مشاهده جزئیات نمونه" : locale === "ar" ? "المتابعة إلى الحجز وعرض التفاصيل التجريبية" : "Continue to reservation preview")}</button>` : ""}
       <div class="booking-child-ages-search" data-child-ages-root aria-live="polite"></div>
       <div class="booking-flow" data-booking-flow aria-live="polite"></div>
       <p class="booking-message" role="status" aria-live="polite"></p>
@@ -478,6 +478,25 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: "", error: false }; persist(); renderSearchChildAges(); renderFlow();
   });
 
+  slot.querySelector("[data-reservation-entry]")?.addEventListener("click", () => {
+    if (flow.busy) return;
+    const validation = validateStayRange(range, today);
+    if (validation !== "OK") {
+      setMessage(validation === "PAST" ? ui.arrivalCannotBePast : validation === "ORDER" ? ui.departureAfterArrival : ui.selectBothDates, true);
+      if (validation === "MISSING") openCalendar(range.checkIn ? "checkOut" : "checkIn");
+      return;
+    }
+    const ageInputs = [...slot.querySelectorAll("[data-child-age]")].map((input) => input.value);
+    const agesResult = children ? parseChildAges(ageInputs, children) : { ok: true, ages: [] };
+    if (!agesResult.ok) {
+      setMessage(ui.childAgeRequired || "Enter a valid age (0-17) for each child.", true);
+      slot.querySelector("[data-child-age]")?.focus();
+      return;
+    }
+    const target = buildReservationEntryUrl(new URL(routeHref("/hotel-reservations/start"), window.location.href), DAMOON_PROPERTY_SLUG, { range, adults, children, childAges: agesResult.ages });
+    window.location.assign(target.href);
+  });
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (flow.busy) return;
@@ -504,11 +523,6 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       childAges = validatedAges;
     }
     persist();
-    if (reservationEntry) {
-      const target = buildReservationEntryUrl(new URL(routeHref("/hotel-reservations/start"), window.location.href), DAMOON_PROPERTY_SLUG, { range, adults, children, childAges: validatedAges });
-      window.location.assign(target.href);
-      return;
-    }
     if (coordinationOnly) {
       const target = withStaySelection(new URL(routeHref("/contact"), window.location.href), { range, adults, children, childAges: validatedAges });
       const room = normalizePath(window.location.pathname).match(/^\/rooms\/(single|double|suite-3-bed|suite-4-5-bed)$/)?.[1];

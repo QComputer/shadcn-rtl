@@ -84,7 +84,7 @@ test("public Damoon booking entry preserves stay choices into the authenticated 
     const startPath = "/fa/hotel-reservations/start";
     await Promise.all([
       page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === "/fa/login"),
-      page.getByRole("button", { name: /ادامه برای بررسی اتاق و نرخ نمونه/ }).click(),
+      page.getByRole("button", { name: /ادامه برای رزرو و مشاهده جزئیات نمونه/ }).click(),
     ]);
     const loginUrl = new URL(page.url());
     const callbackValue = loginUrl.searchParams.get("callbackUrl");

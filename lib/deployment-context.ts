@@ -16,8 +16,12 @@ export function getDeploymentCommit(): string | null {
 }
 
 export function getDeploymentRevision(): string | null {
-  const revision = process.env.RUNFLARE_GIT_COMMIT_SHA || process.env.COMMIT_SHA || process.env.VERCEL_GIT_COMMIT_SHA;
-  return revision && /^[0-9a-f]{40}$/i.test(revision) ? revision.toLowerCase() : null;
+  // RunFlare/COMMIT_SHA are intentionally not trusted here until their value
+  // is verified as part of that provider's build. APP_BUILD_REVISION is
+  // captured from this exact checkout during `next build`.
+  const revision = process.env.APP_BUILD_REVISION || process.env.VERCEL_GIT_COMMIT_SHA;
+  if (!revision || !/^[0-9a-f]{12}(?:[0-9a-f]{28})?$/i.test(revision)) return null;
+  return revision.toLowerCase().slice(0, 12);
 }
 
 export function getPlatformHost(): string | null {

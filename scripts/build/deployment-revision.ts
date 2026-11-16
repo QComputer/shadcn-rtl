@@ -25,7 +25,7 @@ function readGitHead(): string | null {
  * unknown; this never substitutes a branch tip or a manually copied SHA.
  */
 export function resolveBuildRevision(input?: {
-  env?: NodeJS.ProcessEnv;
+  env?: Record<string, string | undefined>;
   readGitHead?: () => string | null;
 }): string {
   const env = input?.env ?? process.env;

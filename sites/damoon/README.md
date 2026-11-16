@@ -10,9 +10,9 @@ The shared proxy serves only exact actual Damoon hosts and an explicit set of pu
 
 Images are conceptual and labeled; this is a noindex work-in-progress release. The original logo and approved real photography still need replacement. Calendar selection uses ISO dates internally and Persian presentation, derived from accepted `lib/booking/jalali-calendar.ts` at c03176f. Dates/guests are for coordination only, not inventory, pricing, reservation or payment.
 
-Contact data was cross-checked on 2026-10-27: telephone +98 38 3226 1988 is listed by [Waze](https://www.waze.com/az/live-map/directions/damoun-hotel-htl-damwn-shhrkrd?to=place.w.33358147.333319329.15567976) and a public hotel recruitment notice; Twelfth Moharram North Street / Basij Square is consistent across local Master Data and hotel directories. This is public-source corroboration, not a test call. Core amenities, breakfast, arrival14/departure12 derive from the owner questionnaire. No room counts, live rates or cancellation promises are inferred.
+Contact data was cross-checked on 2026-10-27: telephone +98 38 3226 1988 is listed by [Waze](https://www.waze.com/az/live-map/directions/damoun-hotel-htl-damwn-shhrkrd?to=place.w.33358147.333319329.15567976) and a public hotel recruitment notice; Twelfth Moharram North Street / Basij Square is consistent across local Master Data and hotel directories. This is public-source corroboration, not a test call. The owner-confirmed public facts dated 2026-11-17 are recorded in `docs/hotel/damoon/OWNER-DECISION-OVERRIDE-2026-11-17.md`: 31 units (20 rooms, 11 suites), check-in 14:00 and check-out 12:00 noon, no operating restaurant/banquet hall/standalone café, in-room refreshments, and a breakfast hall under preparation. Do not infer unit-level room data, rates, availability, or cancellation promises.
 
-Current owner-directed scope and acceptance: `docs/hotel/damoon/PHASE1-2026-11-10.md`.
+Current owner-directed scope and acceptance: `docs/hotel/damoon/OWNER-DECISION-OVERRIDE-2026-11-17.md` and `docs/hotel/damoon/PHASE1-2026-11-10.md`.
 This supersedes older sequencing and does not require VTour, PWA or final SEO.
 Approved original logo/current photography are owner-pending; concept labels
 must remain until those assets are supplied.

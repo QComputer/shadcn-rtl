@@ -94,7 +94,7 @@ export function readStaySelection() {
   return { range: { ...selection.range }, adults, children, childAges: Array.isArray(selection.childAges) ? [...selection.childAges] : null, guests: adults };
 }
 
-function routeRoomDetail() { return /^\/rooms\/(single|double|suite-3-bed|suite-4-5-bed)$/.test(normalizePath(window.location.pathname)); }
+function routeRoomDetail() { return /^\/rooms\/(single|double|suite)$/.test(normalizePath(window.location.pathname)); }
 function shortStayDate(iso, locale) { return new Intl.DateTimeFormat(`${locale}-u-ca-persian`, { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "UTC" }).format(new Date(`${iso}T12:00:00Z`)); }
 function rangeSummary(range, locale) { const separator = locale === "fa" ? " تا " : locale === "ar" ? " إلى " : " – "; return `${jalaliAccessibleDay(range.checkIn, locale)}${separator}${jalaliAccessibleDay(range.checkOut, locale)}`; }
 
@@ -160,6 +160,8 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     contactUrl.searchParams.set("checkIn", range.checkIn); contactUrl.searchParams.set("checkOut", range.checkOut);
     contactUrl.searchParams.set("adults", String(adults)); contactUrl.searchParams.set("children", String(children));
     if (childAges.length === children && children) contactUrl.searchParams.set("childAges", childAges.join(","));
+    const selectedRoom = normalizePath(window.location.pathname).match(/^\/rooms\/(single|double|suite)$/)?.[1];
+    if (selectedRoom) contactUrl.searchParams.set("room", selectedRoom);
     slot.innerHTML = `<section class="booking-summary" aria-labelledby="booking-summary-title"><div class="booking-summary__details"><p class="booking-kicker">${escapeHtml(ui.bookingSummary)}</p><h2 id="booking-summary-title">${escapeHtml(rangeSummary(range, locale))}</h2><p>${escapeHtml(adultsCountLabel(adults, locale, ui))} · ${escapeHtml(ui.datePlanningOnly)}</p></div><a class="booking-submit" href="${escapeHtml(contactUrl.href)}">${escapeHtml(ui.contactForStay)}</a></section>`;
     persist();
     return () => {};
@@ -525,7 +527,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     persist();
     if (coordinationOnly) {
       const target = withStaySelection(new URL(routeHref("/contact"), window.location.href), { range, adults, children, childAges: validatedAges });
-      const room = normalizePath(window.location.pathname).match(/^\/rooms\/(single|double|suite-3-bed|suite-4-5-bed)$/)?.[1];
+      const room = normalizePath(window.location.pathname).match(/^\/rooms\/(single|double|suite)$/)?.[1];
       if (room) target.searchParams.set("room", room);
       window.location.assign(target.href);
       return;

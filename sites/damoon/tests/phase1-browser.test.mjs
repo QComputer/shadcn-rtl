@@ -80,7 +80,7 @@ const locales = [
 ];
 const paths = [
   "/", "/rooms", "/restaurant", "/cafe", "/facilities", "/gallery", "/about", "/contact", "/policies",
-  "/rooms/single", "/rooms/double", "/rooms/suite-3-bed", "/rooms/suite-4-5-bed",
+  "/rooms/single", "/rooms/double", "/rooms/suite", "/rooms/suite-3-bed", "/rooms/suite-4-5-bed",
 ];
 function localizedPath(locale, path) {
   return locale === "fa" ? path : `/${locale}${path === "/" ? "/" : path}`;
@@ -140,7 +140,11 @@ test("Damoon Phase 1 pages, language switching, responsive layout and date-to-co
           assert.ok((await approvalNotice.innerText()).trim().length > 10, `${url} explains pending management confirmation`);
         }
         const normalizedDigits = mainText.replace(/[۰-۹٠-٩]/g, digit => "۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩".indexOf(digit) % 10);
-        assert.doesNotMatch(normalizedDigits, /\b24[- ]?hour(?:s)?\b|\bfree(?:\s+buffet)?\s+breakfast\b|(?:\b(?:12|14):00\b|٢٤\s*ساعة|۲۴\s*ساعت|إفطار\s*(?:مجاني|مجانًا)|صبحانه\s+رایگان)/i, `${url} avoids unconfirmed service guarantees and fixed times`);
+        assert.doesNotMatch(normalizedDigits, /\b24[- ]?hour(?:s)?\b|٢٤\s*ساعة|۲۴\s*ساعت/i, `${url} avoids unconfirmed 24-hour service guarantees`);
+        if (path === "/policies" || path.startsWith("/rooms/")) {
+          assert.match(mainText, /(?:14|۱۴|١٤):(?:00|۰۰|٠٠)/, `${url} displays the owner-approved 14:00 check-in time`);
+          assert.match(mainText, /(?:12|۱۲|١٢):(?:00|۰۰|٠٠)/, `${url} displays the owner-approved noon check-out time`);
+        }
         const overflow = await page.evaluate(() => ({ width: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
         assert.ok(overflow.scroll <= overflow.width + 1, `${url} mobile horizontal overflow: ${JSON.stringify(overflow)}`);
       }
@@ -282,13 +286,11 @@ test("Damoon Phase 1 pages, language switching, responsive layout and date-to-co
     assert.equal(roomUrl.searchParams.get("children"), "2");
     assert.equal(roomUrl.searchParams.get("childAges"), "7,12");
     await page.goto(roomUrl.href, { waitUntil: "networkidle" });
-    assert.equal(await page.locator("[data-adult-count]").inputValue(), "3", "room page rehydrates adult count");
-    assert.equal(await page.locator("[data-child-count]").inputValue(), "2", "room page rehydrates child count");
-    assert.equal(await page.locator('[data-child-age="0"]').inputValue(), "7", "room page rehydrates first child age");
-    assert.equal(await page.locator('[data-child-age="1"]').inputValue(), "12", "room page rehydrates second child age");
-    await page.locator(".booking-form .booking-submit[type=submit]").click();
-    await page.waitForURL(/\/en\/contact\?/);
-    const contactUrl = new URL(page.url());
+    const staySummary = page.locator(".booking-summary");
+    await staySummary.waitFor({ state: "visible" });
+    assert.match(await staySummary.innerText(), /3 adults/i, "room detail carries the selected adult count in its stay summary");
+    const contactHref = await staySummary.locator("a[href]").getAttribute("href");
+    const contactUrl = new URL(contactHref, runtime.base);
     assert.equal(contactUrl.pathname, "/en/contact");
     assert.equal(contactUrl.searchParams.get("checkIn"), tomorrow);
     assert.equal(contactUrl.searchParams.get("checkOut"), departure);
@@ -370,7 +372,11 @@ test("Damoon Phase 1 pages, language switching, responsive layout and date-to-co
         await localizedPage.locator("[data-child-count]").selectOption("2");
         await localizedPage.locator('[data-child-age="0"]').fill("7");
         await localizedPage.locator('[data-child-age="1"]').fill("12");
-        await localizedPage.locator(".booking-form .booking-submit[type=submit]").click();
+        // The form's submit checks live availability. Use the explicit
+        // coordination link to verify this public planning path without
+        // invoking the booking API or changing its business behavior.
+        const coordinationLink = localizedPage.locator('.accommodation-coordination__actions a[href*="/contact"]').last();
+        await coordinationLink.click();
         const expectedContactPath = localizedPath(locale, "/contact");
         await localizedPage.waitForURL(url => url.pathname === expectedContactPath && url.searchParams.has("room"));
         const localizedContact = new URL(localizedPage.url());

@@ -12,7 +12,8 @@ test("English and Arabic cover every main Damoon page and room section", () => {
     assert.ok(copy, `missing ${locale} translation`);
     assert.deepEqual(Object.keys(copy.pages).sort(), Object.keys(pages).sort(), `${locale} page coverage`);
     assert.deepEqual(Object.keys(copy.rooms).sort(), rooms.map(({ slug }) => slug).sort(), `${locale} room coverage`);
-    assert.equal(copy.site.nav.length, 5, `${locale} navigation coverage`);
+    assert.ok(copy.site.nav.length >= 4, `${locale} accommodation-focused navigation coverage`);
+    assert.ok(copy.site.nav.some(([, label]) => /room|accommodation|غرف|إقامة/iu.test(label)), `${locale} navigation includes accommodation`);
     assert.equal(copy.gallery.length, 6, `${locale} gallery coverage`);
 
     for (const [path, source] of Object.entries(pages)) {
@@ -45,8 +46,8 @@ test("English pages, room details, navigation, and controls use English copy", (
 test("localized hospitality and stay-planning copy preserves current status without promising a booking", () => {
   for (const locale of locales) {
     const copy = translations[locale];
-    assert.match(copy.pages["/cafe"].text, locale === "en" ? /in progress/i : /يجري استكمال/);
-    assert.match(copy.pages["/restaurant"].intro, locale === "en" ? /ready/i : /جاهز/);
+    assert.match(copy.pages["/cafe"].text, locale === "en" ? /no separate cafe|refreshments.*rooms/i : /لا توجد.*مقهى|المرطبات.*الغرف/);
+    assert.match(copy.pages["/restaurant"].text, locale === "en" ? /does not currently operate a restaurant|under preparation/i : /لا يوجد.*مطعم|قيد التجهيز/);
     assert.match(copy.pages["/policies"].sections[1].text, locale === "en" ? /do not reserve or hold/i : /لا يحجز غرفة ولا يحتفظ بها/);
     assert.match(copy.ui.datePlanningOnly, locale === "en" ? /planning and coordination only/i : /للتخطيط والتنسيق فقط/);
     assert.match(copy.ui.datePlanningOnly, locale === "en" ? /confirm room, rate, and availability/i : /أكّدوا الغرفة والسعر والتوفر/);

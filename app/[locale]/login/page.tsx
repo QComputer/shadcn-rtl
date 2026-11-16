@@ -17,10 +17,19 @@ import { ThemeSwitcher } from "@/components/ui/theme-switcher"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { BazarbaazLogo } from "@/components/brand/BazarbaazLogo"
 
+function safeLocalCallback(value: string | null, fallback: string) {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return fallback;
+  try {
+    const parsed = new URL(value, "https://same-origin.invalid");
+    if (parsed.origin !== "https://same-origin.invalid" || parsed.searchParams.has("token") || parsed.hash.toLowerCase().includes("token=")) return fallback;
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch { return fallback; }
+}
+
 function LoginForm({ locale }: { locale: string }) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get("callbackUrl") || appPath(`/${locale}/dashboard`)
+  const callbackUrl = safeLocalCallback(searchParams.get("callbackUrl"), appPath(`/${locale}/dashboard`))
   const organizationHint = searchParams.get("organization")
   const phoneLoginParams = new URLSearchParams()
   if (organizationHint) phoneLoginParams.set("organization", organizationHint)
@@ -31,6 +40,7 @@ function LoginForm({ locale }: { locale: string }) {
     } catch { /* ignore malformed callback context */ }
   }
   const phoneLoginHref = `/${locale}/login/phone${phoneLoginParams.size ? `?${phoneLoginParams.toString()}` : ""}`
+  const registerHref = `/${locale}/register${callbackUrl.startsWith(`/${locale}/`) ? `?callbackUrl=${encodeURIComponent(callbackUrl)}` : ""}`
   const passwordChanged = searchParams.get("security") === "password-changed"
 
   const [username, setUsername] = useState("")
@@ -272,7 +282,7 @@ function LoginForm({ locale }: { locale: string }) {
           </p>
           <p className="text-sm text-muted-foreground">
             {t("auth.noAccount") || "حساب کاربری ندارید؟"}
-            <Link href={`/${locale}/register`} className="text-primary hover:underline font-medium p-1">
+            <Link href={registerHref} className="text-primary hover:underline font-medium p-1">
               {t("auth.register") || "ثبت نام کاربر"}
             </Link>
           </p>

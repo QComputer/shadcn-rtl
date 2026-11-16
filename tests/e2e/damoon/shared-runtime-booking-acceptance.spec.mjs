@@ -41,7 +41,30 @@ function dateAtOffset(offset) {
 
 async function chooseStayDates(page, checkIn, checkOut) {
   const arrival = page.locator('[data-date-field="checkIn"]');
-  await arrival.evaluate((element) => element.scrollIntoView({ block: "center", inline: "nearest" }));
+  // The landing page uses smooth scrolling and layers its header over the hero.
+  // Move the control instantly below the header, then prove its pointer target
+  // is exposed before using a normal Playwright click.
+  await arrival.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const headerBottom = document.querySelector(".site-header")?.getBoundingClientRect().bottom ?? 0;
+    const safeTop = Math.max(headerBottom + 24, Math.round(window.innerHeight * 0.35));
+    window.scrollTo({ top: Math.max(0, window.scrollY + rect.top - safeTop), behavior: "instant" });
+  });
+  try {
+    await expect.poll(() => arrival.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return hit === element || element.contains(hit);
+    }), { message: "calendar control center must be unobstructed before a real pointer click" }).toBe(true);
+  } catch {
+    const geometry = await arrival.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      const header = document.querySelector(".site-header")?.getBoundingClientRect();
+      const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      return { scrollY: window.scrollY, viewport: [window.innerWidth, window.innerHeight], target: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, header: header && { x: header.x, y: header.y, width: header.width, height: header.height }, hit: hit && { tag: hit.tagName, className: typeof hit.className === "string" ? hit.className : "", id: hit.id } };
+    });
+    throw new Error(`Calendar button remained occluded after instant scroll: ${JSON.stringify(geometry)}`);
+  }
   await arrival.click();
   let moves = 0;
   while (!(await page.locator(`[data-calendar-day="${checkIn}"]`).count()) && moves++ < 3) await page.locator("[data-month-next]").click();

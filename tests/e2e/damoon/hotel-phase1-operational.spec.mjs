@@ -31,7 +31,27 @@ function assertTestTarget() {
 
 async function choosePublicStayDates(page, checkIn, checkOut) {
   const arrival = page.locator('[data-date-field="checkIn"]');
-  await arrival.evaluate((element) => element.scrollIntoView({ block: "center", inline: "nearest" }));
+  await arrival.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const headerBottom = document.querySelector(".site-header")?.getBoundingClientRect().bottom ?? 0;
+    const safeTop = Math.max(headerBottom + 24, Math.round(window.innerHeight * 0.35));
+    window.scrollTo({ top: Math.max(0, window.scrollY + rect.top - safeTop), behavior: "instant" });
+  });
+  try {
+    await expect.poll(() => arrival.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return hit === element || element.contains(hit);
+    }), { message: "public calendar control center must be unobstructed before a real pointer click" }).toBe(true);
+  } catch {
+    const geometry = await arrival.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      const header = document.querySelector(".site-header")?.getBoundingClientRect();
+      const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      return { scrollY: window.scrollY, viewport: [window.innerWidth, window.innerHeight], target: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, header: header && { x: header.x, y: header.y, width: header.width, height: header.height }, hit: hit && { tag: hit.tagName, className: typeof hit.className === "string" ? hit.className : "", id: hit.id } };
+    });
+    throw new Error(`Public calendar button remained occluded after instant scroll: ${JSON.stringify(geometry)}`);
+  }
   await arrival.click();
   let moves = 0;
   while (!(await page.locator(`[data-calendar-day="${checkIn}"]`).count()) && moves++ < 3) await page.locator("[data-month-next]").click();
@@ -68,7 +88,7 @@ function daysFromNow(offset) {
   return date.toISOString().slice(0, 10);
 }
 
-test("public Damoon booking entry preserves stay choices into the authenticated guest preview", async ({ browser }) => {
+test("new Damoon customer registers, joins the host-bound tenant, and resumes the selected stay", async ({ browser }) => {
   test.setTimeout(90_000);
   assertTestTarget();
   const resolved = await lookup(new URL(publicRuntimeOrigin).hostname, { all: true, verbatim: true });
@@ -100,7 +120,35 @@ test("public Damoon booking entry preserves stay choices into the authenticated 
     expect(callbackUrl.searchParams.get("adults")).toBe("1");
 
     const callbackPath = `${callbackUrl.pathname}${callbackUrl.search}`;
-    await login(page, publicRuntimeOrigin, fixture.username, fixture.password, callbackPath);
+    const registerLink = page.getByRole("link", { name: /ثبت نام/ });
+    const registerUrl = new URL(await registerLink.getAttribute("href") || "", publicRuntimeOrigin);
+    expect(registerUrl.searchParams.get("callbackUrl")).toBe(callbackPath);
+    await registerLink.click();
+    await page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === "/fa/register");
+    const newUsername = `${fixture.username}-new`;
+    await page.locator("#username").fill(newUsername);
+    await page.locator("#password").fill(fixture.password);
+    await page.locator("#confirmPassword").fill(fixture.password);
+    const registrationResponsePromise = page.waitForResponse((response) => response.url().endsWith("/api/auth/register") && response.request().method() === "POST", { timeout: 20_000 });
+    await page.getByRole("button", { name: "ثبت نام" }).click();
+    const registrationResponse = await registrationResponsePromise;
+    const registration = await registrationResponse.json();
+    expect(registrationResponse.status(), JSON.stringify(registration)).toBe(201);
+    let guestResponse;
+    if (registration.autoLogin) {
+      const guestReservationsResponse = page.waitForResponse((response) => response.url().includes("/api/hotel/v1/guest-reservations") && response.request().method() === "GET", { timeout: 20_000 });
+      await page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === startPath && url.searchParams.get("checkIn") === checkIn, { timeout: 45_000 });
+      guestResponse = await guestReservationsResponse;
+    } else {
+      await page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === "/fa/login", { timeout: 30_000 });
+      await page.locator("#username").fill(newUsername);
+      await page.locator("#password").fill(fixture.password);
+      const guestReservationsResponse = page.waitForResponse((response) => response.url().includes("/api/hotel/v1/guest-reservations") && response.request().method() === "GET", { timeout: 20_000 });
+      await page.locator("form button[type='submit']").click();
+      await page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === startPath && url.searchParams.get("checkIn") === checkIn, { timeout: 45_000 });
+      guestResponse = await guestReservationsResponse;
+    }
+    expect(guestResponse.status(), await guestResponse.text()).toBe(200);
     await expect(page.getByRole("note")).toContainText("پیش‌نمایش هتل دامون");
     await expect(page.locator("section[aria-label='رزروهای هتل']")).toBeVisible();
     await expect(page.getByLabel("تاریخ ورود")).toHaveValue(checkIn);

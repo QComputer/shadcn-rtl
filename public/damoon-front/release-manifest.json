@@ -6,7 +6,7 @@
     "about/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
     "accommodation.css": "2cb0da4f2d0e7342c16e318898a41c05427be11b3599fe67b7c5282ea56de586",
     "accommodation.js": "d121470bd4c234a5daeb8490b782b9f0754cdb7bb955355670d411233a2e6a02",
-    "app.js": "f8709344b84cd78aac4ec24644b954762f8bb4de8ccee0fcfa0be8beff04adcc",
+    "app.js": "05078b3b6d28a902ffa6bafc0d8bfe001e0e5b35b82bd64ab88de57a94b1b6d5",
     "ar/about/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
     "ar/cafe/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
     "ar/contact/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
@@ -89,6 +89,7 @@
     "theme-tokens.css": "e45530f56d3674ed13e018a9fa5e92e438f28ef89970751c221e0d588e1fb336",
     "themes.js": "5324a1d7d3676762c109041dd1c8210e8818bd72a01523251ed1bf612fd88f52",
     "translations.js": "4ad69190155f8128cb7231dd1b28262a06e4dafb46b8f0f501b3d7ec842d03a1",
-    "virtual-tour/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a"
+    "virtual-tour/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
+    "virtual-tour.js": "619ad7c5b00dbeeaf1e920c02fdc3a91a801ace6d6b0ddfda1f0487bfee8d850"
   }
 }

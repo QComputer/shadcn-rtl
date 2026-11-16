@@ -73,7 +73,6 @@ export default async function HotelReservationStartPage({ params, searchParams }
     select: { id: true },
   });
   if (!membership) notFound();
-
   const previewNotice = locale === "fa"
     ? "پیش‌نمایش هتل دامون: نرخ، موجودی، اتاق‌ها و قوانین این محیط نمونه‌اند و تا تأیید مالک هتل اطلاعات قطعی نیستند. ثبت درخواست در این پیش‌نمایش جایگزین تأیید پذیرش نمی‌شود."
     : locale === "ar"

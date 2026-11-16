@@ -1,18 +1,20 @@
 # Bazarbaaz Delivery Roadmap
 
-Updated: 2026-11-13. Short execution sequence; acceptance evidence belongs to the exact source SHA and environment that produced it.
+Updated: 2026-11-16. Acceptance evidence belongs to the exact source SHA and environment that produced it.
 
 | Order | Milestone | Acceptance gate | Status |
 |---|---|---|---|
-| 1 | PR64 Damoon guest request and reception workflow | Disposable PostgreSQL 17, real Next API plus standalone bridge, Chromium flow in FA/EN/AR, persistence, idempotency, reception update, negative tenant/origin/auth cases, no reservation/payment | Focused workflow and tests prepared; local Node acceptance 13/13 PASS; hosted PostgreSQL/browser **NOT_VERIFIED** |
-| 2 | Review and merge PR64 | All required Actions checks pass on final SHA, acceptance evidence attached, PR reviewed and merged under repository rules | Not started |
-| 3 | Controlled Hotel operational-readiness package | Independently verify publication approval, inventory, tenant domain/routing, staffing and safe feature-gate plan; no automatic Production activation | Not started; owner approval required for Production changes |
-| 4 | Post-Hotel identity, membership, OTP and SMS roadmap | First close `HOTEL_PHASE1_CLOSED`; begin G0 only after separate owner approval | [Proposed roadmap](./BAZARBAAZ-POST-HOTEL-P1-IDENTITY-MEMBERSHIP-OTP-SMS-ROADMAP-2026-11-16.md); documentation only, execution not started |
+| 1 | Hotel Damoon Phase 1 owner acceptance | Owner live acceptance, audited Production `HOTEL_BOOKING` state, active tenant/property, and exact-SHA technical acceptance | **`HOTEL_PHASE1_CLOSED`** — see [final closure record](../hotel/HOTEL-PHASE1-FINAL-CLOSURE-2026-11-16.md) |
+| 2 | PR87 safe Hotel capability activation path | Additive, idempotent, tenant-confirmed SUPER_ADMIN operation; preserves existing capabilities and records before/after audit | Merged as `24604ccc939a64a03b948c2a5b9af40586d817c8`; exact-head CI passed |
+| 3 | Post-Hotel identity, membership, OTP and SMS G0 | Separate owner approval to begin G0; fresh audit against the then-current main; no Production mutation | **Eligible to request G0 approval; not approved or started** — see [post-Hotel roadmap](./BAZARBAAZ-POST-HOTEL-P1-IDENTITY-MEMBERSHIP-OTP-SMS-ROADMAP-2026-11-16.md) |
+
+Historical PR64 sequencing and its local-only acceptance snapshot are superseded by the merged PR81–PR87 Hotel work and the closure evidence above. They are retained in Git history, not treated as current acceptance.
 
 ## Delivery constraints
 
 - Keep guest accommodation requests distinct from confirmed reservations and payments.
-- Use locked dependencies and ephemeral CI fixtures. Do not run expensive local builds or install dependencies while disk space is critically low.
-- Preserve PR60, PR62, PR59 and all unrelated worktrees/files. Stage only task-owned paths.
+- Use locked dependencies and ephemeral CI fixtures. Avoid redundant builds and repeated successful CI.
+- Preserve unrelated worktrees/files. Stage only task-owned paths.
 - No Production database, Runflare settings, live booking, payment, SMS or `main` changes without the applicable owner authorization.
 - Keep the UI scoped to necessary workflow behavior; avoid broad redesign and duplicate booking logic.
+- `HOTEL_BOOKING` activation does not approve public reservations, real payments, public content, or SMS. Each remains governed by its existing independent gate.

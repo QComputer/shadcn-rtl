@@ -9,6 +9,7 @@ type Room = { id: string; code: string; floor: string | null; isOutOfService: bo
 type RoomType = {
   id: string; slug: string; name: string; description: string | null; maxAdults: number;
   maxChildren: number; maxOccupancy: number; beds: unknown; rooms: Room[];
+  physicalCapacity: { configuredRooms: number; sellableRooms: number };
 };
 type RatePlan = {
   id: string; roomTypeId: string; code: string; name: string; currency: string;
@@ -179,7 +180,7 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
   const isLoading = loading || (dataRange !== rangeKey && !error);
   const roomTypesWithoutRates = activeData?.roomTypes.filter((room) => !activeData.ratePlans.some((plan) => plan.roomTypeId === room.id)) ?? [];
   const roomTypesWithoutFullInventory = activeData?.roomTypes.filter((room) => activeData.inventory.filter((night) => night.roomTypeId === room.id).length < activeData.range.nights) ?? [];
-  const roomTypesWithoutSellablePhysicalRooms = activeData?.roomTypes.filter((room) => room.rooms.length > 0 && !room.rooms.some((physical) => physical.isActive && !physical.isOutOfService)) ?? [];
+  const roomTypesWithoutSellablePhysicalRooms = activeData?.roomTypes.filter((room) => room.physicalCapacity.configuredRooms > 0 && room.physicalCapacity.sellableRooms === 0) ?? [];
 
   useEffect(() => () => { previewSequence.current += 1; previewRequest.current?.abort(); }, []);
 
@@ -355,13 +356,13 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
         {!previewDatesValid ? <p className="text-sm text-destructive">{text.previewInvalidDates}</p> : null}
         {previewError ? <p role="alert" className="text-sm text-destructive">{text.previewFailed}</p> : null}
         {activePreview ? <div role="status" aria-label={text.previewResult} className="space-y-3">
-          <p className="text-sm font-medium">{text.previewResult}: {activePreview.nights[0]} – {activePreview.nights.at(-1) ?? to} · {activePreview.nights.length} {locale === "en" ? "nights" : "شب"}</p>
+          <p className="text-sm font-medium">{text.previewResult}: {activePreview.nights[0]} – {activePreview.nights.at(-1) ?? to} · {activePreview.nights.length} {locale === "en" ? "nights" : "شب"} · {text.previewOccupancy}: {previewAdults} {text.previewAdults}, {previewChildAges.length} {text.previewChildren}</p>
           {activePreview.options.length === 0 ? <div className="space-y-1 rounded-md bg-muted p-3 text-sm"><p>{text.previewNoRooms}</p>{activeData?.roomTypes.length === 0 ? <p>{text.previewMissingRooms}</p> : null}{roomTypesWithoutSellablePhysicalRooms.map((room) => <p key={`physical:${room.id}`}>{room.name}: {text.previewNoPhysicalRooms}</p>)}{roomTypesWithoutRates.length ? <p>{text.previewMissingRates}</p> : null}{roomTypesWithoutFullInventory.length ? <p>{text.previewMissingInventory}</p> : null}{activePreview.rejected.filter((item) => item.reason === "NO_APPLICABLE_RATE_PLAN").map((item) => <p key={`rate-gap:${item.roomTypeId}`}>{activeData?.roomTypes.find((room) => room.id === item.roomTypeId)?.name}: {text.previewRateGap}</p>)}{activePreview.rejected.filter((item) => item.reason.startsWith("OCCUPANCY_")).map((item) => <p key={`occupancy:${item.roomTypeId}`}>{activeData?.roomTypes.find((room) => room.id === item.roomTypeId)?.name}: {text.previewOccupancyMismatch}</p>)}</div> : null}
           <ul className="grid gap-3 lg:grid-cols-2">{activePreview.options.map((option) => <li key={`${option.roomType.id}:${option.ratePlan.id}`} className="rounded-lg border p-3">
             <div className="flex flex-wrap items-start justify-between gap-2"><div><h4 className="font-semibold">{option.roomType.name}</h4><p className="text-sm text-muted-foreground">{option.ratePlan.name} · {text.previewCapacity}: {option.roomType.capacity.maxAdults} {text.previewAdults}, {option.roomType.capacity.maxChildren} {text.previewChildren} ({option.roomType.capacity.maxOccupancy} {locale === "en" ? "total" : "نفر در مجموع"})</p></div><p className="text-sm font-medium">{option.availableRoomCount} {text.previewAvailableRooms}</p></div>
             <ul className="mt-2 space-y-1 text-sm">{option.nights.map((night, index) => <li key={`${option.roomType.id}:${night}`} className="flex justify-between gap-3"><time dateTime={night} dir="ltr">{night}</time><span>{text.previewPerNight}: {option.nightlyRates[index] ?? "—"} {option.ratePlan.currency}</span></li>)}</ul>
             <p className="mt-2 text-sm font-semibold">{text.previewTotal}: {option.totalRate} {option.ratePlan.currency}</p>
-            {!option.isAvailable ? <p className="mt-2 text-sm text-amber-800">{text.previewUnavailable}: {option.unavailableNights.map((item) => item.date).join(", ")} {option.availableRoomCount < 1 ? `· ${activeData?.roomTypes.find((room) => room.id === option.roomType.id)?.rooms.length && !activeData.roomTypes.find((room) => room.id === option.roomType.id)?.rooms.some((physical) => physical.isActive && !physical.isOutOfService) ? text.previewOutOfService : text.previewFullCapacity}` : ""}</p> : null}
+            {!option.isAvailable ? <p className="mt-2 text-sm text-amber-800">{text.previewUnavailable}: {option.unavailableNights.map((item) => item.date).join(", ")} {option.availableRoomCount < 1 ? `· ${roomTypesWithoutSellablePhysicalRooms.some((room) => room.id === option.roomType.id) ? text.previewOutOfService : text.previewFullCapacity}` : ""}</p> : null}
           </li>)}</ul>
         </div> : null}
       </section> : null}

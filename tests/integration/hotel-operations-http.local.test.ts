@@ -44,10 +44,16 @@ const password = `HotelFixture-${randomUUID()}-${randomUUID()}`;
 const username = `hotel-ops-admin-${suffix}`;
 const platformUsername = `hotel-ops-platform-${suffix}`;
 const platformPassword = `HotelPlatformFixture-${randomUUID()}-${randomUUID()}`;
+const managerUsername = `hotel-ops-manager-${suffix}`;
+const managerPassword = `HotelManagerFixture-${randomUUID()}-${randomUUID()}`;
+const staffUsername = `hotel-ops-staff-${suffix}`;
+const staffPassword = `HotelStaffFixture-${randomUUID()}-${randomUUID()}`;
 const ownedOrgIds: string[] = [];
 const ownedDomainOrgIds: string[] = [];
 let userId = "";
 let platformUserId = "";
+let managerUserId = "";
+let staffUserId = "";
 let propertyAId = "";
 let propertyBId = "";
 let server: ChildProcess | undefined;
@@ -252,6 +258,12 @@ before(async () => {
   await db.organizationMember.create({ data: { organizationId: orgA.id, organizationSlug: orgA.slug, userId, role: "ADMIN", isActive: true } });
   const platformUser = await db.user.create({ data: { name: platformUsername, password: await bcrypt.hash(platformPassword, 10), role: "SUPER_ADMIN", isTeamMember: true } });
   platformUserId = platformUser.id;
+  const manager = await db.user.create({ data: { name: managerUsername, password: await bcrypt.hash(managerPassword, 10), role: "MANAGER", isTeamMember: true } });
+  managerUserId = manager.id;
+  await db.organizationMember.create({ data: { organizationId: orgA.id, organizationSlug: orgA.slug, userId: managerUserId, role: "MANAGER", isActive: true } });
+  const staff = await db.user.create({ data: { name: staffUsername, password: await bcrypt.hash(staffPassword, 10), role: "STAFF", isTeamMember: true } });
+  staffUserId = staff.id;
+  await db.organizationMember.create({ data: { organizationId: orgA.id, organizationSlug: orgA.slug, userId: staffUserId, role: "STAFF", isActive: true } });
 
   await assertPortFree();
   server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "--hostname", loopback, "--port", port], {
@@ -288,17 +300,21 @@ after(async () => {
       await db.hotelRoom.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelRoomType.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelProperty.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
-      await db.organizationMember.deleteMany({ where: { organizationId: { in: ownedOrgIds }, userId } });
+      await db.organizationMember.deleteMany({ where: { organizationId: { in: ownedOrgIds }, userId: { in: [userId, managerUserId, staffUserId] } } });
       await db.organizationDomain.deleteMany({ where: { organizationId: { in: ownedDomainOrgIds } } });
       await db.organizationCapability.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.organization.deleteMany({ where: { id: { in: ownedOrgIds } } });
       if (userId) await db.user.deleteMany({ where: { id: userId } });
       if (platformUserId) await db.user.deleteMany({ where: { id: platformUserId } });
+      if (managerUserId) await db.user.deleteMany({ where: { id: managerUserId } });
+      if (staffUserId) await db.user.deleteMany({ where: { id: staffUserId } });
       assert.equal(await db.organization.count({ where: { id: { in: ownedOrgIds } } }), 0);
       assert.equal(await db.hotelInventory.count({ where: { organizationId: { in: ownedOrgIds } } }), 0);
       assert.equal(await db.hotelProperty.count({ where: { organizationId: { in: ownedOrgIds } } }), 0);
       if (userId) assert.equal(await db.user.count({ where: { id: userId } }), 0);
       if (platformUserId) assert.equal(await db.user.count({ where: { id: platformUserId } }), 0);
+      if (managerUserId) assert.equal(await db.user.count({ where: { id: managerUserId } }), 0);
+      if (staffUserId) assert.equal(await db.user.count({ where: { id: staffUserId } }), 0);
     }
     fixtureCleanupPassed = true;
   } catch {
@@ -377,11 +393,12 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
 
   stage = "operations-reload-and-tenant-isolation";
   const operationsPath = `/api/organizations/${orgAId}/hotels/${propertyAId}/operations?from=${from}&to=${to}`;
-  const operations = await apiJson<{ property: { id: string }; range: { nights: number }; roomTypes: Array<{ id: string; rooms: Array<{ id: string }> }>; ratePlans: Array<{ id: string; baseNightlyRate: string; nightlyRates: Array<{ nightlyRate: string }> }>; inventory: Array<{ roomTypeId: string; allotment: number; available: number }>; cancellationPolicies: Array<{ id: string; isActive: boolean }> }>(operationsPath, cookie);
+  const operations = await apiJson<{ property: { id: string }; range: { nights: number }; roomTypes: Array<{ id: string; rooms: Array<{ id: string }>; physicalCapacity: { configuredRooms: number; sellableRooms: number } }>; ratePlans: Array<{ id: string; baseNightlyRate: string; nightlyRates: Array<{ nightlyRate: string }> }>; inventory: Array<{ roomTypeId: string; allotment: number; available: number }>; cancellationPolicies: Array<{ id: string; isActive: boolean }> }>(operationsPath, cookie);
   assert.equal(operations.response.status, 200);
   assert.equal(operations.data?.property.id, propertyAId);
   assert.equal(operations.data?.range.nights, 2);
   assert.ok(operations.data?.roomTypes.some((roomType) => roomType.id === roomTypeId && roomType.rooms.length === 2), "operations reload includes both configured physical rooms");
+  assert.deepEqual(operations.data?.roomTypes.find((roomType) => roomType.id === roomTypeId)?.physicalCapacity, { configuredRooms: 2, sellableRooms: 2 });
   assert.ok(operations.data?.ratePlans.some((plan) => plan.id === ratePlanId && plan.baseNightlyRate === "250000" && plan.nightlyRates.some((rate) => rate.nightlyRate === "275000")));
   assert.equal(operations.data?.inventory.length, 2);
   assert.ok(operations.data?.inventory.every((night) => night.roomTypeId === roomTypeId && night.allotment === 3 && night.available === 2));
@@ -403,18 +420,23 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   const beforePreview = await readPreviewMutationSnapshot(orgAId);
   const anonymousPreview = await apiJson(previewPath, "");
   assert.equal(anonymousPreview.response.status, 401, "availability preview requires an authenticated owner");
+  const invalidDatePreview = await apiJson(`/api/organizations/${orgAId}/hotels/${propertyAId}/availability-preview?checkIn=${from}&checkOut=${from}&adults=2&children=0`, cookie);
+  assert.equal(invalidDatePreview.response.status, 400, "same-day check-in and check-out is rejected without searching availability");
+  const invalidChildrenPreview = await apiJson(`/api/organizations/${orgAId}/hotels/${propertyAId}/availability-preview?checkIn=${from}&checkOut=${to}&adults=2&children=1&childAges=`, cookie);
+  assert.equal(invalidChildrenPreview.response.status, 400, "child occupancy requires one valid age per child");
   const crossTenantPreview = await apiJson(`/api/organizations/${ownedOrgIds[1]}/hotels/${propertyBId}/availability-preview?checkIn=${from}&checkOut=${to}&adults=2&children=0`, cookie);
   assert.equal(crossTenantPreview.response.status, 403, "owner authority is scoped to the active tenant and property");
-  await db.organizationMember.updateMany({ where: { organizationId: orgAId, userId, role: "ADMIN" }, data: { role: "MANAGER" } });
-  const managerOperations = await apiJson(operationsPath, cookie);
+  const managerLogin = await passwordLogin(managerUsername, managerPassword);
+  assert.equal(managerLogin.session.user?.role, "MANAGER");
+  const managerCookie = cookieHeader(managerLogin.cookies);
+  const managerOperations = await apiJson(operationsPath, managerCookie);
   assert.equal(managerOperations.response.status, 200, "manager's existing operational access remains unchanged");
-  const managerPreview = await apiJson(previewPath, cookie);
+  const managerPreview = await apiJson(previewPath, managerCookie);
   assert.equal(managerPreview.response.status, 403, "a manager may use operations but cannot access owner-only preview");
-  await db.organizationMember.updateMany({ where: { organizationId: orgAId, userId, role: "MANAGER" }, data: { role: "ADMIN" } });
-  await db.organizationMember.updateMany({ where: { organizationId: orgAId, userId, role: "ADMIN" }, data: { role: "STAFF" } });
-  const staffPreview = await apiJson(previewPath, cookie);
+  const staffLogin = await passwordLogin(staffUsername, staffPassword);
+  assert.equal(staffLogin.session.user?.role, "STAFF");
+  const staffPreview = await apiJson(previewPath, cookieHeader(staffLogin.cookies));
   assert.equal(staffPreview.response.status, 403, "staff membership cannot access owner-only preview");
-  await db.organizationMember.updateMany({ where: { organizationId: orgAId, userId, role: "STAFF" }, data: { role: "ADMIN" } });
   const ownerPreview = await apiJson<{ inventoryReserved: false; nights: string[]; options: Array<{ roomType: { id: string }; ratePlan: { id: string }; nightlyRates: string[]; totalRate: string; availableRoomCount: number; isAvailable: boolean }> }>(previewPath, cookie);
   assert.equal(ownerPreview.response.status, 200);
   assert.equal(ownerPreview.response.headers.get("cache-control"), "private, no-store");
@@ -581,7 +603,7 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   stage = "browser-owner-availability-preview-is-read-only";
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.getByRole("heading", { name: "Hotel operations" }).waitFor({ state: "visible", timeout: 30_000 });
-  await page.getByText(`${prefix} UI flexible`, { exact: false }).waitFor({ state: "visible", timeout: 30_000 });
+  await page.getByRole("listitem").filter({ hasText: `${prefix} UI flexible · 325000 TOMAN` }).waitFor({ state: "visible", timeout: 30_000 });
   const rangeSection = page.getByRole("heading", { name: "Date range" }).locator("xpath=ancestor::section[1]");
   const rangeDates = rangeSection.locator('input[type="date"]');
   await rangeDates.nth(0).fill(from);
@@ -597,6 +619,24 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   await previewPanel.getByText("Stay total: 550000 TOMAN", { exact: true }).waitFor({ state: "visible" });
   assert.equal(await db.hotelBookingHold.count({ where: { organizationId: orgAId } }), 0, "owner preview must not create a hold");
   assert.equal(await db.hotelReservation.count({ where: { organizationId: orgAId } }), 0, "owner preview must not create a reservation");
+
+  let occupancyRequestUrl = "";
+  const capturePreviewRequest = (request: import("playwright").Request) => { if (request.url().includes("/availability-preview?")) occupancyRequestUrl = request.url(); };
+  page.on("request", capturePreviewRequest);
+  await previewPanel.getByLabel("Adults").fill("1");
+  await previewPanel.getByLabel("Children").fill("1");
+  await previewPanel.getByLabel("Child age 1").fill("7");
+  const childOccupancyResponse = page.waitForResponse((response) => response.url().includes("/availability-preview?") && response.status() === 200);
+  await page.getByRole("button", { name: "Check availability and rates" }).click();
+  await childOccupancyResponse;
+  assert.equal(new URL(occupancyRequestUrl).searchParams.get("adults"), "1");
+  assert.equal(new URL(occupancyRequestUrl).searchParams.get("children"), "1");
+  assert.equal(new URL(occupancyRequestUrl).searchParams.get("childAges"), "7");
+  await page.getByText(/Guests: 1 Adults, 1 Children/).waitFor({ state: "visible" });
+  page.off("request", capturePreviewRequest);
+  await previewPanel.getByLabel("Adults").fill("2");
+  await previewPanel.getByLabel("Children").fill("0");
+  assert.deepEqual(await readPreviewMutationSnapshot(orgAId), beforePreview, "multi-occupancy preview requests remain read-only");
 
   let signalDelayedResponse: (() => void) | undefined;
   let releaseDelayedResponse: (() => void) | undefined;
@@ -640,6 +680,12 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   await retriedPreviewResponse;
   await previewPanel.getByText(`${prefix} Standard`, { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
   await page.unroute("**/availability-preview?*");
+  const desktopLayout = await page.evaluate(() => ({
+    documentFits: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    workspaceDirection: document.querySelector("main > div")?.getAttribute("dir") ?? null,
+  }));
+  assert.equal(desktopLayout.documentFits, true, "desktop owner preview has no horizontal overflow");
+  assert.equal(desktopLayout.workspaceDirection, "ltr", "English desktop workspace follows its locale direction");
 
   stage = "browser-mobile-fa-ar-layout";
   await page.setViewportSize({ width: 390, height: 844 });

@@ -129,7 +129,10 @@ export class HotelManagementService {
     return {
       property,
       range: { from: range.from.toISOString().slice(0, 10), to: range.to.toISOString().slice(0, 10), nights: nightCount },
-      roomTypes,
+      roomTypes: roomTypes.map((roomType) => {
+        const physical = physicalCapacities.find((capacity) => capacity.roomTypeId === roomType.id);
+        return { ...roomType, physicalCapacity: { configuredRooms: physical?.configuredRooms ?? 0, sellableRooms: physical?.availableRooms ?? 0 } };
+      }),
       ratePlans: ratePlans.map((plan) => ({ ...plan, baseNightlyRate: plan.baseNightlyRate.toString(), validFrom: plan.validFrom?.toISOString().slice(0, 10) ?? null, validTo: plan.validTo?.toISOString().slice(0, 10) ?? null, nightlyRates: plan.nightlyRates.map((rate) => ({ ...rate, from: rate.from.toISOString().slice(0, 10), to: rate.to.toISOString().slice(0, 10), nightlyRate: rate.nightlyRate?.toString() ?? null })) })),
       inventory: inventory.map((night) => {
         const physical = physicalCapacities.find((capacity) => capacity.roomTypeId === night.roomTypeId);

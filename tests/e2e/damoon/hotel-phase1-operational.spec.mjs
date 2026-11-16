@@ -30,7 +30,9 @@ function assertTestTarget() {
 }
 
 async function choosePublicStayDates(page, checkIn, checkOut) {
-  await page.locator('[data-date-field="checkIn"]').click();
+  const arrival = page.locator('[data-date-field="checkIn"]');
+  await arrival.evaluate((element) => element.scrollIntoView({ block: "center", inline: "nearest" }));
+  await arrival.click();
   let moves = 0;
   while (!(await page.locator(`[data-calendar-day="${checkIn}"]`).count()) && moves++ < 3) await page.locator("[data-month-next]").click();
   await page.locator(`[data-calendar-day="${checkIn}"]`).click();

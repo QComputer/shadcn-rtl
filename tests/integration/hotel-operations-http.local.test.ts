@@ -42,9 +42,12 @@ const hostB = `hotel-ops-b-${suffix}.localhost`;
 const originA = `http://${hostA}:${port}`;
 const password = `HotelFixture-${randomUUID()}-${randomUUID()}`;
 const username = `hotel-ops-admin-${suffix}`;
+const platformUsername = `hotel-ops-platform-${suffix}`;
+const platformPassword = `HotelPlatformFixture-${randomUUID()}-${randomUUID()}`;
 const ownedOrgIds: string[] = [];
 const ownedDomainOrgIds: string[] = [];
 let userId = "";
+let platformUserId = "";
 let propertyAId = "";
 let propertyBId = "";
 let server: ChildProcess | undefined;
@@ -177,7 +180,7 @@ function mergeCookies(existing: string[], response: Response) {
   return [...map.values()];
 }
 
-async function passwordLogin() {
+async function passwordLogin(loginUsername = username, loginPassword = password) {
   const csrf = await request("/api/auth/csrf");
   assert.equal(csrf.status, 200);
   const initialCookies = setCookies(csrf);
@@ -186,7 +189,7 @@ async function passwordLogin() {
     method: "POST",
     redirect: "manual",
     headers: { cookie: cookieHeader(initialCookies), "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ csrfToken, callbackUrl: originA, username, password }),
+    body: new URLSearchParams({ csrfToken, callbackUrl: originA, username: loginUsername, password: loginPassword }),
   });
   const cookies = mergeCookies(initialCookies, callback);
   const sessionResponse = await request("/api/auth/session", hostA, undefined, { headers: { cookie: cookieHeader(cookies) } });
@@ -208,21 +211,22 @@ async function apiJson<T>(path: string, cookie: string, method = "GET", body?: u
   return { response, data };
 }
 
-async function readPreviewMutationCounts(organizationId: string) {
+async function readPreviewMutationSnapshot(organizationId: string) {
+  const orderBy = { id: "asc" as const };
   const [inventory, holds, reservations, payments, allocations, adjustments, stayQuotes, stayRequests, guestRequests, holdIdempotency, reservationNights, paymentEvents, inventoryIdempotency] = await Promise.all([
-    db.hotelInventory.count({ where: { organizationId } }),
-    db.hotelBookingHold.count({ where: { organizationId } }),
-    db.hotelReservation.count({ where: { organizationId } }),
-    db.hotelOfflinePayment.count({ where: { organizationId } }),
-    db.hotelPaymentAllocation.count({ where: { organizationId } }),
-    db.hotelInventoryAdjustment.count({ where: { organizationId } }),
-    db.hotelStayQuote.count({ where: { organizationId } }),
-    db.hotelStayRequest.count({ where: { organizationId } }),
-    db.hotelGuestBookingRequest.count({ where: { organizationId } }),
-    db.hotelBookingHoldIdempotency.count({ where: { organizationId } }),
-    db.hotelReservationRoom.count({ where: { organizationId } }),
-    db.hotelOfflinePaymentAuditEvent.count({ where: { organizationId } }),
-    db.hotelInventoryIdempotency.count({ where: { organizationId } }),
+    db.hotelInventory.findMany({ where: { organizationId }, orderBy }),
+    db.hotelBookingHold.findMany({ where: { organizationId }, orderBy }),
+    db.hotelReservation.findMany({ where: { organizationId }, orderBy }),
+    db.hotelOfflinePayment.findMany({ where: { organizationId }, orderBy }),
+    db.hotelPaymentAllocation.findMany({ where: { organizationId }, orderBy }),
+    db.hotelInventoryAdjustment.findMany({ where: { organizationId }, orderBy }),
+    db.hotelStayQuote.findMany({ where: { organizationId }, orderBy }),
+    db.hotelStayRequest.findMany({ where: { organizationId }, orderBy }),
+    db.hotelGuestBookingRequest.findMany({ where: { organizationId }, orderBy }),
+    db.hotelBookingHoldIdempotency.findMany({ where: { organizationId }, orderBy }),
+    db.hotelReservationRoom.findMany({ where: { organizationId }, orderBy }),
+    db.hotelOfflinePaymentAuditEvent.findMany({ where: { organizationId }, orderBy }),
+    db.hotelInventoryIdempotency.findMany({ where: { organizationId }, orderBy }),
   ]);
   return { inventory, holds, reservations, payments, allocations, adjustments, stayQuotes, stayRequests, guestRequests, holdIdempotency, reservationNights, paymentEvents, inventoryIdempotency };
 }
@@ -246,6 +250,8 @@ before(async () => {
   const user = await db.user.create({ data: { name: username, password: await bcrypt.hash(password, 10), role: "ADMIN", isTeamMember: true } });
   userId = user.id;
   await db.organizationMember.create({ data: { organizationId: orgA.id, organizationSlug: orgA.slug, userId, role: "ADMIN", isActive: true } });
+  const platformUser = await db.user.create({ data: { name: platformUsername, password: await bcrypt.hash(platformPassword, 10), role: "SUPER_ADMIN", isTeamMember: true } });
+  platformUserId = platformUser.id;
 
   await assertPortFree();
   server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "--hostname", loopback, "--port", port], {
@@ -287,10 +293,12 @@ after(async () => {
       await db.organizationCapability.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.organization.deleteMany({ where: { id: { in: ownedOrgIds } } });
       if (userId) await db.user.deleteMany({ where: { id: userId } });
+      if (platformUserId) await db.user.deleteMany({ where: { id: platformUserId } });
       assert.equal(await db.organization.count({ where: { id: { in: ownedOrgIds } } }), 0);
       assert.equal(await db.hotelInventory.count({ where: { organizationId: { in: ownedOrgIds } } }), 0);
       assert.equal(await db.hotelProperty.count({ where: { organizationId: { in: ownedOrgIds } } }), 0);
       if (userId) assert.equal(await db.user.count({ where: { id: userId } }), 0);
+      if (platformUserId) assert.equal(await db.user.count({ where: { id: platformUserId } }), 0);
     }
     fixtureCleanupPassed = true;
   } catch {
@@ -392,15 +400,21 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
 
   stage = "owner-only-read-only-availability-preview";
   const previewPath = `/api/organizations/${orgAId}/hotels/${propertyAId}/availability-preview?checkIn=${from}&checkOut=${to}&adults=2&children=0`;
-  const beforePreview = await readPreviewMutationCounts(orgAId);
+  const beforePreview = await readPreviewMutationSnapshot(orgAId);
   const anonymousPreview = await apiJson(previewPath, "");
   assert.equal(anonymousPreview.response.status, 401, "availability preview requires an authenticated owner");
   const crossTenantPreview = await apiJson(`/api/organizations/${ownedOrgIds[1]}/hotels/${propertyBId}/availability-preview?checkIn=${from}&checkOut=${to}&adults=2&children=0`, cookie);
   assert.equal(crossTenantPreview.response.status, 403, "owner authority is scoped to the active tenant and property");
   await db.organizationMember.updateMany({ where: { organizationId: orgAId, userId, role: "ADMIN" }, data: { role: "MANAGER" } });
+  const managerOperations = await apiJson(operationsPath, cookie);
+  assert.equal(managerOperations.response.status, 200, "manager's existing operational access remains unchanged");
   const managerPreview = await apiJson(previewPath, cookie);
   assert.equal(managerPreview.response.status, 403, "a manager may use operations but cannot access owner-only preview");
   await db.organizationMember.updateMany({ where: { organizationId: orgAId, userId, role: "MANAGER" }, data: { role: "ADMIN" } });
+  await db.organizationMember.updateMany({ where: { organizationId: orgAId, userId, role: "ADMIN" }, data: { role: "STAFF" } });
+  const staffPreview = await apiJson(previewPath, cookie);
+  assert.equal(staffPreview.response.status, 403, "staff membership cannot access owner-only preview");
+  await db.organizationMember.updateMany({ where: { organizationId: orgAId, userId, role: "STAFF" }, data: { role: "ADMIN" } });
   const ownerPreview = await apiJson<{ inventoryReserved: false; nights: string[]; options: Array<{ roomType: { id: string }; ratePlan: { id: string }; nightlyRates: string[]; totalRate: string; availableRoomCount: number; isAvailable: boolean }> }>(previewPath, cookie);
   assert.equal(ownerPreview.response.status, 200);
   assert.equal(ownerPreview.response.headers.get("cache-control"), "private, no-store");
@@ -411,9 +425,14 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   assert.equal(ownerOption.availableRoomCount, guestOption.availableRoomCount);
   assert.deepEqual(ownerOption.nightlyRates, guestOption.nightlyRates.map(String));
   assert.equal(ownerOption.totalRate, String(guestOption.totalRate));
+  const platformLogin = await passwordLogin(platformUsername, platformPassword);
+  assert.ok([200, 302].includes(platformLogin.callback.status));
+  assert.equal(platformLogin.session.user?.role, "SUPER_ADMIN");
+  const platformPreview = await apiJson<typeof ownerPreview.data>(previewPath, cookieHeader(platformLogin.cookies));
+  assert.equal(platformPreview.response.status, 200, "verified active platform super-admin may preview an authorized tenant property");
   const publicSearchResponse = await request("/api/hotel/v1/availability/search", hostA, originA, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ property: `${prefix}-property-a`, checkIn: from, checkOut: to, occupancy: { adults: 2, children: 0, childAges: [] } }) });
   assert.notEqual(publicSearchResponse.status, 200, "the owner preview does not bypass the separate public publication/booking gate");
-  assert.deepEqual(await readPreviewMutationCounts(orgAId), beforePreview, "owner preview performs no inventory, hold, reservation, payment, allocation, or audit mutations");
+  assert.deepEqual(await readPreviewMutationSnapshot(orgAId), beforePreview, "owner preview performs no inventory, hold, reservation, payment, quote, request, idempotency, allocation, or audit mutations");
 
   const quoteProperty = await db.hotelProperty.findUniqueOrThrow({ where: { id: propertyAId } });
   const quoteResult = await db.$transaction((tx) => priceHotelStay(tx, quoteProperty, userId, { action: "quote", roomTypeId, ratePlanId, checkIn: from, checkOut: to, adults: 2, childAges: [] }, new Date("2027-01-01T00:00:00.000Z")));
@@ -560,6 +579,9 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   assert.equal(persistedUiRate.cancellationPolicyId, persistedPolicy.id, "the rate cannot become guest-reservable without an explicitly selected active policy");
 
   stage = "browser-owner-availability-preview-is-read-only";
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.getByRole("heading", { name: "Hotel operations" }).waitFor({ state: "visible", timeout: 30_000 });
+  await page.getByText(`${prefix} UI flexible`, { exact: false }).waitFor({ state: "visible", timeout: 30_000 });
   const rangeSection = page.getByRole("heading", { name: "Date range" }).locator("xpath=ancestor::section[1]");
   const rangeDates = rangeSection.locator('input[type="date"]');
   await rangeDates.nth(0).fill(from);
@@ -573,6 +595,49 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   await previewPanel.getByText(/550000 TOMAN/, { exact: false }).waitFor({ state: "visible" });
   assert.equal(await db.hotelBookingHold.count({ where: { organizationId: orgAId } }), 0, "owner preview must not create a hold");
   assert.equal(await db.hotelReservation.count({ where: { organizationId: orgAId } }), 0, "owner preview must not create a reservation");
+
+  let signalDelayedResponse: (() => void) | undefined;
+  let releaseDelayedResponse: (() => void) | undefined;
+  const delayedResponseStarted = new Promise<void>((resolve) => { signalDelayedResponse = resolve; });
+  const delayedResponseRelease = new Promise<void>((resolve) => { releaseDelayedResponse = resolve; });
+  await page.route("**/availability-preview?*", async (route) => {
+    const response = await route.fetch();
+    signalDelayedResponse?.();
+    await delayedResponseRelease;
+    await route.fulfill({ response });
+  });
+  const delayedPreviewResponse = page.waitForResponse((response) => response.url().includes("/availability-preview?") && response.status() === 200);
+  await page.getByRole("button", { name: "Check availability and rates" }).click();
+  await delayedResponseStarted;
+  await previewPanel.getByLabel("Adults").fill("1");
+  releaseDelayedResponse?.();
+  await delayedPreviewResponse;
+  await page.waitForFunction(() => Array.from(document.querySelectorAll("button")).some((button) => button.textContent?.trim() === "Check availability and rates" && !(button as HTMLButtonElement).disabled));
+  assert.equal(await page.getByRole("status", { name: "Result for current configuration" }).count(), 0, "a delayed response for the prior occupancy cannot appear under changed guest inputs");
+  await page.unroute("**/availability-preview?*");
+  await page.getByRole("button", { name: "Check availability and rates" }).click();
+  await previewPanel.getByText(`${prefix} Standard`, { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+  assert.equal(await page.getByRole("status", { name: "Result for current configuration" }).count(), 1, "the new occupancy request renders its matching response");
+  await previewPanel.getByLabel("Adults").fill("2");
+
+  let failPreviewOnce = true;
+  await page.route("**/availability-preview?*", async (route) => {
+    if (failPreviewOnce) {
+      failPreviewOnce = false;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "controlled test failure" }) });
+      return;
+    }
+    await route.continue();
+  });
+  const failedPreviewResponse = page.waitForResponse((response) => response.url().includes("/availability-preview?") && response.status() === 503);
+  await page.getByRole("button", { name: "Check availability and rates" }).click();
+  await failedPreviewResponse;
+  await page.getByRole("alert").filter({ hasText: "Could not load the preview" }).waitFor({ state: "visible" });
+  const retriedPreviewResponse = page.waitForResponse((response) => response.url().includes("/availability-preview?") && response.status() === 200);
+  await previewPanel.getByRole("button", { name: "Retry preview" }).click();
+  await retriedPreviewResponse;
+  await previewPanel.getByText(`${prefix} Standard`, { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+  await page.unroute("**/availability-preview?*");
 
   stage = "browser-mobile-fa-ar-layout";
   await page.setViewportSize({ width: 390, height: 844 });

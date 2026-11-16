@@ -56,6 +56,8 @@ let managerUserId = "";
 let staffUserId = "";
 let propertyAId = "";
 let propertyBId = "";
+let activationOrgId = "";
+let activationPropertyId = "";
 let server: ChildProcess | undefined;
 let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
 let testPassed = false;
@@ -247,6 +249,12 @@ before(async () => {
   ownedOrgIds.push(orgA.id);
   const orgB = await db.organization.create({ data: { name: `${prefix}-b`, slug: `${prefix}-b`, type: "SHOP", vertical: "HOTEL", locale: "fa", capabilitiesInitializedAt: new Date() } });
   ownedOrgIds.push(orgB.id);
+  const activationOrg = await db.organization.create({ data: { name: `${prefix}-activation`, slug: `${prefix}-activation`, type: "SHOP", vertical: "HOTEL", locale: "fa", capabilitiesInitializedAt: new Date() } });
+  activationOrgId = activationOrg.id;
+  ownedOrgIds.push(activationOrg.id);
+  await db.organizationCapability.create({ data: { organizationId: activationOrg.id, key: "HOTEL_WEBSITE", status: "ACTIVE", enabledAt: new Date() } });
+  const activationProperty = await db.hotelProperty.create({ data: { organizationId: activationOrg.id, organizationSlug: activationOrg.slug, slug: `${prefix}-activation-property`, name: `${prefix} activation property` } });
+  activationPropertyId = activationProperty.id;
   await db.organizationCapability.createMany({ data: [orgA, orgB].map((organization) => ({ organizationId: organization.id, key: "HOTEL_BOOKING", status: "ACTIVE", enabledAt: new Date() })) });
   await db.organizationDomain.createMany({ data: [
     { organizationId: orgA.id, domain: hostA, normalizedDomain: hostA, status: "ACTIVE", providerVerified: true, dnsConfigured: true, sslReady: true, verifiedAt: new Date() },
@@ -303,6 +311,7 @@ after(async () => {
       await db.organizationMember.deleteMany({ where: { organizationId: { in: ownedOrgIds }, userId: { in: [userId, managerUserId, staffUserId] } } });
       await db.organizationDomain.deleteMany({ where: { organizationId: { in: ownedDomainOrgIds } } });
       await db.organizationCapability.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
+      await db.auditLog.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.organization.deleteMany({ where: { id: { in: ownedOrgIds } } });
       if (userId) await db.user.deleteMany({ where: { id: userId } });
       if (platformUserId) await db.user.deleteMany({ where: { id: platformUserId } });
@@ -453,6 +462,39 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   assert.equal(platformLogin.session.user?.role, "SUPER_ADMIN");
   const platformPreview = await apiJson<typeof ownerPreview.data>(previewPath, cookieHeader(platformLogin.cookies));
   assert.equal(platformPreview.response.status, 200, "verified active platform super-admin may preview an authorized tenant property");
+
+  stage = "audited-additive-hotel-booking-capability-activation";
+  const activationPath = `/api/platform/hotel-organizations/${activationOrgId}/booking-capability`;
+  const platformCookie = cookieHeader(platformLogin.cookies);
+  const activationBeforeRejectedRequests = await db.organizationCapability.findMany({ where: { organizationId: activationOrgId }, orderBy: { key: "asc" } });
+  const adminActivation = await apiJson(activationPath, cookie, "POST", { organizationSlug: `${prefix}-activation`, propertyId: activationPropertyId });
+  assert.equal(adminActivation.response.status, 403, "organization ADMIN cannot grant platform capabilities");
+  const wrongSlugActivation = await apiJson(activationPath, platformCookie, "POST", { organizationSlug: `${prefix}-wrong`, propertyId: activationPropertyId });
+  assert.equal(wrongSlugActivation.response.status, 409, "activation fails closed when the confirmed tenant slug differs");
+  const wrongPropertyActivation = await apiJson(activationPath, platformCookie, "POST", { organizationSlug: `${prefix}-activation`, propertyId: propertyAId });
+  assert.equal(wrongPropertyActivation.response.status, 409, "activation fails closed for a property belonging to another tenant");
+  assert.deepEqual(await db.organizationCapability.findMany({ where: { organizationId: activationOrgId }, orderBy: { key: "asc" } }), activationBeforeRejectedRequests, "rejected activation attempts do not mutate capabilities");
+  const activationBefore = await db.organizationCapability.findMany({ where: { organizationId: activationOrgId }, orderBy: { key: "asc" } });
+  assert.deepEqual(activationBefore.map((row) => row.key), ["HOTEL_WEBSITE"], "fixture begins with the unrelated capability active and HOTEL_BOOKING missing");
+  const capabilityResult = await apiJson<{ changed: boolean; auditId: string | null; capabilityId: string; status: string; disabledAt: string | null }>(activationPath, platformCookie, "POST", { organizationSlug: `${prefix}-activation`, propertyId: activationPropertyId });
+  assert.equal(capabilityResult.response.status, 200);
+  assert.equal(capabilityResult.data?.changed, true);
+  assert.equal(capabilityResult.data?.status, "ACTIVE");
+  assert.equal(capabilityResult.data?.disabledAt, null);
+  assert.ok(capabilityResult.data?.auditId);
+  const activationAfter = await db.organizationCapability.findMany({ where: { organizationId: activationOrgId }, orderBy: { key: "asc" } });
+  assert.deepEqual(activationAfter.map((row) => row.key), ["HOTEL_BOOKING", "HOTEL_WEBSITE"], "additive activation preserves HOTEL_WEBSITE");
+  assert.equal(activationAfter.find((row) => row.key === "HOTEL_WEBSITE")?.status, "ACTIVE");
+  assert.equal((await db.organization.findUniqueOrThrow({ where: { id: activationOrgId } })).type, "SHOP", "legacy organization type is unchanged");
+  const activationAudit = await db.auditLog.findUniqueOrThrow({ where: { id: capabilityResult.data!.auditId } });
+  assert.equal(activationAudit.userId, platformUserId);
+  assert.equal(activationAudit.organizationId, activationOrgId);
+  const auditCount = await db.auditLog.count({ where: { organizationId: activationOrgId } });
+  const idempotentActivation = await apiJson<typeof capabilityResult.data>(activationPath, platformCookie, "POST", { organizationSlug: `${prefix}-activation`, propertyId: activationPropertyId });
+  assert.equal(idempotentActivation.response.status, 200);
+  assert.equal(idempotentActivation.data?.changed, false);
+  assert.equal(await db.auditLog.count({ where: { organizationId: activationOrgId } }), auditCount, "idempotent retry does not duplicate the audit event");
+
   const publicSearchResponse = await request("/api/hotel/v1/availability/search", hostA, originA, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ property: `${prefix}-property-a`, checkIn: from, checkOut: to, occupancy: { adults: 2, children: 0, childAges: [] } }) });
   assert.notEqual(publicSearchResponse.status, 200, "the owner preview does not bypass the separate public publication/booking gate");
   assert.deepEqual(await readPreviewMutationSnapshot(orgAId), beforePreview, "owner preview performs no inventory, hold, reservation, payment, quote, request, idempotency, allocation, or audit mutations");

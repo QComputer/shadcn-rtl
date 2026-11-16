@@ -62,19 +62,24 @@ function inventoryForNight(
     allotment: physicalRows.reduce((sum, row) => sum + row.allotment, 0),
     booked: physicalRows.reduce((sum, row) => sum + row.booked, 0),
     held: physicalRows.reduce((sum, row) => sum + row.held, 0),
+    outOfService: physicalRows.reduce((sum, row) => sum + (row.outOfService ?? 0), 0),
     closedToArrival: physicalRows.some((row) => row.closedToArrival),
     closedToDeparture: physicalRows.some((row) => row.closedToDeparture),
   };
 }
 
-export function sellableUnitsForNight(night: InventoryNight | undefined): number {
+export function sellableUnitsForNight(night: InventoryNight | undefined, physicalRoomCapacity?: number | null): number {
   if (!night) return 0;
   if (night.closedToArrival && night.closedToDeparture) return 0;
   // Closed to arrival/departure blocks selling that night to a new stay, but
   // does not by itself invalidate rooms already occupied.
   if (night.closedToArrival || night.closedToDeparture) return 0;
-  if (night.allotment === Infinity) return Infinity;
-  return Math.max(0, night.allotment - night.booked - night.held);
+  const inventoryRemaining = night.allotment === Infinity ? Infinity : Math.max(0, night.allotment - night.booked - night.held - (night.outOfService ?? 0));
+  const configuredPhysicalCapacity = physicalRoomCapacity === undefined ? night.physicalRoomCapacity : physicalRoomCapacity;
+  if (configuredPhysicalCapacity === undefined || configuredPhysicalCapacity === null) return inventoryRemaining;
+  // Booked/held units are already represented in inventory and physical occupancy: subtract them once from each independent ceiling, then take the tighter ceiling.
+  const physicalRemaining = Math.max(0, configuredPhysicalCapacity - night.booked - night.held);
+  return Math.min(inventoryRemaining, physicalRemaining);
 }
 
 export type InventoryNightInput = {

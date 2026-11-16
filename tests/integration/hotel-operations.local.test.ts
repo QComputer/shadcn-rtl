@@ -102,6 +102,7 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
     const physicalRoom = await service.createPhysicalRoom(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, {
       propertyId: property.id, roomTypeId: roomType.id, code: `201-${suffix}`, floor: "2",
     });
+    await Promise.all([202, 203, 204].map((number) => service.createPhysicalRoom(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, { propertyId: property.id, roomTypeId: roomType.id, code: `${number}-${suffix}`, floor: "2" })));
     const ratePlan = await service.createRatePlan(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, {
       propertyId: property.id, roomTypeId: roomType.id, code: `flex-${suffix}`, name: "Flexible",
       baseNightlyRate: BigInt(125000), minNights: 1, isRefundable: true,
@@ -150,7 +151,7 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
     assert.equal(await db.hotelInventoryAdjustment.count({ where: { organizationId: organizationA.id, roomTypeId: roomType.id, date: { gte: date("2027-08-10"), lt: date("2027-08-14") } } }), 4, "only created rows receive initialization audit entries");
 
     const operations = await service.getOperations(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, property.id, days("2027-08-01", "2027-08-15"));
-    assert.deepEqual(Object.keys(operations).sort(), ["inventory", "property", "range", "ratePlans", "roomTypes"]);
+    assert.deepEqual(Object.keys(operations).sort(), ["cancellationPolicies", "inventory", "property", "range", "ratePlans", "roomTypes"]);
     assert.deepEqual(operations.range, { from: "2027-08-01", to: "2027-08-15", nights: 14 });
     assert.equal(operations.property.timezone, "Asia/Tehran");
     const resultRoomType = operations.roomTypes.find((row) => row.id === roomType.id);

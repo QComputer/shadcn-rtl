@@ -1,8 +1,9 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import type { HotelProperty, Prisma } from "@prisma/client";
+import { Prisma, type HotelProperty } from "@prisma/client";
 import { ApiError } from "@/lib/api-guards";
 import { enumerateStayNights, validateOccupancyFitsRoom } from "@/lib/hotel/domain/stay-dates";
+import { sellableUnitsForNight } from "@/lib/hotel/domain/availability";
 import { resolveNightlyRatesForWindow, quoteCancellation } from "@/lib/hotel/domain/rate";
 import { BED_CAPACITY, type BedConfiguration, type CancellationTier, type ReservationCancellationPolicySnapshot } from "@/lib/hotel/domain/types";
 export type HotelPricedQuote = { id: string; actorUserId: string; propertyId: string; roomTypeId: string; ratePlanId: string; checkIn: string; checkOut: string; adults: number; childAges: number[]; nightlyRates: number[]; totalAmount: string; currency: string; expiresAt: string; policyVersion: number; policy: ReservationCancellationPolicySnapshot; holdId?: string; reservationId?: string };
@@ -16,6 +17,7 @@ export async function priceHotelStay(tx: Prisma.TransactionClient, property: Hot
 const organizationId = property.organizationId; const propertyId = property.id;
         const count = (date(command.checkOut).getTime() - date(command.checkIn).getTime()) / 86_400_000;
         if (!Number.isInteger(count) || count < 1 || count > 31) fail("Stay must be 1 to 31 nights", 422);
+        await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${command.roomTypeId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} AND "isActive"=true AND "deletedAt" IS NULL FOR SHARE`);
         const room = await tx.hotelRoomType.findFirst({ where: { id: command.roomTypeId, organizationId, propertyId, isActive: true, deletedAt: null } });
         const plan = await tx.hotelRatePlan.findFirst({ where: { id: command.ratePlanId, organizationId, propertyId, roomTypeId: command.roomTypeId, isActive: true }, include: { nightlyRates: true, cancellationPolicy: true } });
         if (!room || !plan || plan.currency !== property.currency || plan.currency !== "TOMAN") fail("Room, rate plan or currency not available", 422);
@@ -31,7 +33,12 @@ const organizationId = property.organizationId; const propertyId = property.id;
         if (!resolution.isResolved || !Number.isSafeInteger(resolution.total)) fail(resolution.reason ?? "Unsupported total", 422);
         const nights = enumerateStayNights(command.checkIn, command.checkOut);
         const inventory = await tx.hotelInventory.findMany({ where: { organizationId, propertyId, roomTypeId: room!.id, date: { in: nights.map(date) } } });
-        const remaining = inventory.length === nights.length ? Math.max(0, Math.min(...inventory.map(row => row.closedToArrival || row.closedToDeparture ? 0 : row.allotment - row.booked - row.held - row.outOfService))) : 0;
+        const [physicalRoomCount, availablePhysicalRoomCount] = await Promise.all([
+          tx.hotelRoom.count({ where: { organizationId, propertyId, roomTypeId: room!.id } }),
+          tx.hotelRoom.count({ where: { organizationId, propertyId, roomTypeId: room!.id, isActive: true, deletedAt: null, isOutOfService: false } }),
+        ]);
+        const physicalCap = physicalRoomCount > 0 ? availablePhysicalRoomCount : null;
+        const remaining = inventory.length === nights.length ? Math.min(...inventory.map(row => sellableUnitsForNight({ scope: { kind: "ROOM_TYPE", roomTypeId: room!.id }, date: dateOnly(row.date), allotment: row.allotment, booked: row.booked, held: row.held, outOfService: row.outOfService, closedToArrival: row.closedToArrival, closedToDeparture: row.closedToDeparture }, physicalCap))) : 0;
         if (command.action === "search") return { available: remaining > 0, remaining };
           if (!remaining && options.requireAvailability !== false) fail("No inventory");
           const policy = plan!.cancellationPolicy;

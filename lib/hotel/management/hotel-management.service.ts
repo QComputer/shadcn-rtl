@@ -103,17 +103,25 @@ export class HotelManagementService {
     if (!isUtcDate(range.from) || !isUtcDate(range.to) || !Number.isInteger(nightCount) || nightCount < 1 || nightCount > 31) throw new HotelManagementValidationError("Operations range must be 1 to 31 whole property nights");
     const property = await this.db.hotelProperty.findFirst({ where: { id: propertyId, organizationId: scope.organizationId, isActive: true, deletedAt: null }, select: { id: true, slug: true, name: true, timezone: true, currency: true, checkInTime: true, checkOutTime: true, minStayNights: true, maxStayNights: true } });
     if (!property) throw new HotelManagementAuthorizationError("Property is outside the active organization scope");
-    const [roomTypes, ratePlans, inventory] = await Promise.all([
+    const [roomTypes, ratePlans, inventory, cancellationPolicies, physicalCapacities] = await Promise.all([
       this.db.hotelRoomType.findMany({ where: { organizationId: scope.organizationId, propertyId, isActive: true, deletedAt: null }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }], select: { id: true, slug: true, name: true, description: true, maxAdults: true, maxChildren: true, maxOccupancy: true, beds: true, totalAllotment: true, rooms: { where: { organizationId: scope.organizationId, propertyId, isActive: true, deletedAt: null }, orderBy: { code: "asc" }, select: { id: true, code: true, floor: true, isOutOfService: true, isActive: true } } } }),
       this.db.hotelRatePlan.findMany({ where: { organizationId: scope.organizationId, propertyId, isActive: true }, orderBy: [{ roomTypeId: "asc" }, { code: "asc" }], select: { id: true, roomTypeId: true, code: true, name: true, currency: true, baseNightlyRate: true, minNights: true, maxNights: true, isRefundable: true, validFrom: true, validTo: true, cancellationPolicyId: true, nightlyRates: { where: { from: { lt: range.to }, to: { gt: range.from } }, orderBy: [{ from: "asc" }, { to: "asc" }], select: { id: true, from: true, to: true, nightlyRate: true, minNights: true, maxNights: true } } } }),
       this.db.hotelInventory.findMany({ where: { organizationId: scope.organizationId, propertyId, roomType: { isActive: true, deletedAt: null }, date: { gte: range.from, lt: range.to } }, orderBy: [{ date: "asc" }, { roomTypeId: "asc" }], select: { id: true, roomTypeId: true, date: true, allotment: true, booked: true, held: true, outOfService: true, closedToArrival: true, closedToDeparture: true } }),
+      this.db.hotelCancellationPolicy.findMany({ where: { organizationId: scope.organizationId, propertyId }, orderBy: [{ isActive: "desc" }, { name: "asc" }], select: { id: true, key: true, name: true, freeCancellationCutoffHours: true, fullCancellationRetention: true, isActive: true, version: true } }),
+      this.db.$queryRaw<Array<{ roomTypeId: string; configuredRooms: number; availableRooms: number }>>(Prisma.sql`SELECT "roomTypeId", COUNT(*)::int AS "configuredRooms", COUNT(*) FILTER (WHERE "isActive"=true AND "deletedAt" IS NULL AND "isOutOfService"=false)::int AS "availableRooms" FROM "HotelRoom" WHERE "organizationId"=${scope.organizationId} AND "propertyId"=${propertyId} GROUP BY "roomTypeId"`),
     ]);
     return {
       property,
       range: { from: range.from.toISOString().slice(0, 10), to: range.to.toISOString().slice(0, 10), nights: nightCount },
       roomTypes,
       ratePlans: ratePlans.map((plan) => ({ ...plan, baseNightlyRate: plan.baseNightlyRate.toString(), validFrom: plan.validFrom?.toISOString().slice(0, 10) ?? null, validTo: plan.validTo?.toISOString().slice(0, 10) ?? null, nightlyRates: plan.nightlyRates.map((rate) => ({ ...rate, from: rate.from.toISOString().slice(0, 10), to: rate.to.toISOString().slice(0, 10), nightlyRate: rate.nightlyRate?.toString() ?? null })) })),
-      inventory: inventory.map((night) => ({ ...night, date: night.date.toISOString().slice(0, 10), available: Math.max(0, night.allotment - night.booked - night.held - night.outOfService) })),
+      inventory: inventory.map((night) => {
+        const physical = physicalCapacities.find((capacity) => capacity.roomTypeId === night.roomTypeId);
+        const stockRemaining = night.allotment - night.booked - night.held - night.outOfService;
+        const roomRemaining = physical ? physical.availableRooms - night.booked - night.held : Number.POSITIVE_INFINITY;
+        return { ...night, date: night.date.toISOString().slice(0, 10), available: Math.max(0, Math.min(stockRemaining, roomRemaining)) };
+      }),
+      cancellationPolicies: cancellationPolicies.map((policy) => ({ ...policy, fullCancellationRetention: policy.fullCancellationRetention / 10000 })),
     };
   }
 
@@ -128,7 +136,7 @@ export class HotelManagementService {
     if (!isUtcDate(input.from) || !isUtcDate(input.to) || !Number.isInteger(nightCount) || nightCount < 1 || nightCount > 31) throw new HotelManagementValidationError("Inventory range must be 1 to 31 whole property nights");
     return this.db.$transaction(async (tx) => {
       const property = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelProperty" WHERE "id"=${input.propertyId} AND "organizationId"=${scope.organizationId} AND "isActive"=true AND "deletedAt" IS NULL FOR SHARE`);
-      const roomType = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${input.roomTypeId} AND "propertyId"=${input.propertyId} AND "organizationId"=${scope.organizationId} AND "isActive"=true AND "deletedAt" IS NULL FOR SHARE`);
+      const roomType = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${input.roomTypeId} AND "propertyId"=${input.propertyId} AND "organizationId"=${scope.organizationId} AND "isActive"=true AND "deletedAt" IS NULL FOR UPDATE`);
       if (!property.length || !roomType.length) throw new HotelManagementAuthorizationError("Room type is outside the active property scope");
       const inserted = await tx.$queryRaw<Array<{ id: string; status: string; requestFingerprint: string; resultJson: unknown }>>(Prisma.sql`INSERT INTO "HotelInventoryIdempotency" ("id","organizationId","operationScope","idempotencyKey","requestFingerprint") VALUES (${randomUUID()},${scope.organizationId},${"HOTEL_INVENTORY_INITIALIZE"},${input.idempotencyKey},${input.requestFingerprint}) ON CONFLICT ("organizationId","operationScope","idempotencyKey") DO NOTHING RETURNING "id","status","requestFingerprint","resultJson"`);
       const record = inserted[0] ?? (await tx.$queryRaw<Array<{ id: string; status: string; requestFingerprint: string; resultJson: unknown }>>(Prisma.sql`SELECT "id","status","requestFingerprint","resultJson" FROM "HotelInventoryIdempotency" WHERE "organizationId"=${scope.organizationId} AND "operationScope"=${"HOTEL_INVENTORY_INITIALIZE"} AND "idempotencyKey"=${input.idempotencyKey} FOR UPDATE`))[0];
@@ -188,31 +196,86 @@ export class HotelManagementService {
   async updateRoomType(principal: HotelManagementPrincipal, scope: HotelManagementScope, roomTypeId: string, patch: { name?: string; description?: string | null; localizedContent?: LocalizedContent; maxAdults?: number; maxChildren?: number; maxOccupancy?: number; beds?: Prisma.InputJsonValue; isActive?: boolean }) {
     await this.authorize(principal, scope); if (patch.name !== undefined) assertText(patch.name, "Room type name"); assertLocalizedContent(patch.localizedContent);
     for (const [key, value] of Object.entries({ maxAdults: patch.maxAdults, maxChildren: patch.maxChildren, maxOccupancy: patch.maxOccupancy })) if (value !== undefined) assertInteger(value, key, key === "maxChildren" ? 0 : 1);
-    const row = await this.db.hotelRoomType.findFirst({ where: { id: roomTypeId, organizationId: scope.organizationId } }); if (!row) throw new HotelManagementAuthorizationError("Room type is outside the organization scope");
-    const adults = patch.maxAdults ?? row.maxAdults, children = patch.maxChildren ?? row.maxChildren, occupancy = patch.maxOccupancy ?? row.maxOccupancy;
-    if (occupancy < adults || occupancy < children) throw new HotelManagementValidationError("Occupancy is below configured limits");
-    if (patch.isActive === false) await this.assertNoActiveCommitments(scope, row.propertyId, roomTypeId);
-    return this.db.hotelRoomType.update({ where: { id: roomTypeId }, data: { ...patch, name: patch.name?.trim() } as never });
+    return this.db.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${roomTypeId} AND "organizationId"=${scope.organizationId} FOR UPDATE`);
+      const row = locked.length ? await tx.hotelRoomType.findFirst({ where: { id: roomTypeId, organizationId: scope.organizationId } }) : null;
+      if (!row) throw new HotelManagementAuthorizationError("Room type is outside the organization scope");
+      const adults = patch.maxAdults ?? row.maxAdults, children = patch.maxChildren ?? row.maxChildren, occupancy = patch.maxOccupancy ?? row.maxOccupancy;
+      if (occupancy < adults || occupancy < children) throw new HotelManagementValidationError("Occupancy is below configured limits");
+      if (patch.isActive === false) {
+        const where = { organizationId: scope.organizationId, propertyId: row.propertyId, roomTypeId };
+        const [hold, reservation] = await Promise.all([
+          tx.hotelBookingHold.findFirst({ where: { ...where, status: { in: ["ACTIVE", "CONSUMED"] } } }),
+          tx.hotelReservation.findFirst({ where: { ...where, status: { in: ["HELD", "PENDING_PAYMENT", "CONFIRMED", "CHECKED_IN"] } } }),
+        ]);
+        if (hold || reservation) throw new HotelManagementValidationError("Active hotel commitments prevent deactivation");
+      }
+      return tx.hotelRoomType.update({ where: { id: roomTypeId }, data: { ...patch, name: patch.name?.trim() } as never });
+    }, { maxWait: 5000, timeout: 10000 });
   }
 
-  async archiveRoomType(principal: HotelManagementPrincipal, scope: HotelManagementScope, roomTypeId: string) { await this.authorize(principal, scope); const row = await this.db.hotelRoomType.findFirst({ where: { id: roomTypeId, organizationId: scope.organizationId } }); if (!row) throw new HotelManagementAuthorizationError("Room type is outside the organization scope"); await this.assertNoActiveCommitments(scope, row.propertyId, roomTypeId); return this.db.hotelRoomType.update({ where: { id: roomTypeId }, data: { isActive: false, deletedAt: new Date() } }); }
+  async archiveRoomType(principal: HotelManagementPrincipal, scope: HotelManagementScope, roomTypeId: string) {
+    await this.authorize(principal, scope);
+    return this.db.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<Array<{ id: string; propertyId: string }>>(Prisma.sql`SELECT "id","propertyId" FROM "HotelRoomType" WHERE "id"=${roomTypeId} AND "organizationId"=${scope.organizationId} FOR UPDATE`);
+      const row = locked[0];
+      if (!row) throw new HotelManagementAuthorizationError("Room type is outside the organization scope");
+      const where = { organizationId: scope.organizationId, propertyId: row.propertyId, roomTypeId };
+      const [hold, reservation] = await Promise.all([
+        tx.hotelBookingHold.findFirst({ where: { ...where, status: { in: ["ACTIVE", "CONSUMED"] } } }),
+        tx.hotelReservation.findFirst({ where: { ...where, status: { in: ["HELD", "PENDING_PAYMENT", "CONFIRMED", "CHECKED_IN"] } } }),
+      ]);
+      if (hold || reservation) throw new HotelManagementValidationError("Active hotel commitments prevent deactivation");
+      return tx.hotelRoomType.update({ where: { id: roomTypeId }, data: { isActive: false, deletedAt: new Date() } });
+    }, { maxWait: 5000, timeout: 10000 });
+  }
 
   async createPhysicalRoom(principal: HotelManagementPrincipal, scope: HotelManagementScope, input: { propertyId: string; roomTypeId: string; code: string; floor?: string; description?: string; isOutOfService?: boolean }) {
     await this.authorize(principal, scope);
     const roomType = await this.db.hotelRoomType.findFirst({ where: { id: input.roomTypeId, propertyId: input.propertyId, organizationId: scope.organizationId } });
     if (!roomType) throw new HotelManagementAuthorizationError("Room type does not belong to this property");
-    assertText(input.code, "Room code", 64); return this.db.hotelRoom.create({ data: { organizationId: scope.organizationId, propertyId: input.propertyId, roomTypeId: input.roomTypeId, code: input.code.trim(), floor: input.floor, description: input.description, isOutOfService: input.isOutOfService ?? false } });
+    assertText(input.code, "Room code", 64);
+    return this.db.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${input.roomTypeId} AND "organizationId"=${scope.organizationId} AND "propertyId"=${input.propertyId} AND "isActive"=true AND "deletedAt" IS NULL FOR UPDATE`);
+      if (!locked.length) throw new HotelManagementAuthorizationError("Room type is outside the active property scope");
+      const created = await tx.hotelRoom.create({ data: { organizationId: scope.organizationId, propertyId: input.propertyId, roomTypeId: input.roomTypeId, code: input.code.trim(), floor: input.floor, description: input.description, isOutOfService: input.isOutOfService ?? false } });
+      const counts = await tx.$queryRaw<Array<{ configuredRooms: number; availableRooms: number }>>(Prisma.sql`SELECT COUNT(*)::int AS "configuredRooms", COUNT(*) FILTER (WHERE "isActive"=true AND "deletedAt" IS NULL AND "isOutOfService"=false)::int AS "availableRooms" FROM "HotelRoom" WHERE "organizationId"=${scope.organizationId} AND "propertyId"=${input.propertyId} AND "roomTypeId"=${input.roomTypeId}`);
+      const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+      const commitments = await tx.$queryRaw<Array<{ maxCommitted: number | null }>>(Prisma.sql`SELECT MAX("booked" + "held")::int AS "maxCommitted" FROM "HotelInventory" WHERE "organizationId"=${scope.organizationId} AND "propertyId"=${input.propertyId} AND "roomTypeId"=${input.roomTypeId} AND "date">=${today}`);
+      if ((commitments[0]?.maxCommitted ?? 0) > (counts[0]?.availableRooms ?? 0)) throw new HotelManagementValidationError("Physical room configuration would be below existing bookings and holds");
+      return created;
+    }, { maxWait: 5000, timeout: 10000 });
   }
 
   async updatePhysicalRoom(principal: HotelManagementPrincipal, scope: HotelManagementScope, roomId: string, patch: { code?: string; roomTypeId?: string; floor?: string | null; description?: string | null; isOutOfService?: boolean; isActive?: boolean }) {
     await this.authorize(principal, scope); const room = await this.db.hotelRoom.findFirst({ where: { id: roomId, organizationId: scope.organizationId } }); if (!room) throw new HotelManagementAuthorizationError("Room is outside the organization scope");
     if (patch.code !== undefined) assertText(patch.code, "Room code", 64);
-    if (patch.roomTypeId && patch.roomTypeId !== room.roomTypeId) { const target = await this.db.hotelRoomType.findFirst({ where: { id: patch.roomTypeId, propertyId: room.propertyId, organizationId: scope.organizationId, isActive: true } }); if (!target) throw new HotelManagementAuthorizationError("Target room type is outside the property scope"); await this.assertNoRoomAllocations(roomId); }
+    if (patch.roomTypeId && patch.roomTypeId !== room.roomTypeId) { const target = await this.db.hotelRoomType.findFirst({ where: { id: patch.roomTypeId, propertyId: room.propertyId, organizationId: scope.organizationId, isActive: true } }); if (!target) throw new HotelManagementAuthorizationError("Target room type is outside the property scope"); await this.assertNoRoomAllocations(roomId); await this.assertNoActiveCommitments(scope, room.propertyId, room.roomTypeId); }
     if (patch.isActive === false || patch.isOutOfService === true) await this.assertNoRoomAllocations(roomId);
-    return this.db.hotelRoom.update({ where: { id: roomId }, data: { ...patch, code: patch.code?.trim() } as never });
+    const affectedTypes = [...new Set([room.roomTypeId, patch.roomTypeId ?? room.roomTypeId])].sort();
+    return this.db.$transaction(async (tx) => {
+      await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "organizationId"=${scope.organizationId} AND "propertyId"=${room.propertyId} AND "id" IN (${Prisma.join(affectedTypes)}) ORDER BY "id" FOR UPDATE`);
+      const reducesPhysicalCapacity = patch.isActive === false || patch.isOutOfService === true || Boolean(patch.roomTypeId && patch.roomTypeId !== room.roomTypeId);
+      if (reducesPhysicalCapacity) {
+        await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoom" WHERE "id"=${roomId} AND "organizationId"=${scope.organizationId} AND "propertyId"=${room.propertyId} FOR UPDATE`);
+        const assignment = await tx.hotelReservationRoom.findFirst({ where: { organizationId: scope.organizationId, roomId, reservation: { status: { in: ["HELD", "PENDING_PAYMENT", "CONFIRMED", "CHECKED_IN"] } } }, select: { id: true } });
+        if (assignment) throw new HotelManagementValidationError("Room has an active reservation allocation");
+      }
+      const current = await tx.hotelRoom.findFirst({ where: { id: roomId, organizationId: scope.organizationId, propertyId: room.propertyId } });
+      if (!current) throw new HotelManagementAuthorizationError("Room is outside the organization scope");
+      const updated = await tx.hotelRoom.update({ where: { id: roomId }, data: { ...patch, code: patch.code?.trim() } as never });
+      const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+      for (const typeId of affectedTypes) {
+        const counts = await tx.$queryRaw<Array<{ configuredRooms: number; availableRooms: number }>>(Prisma.sql`SELECT COUNT(*)::int AS "configuredRooms", COUNT(*) FILTER (WHERE "isActive"=true AND "deletedAt" IS NULL AND "isOutOfService"=false)::int AS "availableRooms" FROM "HotelRoom" WHERE "organizationId"=${scope.organizationId} AND "propertyId"=${room.propertyId} AND "roomTypeId"=${typeId}`);
+        if (!counts[0]?.configuredRooms) continue;
+        const commitments = await tx.$queryRaw<Array<{ maxCommitted: number | null }>>(Prisma.sql`SELECT MAX("booked" + "held")::int AS "maxCommitted" FROM "HotelInventory" WHERE "organizationId"=${scope.organizationId} AND "propertyId"=${room.propertyId} AND "roomTypeId"=${typeId} AND "date">=${today}`);
+        if ((commitments[0]?.maxCommitted ?? 0) > counts[0].availableRooms) throw new HotelManagementValidationError("Cannot reduce in-service rooms below existing bookings and holds");
+      }
+      return updated;
+    }, { maxWait: 5000, timeout: 10000 });
   }
 
-  async archivePhysicalRoom(principal: HotelManagementPrincipal, scope: HotelManagementScope, roomId: string) { await this.authorize(principal, scope); await this.assertNoRoomAllocations(roomId); return this.db.hotelRoom.updateMany({ where: { id: roomId, organizationId: scope.organizationId }, data: { isActive: false, deletedAt: new Date() } }); }
+  async archivePhysicalRoom(principal: HotelManagementPrincipal, scope: HotelManagementScope, roomId: string) { await this.authorize(principal, scope); const room = await this.db.hotelRoom.findFirst({ where: { id: roomId, organizationId: scope.organizationId } }); if (!room) throw new HotelManagementAuthorizationError("Room is outside the organization scope"); await this.updatePhysicalRoom(principal, scope, roomId, { isActive: false }); return this.db.hotelRoom.updateMany({ where: { id: roomId, organizationId: scope.organizationId }, data: { deletedAt: new Date() } }); }
 
   async listGuestBookingRequests(principal: HotelManagementPrincipal, scope: HotelManagementScope, propertyId: string, options: { cursor?: string; status?: string } = {}) {
     await this.authorize(principal, scope);
@@ -325,10 +388,13 @@ export class HotelManagementService {
     const delta = input.allotmentDelta ?? 0; const outDelta = input.outOfServiceDelta ?? 0;
     if (!Number.isSafeInteger(delta) || !Number.isSafeInteger(outDelta)) throw new HotelManagementValidationError("Inventory adjustments must be safe integers");
     return this.db.$transaction(async (tx) => {
+      const roomType = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${input.roomTypeId} AND "organizationId"=${scope.organizationId} AND "propertyId"=${input.propertyId} AND "isActive"=true AND "deletedAt" IS NULL FOR UPDATE`);
+      if (!roomType.length) throw new HotelManagementAuthorizationError("Room type is outside the active property scope");
       const locked = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelInventory" WHERE "organizationId" = ${scope.organizationId} AND "propertyId" = ${input.propertyId} AND "roomTypeId" = ${input.roomTypeId} AND "date" = ${input.date} FOR UPDATE`);
       const row = locked[0] ? await tx.hotelInventory.findUnique({ where: { id: locked[0].id } }) : null;
       if (!row) throw new HotelManagementValidationError("Inventory night does not exist");
-      if (row.allotment + delta < row.booked + row.held || row.outOfService + outDelta < 0 || row.allotment + delta < 0) throw new HotelManagementValidationError("Adjustment would invalidate committed inventory");
+      const nextAllotment = row.allotment + delta, nextOutOfService = row.outOfService + outDelta;
+      if (nextAllotment < 0 || nextOutOfService < 0 || nextAllotment < row.booked + row.held + nextOutOfService) throw new HotelManagementValidationError("Adjustment would invalidate committed inventory");
       const updated = await tx.hotelInventory.update({ where: { id: row.id }, data: { allotment: { increment: delta }, outOfService: { increment: outDelta } } });
       await tx.hotelInventoryAdjustment.create({ data: { organizationId: scope.organizationId, propertyId: input.propertyId, roomTypeId: input.roomTypeId, date: input.date, allotmentDelta: delta, outOfServiceDelta: outDelta, reason: input.reason, createdByUserId: input.createdByUserId } });
       return updated;
@@ -348,10 +414,13 @@ export class HotelManagementService {
       if (record.status === "COMPLETED" && record.resultJson) return record.resultJson;
       if (!inserted[0]) throw new HotelManagementConflictError("Idempotency request is already processing");
 
+      const roomType = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${input.roomTypeId} AND "organizationId"=${scope.organizationId} AND "propertyId"=${input.propertyId} AND "isActive"=true AND "deletedAt" IS NULL FOR UPDATE`);
+      if (!roomType.length) throw new HotelManagementAuthorizationError("Room type is outside the active property scope");
       const locked = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelInventory" WHERE "organizationId"=${scope.organizationId} AND "propertyId"=${input.propertyId} AND "roomTypeId"=${input.roomTypeId} AND "date"=${input.date} FOR UPDATE`);
       const row = locked[0] ? await tx.hotelInventory.findUnique({ where: { id: locked[0].id } }) : null;
       if (!row) throw new HotelManagementValidationError("Inventory night does not exist");
-      if (row.allotment + delta < row.booked + row.held || row.outOfService + outDelta < 0 || row.allotment + delta < 0) throw new HotelManagementValidationError("Adjustment would invalidate committed inventory");
+      const nextAllotment = row.allotment + delta, nextOutOfService = row.outOfService + outDelta;
+      if (nextAllotment < 0 || nextOutOfService < 0 || nextAllotment < row.booked + row.held + nextOutOfService) throw new HotelManagementValidationError("Adjustment would invalidate committed inventory");
       const updated = await tx.hotelInventory.update({ where: { id: row.id }, data: { allotment: { increment: delta }, outOfService: { increment: outDelta } } });
       await tx.hotelInventoryAdjustment.create({ data: { organizationId: scope.organizationId, propertyId: input.propertyId, roomTypeId: input.roomTypeId, date: input.date, allotmentDelta: delta, outOfServiceDelta: outDelta, reason: input.reason, createdByUserId: principal.userId } });
       await tx.$executeRaw(Prisma.sql`UPDATE "HotelInventoryIdempotency" SET "status"='COMPLETED',"resultJson"=${JSON.stringify(updated)}::jsonb,"completedAt"=CURRENT_TIMESTAMP WHERE "id"=${record.id}`);

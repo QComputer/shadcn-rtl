@@ -10,6 +10,7 @@ export type HotelCmsDashboardOrganization = {
   slug: string;
   role: "ADMIN" | "MANAGER" | "SUPER_ADMIN";
   properties: HotelCmsDashboardProperty[];
+  hotelOperationsEnabled: boolean;
 };
 
 /**
@@ -89,6 +90,10 @@ export async function listHotelCmsDashboardOrganizations(input: {
         orderBy: { name: "asc" },
         select: { id: true, name: true, slug: true },
       },
+      capabilities: {
+        where: { key: "HOTEL_BOOKING", status: "ACTIVE", enabledAt: { not: null } },
+        select: { id: true },
+      },
     },
   });
 
@@ -98,6 +103,7 @@ export async function listHotelCmsDashboardOrganizations(input: {
     slug: organization.slug,
     role: isPlatformAdmin ? "SUPER_ADMIN" : tenantRoles.get(organization.id) ?? "MANAGER",
     properties: organization.hotelProperties,
+    hotelOperationsEnabled: organization.capabilities.length > 0,
   }));
 }
 

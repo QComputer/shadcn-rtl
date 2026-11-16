@@ -107,6 +107,10 @@ const buildProviders = (): Provider[] => {
           label: "Password",
           type: "password",
           placeholder: "Enter your password"
+        },
+        hotelGuestJoin: {
+          label: "Join the hotel for this reservation",
+          type: "text",
         }
       },
       async authorize(credentials, request) {

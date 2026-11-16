@@ -17,11 +17,11 @@ import { ThemeSwitcher } from "@/components/ui/theme-switcher"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { BazarbaazLogo } from "@/components/brand/BazarbaazLogo"
 
-function safeLocalCallback(value: string | null, fallback: string) {
-  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return fallback;
+function safeLocalCallback(value: string | null, fallback: string, currentOrigin: string) {
+  if (!value || value.startsWith("//") || value.includes("\\")) return fallback;
   try {
-    const parsed = new URL(value, "https://same-origin.invalid");
-    if (parsed.origin !== "https://same-origin.invalid" || parsed.searchParams.has("token") || parsed.hash.toLowerCase().includes("token=")) return fallback;
+    const parsed = new URL(value, currentOrigin);
+    if (parsed.origin !== currentOrigin || parsed.username || parsed.password || parsed.searchParams.has("token") || parsed.hash.toLowerCase().includes("token=")) return fallback;
     return `${parsed.pathname}${parsed.search}${parsed.hash}`;
   } catch { return fallback; }
 }
@@ -29,7 +29,9 @@ function safeLocalCallback(value: string | null, fallback: string) {
 function LoginForm({ locale }: { locale: string }) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const callbackUrl = safeLocalCallback(searchParams.get("callbackUrl"), appPath(`/${locale}/dashboard`))
+  const fallbackCallbackUrl = appPath(`/${locale}/dashboard`)
+  const requestedCallbackUrl = searchParams.get("callbackUrl")
+  const [callbackUrl, setCallbackUrl] = useState(fallbackCallbackUrl)
   const organizationHint = searchParams.get("organization")
   const phoneLoginParams = new URLSearchParams()
   if (organizationHint) phoneLoginParams.set("organization", organizationHint)
@@ -54,11 +56,12 @@ function LoginForm({ locale }: { locale: string }) {
 
   useEffect(() => {
     setMounted(true)
+    if (typeof window !== "undefined") setCallbackUrl(safeLocalCallback(requestedCallbackUrl, fallbackCallbackUrl, window.location.origin))
     // Load dictionary client-side
     import("@/lib/dictionary").then(({ getDictionary }) => {
       setDict(getDictionary(locale))
     })
-  }, [locale])
+  }, [locale, requestedCallbackUrl, fallbackCallbackUrl])
 
   const t = (key: string): string => {
     if (!dict) return key
@@ -80,7 +83,7 @@ function LoginForm({ locale }: { locale: string }) {
       if (result?.error) {
         setError(t("auth.invalidCredentials") || "ایمیل یا رمز عبور اشتباه است")
       } else {
-        router.push(callbackUrl)
+        router.push(safeLocalCallback(requestedCallbackUrl, fallbackCallbackUrl, window.location.origin))
       }
     } catch (err) {
       setError(t("auth.error") || "خطایی رخ داد. لطفاً دوباره تلاش کنید")

@@ -109,6 +109,12 @@ test("new Damoon customer registers, joins the host-bound tenant, and resumes th
     await page.locator("#username").fill(newUsername);
     await page.locator("#password").fill(fixture.password);
     await page.locator("#confirmPassword").fill(fixture.password);
+    const guestReservationsResponses = [];
+    page.on("response", (response) => {
+      if (response.url().includes("/api/hotel/v1/guest-reservations") && response.request().method() === "GET") {
+        guestReservationsResponses.push(response);
+      }
+    });
     const registrationResponsePromise = page.waitForResponse((response) => response.url().endsWith("/api/auth/register") && response.request().method() === "POST", { timeout: 20_000 });
     await page.getByRole("button", { name: "ثبت نام" }).click();
     const registrationResponse = await registrationResponsePromise;
@@ -116,9 +122,8 @@ test("new Damoon customer registers, joins the host-bound tenant, and resumes th
     expect(registrationResponse.status(), JSON.stringify(registration)).toBe(201);
     let guestResponse;
     if (registration.autoLogin) {
-      const guestReservationsResponse = page.waitForResponse((response) => response.url().includes("/api/hotel/v1/guest-reservations") && response.request().method() === "GET", { timeout: 20_000 });
       await page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === startPath && url.searchParams.get("checkIn") === checkIn, { timeout: 45_000 });
-      guestResponse = await guestReservationsResponse;
+      guestResponse = guestReservationsResponses.at(-1) ?? await page.waitForResponse((response) => response.url().includes("/api/hotel/v1/guest-reservations") && response.request().method() === "GET", { timeout: 20_000 });
     } else {
       await page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === "/fa/login", { timeout: 30_000 });
       await page.locator("#username").fill(newUsername);
@@ -126,7 +131,7 @@ test("new Damoon customer registers, joins the host-bound tenant, and resumes th
       const guestReservationsResponse = page.waitForResponse((response) => response.url().includes("/api/hotel/v1/guest-reservations") && response.request().method() === "GET", { timeout: 20_000 });
       await page.locator("form button[type='submit']").click();
       await page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === startPath && url.searchParams.get("checkIn") === checkIn, { timeout: 45_000 });
-      guestResponse = await guestReservationsResponse;
+      guestResponse = guestReservationsResponses.at(-1) ?? await guestReservationsResponse;
     }
     expect(guestResponse.status(), await guestResponse.text()).toBe(200);
     await expect(page.getByRole("note")).toContainText("پیش‌نمایش هتل دامون");

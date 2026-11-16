@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AppointmentStatus, OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { jsonError, requireAuthSession } from "@/lib/api-guards";
-import { organizationPublicRouteCapabilities, type PublicRouteCapability } from "@/lib/organization-capabilities";
+import { dashboardOrganizationCapabilities, type DashboardOrganizationCapability } from "@/lib/organization-capabilities";
 
 function startOfToday() {
   const today = new Date();
@@ -61,9 +61,10 @@ async function getActiveMembershipForSession(userId: string, organizationId?: st
           name: true,
           slug: true,
           type: true,
+          vertical: true,
           capabilitiesInitializedAt: true,
           capabilities: {
-            select: { key: true, status: true },
+            select: { key: true, status: true, enabledAt: true },
           },
         },
       },
@@ -80,9 +81,10 @@ export async function GET(_request: NextRequest) {
       session.user.organizationId,
     );
     const organization = membership?.organization ?? null;
-    const organizationCapabilities = organization
-      ? organizationPublicRouteCapabilities({
+    const organizationCapabilities: DashboardOrganizationCapability[] = organization
+      ? dashboardOrganizationCapabilities({
           legacyType: organization.type,
+          vertical: organization.vertical,
           capabilitiesInitializedAt: organization.capabilitiesInitializedAt,
           capabilities: organization.capabilities,
         })
@@ -116,6 +118,7 @@ export async function GET(_request: NextRequest) {
         role: effectiveRole,
         platformRole: userRole === "SUPER_ADMIN" ? "SUPER_ADMIN" : null,
         organizationType: organization?.type ?? null,
+        organizationVertical: organization?.vertical ?? null,
         organizationCapabilities,
         organizationId: organization?.id ?? null,
         isTeamMember: Boolean(organization),
@@ -130,7 +133,7 @@ type DashboardOrganization = NonNullable<Awaited<ReturnType<typeof getActiveMemb
 
 async function getOrganizationManagementDashboard(
   organization: DashboardOrganization,
-  capabilities: PublicRouteCapability[],
+  capabilities: DashboardOrganizationCapability[],
 ) {
   if (capabilities.length === 0) {
     const totalMembers = await prisma.organizationMember.count({
@@ -165,12 +168,13 @@ async function getOrganizationManagementDashboard(
     stats: { ...(shop?.stats || {}), ...(appointment?.stats || {}) },
     recentOrders: shop?.recentOrders || [],
     recentAppointments: appointment?.recentAppointments || [],
+    ...(capabilities.includes("HOTEL_BOOKING") ? { hotelOperationsAvailable: true } : {}),
   };
 }
 
 async function getOrganizationStaffDashboard(
   organization: DashboardOrganization,
-  capabilities: PublicRouteCapability[],
+  capabilities: DashboardOrganizationCapability[],
   userId: string,
 ) {
   if (capabilities.length === 0) {
@@ -199,6 +203,7 @@ async function getOrganizationStaffDashboard(
     stats: { ...(shop?.stats || {}), ...(appointment?.stats || {}) },
     recentOrders: shop?.recentOrders || [],
     recentAppointments: appointment?.todaySchedule || [],
+    ...(capabilities.includes("HOTEL_BOOKING") ? { hotelOperationsAvailable: true } : {}),
   };
 }
 

@@ -5,6 +5,7 @@ const PUBLIC_PATHS = new Set([
   "/rooms",
   "/rooms/single",
   "/rooms/double",
+  "/rooms/suite",
   "/rooms/suite-3-bed",
   "/rooms/suite-4-5-bed",
   "/restaurant",

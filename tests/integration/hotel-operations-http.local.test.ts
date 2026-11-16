@@ -480,7 +480,7 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   await policyForm.getByLabel("Free cancellation cutoff (hours)").fill("36");
   await policyForm.getByLabel("Late cancellation retention (0 to 1)").fill("0.25");
   await policyForm.getByRole("button", { name: "Create cancellation policy" }).click();
-  await page.getByText(new RegExp(`${prefix} UI cancellation`)).waitFor({ state: "visible", timeout: 30_000 });
+  await page.locator("ul li").filter({ hasText: new RegExp(`${prefix} UI cancellation`) }).waitFor({ state: "visible", timeout: 30_000 });
   const persistedPolicy = await db.hotelCancellationPolicy.findFirst({ where: { organizationId: orgAId, propertyId: propertyAId, key: uiPolicyKey } });
   assert.ok(persistedPolicy, "manager-created cancellation policy persists");
   assert.equal(persistedPolicy.fullCancellationRetention, 2500);

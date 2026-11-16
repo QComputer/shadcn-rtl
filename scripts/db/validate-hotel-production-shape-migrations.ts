@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { copyFile, mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,6 +9,7 @@ import { PrismaClient } from "@prisma/client";
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const DATABASE_NAME = "damoon_migration_gap_rehearsal";
 const SHAPE_SCHEMA = "damoon_production_shape_rehearsal";
+const BASELINE_MIGRATION = "20261114120000_production_shape_fixture_baseline";
 const MIGRATIONS = [
   "20261114130000_hotel_operational_modes_and_stay_requests",
   "20261114140000_hotel_offline_payments",
@@ -26,15 +27,15 @@ function loopbackDatabaseUrl(): URL {
   return url;
 }
 
-function deployFiveMigrations(schemaPath: string, scopedUrl: string): void {
+function runPrisma(schemaPath: string, scopedUrl: string, args: string[]): void {
   const prismaCli = path.join(REPO_ROOT, "node_modules", "prisma", "build", "index.js");
-  const result = spawnSync(process.execPath, [prismaCli, "migrate", "deploy", `--schema=${schemaPath}`], {
+  const result = spawnSync(process.execPath, [prismaCli, ...args, `--schema=${schemaPath}`], {
     cwd: path.dirname(schemaPath),
     env: { ...process.env, DATABASE_URL: scopedUrl, DIRECT_URL: scopedUrl, NODE_ENV: "test" },
     stdio: "inherit",
   });
   if (result.error) throw result.error;
-  assert.equal(result.status, 0, "The exact five migration files must apply to the disposable Production-shape schema");
+  assert.equal(result.status, 0, `Prisma ${args.join(" ")} failed against the disposable Production-shape schema`);
 }
 
 async function applyProductionShapeFixture(db: PrismaClient): Promise<void> {
@@ -148,18 +149,23 @@ async function main(): Promise<void> {
       await mkdir(destination);
       await copyFile(path.join(source, "migration.sql"), path.join(destination, "migration.sql"));
     }
+    const baselineDirectory = path.join(migrationsDir, BASELINE_MIGRATION);
+    await mkdir(baselineDirectory);
+    await writeFile(path.join(baselineDirectory, "migration.sql"), "-- Test-only marker for the pre-gap Production table-shape fixture.\n");
     const actualMigrationDirectories = (await readdir(migrationsDir, { withFileTypes: true }))
       .filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
-    assert.deepEqual(actualMigrationDirectories, [...MIGRATIONS], "Only the five reviewed migrations may run in this shape rehearsal");
+    assert.deepEqual(actualMigrationDirectories, [BASELINE_MIGRATION, ...MIGRATIONS], "Only the test-only baseline marker and five reviewed migrations may run in this shape rehearsal");
 
-    console.log("Applying exactly the five pending Hotel migrations to a disposable schema seeded from the inspected Production HotelProperty/HotelReservation shape.");
-    deployFiveMigrations(path.join(prismaDir, "schema.prisma"), url);
+    const temporarySchemaPath = path.join(prismaDir, "schema.prisma");
+    console.log("Marking the populated disposable Production-shape schema at the pre-gap checkpoint, then applying exactly the five pending Hotel migrations.");
+    runPrisma(temporarySchemaPath, url, ["migrate", "resolve", "--applied", BASELINE_MIGRATION]);
+    runPrisma(temporarySchemaPath, url, ["migrate", "deploy"]);
 
     db = new PrismaClient({ datasourceUrl: url });
     const completed = await db.$queryRawUnsafe<Array<{ migration_name: string; finished: boolean; rolledBack: boolean }>>(
       `SELECT migration_name, finished_at IS NOT NULL AS finished, rolled_back_at IS NOT NULL AS "rolledBack" FROM "_prisma_migrations" ORDER BY migration_name`,
     );
-    assert.deepEqual(completed.map((row) => row.migration_name), [...MIGRATIONS]);
+    assert.deepEqual(completed.map((row) => row.migration_name), [BASELINE_MIGRATION, ...MIGRATIONS]);
     assert.ok(completed.every((row) => row.finished && !row.rolledBack));
 
     const propertyAfter = await db.$queryRawUnsafe<Array<Record<string, unknown>>>(

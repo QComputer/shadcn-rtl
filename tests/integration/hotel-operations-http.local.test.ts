@@ -424,6 +424,7 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   assert.equal(invalidDatePreview.response.status, 422, "same-day check-in and check-out follows the established Hotel validation contract");
   const invalidChildrenPreview = await apiJson(`/api/organizations/${orgAId}/hotels/${propertyAId}/availability-preview?checkIn=${from}&checkOut=${to}&adults=2&children=1&childAges=`, cookie);
   assert.equal(invalidChildrenPreview.response.status, 400, "child occupancy requires one valid age per child");
+  assert.equal(invalidChildrenPreview.response.headers.get("cache-control"), "private, no-store", "invalid private preview responses are not cached");
   const crossTenantPreview = await apiJson(`/api/organizations/${ownedOrgIds[1]}/hotels/${propertyBId}/availability-preview?checkIn=${from}&checkOut=${to}&adults=2&children=0`, cookie);
   assert.equal(crossTenantPreview.response.status, 403, "owner authority is scoped to the active tenant and property");
   const managerLogin = await passwordLogin(managerUsername, managerPassword);

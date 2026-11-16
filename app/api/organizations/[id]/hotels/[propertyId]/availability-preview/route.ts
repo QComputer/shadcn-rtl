@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { ApiError } from "@/lib/api-guards";
+import { ApiError, jsonError } from "@/lib/api-guards";
 import { HotelManagementService } from "@/lib/hotel/management/hotel-management.service";
 import { managementAction } from "@/lib/hotel/management/route-support";
 
@@ -21,21 +21,27 @@ function positiveCount(value: string | null, fallback: number, minimum: number, 
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string; propertyId: string }> }) {
-  const { id: organizationId, propertyId } = await params;
-  const query = new URL(request.url).searchParams;
-  const checkIn = dateOnly(query.get("checkIn"), "checkIn");
-  const checkOut = dateOnly(query.get("checkOut"), "checkOut");
-  const adults = positiveCount(query.get("adults"), 2, 1, 12, "adults");
-  const children = positiveCount(query.get("children"), 0, 0, 8, "children");
-  const agesText = query.get("childAges") ?? "";
-  const childAges = agesText ? agesText.split(",").map((age) => positiveCount(age, 0, 0, 17, "childAges")) : [];
-  if (childAges.length !== children) throw new ApiError(400, "childAges must contain one age for each child");
-  const response = await managementAction(request, organizationId, (principal) => new HotelManagementService().previewAvailability(
-    principal,
-    { organizationId },
-    propertyId,
-    { propertyId, window: { checkIn, checkOut }, occupancy: { adults, children, childAges } },
-  ));
-  response.headers.set("Cache-Control", "private, no-store");
-  return response;
+  try {
+    const { id: organizationId, propertyId } = await params;
+    const query = new URL(request.url).searchParams;
+    const checkIn = dateOnly(query.get("checkIn"), "checkIn");
+    const checkOut = dateOnly(query.get("checkOut"), "checkOut");
+    const adults = positiveCount(query.get("adults"), 2, 1, 12, "adults");
+    const children = positiveCount(query.get("children"), 0, 0, 8, "children");
+    const agesText = query.get("childAges") ?? "";
+    const childAges = agesText ? agesText.split(",").map((age) => positiveCount(age, 0, 0, 17, "childAges")) : [];
+    if (childAges.length !== children) throw new ApiError(400, "childAges must contain one age for each child");
+    const response = await managementAction(request, organizationId, (principal) => new HotelManagementService().previewAvailability(
+      principal,
+      { organizationId },
+      propertyId,
+      { propertyId, window: { checkIn, checkOut }, occupancy: { adults, children, childAges } },
+    ));
+    response.headers.set("Cache-Control", "private, no-store");
+    return response;
+  } catch (error) {
+    const response = jsonError(error);
+    response.headers.set("Cache-Control", "private, no-store");
+    return response;
+  }
 }

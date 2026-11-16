@@ -3,9 +3,9 @@
 > **نوع سند:** برنامه پیشنهادی آماده ثبت در مخزن؛ مجوز شروع پیاده‌سازی یا فعال‌سازی Production نیست.  
 > **تاریخ مبنا:** 2026-11-16  
 > **مسیر پیشنهادی مخزن:** `docs/roadmaps/BAZARBAAZ-POST-HOTEL-P1-IDENTITY-MEMBERSHIP-OTP-SMS-ROADMAP-2026-11-16.md`  
-> **Source baseline (verified GitHub `main`):** `5b803e561848f5634813effbd90854d772c83da1` (PR85 merge)  
-> **Owner approval status:** `ROADMAP_PROPOSED`؛ تصمیم‌های معماری زیر پیشنهادی‌اند تا به تأیید مالک برسند.  
-> **Execution status:** `NOT_STARTED` — فقط سند آماده می‌شود؛ بدون کد، migration، تغییر محیط یا SMS واقعی.  
+> **Current source baseline (verified GitHub `main`):** `24604ccc939a64a03b948c2a5b9af40586d817c8` (PR87 merge). The detailed technical inventory below remains a historical planning snapshot from `5b803e561848f5634813effbd90854d772c83da1`; refresh it during G0 before implementation.
+> **Owner approval status:** `G0_NOT_APPROVED` — Phase 1 closure is accepted; separate approval is still required to begin G0.
+> **Execution status:** `NOT_STARTED` — no OTP/SMS code, migration, Production change, or real SMS was performed in this task.
 > **Production database:** PostgreSQL در Runflare؛ دسترسی ریموت مجاز از متغیر `DB_REMOTE_URI` در `.env`، نه Neon.  
 > **Canonical hotel domain:** `damoon-hotel.ir`؛ در داده فعلی رابطه دامنه اصلی `www.damoon-hotel.ir` با normalized domain برابر `damoon-hotel.ir` است.
 
@@ -15,26 +15,25 @@
 ایجاد تجربه پایدار و امن «ورود/ثبت‌نام با موبایل»، «عضویت اختیاری در کسب‌وکارها»، «باشگاه مشتریان»، «اعلان تراکنشی» و «پیامک چندمستاجری» برای BazarBaaz و کسب‌وکارهای دارای دامنه/PWA مستقل، با استفاده مجدد از زیرساخت موجود. راهکار باید با هتل دامون، رستوران ۱۳، کافه لئو، آکا شوز و سازمان‌های آینده سازگار باشد؛ نام‌ها صرفاً پایلوت‌اند و نباید در منطق سرویس هاردکد شوند.
 
 ### 0.2 ترتیب اجباری
-1. **بستن مرحله اول هتل دامون** با رسید پذیرش مالک و رفع مانع عملیاتی فعلی.
-2. شروع `G0` — ممیزی دقیق و تست مستقل OTP/عضویت/SMS روی baseline روز؛ بدون تغییر Production.
+1. ~~بستن مرحله اول هتل دامون~~ — **`HOTEL_PHASE1_CLOSED`**؛ مستند نهایی و شواهد در [گزارش closure](../hotel/HOTEL-PHASE1-FINAL-CLOSURE-2026-11-16.md).
+2. شروع `G0` فقط پس از **تصویب جداگانه مالک** — ممیزی دقیق و تست مستقل OTP/عضویت/SMS روی baseline همان روز؛ بدون تغییر Production.
 3. انجام PRهای کوچک `G1` تا `G9` طبق وابستگی‌ها و دروازه‌ها.
 4. ارسال پیامک واقعی **فقط** پس از تأیید مجزای مالک، Canary محدود و رسید واقعی تحویل/رفتار provider.
 
-**تا زمان `HOTEL_PHASE1_CLOSED` هیچ PR اجرایی این نقشه راه آغاز نشود.** ثبت همین سند و لینک‌دادن به آن در فهرست Roadmap مجاز است. PRهای امنیتی اضطراری که جداگانه تصویب شده‌اند از این قاعده مستثنا هستند.
+**`HOTEL_PHASE1_CLOSED` برقرار است؛ با این حال، این سند به‌تنهایی مجوز شروع G0 یا هیچ PR اجرایی نیست.** شروع G0 همچنان نیازمند تصویب جداگانه مالک است. PRهای امنیتی اضطراری که جداگانه تصویب شده‌اند از این قاعده مستثنا هستند.
 
 ### 0.3 معیار `HOTEL_PHASE1_CLOSED` — مستقلاً قابل اثبات
-- PR85 و مرورگر واقعی مالک تأیید کرده‌اند که نقص نمایش عمومی داشبورد اصلاح شده است.
-- Production read-only علیه PostgreSQL رانفلر **ثابت کرده** سازمان هتل دامون `cmvbltspu0000jt08zfn7xltj` با `vertical=HOTEL`، حساب `damoon` با عضویت `ADMIN` فعال و ملک فعال `cmvbltsrc0009jt08k3o8jdip` وجود دارند.
-- **مانع باز:** برای این سازمان هیچ ردیف `HOTEL_BOOKING` وجود ندارد؛ این، علت پیام «عملیات هتل فعال نشده» است.
-- فعال‌سازی در صورت تصویب مالک باید **فقط** `HOTEL_BOOKING` را از مسیر مجاز، محدود به همین سازمان، با ثبت Audit و بدون جایگزینی ناخواسته قابلیت‌های دیگر (مثلاً `HOTEL_WEBSITE`) ایجاد/فعال کند: `status=ACTIVE`, `enabledAt` معتبر و `disabledAt=null`. صرف استفاده از endpoint جایگزینیِ کامل لیست قابلیت‌ها بدون بررسی قابلیت‌های قبلی ممنوع است.
-- پس از اقدام مجاز: دوباره خواندن همان سازمان، ورود واقعی `damoon`، مشاهده Hotel Operations، بررسی اتاق/نرخ/موجودی/پیش‌نمایش (مطابق نقش)، اجرای پذیرش owner، و ثبت نتیجه و rollback procedure.
+- PR85 اصلاح داشبورد هتل را ادغام کرد؛ مالک سپس صریحاً `FINAL LIVE ACCEPTANCE` را تأیید کرد. این تأیید مالک در گزارش closure ثبت شده و از بازپذیرش مستقل مرورگر تفکیک شده است.
+- Production read-only علیه PostgreSQL رانفلر، سازمان `cmvbltspu0000jt08zfn7xltj` با `vertical=HOTEL`، حساب `damoon` با عضویت `ADMIN` فعال و property فعال `cmvbltsrc0009jt08k3o8jdip` را تأیید کرد.
+- PR87 مسیر اختصاصی و ممیزی‌شده را افزود. پس از فعال‌سازی مجاز، Production read-only تأیید کرد `HOTEL_BOOKING` برابر `ACTIVE` است، `enabledAt` معتبر دارد و `disabledAt=null`؛ ردیف `HOTEL_WEBSITE` نیز فعال و حفظ شده است. شناسه‌های capability و audit در [گزارش closure](../hotel/HOTEL-PHASE1-FINAL-CLOSURE-2026-11-16.md) ثبت شده‌اند.
+- CI روی head دقیق PR87 و نتیجه owner acceptance در همان گزارش ثبت شده‌اند. هیچ قابلیت SHOP/APPOINTMENT، رزرو عمومی، پرداخت واقعی یا SMS در این فعال‌سازی تغییر نکرد.
 - هیچ شرط بالا به معنی تأیید رزرو عمومی، پرداخت واقعی، نشر سایت یا ارسال SMS نیست؛ گیت‌های مستقل آن‌ها محفوظ‌اند.
 
-**وضعیت این سند در لحظه تهیه:** هتل هنوز `HOTEL_PHASE1_CLOSED` نیست؛ فعال‌سازی `HOTEL_BOOKING` مجاز یا انجام‌شده تلقی نمی‌شود.
+**وضعیت فعلی:** `HOTEL_PHASE1_CLOSED` در `2026-11-16` ثبت شد. `G0` فقط پس از تصویب جداگانه مالک قابل آغاز است. این closure وضعیت OTP/SMS یا مجوز ارسال پیامک واقعی را تغییر نمی‌دهد.
 
 ## 1. مبنای بازبینی کد و شواهد
 
-مبنای این سند بازبینی ایستای مسیرهای زیر در `main` مشخص‌شده و مطالعه اسناد/شواهد قبلی است. هیچ اجرای جدید TypeScript/PostgreSQL/مرورگر یا بررسی متغیرهای زنده Runflare برای بخش OTP/SMS در تهیه این سند انجام نشده است.
+جزئیات این بخش، بازبینی ایستای انجام‌شده روی baseline تاریخی `5b803e561848f5634813effbd90854d772c83da1` است؛ این محتوا در این closure دوباره بررسی نشده است. پیش از هر پیاده‌سازی، G0 باید آن را روی `main` فعلی (`24604ccc939a64a03b948c2a5b9af40586d817c8`) بازتولید یا اصلاح کند. هیچ OTP/SMS در این کار اجرا یا پیاده‌سازی نشده است.
 
 | زیرسامانه | مسیرهای منبع کلیدی | واقعیت مشاهده‌شده در کد | گپ یا وضعیت نامشخص |
 |---|---|---|---|
@@ -336,10 +335,10 @@ OrganizationIntegration (tenant-owned iNoti credentials reference)
 
 ## 10. ممنوعیت‌ها و کنترل تداخل با کار هتل
 
-1. تا `HOTEL_PHASE1_CLOSED` فقط این سند و پیوند ناوبری آن وارد مخزن شود؛ هیچ endpoint/migration/SMS flag جدید اجرا نشود.
-2. PR85 بسته و merged است؛ برای این Roadmap دوباره بازبینی‌اش نکنید.
-3. وضعیت هتل دامون اکنون مشخص است؛ دیتابیس Runflare یک سازمان فعال HOTEL و ملک فعال دارد، اما ردیف `HOTEL_BOOKING` **وجود ندارد**. هیچ «نیاز به ساخت کاربر/ملک جدید» نتیجه نگیرید.
-4. فعال‌سازی هتل باید یک عملیات مستقل با approval و Audit باشد؛ آن را به rollout OTP/SMS وابسته نکنید.
+1. `HOTEL_PHASE1_CLOSED` ثبت شده است. بااین‌حال هیچ G0 یا PR اجرایی این نقشه راه بدون تصویب جداگانه مالک آغاز نشود.
+2. PR85 و PR87 ادغام شده‌اند؛ برای این Roadmap دوباره بازبینی‌شان نکنید. گزارش نهایی در `docs/hotel/HOTEL-PHASE1-FINAL-CLOSURE-2026-11-16.md` است.
+3. وضعیت تأییدشدهٔ Runflare شامل سازمان فعال HOTEL، ملک فعال، عضویت فعال `damoon` با نقش `ADMIN`، `HOTEL_BOOKING=ACTIVE` و حفظ `HOTEL_WEBSITE=ACTIVE` است. شناسه‌ها و رسید audit در گزارش closure ثبت شده‌اند.
+4. فعال‌سازی هتل یک عملیات مستقلِ ممیزی‌شده بود و به rollout OTP/SMS وابسته نشد؛ هیچ SMS واقعی ارسال نشده است.
 5. `organizationPublicRouteCapabilities` عمداً محدود به SHOP/APPOINTMENT است؛ هیچ دستکاری عمومی برای پشتیبانی auth هتل بدون بررسی routing انجام ندهید.
 6. حفظ worktreeهای سایر Agentها، سرعت Build و فضای دیسک ویندوز؛ ترجیح runner ایزوله GitHub با PostgreSQL disposable.
 7. هیچ secret، URI دیتابیس، پسورد `damoon` یا شماره موبایل واقعی در مستند/fixture/CI منتشر نشود.
@@ -347,11 +346,10 @@ OrganizationIntegration (tenant-owned iNoti credentials reference)
 ## 11. Instruction for the next Codex agent (copy/paste)
 
 ```text
-Read docs/roadmaps/BAZARBAAZ-POST-HOTEL-P1-IDENTITY-MEMBERSHIP-OTP-SMS-ROADMAP-2026-11-16.md.
-This file is a proposed execution roadmap, not permission to implement or send SMS.
-First confirm HOTEL_PHASE1_CLOSED from actual owner acceptance evidence.
-Until then, make no changes outside a docs-only roadmap PR.
-After owner authorizes G0, rebase against current main and execute G0 only:
+Read docs/roadmaps/BAZARBAAZ-POST-HOTEL-P1-IDENTITY-MEMBERSHIP-OTP-SMS-ROADMAP-2026-11-16.md and the Hotel Phase 1 closure record.
+Hotel Phase 1 is closed, but this file is still a proposed roadmap, not permission to implement OTP or send SMS.
+Do not begin G0 until the owner separately authorizes it.
+After that authorization, refresh against current main and execute G0 only:
 - enumerate source contracts and exact test commands;
 - gather authorized nonsecret Runflare read-only schema/flag evidence;
 - use disposable PostgreSQL/browser fixtures for regressions;
@@ -365,16 +363,16 @@ revisit PR85, or alter other agents' worktrees.
 ## 12. وضعیت و ثبت پیشرفت (قالب، هر گام مستقل)
 
 ```yaml
-roadmap_version: "2026-11-16-v1"
+roadmap_version: "2026-11-16-v2"
 status: ROADMAP_PROPOSED
-baseline_main: 5b803e561848f5634813effbd90854d772c83da1
-hotel_phase1: BLOCKED_CONFIGURATION_MISSING_HOTEL_BOOKING
+baseline_main: 24604ccc939a64a03b948c2a5b9af40586d817c8
+hotel_phase1: HOTEL_PHASE1_CLOSED
 source_audit: STATIC_REVIEWED
 production_otp_sms: UNVERIFIED
 production_database: RUNFLARE_POSTGRESQL
 runtime_implementation: NOT_STARTED
 live_sms_approval: NOT_GRANTED
-next_permitted_action: DOCS_ONLY_COMMIT
+next_permitted_action: REQUEST_G0_OWNER_APPROVAL
 phases:
   G0: NOT_STARTED
   G1: NOT_STARTED

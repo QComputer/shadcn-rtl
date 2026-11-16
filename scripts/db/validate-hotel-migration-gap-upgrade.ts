@@ -38,12 +38,11 @@ function assertDisposableDatabase(): string {
 }
 
 function runPrismaMigrateDeploy(schemaPath: string): void {
-  const executable = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
-  const result = spawnSync(executable, ["exec", "prisma", "migrate", "deploy", `--schema=${schemaPath}`], {
-    cwd: REPO_ROOT,
+  const prismaCli = path.join(REPO_ROOT, "node_modules", "prisma", "build", "index.js");
+  const result = spawnSync(process.execPath, [prismaCli, "migrate", "deploy", `--schema=${schemaPath}`], {
+    cwd: path.dirname(schemaPath),
     env: { ...process.env, NODE_ENV: "test" },
     stdio: "inherit",
-    shell: process.platform === "win32",
   });
   if (result.error) throw result.error;
   assert.equal(result.status, 0, "Prisma migrate deploy failed against the disposable rehearsal database");

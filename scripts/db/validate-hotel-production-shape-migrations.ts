@@ -27,12 +27,11 @@ function loopbackDatabaseUrl(): URL {
 }
 
 function deployFiveMigrations(schemaPath: string, scopedUrl: string): void {
-  const executable = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
-  const result = spawnSync(executable, ["exec", "prisma", "migrate", "deploy", `--schema=${schemaPath}`], {
-    cwd: REPO_ROOT,
+  const prismaCli = path.join(REPO_ROOT, "node_modules", "prisma", "build", "index.js");
+  const result = spawnSync(process.execPath, [prismaCli, "migrate", "deploy", `--schema=${schemaPath}`], {
+    cwd: path.dirname(schemaPath),
     env: { ...process.env, DATABASE_URL: scopedUrl, DIRECT_URL: scopedUrl, NODE_ENV: "test" },
     stdio: "inherit",
-    shell: process.platform === "win32",
   });
   if (result.error) throw result.error;
   assert.equal(result.status, 0, "The exact five migration files must apply to the disposable Production-shape schema");

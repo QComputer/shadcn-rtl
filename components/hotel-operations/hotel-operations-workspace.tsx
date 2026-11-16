@@ -35,6 +35,7 @@ type AvailabilityPreview = {
   options: Array<{
     roomType: { id: string; name: string; capacity: { maxAdults: number; maxChildren: number; maxOccupancy: number } };
     ratePlan: { id: string; name: string; currency: string };
+    nights: string[];
     nightlyRates: string[];
     totalRate: string;
     availableRoomCount: number;

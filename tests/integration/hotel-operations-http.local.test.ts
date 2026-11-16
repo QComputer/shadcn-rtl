@@ -591,8 +591,10 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   await page.getByRole("button", { name: "Check availability and rates" }).click();
   const previewPanel = page.getByRole("region", { name: "Guest availability preview (owner only)" });
   await previewPanel.getByText(`${prefix} Standard`, { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
-  await previewPanel.getByText(/275000 TOMAN/, { exact: false }).waitFor({ state: "visible" });
-  await previewPanel.getByText(/550000 TOMAN/, { exact: false }).waitFor({ state: "visible" });
+  const nightlyPriceLines = previewPanel.getByText("Nightly rates: 275000 TOMAN", { exact: true });
+  await nightlyPriceLines.first().waitFor({ state: "visible" });
+  assert.equal(await nightlyPriceLines.count(), 2, "each stay night shows the actual configured rate");
+  await previewPanel.getByText("Stay total: 550000 TOMAN", { exact: true }).waitFor({ state: "visible" });
   assert.equal(await db.hotelBookingHold.count({ where: { organizationId: orgAId } }), 0, "owner preview must not create a hold");
   assert.equal(await db.hotelReservation.count({ where: { organizationId: orgAId } }), 0, "owner preview must not create a reservation");
 

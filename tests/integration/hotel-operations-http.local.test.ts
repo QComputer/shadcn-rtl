@@ -506,7 +506,7 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   await uiRateForm.getByLabel("Base nightly rate (Toman)").fill("325000");
   await uiRateForm.getByLabel("Cancellation policies").selectOption(persistedPolicy.id);
   await uiRateForm.getByRole("button", { name: "Create rate plan" }).click();
-  await page.getByText(`${prefix} UI flexible`, { exact: false }).waitFor({ state: "visible", timeout: 30_000 });
+  await page.locator("ul li").filter({ hasText: new RegExp(`${prefix} UI flexible`) }).waitFor({ state: "visible", timeout: 30_000 });
   const persistedUiRate = await db.hotelRatePlan.findFirst({ where: { organizationId: orgAId, propertyId: propertyAId, code: `ui-rate-${suffix.slice(0, 8)}` } });
   assert.ok(persistedUiRate, "manager-created rate plan persists");
   assert.equal(persistedUiRate.cancellationPolicyId, persistedPolicy.id, "the rate cannot become guest-reservable without an explicitly selected active policy");

@@ -57,9 +57,10 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
       } });
       organizationIds.push(organization.id);
       if (input.capability === "ENABLED" || input.capability === "NOT_ENABLED") {
+        const enabled = input.capability === "ENABLED";
         await db.organizationCapability.create({ data: {
-          organizationId: organization.id, key: "HOTEL_BOOKING", status: "ACTIVE",
-          enabledAt: input.capability === "ENABLED" ? new Date() : null,
+          organizationId: organization.id, key: "HOTEL_BOOKING", status: enabled ? "ACTIVE" : "INACTIVE",
+          enabledAt: enabled ? new Date() : null, disabledAt: enabled ? null : new Date(),
         } });
       }
       return organization;

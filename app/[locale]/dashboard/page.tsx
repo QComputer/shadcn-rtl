@@ -83,7 +83,8 @@ interface UserContext {
   role: string
   platformRole?: string | null
   organizationType: string | null
-  organizationCapabilities: Array<"SHOP" | "APPOINTMENT">
+  organizationVertical?: string | null
+  organizationCapabilities: Array<"SHOP" | "APPOINTMENT" | "HOTEL_BOOKING">
   organizationId: string | null
   orgMemberRole: string | null
   isTeamMember: boolean
@@ -159,7 +160,8 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
   const [dashboardData, setDashboardData] = useState<{
     title?: string
     organizationType?: string
-    organizationCapabilities?: Array<"SHOP" | "APPOINTMENT">
+    organizationVertical?: string | null
+    organizationCapabilities?: Array<"SHOP" | "APPOINTMENT" | "HOTEL_BOOKING">
     setupRequired?: boolean
     stats: DashboardStats
     salesData?: { name: string; sales: number }[]
@@ -263,6 +265,8 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
       : [])
   const isShopOrg = organizationCapabilities.includes("SHOP")
   const isAppointmentOrg = organizationCapabilities.includes("APPOINTMENT")
+  const isHotelOrg = organizationCapabilities.includes("HOTEL_BOOKING")
+  const isHotelVertical = (userContext?.organizationVertical ?? userContext?.organizationType) === "HOTEL"
   const isSuperAdmin = userContext?.role === "SUPER_ADMIN"
   const isCustomer = userContext?.role === "CUSTOMER"
   const isDriver = userContext?.role === "DRIVER"
@@ -320,7 +324,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
             )}
           </div>
 
-          {dashboardData?.setupRequired && !isSuperAdmin && (
+          {dashboardData?.setupRequired && !isSuperAdmin && !isHotelVertical && (
             <Card className="border-dashed">
               <CardHeader>
                 <CardTitle>سازمان آماده راه‌اندازی است</CardTitle>
@@ -350,6 +354,29 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                     <Settings className="me-2 h-4 w-4" />
                     تنظیمات حساب
                   </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
+
+          {dashboardData?.setupRequired && isHotelVertical && !isSuperAdmin && (
+            <Card className="border-dashed">
+              <CardHeader>
+                <CardTitle>راه‌اندازی عملیات هتل</CardTitle>
+                <CardDescription>قابلیت عملیات هتل هنوز برای این سازمان فعال نشده است. برای فعال‌سازی با مدیر پلتفرم تماس بگیرید؛ فعال‌سازی فروشگاه یا نوبت‌دهی لازم نیست.</CardDescription>
+              </CardHeader>
+            </Card>
+          )}
+
+          {isHotelOrg && (canManageOrganization || isSuperAdmin) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>مدیریت هتل</CardTitle>
+                <CardDescription>مدیریت اتاق‌ها، نرخ‌ها، موجودی و پذیرش از فضای عملیات هتل انجام می‌شود.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link href={`/${locale}/dashboard/hotel-operations`}>
+                  <Button>ورود به عملیات هتل</Button>
                 </Link>
               </CardContent>
             </Card>

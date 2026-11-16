@@ -242,14 +242,18 @@ jobs:
               tail -n 120 "$file" | sed -E 's/(authorization|cookie|set-cookie)(: ?)[^ ]*/\1\2[REDACTED]/Ig; s/(token|secret|password)=([^& ]+)/\1=[REDACTED]/Ig; s/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/[REDACTED-JWT]/g'
             fi
           done
-      - name: Retain failure-only browser screenshots
+      - name: Retain failure-only browser diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: damoon-browser-failure-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             .tmp/damoon-operational-playwright-results/**/test-failed-*.png
+            .tmp/damoon-operational-playwright-results/**/trace.zip
+            .tmp/damoon-operational-playwright-results/**/error-context.md
             .tmp/damoon-playwright-results/**/test-failed-*.png
+            .tmp/damoon-playwright-results/**/trace.zip
+            .tmp/damoon-playwright-results/**/error-context.md
           if-no-files-found: ignore
           retention-days: 3
       - name: Stop task-owned servers and drop only the disposable database

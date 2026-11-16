@@ -208,6 +208,25 @@ async function apiJson<T>(path: string, cookie: string, method = "GET", body?: u
   return { response, data };
 }
 
+async function readPreviewMutationCounts(organizationId: string) {
+  const [inventory, holds, reservations, payments, allocations, adjustments, stayQuotes, stayRequests, guestRequests, holdIdempotency, reservationNights, paymentEvents, inventoryIdempotency] = await Promise.all([
+    db.hotelInventory.count({ where: { organizationId } }),
+    db.hotelBookingHold.count({ where: { organizationId } }),
+    db.hotelReservation.count({ where: { organizationId } }),
+    db.hotelOfflinePayment.count({ where: { organizationId } }),
+    db.hotelPaymentAllocation.count({ where: { organizationId } }),
+    db.hotelInventoryAdjustment.count({ where: { organizationId } }),
+    db.hotelStayQuote.count({ where: { organizationId } }),
+    db.hotelStayRequest.count({ where: { organizationId } }),
+    db.hotelGuestBookingRequest.count({ where: { organizationId } }),
+    db.hotelBookingHoldIdempotency.count({ where: { organizationId } }),
+    db.hotelReservationRoom.count({ where: { organizationId } }),
+    db.hotelOfflinePaymentAuditEvent.count({ where: { organizationId } }),
+    db.hotelInventoryIdempotency.count({ where: { organizationId } }),
+  ]);
+  return { inventory, holds, reservations, payments, allocations, adjustments, stayQuotes, stayRequests, guestRequests, holdIdempotency, reservationNights, paymentEvents, inventoryIdempotency };
+}
+
 before(async () => {
   stage = "database-identity-guard";
   const identity = await db.$queryRaw<Array<{ database: string; role: string }>>`SELECT current_database()::text AS database, current_user::text AS role`;
@@ -370,6 +389,32 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   assert.ok(guestOption?.isAvailable, "manager-created inventory and rate must appear in guest availability");
   assert.deepEqual(guestOption.nightlyRates, [275000, 275000], "guest search uses the manager's dated nightly rate, not a silent example price");
   assert.equal(guestOption.availableRoomCount, 2);
+
+  stage = "owner-only-read-only-availability-preview";
+  const previewPath = `/api/organizations/${orgAId}/hotels/${propertyAId}/availability-preview?checkIn=${from}&checkOut=${to}&adults=2&children=0`;
+  const beforePreview = await readPreviewMutationCounts(orgAId);
+  const anonymousPreview = await apiJson(previewPath, "");
+  assert.equal(anonymousPreview.response.status, 401, "availability preview requires an authenticated owner");
+  const crossTenantPreview = await apiJson(`/api/organizations/${ownedOrgIds[1]}/hotels/${propertyBId}/availability-preview?checkIn=${from}&checkOut=${to}&adults=2&children=0`, cookie);
+  assert.equal(crossTenantPreview.response.status, 403, "owner authority is scoped to the active tenant and property");
+  await db.organizationMember.updateMany({ where: { organizationId: orgAId, userId, role: "ADMIN" }, data: { role: "MANAGER" } });
+  const managerPreview = await apiJson(previewPath, cookie);
+  assert.equal(managerPreview.response.status, 403, "a manager may use operations but cannot access owner-only preview");
+  await db.organizationMember.updateMany({ where: { organizationId: orgAId, userId, role: "MANAGER" }, data: { role: "ADMIN" } });
+  const ownerPreview = await apiJson<{ inventoryReserved: false; nights: string[]; options: Array<{ roomType: { id: string }; ratePlan: { id: string }; nightlyRates: string[]; totalRate: string; availableRoomCount: number; isAvailable: boolean }> }>(previewPath, cookie);
+  assert.equal(ownerPreview.response.status, 200);
+  assert.equal(ownerPreview.response.headers.get("cache-control"), "private, no-store");
+  assert.equal(ownerPreview.data?.inventoryReserved, false);
+  assert.deepEqual(ownerPreview.data?.nights, guestSearch?.nights);
+  const ownerOption = ownerPreview.data?.options.find((option) => option.roomType.id === roomTypeId && option.ratePlan.id === ratePlanId);
+  assert.ok(ownerOption?.isAvailable);
+  assert.equal(ownerOption.availableRoomCount, guestOption.availableRoomCount);
+  assert.deepEqual(ownerOption.nightlyRates, guestOption.nightlyRates.map(String));
+  assert.equal(ownerOption.totalRate, String(guestOption.totalRate));
+  const publicSearchResponse = await request("/api/hotel/v1/availability/search", hostA, originA, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ property: `${prefix}-property-a`, checkIn: from, checkOut: to, occupancy: { adults: 2, children: 0, childAges: [] } }) });
+  assert.notEqual(publicSearchResponse.status, 200, "the owner preview does not bypass the separate public publication/booking gate");
+  assert.deepEqual(await readPreviewMutationCounts(orgAId), beforePreview, "owner preview performs no inventory, hold, reservation, payment, allocation, or audit mutations");
+
   const quoteProperty = await db.hotelProperty.findUniqueOrThrow({ where: { id: propertyAId } });
   const quoteResult = await db.$transaction((tx) => priceHotelStay(tx, quoteProperty, userId, { action: "quote", roomTypeId, ratePlanId, checkIn: from, checkOut: to, adults: 2, childAges: [] }, new Date("2027-01-01T00:00:00.000Z")));
   assert.equal(quoteResult.quote?.totalAmount, "550000", "quote matches the visible nightly rates");
@@ -382,6 +427,9 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   const constrainedSearch = await searchPublicHotelAvailability({ scope: { organizationId: orgAId }, propertySlug: `${prefix}-property-a`, query: { propertyId: propertyAId, window: { checkIn: from, checkOut: to }, occupancy: { adults: 2, children: 0, childAges: [] } } }, repository);
   const constrainedOption = constrainedSearch?.options.find((option) => option.roomType.id === roomTypeId && option.ratePlan.id === ratePlanId);
   assert.equal(constrainedOption?.availableRoomCount, 1, "the stay uses the lowest per-night capacity across consecutive nights");
+  const constrainedPreview = await apiJson<typeof ownerPreview.data>(previewPath, cookie);
+  assert.equal(constrainedPreview.response.status, 200);
+  assert.equal(constrainedPreview.data?.options.find((option) => option.roomType.id === roomTypeId && option.ratePlan.id === ratePlanId)?.availableRoomCount, 1, "preview enforces the same multi-night physical capacity minimum as guest search");
   const constrainedQuote = await db.$transaction((tx) => priceHotelStay(tx, quoteProperty, userId, { action: "quote", roomTypeId, ratePlanId, checkIn: from, checkOut: to, adults: 2, childAges: [] }, new Date("2027-01-01T00:00:00.000Z")));
   assert.equal(constrainedQuote.quote?.totalAmount, "550000");
 
@@ -510,6 +558,21 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   const persistedUiRate = await db.hotelRatePlan.findFirst({ where: { organizationId: orgAId, propertyId: propertyAId, code: `ui-rate-${suffix.slice(0, 8)}` } });
   assert.ok(persistedUiRate, "manager-created rate plan persists");
   assert.equal(persistedUiRate.cancellationPolicyId, persistedPolicy.id, "the rate cannot become guest-reservable without an explicitly selected active policy");
+
+  stage = "browser-owner-availability-preview-is-read-only";
+  const rangeSection = page.getByRole("heading", { name: "Date range" }).locator("xpath=ancestor::section[1]");
+  const rangeDates = rangeSection.locator('input[type="date"]');
+  await rangeDates.nth(0).fill(from);
+  await rangeDates.nth(1).fill(to);
+  await rangeSection.getByRole("button", { name: "Load range" }).click();
+  await page.getByRole("heading", { name: "Guest availability preview (owner only)" }).waitFor({ state: "visible" });
+  await page.getByRole("button", { name: "Check availability and rates" }).click();
+  const previewPanel = page.getByRole("region", { name: "Guest availability preview (owner only)" });
+  await previewPanel.getByText(`${prefix} Standard`, { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+  await previewPanel.getByText(/275000 TOMAN/, { exact: false }).waitFor({ state: "visible" });
+  await previewPanel.getByText(/550000 TOMAN/, { exact: false }).waitFor({ state: "visible" });
+  assert.equal(await db.hotelBookingHold.count({ where: { organizationId: orgAId } }), 0, "owner preview must not create a hold");
+  assert.equal(await db.hotelReservation.count({ where: { organizationId: orgAId } }), 0, "owner preview must not create a reservation");
 
   stage = "browser-mobile-fa-ar-layout";
   await page.setViewportSize({ width: 390, height: 844 });

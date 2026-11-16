@@ -3,7 +3,9 @@ import { randomUUID } from "node:crypto";
 import { prisma as defaultPrisma } from "@/lib/db-runtime";
 import { canTransitionHotelGuestBookingRequest, HOTEL_GUEST_REQUEST_STATUSES, type HotelGuestBookingRequestStatus } from "@/lib/hotel/domain/guest-booking-request";
 import { PrismaHotelRepositories } from "@/lib/hotel/persistence/prisma-hotel-repositories";
-import { searchPublicHotelAvailability } from "@/lib/hotel/services/public-availability.service";
+import { searchPublicHotelAvailability, serializePublicAvailability } from "@/lib/hotel/services/public-availability.service";
+import type { AvailabilityQuery } from "@/lib/hotel/domain/types";
+import { enumerateStayNights } from "@/lib/hotel/domain/stay-dates";
 
 export type HotelManagementPrincipal = {
   readonly userId: string;
@@ -93,6 +95,20 @@ export class HotelManagementService {
     if (!user || !organization || !["SUPER_ADMIN", "ADMIN", "MANAGER"].includes(principal.role)) throw new HotelManagementAuthorizationError("Active hotel management authority required");
   }
 
+  private async authorizeOwnerPreview(principal: HotelManagementPrincipal, scope: HotelManagementScope) {
+    if (!principal.userId || !scope.organizationId) throw new HotelManagementAuthorizationError("Hotel owner preview requires an authenticated organization scope");
+    if (principal.role !== "SUPER_ADMIN" && principal.organizationId !== scope.organizationId) throw new HotelManagementAuthorizationError("Tenant context mismatch");
+    const [user, organization] = await Promise.all([
+      this.db.user.findFirst({ where: { id: principal.userId, role: principal.role, isActive: true, deletedAt: null }, select: { id: true } }),
+      this.db.organization.findFirst({ where: { id: scope.organizationId, isActive: true, deletedAt: null, capabilities: { some: { key: "HOTEL_BOOKING", status: "ACTIVE", enabledAt: { not: null } } } }, select: { id: true } }),
+    ]);
+    if (!user || !organization) throw new HotelManagementAuthorizationError("Active hotel owner authority required");
+    if (principal.role === "SUPER_ADMIN") return;
+    if (principal.role !== "ADMIN") throw new HotelManagementAuthorizationError("Hotel availability preview is limited to organization owners");
+    const membership = await this.db.organizationMember.findFirst({ where: { userId: principal.userId, organizationId: scope.organizationId, isActive: true, role: "ADMIN" }, select: { id: true } });
+    if (!membership) throw new HotelManagementAuthorizationError("An active owner membership is required for Hotel availability preview");
+  }
+
   async getOperations(principal: HotelManagementPrincipal, scope: HotelManagementScope, propertyId: string, range: { from: Date; to: Date }) {
     await this.authorizeOperations(principal, scope);
     const fromTime = range.from.getTime();
@@ -123,6 +139,21 @@ export class HotelManagementService {
       }),
       cancellationPolicies: cancellationPolicies.map((policy) => ({ ...policy, fullCancellationRetention: policy.fullCancellationRetention / 10000 })),
     };
+  }
+
+  /** Owner-only, read-only preview using the same availability contract as guest search. */
+  async previewAvailability(principal: HotelManagementPrincipal, scope: HotelManagementScope, propertyId: string, query: AvailabilityQuery) {
+    await this.authorizeOwnerPreview(principal, scope);
+    if (query.propertyId !== propertyId) throw new HotelManagementAuthorizationError("Property is outside the active organization scope");
+    let nights: string[];
+    try { nights = enumerateStayNights(query.window.checkIn, query.window.checkOut); }
+    catch { throw new HotelManagementValidationError("Availability preview requires a valid stay date range"); }
+    if (nights.length < 1 || nights.length > 31) throw new HotelManagementValidationError("Availability preview range must be 1 to 31 nights");
+    const property = await this.db.hotelProperty.findFirst({ where: { id: propertyId, organizationId: scope.organizationId, isActive: true, deletedAt: null }, select: { slug: true } });
+    if (!property) throw new HotelManagementAuthorizationError("Property is outside the active organization scope");
+    const result = await searchPublicHotelAvailability({ scope, propertySlug: property.slug, query }, new PrismaHotelRepositories(this.db));
+    if (!result) throw new HotelManagementAuthorizationError("Property is outside the active organization scope");
+    return serializePublicAvailability(result);
   }
 
   async initializeInventoryIdempotent(principal: HotelManagementPrincipal, scope: HotelManagementScope, input: { propertyId: string; roomTypeId: string; from: Date; to: Date; allotment: number; reason: string; idempotencyKey: string; requestFingerprint: string }): Promise<HotelInventoryInitializationResult> {

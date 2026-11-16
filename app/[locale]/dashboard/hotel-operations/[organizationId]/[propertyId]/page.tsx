@@ -33,6 +33,7 @@ export default async function HotelOperationsPropertyPage({
       propertyName={`${organization.name} · ${property.name}`}
       propertyTimezone={property.timezone}
       locale={locale}
+      canPreviewAvailability={organization.role === "ADMIN" || organization.role === "SUPER_ADMIN"}
     />
   </main>;
 }

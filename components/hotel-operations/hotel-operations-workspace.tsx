@@ -29,6 +29,20 @@ type OperationsData = {
   inventory: InventoryNight[];
   cancellationPolicies: CancellationPolicy[];
 };
+type AvailabilityPreview = {
+  inventoryReserved: false;
+  nights: string[];
+  options: Array<{
+    roomType: { id: string; name: string; capacity: { maxAdults: number; maxChildren: number; maxOccupancy: number } };
+    ratePlan: { id: string; name: string; currency: string };
+    nightlyRates: string[];
+    totalRate: string;
+    availableRoomCount: number;
+    isAvailable: boolean;
+    unavailableNights: Array<{ date: string; reason: string }>;
+  }>;
+  rejected: Array<{ roomTypeId: string; reason: string }>;
+};
 
 const labels = {
   fa: {
@@ -45,6 +59,7 @@ const labels = {
     available: "قابل فروش", booked: "رزروشده", held: "در انتظار", oos: "خارج از سرویس", none: "رکوردی موجود نیست.", errorPrefix: "خطا:", saved: "تغییر ذخیره شد.", range: "بازه نمایش", load: "نمایش بازه",
     bedsError: "تخت را انتخاب کنید و تعداد معتبر وارد کنید.", deltasError: "حداقل یک تغییر ظرفیت یا خارج از سرویس وارد کنید.",
     setupIncomplete: "این پیش‌نمایش فقط با داده‌های تأییدشده مدیر قابل رزرو است؛ نمونه یا نرخ و ظرفیت فرضی جایگزین نمی‌شود.", noRoomsConfigured: "هنوز نوع اتاقی پیکربندی نشده است.", noRateConfigured: "برای این نوع اتاق طرح نرخ فعالی ثبت نشده است.", noInventoryConfigured: "برای بخشی از بازه، ظرفیت شبانه ثبت نشده است؛ آن شب‌ها قابل رزرو نیستند.",
+    previewTitle: "پیش‌نمایش مهمان (فقط مالک)", previewButton: "بررسی موجودی و قیمت", previewDemo: "پیش‌نمایش داده‌های نمایشی و پیکربندی فعلی است؛ نرخ، ظرفیت و سیاست‌ها تا زمان تأیید مالک هتل اطلاعات قطعی نیستند.", previewNoMutation: "این بررسی فقط‌خواندنی است و هیچ رزرو، نگهداشت اتاق، پرداخت یا تغییری در موجودی ایجاد نمی‌کند.", previewPublicGate: "نمایش عمومی و رزرو مهمان همچنان به انتشار و تأییدهای عمومی نیاز دارد.", previewOccupancy: "تعداد مهمانان", previewAdults: "بزرگسالان", previewChildren: "کودکان", previewChildAge: "سن کودک", previewResult: "نتیجه برای پیکربندی فعلی", previewUnavailable: "برای این اقامت قابل فروش نیست", previewNoRooms: "برای این بازه گزینه‌ای با اتاق، نرخ و موجودی کامل پیکربندی‌شده پیدا نشد.", previewMissingRooms: "برای نمایش اتاق، ابتدا نوع اتاق و ظرفیت فیزیکی را پیکربندی کنید.", previewNoPhysicalRooms: "برای این نوع اتاق، اتاق فیزیکی فعال و خارج از سرویس نبودن پیکربندی نشده است.", previewMissingRates: "برای اتاق پیکربندی‌شده نرخ فعال برای همه شب‌ها ثبت نشده است.", previewRateGap: "هیچ نرخ تأییدشده‌ای تمام شب‌های انتخابی را پوشش نمی‌دهد.", previewMissingInventory: "برای اتاق پیکربندی‌شده موجودی همه شب‌ها ثبت نشده است.", previewOccupancyMismatch: "ظرفیت اتاق با تعداد مهمانان انتخاب‌شده سازگار نیست.", previewFailed: "پیش‌نمایش بارگذاری نشد؛ پس از بررسی تاریخ و ظرفیت دوباره تلاش کنید.", previewPerNight: "نرخ هر شب", previewTotal: "مجموع اقامت", previewAvailableRooms: "اتاق قابل فروش در تمام شب‌ها", previewCapacity: "ظرفیت", previewRetry: "تلاش دوباره", previewDates: "تاریخ اقامت از بازه بالا استفاده می‌کند.",
   },
   en: {
     title: "Hotel operations",
@@ -60,6 +75,7 @@ const labels = {
     available: "Available", booked: "Booked", held: "Held", oos: "Out of service", none: "No records yet.", errorPrefix: "Error:", saved: "Changes saved.", range: "Date range", load: "Load range",
     bedsError: "Choose a bed type and enter a valid count.", deltasError: "Enter a non-zero allotment or out-of-service change.",
     setupIncomplete: "This preview uses manager-confirmed data only; no sample price or assumed inventory is substituted.", noRoomsConfigured: "No room type has been configured yet.", noRateConfigured: "This room type has no active rate plan.", noInventoryConfigured: "Nightly inventory is missing for part of the selected range; those nights cannot be reserved.",
+    previewTitle: "Guest availability preview (owner only)", previewButton: "Check availability and rates", previewDemo: "This preview uses current demo/configuration data. Rates, capacity, and policies are not confirmed hotel information until the owner approves them.", previewNoMutation: "Read-only: this check creates no reservation, room hold, payment, or inventory change.", previewPublicGate: "Public display and guest booking still require publication and their normal approvals.", previewOccupancy: "Guests", previewAdults: "Adults", previewChildren: "Children", previewChildAge: "Child age", previewResult: "Result for current configuration", previewUnavailable: "Not sellable for this stay", previewNoRooms: "No option has a complete configured room, rate, and inventory for this stay.", previewMissingRooms: "Configure room types before guest rooms can be previewed.", previewNoPhysicalRooms: "No active, in-service physical room is configured for this room type.", previewMissingRates: "No active rate plan exists for this room type.", previewRateGap: "No confirmed rate covers every selected night.", previewMissingInventory: "Nightly inventory is missing for one or more nights.", previewOccupancyMismatch: "The selected guest count exceeds this room type's capacity.", previewFailed: "Could not load the preview. Check the dates and occupancy, then retry.", previewPerNight: "Nightly rates", previewTotal: "Stay total", previewAvailableRooms: "Rooms sellable across all nights", previewCapacity: "Capacity", previewRetry: "Retry preview", previewDates: "Stay dates use the range above.",
   },
   ar: {
     title: "عمليات الفندق",
@@ -75,6 +91,7 @@ const labels = {
     available: "متاح", booked: "محجوز", held: "معلّق", oos: "خارج الخدمة", none: "لا توجد سجلات.", errorPrefix: "خطأ:", saved: "تم حفظ التغييرات.", range: "الفترة", load: "عرض الفترة",
     bedsError: "اختر نوع السرير وأدخل عددًا صالحًا.", deltasError: "أدخل تغييرًا غير صفري في السعة أو خارج الخدمة.",
     setupIncomplete: "تستخدم هذه المعاينة البيانات التي أكدها المدير فقط؛ لا يتم استبدال الأسعار أو السعة ببيانات افتراضية.", noRoomsConfigured: "لم يتم إعداد أي نوع غرفة بعد.", noRateConfigured: "لا توجد خطة أسعار فعالة لهذا النوع من الغرف.", noInventoryConfigured: "المخزون الليلي مفقود لبعض الفترة المحددة؛ لا يمكن حجز تلك الليالي.",
+    previewTitle: "معاينة توفر الضيوف (للمالك فقط)", previewButton: "فحص التوفر والأسعار", previewDemo: "تستخدم هذه المعاينة بيانات العرض والإعدادات الحالية. الأسعار والسعة والسياسات ليست معلومات مؤكدة حتى يعتمدها مالك الفندق.", previewNoMutation: "للقراءة فقط: لا تنشئ هذه المعاينة حجزًا أو تعليق غرفة أو دفعة أو تغييرًا في المخزون.", previewPublicGate: "يظل العرض العام وحجز الضيوف بحاجة إلى النشر والموافقات المعتادة.", previewOccupancy: "عدد الضيوف", previewAdults: "البالغون", previewChildren: "الأطفال", previewChildAge: "عمر الطفل", previewResult: "النتيجة وفق الإعدادات الحالية", previewUnavailable: "غير قابل للبيع خلال هذه الإقامة", previewNoRooms: "لم يتم العثور على خيار يحتوي على غرفة وسعر ومخزون مكتمل لكل ليالي الإقامة.", previewMissingRooms: "أعدّ أنواع الغرف قبل معاينة الغرف للضيف.", previewNoPhysicalRooms: "لا توجد غرفة فعلية نشطة وخارج الخدمة لهذا النوع.", previewMissingRates: "لا توجد خطة سعر فعالة لنوع الغرفة.", previewRateGap: "لا يوجد سعر مؤكد يغطي جميع الليالي المحددة.", previewMissingInventory: "مخزون الليالي غير متوفر لليلة واحدة أو أكثر.", previewOccupancyMismatch: "عدد الضيوف المحدد يتجاوز سعة نوع الغرفة.", previewFailed: "تعذر تحميل المعاينة. تحقق من التواريخ وعدد الضيوف ثم أعد المحاولة.", previewPerNight: "أسعار الليالي", previewTotal: "إجمالي الإقامة", previewAvailableRooms: "الغرف المتاحة للبيع طوال الليالي", previewCapacity: "السعة", previewRetry: "إعادة المحاولة", previewDates: "تستخدم تواريخ الإقامة الفترة أعلاه.",
   },
 } as const;
 
@@ -92,8 +109,8 @@ function idempotencyKey() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function HotelOperationsWorkspace({ organizationId, propertyId, propertyName, propertyTimezone, locale }: {
-  organizationId: string; propertyId: string; propertyName: string; propertyTimezone: string; locale: string;
+export function HotelOperationsWorkspace({ organizationId, propertyId, propertyName, propertyTimezone, locale, canPreviewAvailability }: {
+  organizationId: string; propertyId: string; propertyName: string; propertyTimezone: string; locale: string; canPreviewAvailability: boolean;
 }) {
   const text = labels[locale as keyof typeof labels] ?? labels.fa;
   const baseUrl = useMemo(() => `/api/organizations/${encodeURIComponent(organizationId)}/hotels/${encodeURIComponent(propertyId)}`, [organizationId, propertyId]);
@@ -106,6 +123,14 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [preview, setPreview] = useState<AvailabilityPreview | null>(null);
+  const [previewSignature, setPreviewSignature] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState("");
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewAdults, setPreviewAdults] = useState("2");
+  const [previewChildAges, setPreviewChildAges] = useState<string[]>([]);
+  const previewRequest = useRef<AbortController | null>(null);
+  const previewSequence = useRef(0);
   const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [typeSlug, setTypeSlug] = useState("");
@@ -145,10 +170,15 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
   const [reason, setReason] = useState("");
   const pendingIdempotency = useRef<{ signature: string; key: string } | null>(null);
   const rangeKey = `${from}|${to}`;
+  const currentPreviewSignature = `${from}|${to}|${previewAdults}|${previewChildAges.join(",")}`;
+  const activePreview = previewSignature === currentPreviewSignature ? preview : null;
   const activeData = dataRange === rangeKey ? data : null;
   const isLoading = loading || (dataRange !== rangeKey && !error);
   const roomTypesWithoutRates = activeData?.roomTypes.filter((room) => !activeData.ratePlans.some((plan) => plan.roomTypeId === room.id)) ?? [];
   const roomTypesWithoutFullInventory = activeData?.roomTypes.filter((room) => activeData.inventory.filter((night) => night.roomTypeId === room.id).length < activeData.range.nights) ?? [];
+  const roomTypesWithoutSellablePhysicalRooms = activeData?.roomTypes.filter((room) => !room.rooms.some((physical) => physical.isActive && !physical.isOutOfService)) ?? [];
+
+  useEffect(() => () => { previewSequence.current += 1; previewRequest.current?.abort(); }, []);
 
   const load = useCallback(async (signal?: AbortSignal) => {
     const response = await fetch(`${baseUrl}/operations?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { cache: "no-store", credentials: "same-origin", signal });
@@ -179,6 +209,34 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
     try { await load(); }
     catch (cause) { setError(cause instanceof Error ? cause.message : text.loadError); }
     finally { setLoading(false); }
+  }
+
+  async function loadAvailabilityPreview() {
+    previewRequest.current?.abort();
+    const controller = new AbortController();
+    previewRequest.current = controller;
+    const sequence = ++previewSequence.current;
+    setPreviewLoading(true);
+    setPreviewError("");
+    setPreview(null);
+    setPreviewSignature(null);
+    try {
+      const query = new URLSearchParams({ checkIn: from, checkOut: to, adults: previewAdults, children: String(previewChildAges.length), childAges: previewChildAges.join(",") });
+      const response = await fetch(`${baseUrl}/availability-preview?${query}`, { cache: "no-store", credentials: "same-origin", signal: controller.signal });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(body?.error || text.previewFailed);
+      if (!controller.signal.aborted && sequence === previewSequence.current) {
+        setPreview(body as AvailabilityPreview);
+        setPreviewSignature(`${from}|${to}|${previewAdults}|${previewChildAges.join(",")}`);
+      }
+    } catch (cause) {
+      if (!controller.signal.aborted && sequence === previewSequence.current) {
+        setPreview(null);
+        setPreviewError(cause instanceof Error && cause.message !== "Unauthorized" ? cause.message : text.previewFailed);
+      }
+    } finally {
+      if (sequence === previewSequence.current) setPreviewLoading(false);
+    }
   }
 
   async function mutate(path: string, method: string, payload: unknown, idempotent = false) {
@@ -279,6 +337,30 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
       {notice ? <p role="status" className="mt-3 text-sm text-green-700">{notice}</p> : null}
       {isLoading ? <p className="mt-3 text-sm" role="status">{text.loading}</p> : null}
       {activeData ? <div className="mt-3 space-y-1 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" role="status"><p>{text.setupIncomplete}</p>{activeData.roomTypes.length === 0 ? <p>{text.noRoomsConfigured}</p> : null}{roomTypesWithoutRates.map((room) => <p key={`rate:${room.id}`}>{room.name}: {text.noRateConfigured}</p>)}{roomTypesWithoutFullInventory.map((room) => <p key={`inventory:${room.id}`}>{room.name}: {text.noInventoryConfigured}</p>)}</div> : null}
+      {canPreviewAvailability ? <section className="mt-4 space-y-3 rounded-lg border p-3" aria-labelledby="guest-availability-preview-title">
+        <div><h3 id="guest-availability-preview-title" className="font-semibold">{text.previewTitle}</h3><p className="mt-1 text-sm text-amber-800">{text.previewDemo}</p><p className="mt-1 text-sm text-muted-foreground">{text.previewNoMutation} {text.previewPublicGate}</p><p className="mt-1 text-xs text-muted-foreground">{text.previewDates}</p></div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Field label={text.previewAdults} value={previewAdults} setValue={setPreviewAdults} type="number" required />
+          <Field label={text.previewChildren} value={String(previewChildAges.length)} setValue={(value) => {
+            const count = Number(value);
+            if (!Number.isInteger(count) || count < 0 || count > 8) return;
+            setPreviewChildAges((current) => Array.from({ length: count }, (_, index) => current[index] ?? "0"));
+          }} type="number" />
+          {previewChildAges.map((age, index) => <Field key={`preview-child-${index}`} label={`${text.previewChildAge} ${index + 1}`} value={age} setValue={(value) => setPreviewChildAges((current) => current.map((item, itemIndex) => itemIndex === index ? value : item))} type="number" />)}
+        </div>
+        <Button type="button" variant="outline" disabled={previewLoading || loading || !activeData || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || !/^([1-9]|1[0-2])$/.test(previewAdults) || previewChildAges.some((age) => !/^(0|[1-9]|1[0-7])$/.test(age))} onClick={() => void loadAvailabilityPreview()}>{previewLoading ? text.loading : previewError ? text.previewRetry : text.previewButton}</Button>
+        {previewError ? <p role="alert" className="text-sm text-destructive">{previewError}</p> : null}
+        {activePreview ? <div role="status" aria-label={text.previewResult} className="space-y-3">
+          <p className="text-sm font-medium">{text.previewResult}: {activePreview.nights[0]} – {activePreview.nights.at(-1) ?? to} · {activePreview.nights.length} {locale === "en" ? "nights" : "شب"}</p>
+          {activePreview.options.length === 0 ? <div className="space-y-1 rounded-md bg-muted p-3 text-sm"><p>{text.previewNoRooms}</p>{activeData?.roomTypes.length === 0 ? <p>{text.previewMissingRooms}</p> : null}{roomTypesWithoutSellablePhysicalRooms.map((room) => <p key={`physical:${room.id}`}>{room.name}: {text.previewNoPhysicalRooms}</p>)}{roomTypesWithoutRates.length ? <p>{text.previewMissingRates}</p> : null}{roomTypesWithoutFullInventory.length ? <p>{text.previewMissingInventory}</p> : null}{activePreview.rejected.filter((item) => item.reason === "NO_APPLICABLE_RATE_PLAN").map((item) => <p key={`rate-gap:${item.roomTypeId}`}>{activeData?.roomTypes.find((room) => room.id === item.roomTypeId)?.name}: {text.previewRateGap}</p>)}{activePreview.rejected.filter((item) => item.reason.startsWith("OCCUPANCY_")).map((item) => <p key={`occupancy:${item.roomTypeId}`}>{activeData?.roomTypes.find((room) => room.id === item.roomTypeId)?.name}: {text.previewOccupancyMismatch}</p>)}</div> : null}
+          <ul className="grid gap-3 lg:grid-cols-2">{activePreview.options.map((option) => <li key={`${option.roomType.id}:${option.ratePlan.id}`} className="rounded-lg border p-3">
+            <div className="flex flex-wrap items-start justify-between gap-2"><div><h4 className="font-semibold">{option.roomType.name}</h4><p className="text-sm text-muted-foreground">{option.ratePlan.name} · {text.previewCapacity}: {option.roomType.capacity.maxAdults} {text.previewAdults}, {option.roomType.capacity.maxChildren} {text.previewChildren} ({option.roomType.capacity.maxOccupancy} {locale === "en" ? "total" : "نفر در مجموع"})</p></div><p className="text-sm font-medium">{option.availableRoomCount} {text.previewAvailableRooms}</p></div>
+            <ul className="mt-2 space-y-1 text-sm">{option.nights.map((night, index) => <li key={`${option.roomType.id}:${night}`} className="flex justify-between gap-3"><time dateTime={night} dir="ltr">{night}</time><span>{text.previewPerNight}: {option.nightlyRates[index] ?? "—"} {option.ratePlan.currency}</span></li>)}</ul>
+            <p className="mt-2 text-sm font-semibold">{text.previewTotal}: {option.totalRate} {option.ratePlan.currency}</p>
+            {!option.isAvailable ? <p className="mt-2 text-sm text-amber-800">{text.previewUnavailable}: {option.unavailableNights.map((item) => item.date).join(", ")}</p> : null}
+          </li>)}</ul>
+        </div> : null}
+      </section> : null}
     </section>
 
     <section className="space-y-4 rounded-xl border bg-card p-4">

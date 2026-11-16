@@ -8,7 +8,7 @@ import { seedOperationalGuestFixture } from "./operational-fixture.mjs";
 const env = process.env;
 const appOrigin = new URL(env.DAMOON_APP_URL || "").origin;
 const standaloneOrigin = new URL(env.DAMOON_STANDALONE_URL || "").origin;
-const publicRuntimeOrigin = new URL(env.DAMOON_SHARED_RUNTIME_URL || "").origin;
+const publicRuntimeOrigin = new URL(env.DAMOON_OPERATIONAL_RUNTIME_URL || "").origin;
 const tenantHostname = new URL(standaloneOrigin).hostname;
 const guestOrigin = `http://${tenantHostname}:3000`;
 const organizationId = env.DAMOON_ORGANIZATION_ID;
@@ -22,7 +22,7 @@ function assertTestTarget() {
   if (env.CI !== "true" || env.NODE_ENV !== "test" || env.DAMOON_E2E_ENABLED !== "1" || env.VERCEL_ENV === "production" || env.VERCEL) throw new Error("Damoon operational acceptance requires isolated CI test mode");
   if (appOrigin !== "http://127.0.0.1:3000" || tenantHostname !== "damoon-hotel.localhost" || standaloneOrigin !== "http://damoon-hotel.localhost:8080" || publicRuntimeOrigin !== "http://damoon-hotel.ir:3000") throw new Error("Only the synthetic loopback-mapped Damoon test origins are permitted");
   if (!/^\/damoon_[a-f0-9]{16}$/i.test(new URL(env.DATABASE_URL || "https://invalid.local").pathname) || env.DATABASE_URL !== env.DIRECT_URL) throw new Error("Damoon operational acceptance requires the workflow-owned disposable database");
-  for (const name of ["DAMOON_MANAGER_USERNAME", "DAMOON_MANAGER_PASSWORD", "DAMOON_ORGANIZATION_ID", "DAMOON_PROPERTY_ID", "DAMOON_FOREIGN_ORGANIZATION_ID", "DAMOON_FOREIGN_PROPERTY_ID", "DAMOON_STANDALONE_URL", "DAMOON_APP_URL", "DAMOON_SHARED_RUNTIME_URL"]) {
+  for (const name of ["DAMOON_MANAGER_USERNAME", "DAMOON_MANAGER_PASSWORD", "DAMOON_ORGANIZATION_ID", "DAMOON_PROPERTY_ID", "DAMOON_FOREIGN_ORGANIZATION_ID", "DAMOON_FOREIGN_PROPERTY_ID", "DAMOON_STANDALONE_URL", "DAMOON_APP_URL", "DAMOON_OPERATIONAL_RUNTIME_URL"]) {
     if (!env[name]?.trim()) throw new Error(`${name} is required by the Damoon operational acceptance`);
   }
   if (env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED !== "1" || env.HOTEL_GUEST_PORTAL_ENABLED !== "1" || env.HOTEL_OFFLINE_PAYMENT_OPERATIONAL_ENABLED !== "1") throw new Error("Operational reservation, guest portal, and offline payment gates must be enabled for this disposable acceptance");
@@ -31,24 +31,8 @@ function assertTestTarget() {
 
 async function choosePublicStayDates(page, checkIn, checkOut) {
   const arrival = page.locator('[data-date-field="checkIn"]');
-  await arrival.evaluate((element) => {
-    const rect = element.getBoundingClientRect();
-    const headerBottom = document.querySelector(".site-header")?.getBoundingClientRect().bottom ?? 0;
-    const safeTop = Math.max(headerBottom + 24, Math.round(window.innerHeight * 0.35));
-    window.scrollTo({ top: Math.max(0, window.scrollY + rect.top - safeTop), behavior: "instant" });
-  });
-  const clickPoint = await arrival.evaluate((element) => {
-      const rect = element.getBoundingClientRect();
-      const header = document.querySelector(".site-header")?.getBoundingClientRect();
-      const x = rect.width / 2;
-      const centerY = rect.height / 2;
-      const safeDocumentY = Math.max(rect.top + centerY, (header?.bottom ?? 0) + 4);
-      const y = Math.min(rect.height - 2, Math.max(centerY, safeDocumentY - rect.top));
-      const hit = document.elementFromPoint(rect.left + x, rect.top + y);
-      return { position: { x, y }, exposed: hit === element || element.contains(hit), scrollY: window.scrollY, target: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, header: header && { y: header.y, height: header.height }, hit: hit && { tag: hit.tagName, className: typeof hit.className === "string" ? hit.className : "", id: hit.id } };
-    });
-  if (!clickPoint.exposed) throw new Error(`Public calendar button has no unobstructed pointer target: ${JSON.stringify(clickPoint)}`);
-  await arrival.click({ position: clickPoint.position });
+
+  await arrival.click();
   let moves = 0;
   while (!(await page.locator(`[data-calendar-day="${checkIn}"]`).count()) && moves++ < 3) await page.locator("[data-month-next]").click();
   await page.locator(`[data-calendar-day="${checkIn}"]`).click();
@@ -152,6 +136,55 @@ test("new Damoon customer registers, joins the host-bound tenant, and resumes th
 
     const reservation = await createReservationThroughGuestControls(page, checkIn, checkOut, "Synthetic Public Journey Guest", fixture);
     expect(reservation.status).toBe("PENDING_PAYMENT");
+  } finally {
+    await context.close();
+  }
+});
+
+test("existing Damoon customer without membership can join this host tenant and keep the selected stay", async ({ browser }) => {
+  test.setTimeout(60_000);
+  assertTestTarget();
+  const fixture = await seedOperationalGuestFixture();
+  const checkIn = daysFromNow(18);
+  const checkOut = daysFromNow(19);
+  const returnPath = `/fa/hotel-reservations/start?property=damoon-hotel&checkIn=${checkIn}&checkOut=${checkOut}&adults=1`;
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    const browserErrors = [];
+    const nextAssetStatuses = [];
+    const nextSockets = [];
+    const socketErrors = [];
+    page.on("pageerror", (error) => browserErrors.push(error.message));
+    page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
+    page.on("response", (response) => { if (response.url().includes("/_next/static/") && response.request().resourceType() === "script") nextAssetStatuses.push(response.status()); });
+    page.on("websocket", (socket) => {
+      if (socket.url().includes("/_next/")) {
+        nextSockets.push(socket.url());
+        socket.on("socketerror", (error) => socketErrors.push(error));
+      }
+    });
+    await page.goto(`${publicRuntimeOrigin}${returnPath}`);
+    await page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === "/fa/login");
+    await expect(page.locator("#username")).toBeVisible();
+    await expect(page.locator("#username")).toBeEnabled();
+    expect(nextAssetStatuses.length, "Next client assets should load before login interaction").toBeGreaterThan(0);
+    expect(nextAssetStatuses.every((status) => status === 200), JSON.stringify(nextAssetStatuses)).toBe(true);
+    expect(nextSockets.some((url) => url.includes("/_next/")), JSON.stringify(nextSockets)).toBe(true);
+    await page.locator("#username").fill(fixture.unjoinedUsername);
+    await page.locator("#password").fill(fixture.password);
+    await expect(page.getByRole("checkbox", { name: /اگر هنوز عضو نیستم/ })).toBeVisible();
+    await page.getByRole("checkbox", { name: /اگر هنوز عضو نیستم/ }).check();
+    await page.locator("form button[type='submit']").click();
+    await page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === "/fa/hotel-reservations/start" && url.searchParams.get("checkIn") === checkIn, { timeout: 30_000 });
+
+    await expect(page.locator("section[aria-label='رزروهای هتل']")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByLabel("تاریخ ورود")).toHaveValue(checkIn);
+    await expect(page.getByLabel("تاریخ خروج")).toHaveValue(checkOut);
+    const guestReservations = await page.request.get(`${publicRuntimeOrigin}/api/hotel/v1/guest-reservations?property=damoon-hotel`);
+    expect(guestReservations.status(), await guestReservations.text()).toBe(200);
+    expect(socketErrors, "The allowed Next development HMR socket should not fail").toEqual([]);
+    expect(browserErrors, "The interactive login and onboarding flow should hydrate without browser errors").toEqual([]);
   } finally {
     await context.close();
   }

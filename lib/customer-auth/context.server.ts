@@ -16,7 +16,8 @@ function publicOrigin(rawHost: string | null, requestUrl: string): string | null
   try {
     const host = new URL(`https://${rawHost.toLowerCase()}`);
     const local = host.hostname === "localhost" || host.hostname === "127.0.0.1" || host.hostname.endsWith(".localhost");
-    if (process.env.NODE_ENV !== "production" && local && new URL(requestUrl).protocol === "http:") return `http://${host.host}`;
+    const isolatedDamoonBrowserHost = process.env.CI === "true" && process.env.NODE_ENV !== "production" && process.env.DAMOON_E2E_ENABLED === "1" && host.hostname === "damoon-hotel.ir" && host.port === "3000";
+    if (process.env.NODE_ENV !== "production" && new URL(requestUrl).protocol === "http:" && (local || isolatedDamoonBrowserHost)) return `http://${host.host}`;
     return host.port ? null : host.origin;
   } catch { return null; }
 }

@@ -165,24 +165,8 @@ const dayAfterISO = (base) => {
 
 async function chooseStayDates(page, checkIn, checkOut) {
   const arrival = page.locator('[data-date-field="checkIn"]');
-  await arrival.evaluate((element) => {
-    const rect = element.getBoundingClientRect();
-    const headerBottom = document.querySelector(".site-header")?.getBoundingClientRect().bottom ?? 0;
-    const safeTop = Math.max(headerBottom + 24, Math.round(window.innerHeight * 0.35));
-    window.scrollTo({ top: Math.max(0, window.scrollY + rect.top - safeTop), behavior: "instant" });
-  });
-  const clickPoint = await arrival.evaluate((element) => {
-    const rect = element.getBoundingClientRect();
-    const header = document.querySelector(".site-header")?.getBoundingClientRect();
-    const x = rect.width / 2;
-    const centerY = rect.height / 2;
-    const safeDocumentY = Math.max(rect.top + centerY, (header?.bottom ?? 0) + 4);
-    const y = Math.min(rect.height - 2, Math.max(centerY, safeDocumentY - rect.top));
-    const hit = document.elementFromPoint(rect.left + x, rect.top + y);
-    return { position: { x, y }, exposed: hit === element || element.contains(hit), scrollY: window.scrollY, target: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, header: header && { y: header.y, height: header.height }, hit: hit && { tag: hit.tagName, className: typeof hit.className === "string" ? hit.className : "", id: hit.id } };
-  });
-  if (!clickPoint.exposed) throw new Error(`Calendar button has no unobstructed pointer target: ${JSON.stringify(clickPoint)}`);
-  await arrival.click({ position: clickPoint.position });
+
+  await arrival.click();
   let moves = 0;
   while (!(await page.locator(`[data-calendar-day="${checkIn}"]`).count()) && moves++ < 3) {
     await page.locator("[data-month-next]").click();
@@ -196,35 +180,6 @@ async function chooseStayDates(page, checkIn, checkOut) {
   }
   await page.locator(`[data-calendar-day="${checkOut}"]`).click();
   await expect(page.locator("#booking-calendar")).not.toBeVisible();
-}
-
-async function clickExposed(locator, label) {
-  const target = await locator.evaluate((element) => {
-    const headerBottom = document.querySelector(".site-header")?.getBoundingClientRect().bottom ?? 0;
-    let rect = element.getBoundingClientRect();
-    // Date selection scrolls the hero booking strip beneath the header. Move
-    // the submit control to a clear viewport point before a normal pointer click.
-    const safeCenterY = Math.max(headerBottom + 16, Math.round(window.innerHeight * 0.35));
-    const centerY = rect.top + rect.height / 2;
-    const delta = centerY - safeCenterY;
-    if (Math.abs(delta) > 2) {
-      const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-      window.scrollTo({ top: Math.max(0, Math.min(maxScroll, window.scrollY + delta)), behavior: "instant" });
-      rect = element.getBoundingClientRect();
-    }
-    const x = rect.width / 2;
-    const candidates = [
-      ...[0.5, 0.72, 0.28].map((fraction) => ({ x, y: Math.min(rect.height - 2, Math.max(2, rect.height * fraction)) })),
-      { x, y: Math.max(2, rect.height - 2) },
-    ];
-    const points = candidates.map((position) => {
-      const hit = document.elementFromPoint(rect.left + position.x, rect.top + position.y);
-      return { position, exposed: hit === element || element.contains(hit), hit: hit && { tag: hit.tagName, className: typeof hit.className === "string" ? hit.className : "", id: hit.id } };
-    });
-    return { rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, headerBottom, scrollY: window.scrollY, point: points.find(({ exposed }) => exposed), points };
-  });
-  if (!target.point) throw new Error(`${label} has no unobstructed pointer target: ${JSON.stringify(target)}`);
-  await locator.click({ position: target.point.position });
 }
 
 const faPayload = (checkIn, checkOut) => ({
@@ -269,6 +224,23 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await managerContext?.close().catch(() => {});
   });
 
+  test("Mobile guest can select stay dates and search availability with ordinary controls", async () => {
+    const checkIn = tomorrowISO();
+    const checkOut = dayAfterISO(checkIn);
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    guestContexts.push(context);
+    const page = await context.newPage();
+    await page.goto(`${standaloneUrl.origin}/fa/`, { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-booking-slot]")).toBeVisible();
+    await chooseStayDates(page, checkIn, checkOut);
+    await page.locator("[data-adult-count]").selectOption("2");
+    const searchResponsePromise = page.waitForResponse((response) => response.url().includes("/api/hotel/v1/availability/search") && response.request().method() === "POST");
+    await page.locator(".booking-form .booking-submit[type=submit]").click();
+    const searchResponse = await searchResponsePromise;
+    expect(searchResponse.status()).toBe(200);
+    await expect(page.locator("[data-booking-flow] .booking-options")).toBeVisible();
+  });
+
   test("FA: Guest submits stay request via Damoon standalone and tracks status", async () => {
     const checkIn = tomorrowISO();
     const checkOut = dayAfterISO(checkIn);
@@ -289,7 +261,7 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await page.locator("[data-child-count]").selectOption("1");
     await page.locator('[data-child-age="0"]').fill("8");
 
-    await clickExposed(page.locator(".booking-form .booking-submit[type=submit]"), "Availability search submit");
+    await page.locator(".booking-form .booking-submit[type=submit]").click();
     await expect(page.locator("[data-booking-flow] .booking-options")).toBeVisible();
     await page.locator(".booking-option__select").first().click();
     await expect(page.locator("[data-booking-flow] .booking-step")).toBeVisible();
@@ -404,7 +376,7 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await guestPage.locator("[data-adult-count]").selectOption("2");
     await guestPage.locator("[data-child-count]").selectOption("1");
     await guestPage.locator('[data-child-age="0"]').fill("8");
-    await clickExposed(guestPage.locator(".booking-form .booking-submit[type=submit]"), "Availability search submit");
+    await guestPage.locator(".booking-form .booking-submit[type=submit]").click();
     await expect(guestPage.locator("[data-booking-flow] .booking-options")).toBeVisible();
     await guestPage.locator(".booking-option__select").first().click();
     await expect(guestPage.locator('[data-booking-flow] [data-child-age="0"]')).toHaveValue("8");

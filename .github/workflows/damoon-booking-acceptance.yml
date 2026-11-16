@@ -6,10 +6,13 @@ on:
     paths:
       - "sites/damoon/**"
       - "app/[locale]/hotel-reservations/**"
+      - "app/[locale]/login/**"
       - "app/api/hotel/v1/**"
       - "app/api/organizations/**/hotels/**/booking-requests/**"
       - "components/hotel-operations/hotel-guest-booking-requests.tsx"
       - "lib/hotel/**"
+      - "lib/auth.ts"
+      - "lib/customer-auth/context.server.ts"
       - "lib/custom-domain-routing.ts"
       - "prisma/**"
       - "scripts/hotel/seed-damoon-booking-e2e.mts"
@@ -23,6 +26,7 @@ on:
       - "public/damoon-front/**"
       - "playwright.damoon.config.mjs"
       - "playwright.damoon-operational.config.mjs"
+      - "next.config.ts"
       - ".github/workflows/damoon-booking-acceptance.yml"
       - "pnpm-lock.yaml"
   workflow_dispatch:
@@ -199,6 +203,7 @@ jobs:
           HOTEL_OPERATIONAL_RESERVATIONS_ENABLED: "1"
           HOTEL_GUEST_PORTAL_ENABLED: "1"
           HOTEL_OFFLINE_PAYMENT_OPERATIONAL_ENABLED: "1"
+          DAMOON_OPERATIONAL_RUNTIME_URL: http://damoon-hotel.ir:3000
         run: pnpm exec playwright test --config=playwright.damoon-operational.config.mjs
       - name: Restart API with the guest-request gate disabled
         shell: bash

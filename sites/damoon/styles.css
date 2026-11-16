@@ -425,7 +425,7 @@ html[dir="ltr"] .home-shortcut__arrow, html[dir="ltr"] .home-service__arrow { tr
 
 /* Approved Damoon landing composition */
 :root { --paper: #f6f0e6; }
-.site-header:has(+ .home-main) { position: absolute; z-index: 30; inset: 0 0 auto; background: transparent; border: 0; }
+.site-header:has(+ .home-main) { position: relative; z-index: 30; background: var(--paper); border: 0; }
 .site-header:has(+ .home-main) .site-header__inner { width: min(1540px, calc(100% - 64px)); min-height: 98px; }
 .home-main { background: var(--paper); }
 .home-top { position: relative; height: 552px; }

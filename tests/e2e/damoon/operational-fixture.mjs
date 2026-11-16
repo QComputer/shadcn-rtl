@@ -32,6 +32,7 @@ export async function seedOperationalGuestFixture() {
   const suffix = randomUUID().replaceAll("-", "").slice(0, 16);
   const username = `damoon-op-guest-${suffix}`;
   const password = randomBytes(24).toString("base64url");
+  const unjoinedUsername = `damoon-op-existing-${suffix}`;
   try {
     await db.$connect();
     const [identity] = await db.$queryRaw`SELECT current_database()::text AS database, current_user::text AS role, current_schema()::text AS schema, inet_server_port() AS port`;
@@ -47,6 +48,7 @@ export async function seedOperationalGuestFixture() {
 
     const user = await db.user.create({ data: { name: username, password: await bcrypt.hash(password, 10), role: "CUSTOMER", isTeamMember: false, isActive: true, locale: "fa" }, select: { id: true } });
     await db.customerClubMembership.create({ data: { organizationId, customerId: user.id, status: "ACTIVE", source: "PUBLIC_SHOP" } });
+    await db.user.create({ data: { name: unjoinedUsername, password: await bcrypt.hash(password, 10), role: "CUSTOMER", isTeamMember: false, isActive: true, locale: "fa" }, select: { id: true } });
 
     const policy = await db.hotelCancellationPolicy.create({ data: {
       organizationId, propertyId, key: `ci-${suffix}`, name: "Synthetic CI policy", freeCancellationCutoffHours: 24, fullCancellationRetention: 0,
@@ -56,7 +58,7 @@ export async function seedOperationalGuestFixture() {
     await db.hotelProperty.update({ where: { id: propertyId }, data: { operationalMode: "RESERVATION", manualConfirmationPolicy: "CASH_ON_ARRIVAL", allowedOfflinePaymentMethods: ["CASH"], minimumVerifiedDepositAmount: null } });
 
     const room = await db.hotelRoom.create({ data: { organizationId, propertyId, roomTypeId: roomType.id, code: `CI-${suffix.slice(0, 8)}`, floor: "CI", isActive: true } });
-    return { username, password, roomId: room.id, roomTypeId: roomType.id, ratePlanId: ratePlan.id, organizationId, propertyId };
+    return { username, password, unjoinedUsername, roomId: room.id, roomTypeId: roomType.id, ratePlanId: ratePlan.id, organizationId, propertyId };
   } finally {
     await db.$disconnect();
   }

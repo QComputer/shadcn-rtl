@@ -22,6 +22,8 @@ import { validateSessionCredential } from "./security/session-credential.server"
 import { resolveCustomerAuthContext } from "./customer-auth/context.server";
 import { customerPhoneAuthService, createCustomerPasswordSession, validateCustomerPhoneSession, revokeCustomerPhoneSession } from "./customer-auth/core.server";
 import { customerSsoService } from "./customer-auth/sso.server";
+import { writeAuditLog } from "@/lib/audit-log";
+import { resolveHotelTenantForHost } from "@/lib/hotel/services/hotel-publication.service";
 
 /**
  * NextAuth Type Extensions
@@ -178,6 +180,20 @@ const buildProviders = (): Provider[] => {
         if (user.role === "CUSTOMER") {
           const context = await resolveCustomerAuthContext(request);
           if (!context || request.headers.get("origin") !== context.origin) return null;
+          if (credentials.hotelGuestJoin === "true") {
+            const hotelTenant = await resolveHotelTenantForHost(request.headers.get("host"));
+            if (!hotelTenant || hotelTenant.organizationId !== context.organizationId || process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED !== "1" || process.env.HOTEL_GUEST_PORTAL_ENABLED !== "1") return null;
+            const currentMembership = await prisma.customerClubMembership.findUnique({ where: { organizationId_customerId: { organizationId: hotelTenant.organizationId, customerId: user.id } }, select: { status: true } });
+            if (currentMembership?.status !== "ACTIVE") {
+              const membership = await prisma.customerClubMembership.upsert({
+                where: { organizationId_customerId: { organizationId: hotelTenant.organizationId, customerId: user.id } },
+                create: { organizationId: hotelTenant.organizationId, customerId: user.id, status: "ACTIVE", source: "PUBLIC_SHOP" },
+                update: { status: "ACTIVE", tier: "MEMBER", source: "PUBLIC_SHOP", leftAt: null },
+                select: { id: true, organizationId: true, customerId: true, status: true, tier: true, source: true },
+              });
+              await writeAuditLog({ action: "CREATE", entityType: "CustomerClubMembership", entityId: membership.id, description: "Customer joined the hotel tenant during an explicit reservation login", newValue: { organizationId: membership.organizationId, customerId: membership.customerId, status: membership.status, tier: membership.tier, source: membership.source }, userId: user.id, organizationId: hotelTenant.organizationId });
+            }
+          }
           try {
             phoneSessionId = await createCustomerPasswordSession(user.id, context.organizationId);
             customerOrganizationId = context.organizationId;

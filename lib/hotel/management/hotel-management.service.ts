@@ -219,7 +219,7 @@ export class HotelManagementService {
       const commitments = await tx.$queryRaw<Array<{ maxCommitted: number | null }>>(Prisma.sql`SELECT MAX("booked" + "held")::int AS "maxCommitted" FROM "HotelInventory" WHERE "organizationId"=${scope.organizationId} AND "propertyId"=${input.propertyId} AND "roomTypeId"=${input.roomTypeId} AND "date">=${today}`);
       if ((commitments[0]?.maxCommitted ?? 0) > (counts[0]?.availableRooms ?? 0)) throw new HotelManagementValidationError("Physical room configuration would be below existing bookings and holds");
       return created;
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, maxWait: 5000, timeout: 10000 });
+    }, { maxWait: 5000, timeout: 10000 });
   }
 
   async updatePhysicalRoom(principal: HotelManagementPrincipal, scope: HotelManagementScope, roomId: string, patch: { code?: string; roomTypeId?: string; floor?: string | null; description?: string | null; isOutOfService?: boolean; isActive?: boolean }) {
@@ -247,7 +247,7 @@ export class HotelManagementService {
         if ((commitments[0]?.maxCommitted ?? 0) > counts[0].availableRooms) throw new HotelManagementValidationError("Cannot reduce in-service rooms below existing bookings and holds");
       }
       return updated;
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, maxWait: 5000, timeout: 10000 });
+    }, { maxWait: 5000, timeout: 10000 });
   }
 
   async archivePhysicalRoom(principal: HotelManagementPrincipal, scope: HotelManagementScope, roomId: string) { await this.authorize(principal, scope); const room = await this.db.hotelRoom.findFirst({ where: { id: roomId, organizationId: scope.organizationId } }); if (!room) throw new HotelManagementAuthorizationError("Room is outside the organization scope"); await this.updatePhysicalRoom(principal, scope, roomId, { isActive: false }); return this.db.hotelRoom.updateMany({ where: { id: roomId, organizationId: scope.organizationId }, data: { deletedAt: new Date() } }); }

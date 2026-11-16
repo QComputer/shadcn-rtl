@@ -213,7 +213,10 @@ async function clickExposed(locator, label) {
       rect = element.getBoundingClientRect();
     }
     const x = rect.width / 2;
-    const candidates = [0.5, 0.72, 0.28].map((fraction) => ({ x, y: Math.min(rect.height - 2, Math.max(2, rect.height * fraction)) }));
+    const candidates = [
+      ...[0.5, 0.72, 0.28].map((fraction) => ({ x, y: Math.min(rect.height - 2, Math.max(2, rect.height * fraction)) })),
+      { x, y: Math.max(2, rect.height - 2) },
+    ];
     const points = candidates.map((position) => {
       const hit = document.elementFromPoint(rect.left + position.x, rect.top + position.y);
       return { position, exposed: hit === element || element.contains(hit), hit: hit && { tag: hit.tagName, className: typeof hit.className === "string" ? hit.className : "", id: hit.id } };

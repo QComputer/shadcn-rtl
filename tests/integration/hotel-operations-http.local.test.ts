@@ -12,6 +12,9 @@ import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { chromium } from "playwright";
+import { PrismaHotelRepositories } from "../../lib/hotel/persistence/prisma-hotel-repositories";
+import { searchPublicHotelAvailability } from "../../lib/hotel/services/public-availability.service";
+import { priceHotelStay } from "../../lib/hotel/services/booking-quote";
 
 // Real local HTTP acceptance for the Hotel operations APIs and their persisted view.
 // Only the guarded disposable PostgreSQL fixture is used; external providers are disabled.
@@ -310,10 +313,18 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   const roomResult = await apiJson<{ room: { id: string; code: string } }>(`/api/organizations/${orgAId}/hotels/${propertyAId}/rooms`, cookie, "POST", { roomTypeId, code: `${suffix.slice(0, 5)}-101`, floor: "1" });
   assert.equal(roomResult.response.status, 201);
   assert.ok(roomResult.data?.room.id);
+  const secondRoomResult = await apiJson<{ room: { id: string; code: string } }>(`/api/organizations/${orgAId}/hotels/${propertyAId}/rooms`, cookie, "POST", { roomTypeId, code: `${suffix.slice(0, 5)}-102`, floor: "1" });
+  assert.equal(secondRoomResult.response.status, 201);
+  assert.ok(secondRoomResult.data?.room.id);
+
+  stage = "create-cancellation-policy";
+  const policyResult = await apiJson<{ policy: { id: string; key: string } }>(`/api/organizations/${orgAId}/hotels/${propertyAId}/cancellation-policies`, cookie, "POST", { key: `${suffix.slice(0, 8)}-preview`, name: `${prefix} Preview cancellation`, freeCancellationCutoffHours: 48, fullCancellationRetention: 0 });
+  assert.equal(policyResult.response.status, 201);
+  assert.ok(policyResult.data?.policy.id);
 
   stage = "create-rate-plan-and-nightly-rate";
   const ratePlanResult = await apiJson<{ ratePlan: { id: string; code: string; baseNightlyRate: string } }>(`/api/organizations/${orgAId}/hotels/${propertyAId}/rate-plans`, cookie, "POST", {
-    roomTypeId, code: `${suffix.slice(0, 6)}-FLEX`, name: `${prefix} Flexible`, baseNightlyRate: "250000", minNights: 1, isRefundable: true,
+    roomTypeId, code: `${suffix.slice(0, 6)}-FLEX`, name: `${prefix} Flexible`, baseNightlyRate: "250000", minNights: 1, isRefundable: true, cancellationPolicyId: policyResult.data!.policy.id,
   });
   assert.equal(ratePlanResult.response.status, 201);
   assert.ok(ratePlanResult.data?.ratePlan.id);
@@ -326,7 +337,7 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
 
   stage = "initialize-inventory-idempotently";
   const initializePath = `/api/organizations/${orgAId}/hotels/${propertyAId}/inventory/initialize`;
-  const initBody = { roomTypeId, from, to, allotment: 2, reason: "local HTTP acceptance fixture" };
+  const initBody = { roomTypeId, from, to, allotment: 3, reason: "local HTTP acceptance fixture" };
   const idempotencyKey = `hotel-operations-${suffix}`;
   const initialized = await apiJson<{ inventoryInitialization: { createdCount: number; skippedExistingCount: number; requestedNights: number } }>(initializePath, cookie, "POST", initBody, { "idempotency-key": idempotencyKey });
   assert.equal(initialized.response.status, 201);
@@ -338,17 +349,80 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
 
   stage = "operations-reload-and-tenant-isolation";
   const operationsPath = `/api/organizations/${orgAId}/hotels/${propertyAId}/operations?from=${from}&to=${to}`;
-  const operations = await apiJson<{ property: { id: string }; range: { nights: number }; roomTypes: Array<{ id: string; rooms: Array<{ id: string }> }>; ratePlans: Array<{ id: string; baseNightlyRate: string; nightlyRates: Array<{ nightlyRate: string }> }>; inventory: Array<{ roomTypeId: string; allotment: number; available: number }> }>(operationsPath, cookie);
+  const operations = await apiJson<{ property: { id: string }; range: { nights: number }; roomTypes: Array<{ id: string; rooms: Array<{ id: string }> }>; ratePlans: Array<{ id: string; baseNightlyRate: string; nightlyRates: Array<{ nightlyRate: string }> }>; inventory: Array<{ roomTypeId: string; allotment: number; available: number }>; cancellationPolicies: Array<{ id: string; isActive: boolean }> }>(operationsPath, cookie);
   assert.equal(operations.response.status, 200);
   assert.equal(operations.data?.property.id, propertyAId);
   assert.equal(operations.data?.range.nights, 2);
   assert.ok(operations.data?.roomTypes.some((roomType) => roomType.id === roomTypeId && roomType.rooms.length === 1));
   assert.ok(operations.data?.ratePlans.some((plan) => plan.id === ratePlanId && plan.baseNightlyRate === "250000" && plan.nightlyRates.some((rate) => rate.nightlyRate === "275000")));
   assert.equal(operations.data?.inventory.length, 2);
-  assert.ok(operations.data?.inventory.every((night) => night.roomTypeId === roomTypeId && night.allotment === 2 && night.available === 2));
+  assert.ok(operations.data?.inventory.every((night) => night.roomTypeId === roomTypeId && night.allotment === 3 && night.available === 2));
+  assert.ok(operations.data?.cancellationPolicies.some((policy) => policy.id === policyResult.data!.policy.id && policy.isActive));
   const reloaded = await apiJson<typeof operations.data>(operationsPath, cookie);
   assert.equal(reloaded.response.status, 200);
   assert.deepEqual(reloaded.data, operations.data);
+
+  stage = "manager-configuration-drives-guest-availability-and-quote";
+  const repository = new PrismaHotelRepositories(db);
+  const guestSearch = await searchPublicHotelAvailability({ scope: { organizationId: orgAId }, propertySlug: `${prefix}-property-a`, query: { propertyId: propertyAId, window: { checkIn: from, checkOut: to }, occupancy: { adults: 2, children: 0, childAges: [] } } }, repository);
+  const guestOption = guestSearch?.options.find((option) => option.roomType.id === roomTypeId && option.ratePlan.id === ratePlanId);
+  assert.ok(guestOption?.isAvailable, "manager-created inventory and rate must appear in guest availability");
+  assert.deepEqual(guestOption.nightlyRates, [275000, 275000], "guest search uses the manager's dated nightly rate, not a silent example price");
+  assert.equal(guestOption.availableRoomCount, 2);
+  const quoteProperty = await db.hotelProperty.findUniqueOrThrow({ where: { id: propertyAId } });
+  const quoteResult = await db.$transaction((tx) => priceHotelStay(tx, quoteProperty, userId, { action: "quote", roomTypeId, ratePlanId, checkIn: from, checkOut: to, adults: 2, childAges: [] }, new Date("2027-01-01T00:00:00.000Z")));
+  assert.equal(quoteResult.quote?.totalAmount, "550000", "quote matches the visible nightly rates");
+  assert.deepEqual(quoteResult.quote?.nightlyRates, [275000, 275000]);
+
+  stage = "nightly-inventory-difference-across-stay";
+  const adjustmentPath = `/api/organizations/${orgAId}/hotels/${propertyAId}/inventory/adjustments`;
+  const adjustment = await apiJson(adjustmentPath, cookie, "POST", { roomTypeId, date: "2027-06-11", outOfServiceDelta: 2, reason: "test a single constrained night" }, { "idempotency-key": `hotel-oos-${suffix}` });
+  assert.equal(adjustment.response.status, 200);
+  const constrainedSearch = await searchPublicHotelAvailability({ scope: { organizationId: orgAId }, propertySlug: `${prefix}-property-a`, query: { propertyId: propertyAId, window: { checkIn: from, checkOut: to }, occupancy: { adults: 2, children: 0, childAges: [] } } }, repository);
+  const constrainedOption = constrainedSearch?.options.find((option) => option.roomType.id === roomTypeId && option.ratePlan.id === ratePlanId);
+  assert.equal(constrainedOption?.availableRoomCount, 1, "the stay uses the lowest per-night capacity across consecutive nights");
+  const constrainedQuote = await db.$transaction((tx) => priceHotelStay(tx, quoteProperty, userId, { action: "quote", roomTypeId, ratePlanId, checkIn: from, checkOut: to, adults: 2, childAges: [] }, new Date("2027-01-01T00:00:00.000Z")));
+  assert.equal(constrainedQuote.quote?.totalAmount, "550000");
+
+  stage = "physical-out-of-service-and-disabled-room-capacity";
+  const roomPath = `/api/organizations/${orgAId}/hotels/${propertyAId}/rooms`;
+  const roomIds = [roomResult.data!.room.id, secondRoomResult.data!.room.id];
+  const disableSecond = await apiJson(`${roomPath}/${roomIds[1]}`, cookie, "PATCH", { isOutOfService: true });
+  assert.equal(disableSecond.response.status, 200);
+  const partialPhysical = await searchPublicHotelAvailability({ scope: { organizationId: orgAId }, propertySlug: `${prefix}-property-a`, query: { propertyId: propertyAId, window: { checkIn: from, checkOut: from === to ? to : "2027-06-11" }, occupancy: { adults: 2, children: 0, childAges: [] } } }, repository);
+  const partialOption = partialPhysical?.options.find((option) => option.roomType.id === roomTypeId);
+  assert.equal(partialOption?.availableRoomCount, 1, "inactive physical capacity constrains the higher aggregate inventory");
+
+  const disableFirst = await apiJson(`${roomPath}/${roomIds[0]}`, cookie, "PATCH", { isOutOfService: true });
+  assert.equal(disableFirst.response.status, 200);
+  const noRooms = await searchPublicHotelAvailability({ scope: { organizationId: orgAId }, propertySlug: `${prefix}-property-a`, query: { propertyId: propertyAId, window: { checkIn: from, checkOut: "2027-06-11" }, occupancy: { adults: 2, children: 0, childAges: [] } } }, repository);
+  assert.equal(noRooms?.options.find((option) => option.roomType.id === roomTypeId)?.availableRoomCount, 0, "configured but disabled physical rooms are not treated as legacy unconfigured inventory");
+  await assert.rejects(() => db.$transaction((tx) => priceHotelStay(tx, quoteProperty, userId, { action: "quote", roomTypeId, ratePlanId, checkIn: from, checkOut: "2027-06-11", adults: 2, childAges: [] }, new Date("2027-01-01T00:00:00.000Z"))), /No inventory/i);
+
+  const restoreFirst = await apiJson(`${roomPath}/${roomIds[0]}`, cookie, "PATCH", { isOutOfService: false });
+  assert.equal(restoreFirst.response.status, 200);
+  const tenantLeak = await repository.getPhysicalRoomCapacities({ organizationId: ownedOrgIds[1]! }, propertyAId, [roomTypeId]);
+  assert.deepEqual(tenantLeak, [], "physical capacity reads remain property and tenant scoped");
+
+  stage = "concurrent-holds-and-room-capacity-serialization";
+  const attemptHold = (index: number) => {
+    const id = randomUUID(), now = new Date("2027-01-01T00:00:00.000Z");
+    return repository.claimInventoryAndCreateHold({ scope: { organizationId: orgAId }, propertyId: propertyAId, roomTypeId, nights: [from], quantity: 1, now, hold: { id, organizationId: orgAId, propertyId: propertyAId, roomTypeId, reference: `H-${index}-${id}`, checkIn: from, checkOut: "2027-06-11", nights: [from], quantity: 1, expiresAt: new Date("2027-01-01T00:15:00.000Z"), status: "ACTIVE", createdAt: now } });
+  };
+  const racingHolds = await Promise.all([attemptHold(0), attemptHold(1)]);
+  assert.equal(racingHolds.filter((result) => result.isClaimed).length, 1, "only one concurrent hold may claim the final physical room");
+  const claimedHold = racingHolds.find((result) => result.isClaimed);
+  assert.ok(claimedHold?.hold?.id);
+  const cannotDisableCommittedRoom = await apiJson(`${roomPath}/${roomIds[0]}`, cookie, "PATCH", { isOutOfService: true });
+  assert.equal(cannotDisableCommittedRoom.response.status, 400, "manager cannot remove capacity beneath an active hold");
+  const released = await repository.releaseHold({ organizationId: orgAId }, claimedHold!.hold!.id, new Date("2027-01-01T00:01:00.000Z"));
+  assert.equal(released.isReleased, true);
+
+  stage = "missing-inventory-is-not-synthesized";
+  const missingInventoryRange = await searchPublicHotelAvailability({ scope: { organizationId: orgAId }, propertySlug: `${prefix}-property-a`, query: { propertyId: propertyAId, window: { checkIn: "2027-06-12", checkOut: "2027-06-13" }, occupancy: { adults: 2, children: 0, childAges: [] } } }, repository);
+  const missingNightOption = missingInventoryRange?.options.find((option) => option.roomType.id === roomTypeId && option.ratePlan.id === ratePlanId);
+  assert.equal(missingNightOption?.isAvailable, false, "missing inventory remains unavailable rather than inheriting adjacent configured nights");
+  assert.equal(missingNightOption?.availableRoomCount, 0);
 
   const crossTenantOperations = await apiJson(`/api/organizations/${ownedOrgIds[1]}/hotels/${propertyBId}/operations?from=${from}&to=${to}`, cookie);
   assert.equal(crossTenantOperations.response.status, 403);
@@ -396,6 +470,30 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   const persistedAfterReload = await db.hotelRoomType.findFirst({ where: { id: persistedUiType.id, organizationId: orgAId, propertyId: propertyAId } });
   assert.ok(persistedAfterReload, "UI-created room type must survive a full browser reload");
   assert.deepEqual(pageErrors, [], "Hotel operations page must not raise browser runtime errors");
+
+  stage = "browser-policy-and-rate-plan-configuration";
+  const policyForm = page.locator("form").filter({ has: page.getByLabel("Cancellation policy key") });
+  const uiPolicyKey = `ui-policy-${suffix.slice(0, 8)}`;
+  await policyForm.getByLabel("Cancellation policy key").fill(uiPolicyKey);
+  await policyForm.getByLabel("Cancellation policy name").fill(`${prefix} UI cancellation`);
+  await policyForm.getByLabel("Free cancellation cutoff (hours)").fill("36");
+  await policyForm.getByLabel("Late cancellation retention (0 to 1)").fill("0.25");
+  await policyForm.getByRole("button", { name: "Create cancellation policy" }).click();
+  await page.getByText(new RegExp(`${prefix} UI cancellation`)).waitFor({ state: "visible", timeout: 30_000 });
+  const persistedPolicy = await db.hotelCancellationPolicy.findFirst({ where: { organizationId: orgAId, propertyId: propertyAId, key: uiPolicyKey } });
+  assert.ok(persistedPolicy, "manager-created cancellation policy persists");
+  assert.equal(persistedPolicy.fullCancellationRetention, 2500);
+  const uiRateForm = page.locator("form").filter({ has: page.getByLabel("Rate plan code") });
+  await uiRateForm.getByLabel("Room type").selectOption({ label: uiName });
+  await uiRateForm.getByLabel("Rate plan code").fill(`ui-rate-${suffix.slice(0, 8)}`);
+  await uiRateForm.getByLabel("Rate plan name").fill(`${prefix} UI flexible`);
+  await uiRateForm.getByLabel("Base nightly rate (Toman)").fill("325000");
+  await uiRateForm.getByLabel("Cancellation policies").selectOption(persistedPolicy.id);
+  await uiRateForm.getByRole("button", { name: "Create rate plan" }).click();
+  await page.getByText(`${prefix} UI flexible`, { exact: false }).waitFor({ state: "visible", timeout: 30_000 });
+  const persistedUiRate = await db.hotelRatePlan.findFirst({ where: { organizationId: orgAId, propertyId: propertyAId, code: `ui-rate-${suffix.slice(0, 8)}` } });
+  assert.ok(persistedUiRate, "manager-created rate plan persists");
+  assert.equal(persistedUiRate.cancellationPolicyId, persistedPolicy.id, "the rate cannot become guest-reservable without an explicitly selected active policy");
 
   stage = "browser-mobile-fa-ar-layout";
   await page.setViewportSize({ width: 390, height: 844 });

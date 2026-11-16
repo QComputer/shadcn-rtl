@@ -11,6 +11,7 @@ import type {
   StayDate,
   TomanAmount,
 } from "@/lib/hotel/domain/types";
+import { sellableUnitsForNight } from "@/lib/hotel/domain/availability";
 import type {
   HoldRecord,
   HoldReleaseResult,
@@ -216,6 +217,15 @@ export class InMemoryHotelRepositories
     return rows;
   }
 
+  async getPhysicalRoomCapacities(scope: TenantScope, propertyId: string, roomTypeIds: readonly string[]) {
+    if (!this.ownsProperty(scope, propertyId)) return [];
+    const rooms = this.roomsByProperty.get(propertyId) ?? [];
+    return roomTypeIds.flatMap((roomTypeId) => {
+      const configured = rooms.filter((room) => room.roomTypeId === roomTypeId);
+      return configured.length ? [{ roomTypeId, totalRooms: configured.length, availableRooms: configured.filter((room) => room.isActive && !room.isOutOfService).length }] : [];
+    });
+  }
+
   // ------------------------------------------------------------------ booking
 
   async claimInventoryForHold(input: {
@@ -235,9 +245,11 @@ export class InMemoryHotelRepositories
 
       // Two-phase, all-or-nothing: validate every night before mutating any.
       const failedDates: StayDate[] = [];
+      const configuredRooms = (this.roomsByProperty.get(input.propertyId) ?? []).filter((room) => room.roomTypeId === input.roomTypeId);
+      const physicalCapacity = configuredRooms.length ? configuredRooms.filter((room) => room.isActive && !room.isOutOfService).length : null;
       for (const date of input.nights) {
         const cell = this.inventory.get(inventoryKey(input.roomTypeId, date));
-        if (!cell || this.sellable(cell, input.now) < input.quantity) {
+        if (!cell || this.sellable(cell, input.now, physicalCapacity) < input.quantity) {
           failedDates.push(date);
           continue;
         }
@@ -292,10 +304,9 @@ export class InMemoryHotelRepositories
     return { ...claim, hold: saved };
   }
 
-  private sellable(cell: InventoryCell, now: Date): number {
-    if (cell.closedToArrival || cell.closedToDeparture) return 0;
+  private sellable(cell: InventoryCell, now: Date, physicalCapacity?: number | null): number {
     void now;
-    return Math.max(0, cell.allotment - cell.booked - cell.held - cell.outOfService);
+    return sellableUnitsForNight({ scope: { kind: "ROOM_TYPE", roomTypeId: cell.roomTypeId }, date: cell.date, allotment: cell.allotment, booked: cell.booked, held: cell.held, outOfService: cell.outOfService, closedToArrival: cell.closedToArrival, closedToDeparture: cell.closedToDeparture }, physicalCapacity);
   }
 
   async createHold(input: Omit<HoldRecord, "id"> & { id: string }): Promise<HoldRecord> {
@@ -504,7 +515,9 @@ export class InMemoryHotelRepositories
     const out: Record<string, number> = {};
     for (const date of dates) {
       const cell = this.inventory.get(inventoryKey(roomTypeId, date));
-      out[date] = cell ? this.sellable(cell, new Date(0)) : 0;
+      const configuredRooms = (this.roomsByProperty.get(cell?.propertyId ?? "") ?? []).filter((room) => room.roomTypeId === roomTypeId);
+      const physicalCapacity = configuredRooms.length ? configuredRooms.filter((room) => room.isActive && !room.isOutOfService).length : null;
+      out[date] = cell ? this.sellable(cell, new Date(0), physicalCapacity) : 0;
     }
     return out;
   }

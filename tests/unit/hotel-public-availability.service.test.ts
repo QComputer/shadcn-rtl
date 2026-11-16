@@ -13,6 +13,7 @@ function repository(overrides: Record<string, unknown> = {}) {
     listRoomTypes: async () => [roomType],
     listRatePlans: async () => [plan],
     listSeasonalRates: async () => [],
+    getPhysicalRoomCapacities: async () => [],
     getInventoryNights: async (_scope: unknown, _propertyId: string, _roomTypeIds: readonly string[], nights: readonly string[]) => nights.map((date) => ({ propertyId: "property-1", roomTypeId: "room-1", date, allotment: 2, booked: 0, held: 0, outOfService: 0, closedToArrival: false, closedToDeparture: false })),
     ...overrides,
   } as never;
@@ -35,6 +36,18 @@ test("uses commitments and out-of-service inventory when determining availabilit
   ] }));
   assert.equal(result?.options[0]?.isAvailable, false);
   assert.equal(result?.options[0]?.unavailableNights[0]?.reason, "SOLD_OUT");
+});
+
+test("caps the entire stay by configured physical capacity and the most constrained night", async () => {
+  const result = await searchPublicHotelAvailability({ scope: { organizationId: "org-1" }, propertySlug: "hotel", query }, repository({
+    getInventoryNights: async () => [
+      { propertyId: "property-1", roomTypeId: "room-1", date: "2027-08-12", allotment: 20, booked: 0, held: 0, outOfService: 0, closedToArrival: false, closedToDeparture: false },
+      { propertyId: "property-1", roomTypeId: "room-1", date: "2027-08-13", allotment: 3, booked: 0, held: 0, outOfService: 1, closedToArrival: false, closedToDeparture: false },
+    ],
+    getPhysicalRoomCapacities: async () => [{ roomTypeId: "room-1", totalRooms: 4, availableRooms: 2 }],
+  }));
+  assert.equal(result?.options[0]?.availableRoomCount, 2, "inventory above room count is capped on every night");
+  assert.equal(result?.options[0]?.isAvailable, true);
 });
 
 test("rejects over-capacity occupancy and missing nightly rates without mutating state", async () => {

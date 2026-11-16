@@ -124,6 +124,8 @@ jobs:
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-offline-receipt-reconciliation.local.test.ts
       - name: Run Hotel operations service and tenant-isolation acceptance
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-operations.local.test.ts
+      - name: Run physical-room capacity domain and public-search regressions
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/unit/hotel/physical-capacity-domain.test.ts tests/unit/hotel-public-availability.service.test.ts
       - name: Install Chromium for Hotel operations browser acceptance
         run: pnpm exec playwright install --with-deps chromium
       - name: Run Hotel operations HTTP and browser acceptance

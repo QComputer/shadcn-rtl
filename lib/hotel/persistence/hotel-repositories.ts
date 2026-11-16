@@ -154,6 +154,8 @@ export interface HotelAvailabilityRepository {
     roomTypeIds: readonly string[],
     nights: readonly StayDate[],
   ): Promise<readonly PersistedInventoryNight[]>;
+  /** Physical-room cap only applies when the manager has registered rooms for the type. */
+  getPhysicalRoomCapacities(scope: TenantScope, propertyId: string, roomTypeIds: readonly string[]): Promise<readonly { roomTypeId: string; totalRooms: number; availableRooms: number }[]>;
 }
 
 export interface HotelBookingRepository {

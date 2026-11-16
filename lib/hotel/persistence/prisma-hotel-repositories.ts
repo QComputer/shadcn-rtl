@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from "node:util";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { prisma as defaultPrisma } from "@/lib/db-runtime";
 import { enumerateStayNights, stayNightCount } from "@/lib/hotel/domain/stay-dates";
+import { sellableUnitsForNight } from "@/lib/hotel/domain/availability";
 import { resolveNightlyRatesForWindow } from "@/lib/hotel/domain/rate";
 import { resourceRevision } from "@/lib/hotel/services/hotel-publication.service";
 import { decideReservationTransition } from "@/lib/hotel/domain/booking-state";
@@ -245,6 +246,8 @@ export class PrismaHotelRepositories
       const propertyRow = await tx.hotelProperty.findFirst({ where: { id: input.propertyId, organizationId: input.scope.organizationId, isActive: true, deletedAt: null } });
       const planRow = await tx.hotelRatePlan.findFirst({ where: { id: input.ratePlanId, organizationId: input.scope.organizationId, propertyId: input.propertyId, roomTypeId: input.roomTypeId, isActive: true }, include: { cancellationPolicy: true } });
       if (!propertyRow || !planRow) return { isHeld: false as const, reason: "RESOURCE_NOT_AVAILABLE" };
+      const roomTypeLock = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${input.roomTypeId} AND "organizationId"=${input.scope.organizationId} AND "propertyId"=${input.propertyId} AND "isActive"=true AND "deletedAt" IS NULL FOR UPDATE`);
+      if (!roomTypeLock.length) return { isHeld: false as const, reason: "RESOURCE_NOT_AVAILABLE" };
       const [propertyRevision, roomRevision, rateRevision, policyRevision] = await Promise.all([
         resourceRevision(tx, { organizationId: input.scope.organizationId, propertyId: input.propertyId, resourceType: "PROPERTY", resourceId: input.propertyId }),
         resourceRevision(tx, { organizationId: input.scope.organizationId, propertyId: input.propertyId, resourceType: "ROOM_TYPE", resourceId: input.roomTypeId }),
@@ -267,7 +270,9 @@ export class PrismaHotelRepositories
       const acceptedTotalRate = (input as { acceptedTotalRate?: string | null }).acceptedTotalRate;
       if (typeof acceptedTotalRate === "string" && acceptedTotalRate !== String(resolution.total)) return { isHeld: false as const, reason: "PRICE_CHANGED" };
       const inventoryRows = await tx.$queryRaw<any[]>(Prisma.sql`SELECT "id","allotment","booked","held","outOfService","closedToArrival","closedToDeparture" FROM "HotelInventory" WHERE "organizationId"=${input.scope.organizationId} AND "propertyId"=${input.propertyId} AND "roomTypeId"=${input.roomTypeId} AND "date" IN (${Prisma.join(nights.map(dateValue))}) ORDER BY "date" FOR UPDATE`);
-      if (inventoryRows.length !== nights.length || inventoryRows.some((row) => row.closedToArrival || row.closedToDeparture || row.allotment - row.booked - row.held - row.outOfService < 1)) return { isHeld: false as const, reason: "NO_INVENTORY" };
+      const physical = await tx.$queryRaw<Array<{ totalRooms: number; availableRooms: number }>>(Prisma.sql`SELECT COUNT(*)::int AS "totalRooms", COUNT(*) FILTER (WHERE "isOutOfService"=false AND "isActive"=true AND "deletedAt" IS NULL)::int AS "availableRooms" FROM "HotelRoom" WHERE "organizationId"=${input.scope.organizationId} AND "propertyId"=${input.propertyId} AND "roomTypeId"=${input.roomTypeId}`);
+      const physicalCap = physical[0]?.totalRooms ? physical[0].availableRooms : null;
+      if (inventoryRows.length !== nights.length || inventoryRows.some((row, index) => sellableUnitsForNight({ scope: { kind: "ROOM_TYPE", roomTypeId: input.roomTypeId }, date: nights[index]!, allotment: row.allotment, booked: row.booked, held: row.held, outOfService: row.outOfService, closedToArrival: row.closedToArrival, closedToDeparture: row.closedToDeparture }, physicalCap) < 1)) return { isHeld: false as const, reason: "NO_INVENTORY" };
       for (const row of inventoryRows) await tx.hotelInventory.update({ where: { id: row.id }, data: { held: { increment: 1 } } });
       const expiresAt = new Date(input.now.getTime() + 15 * 60_000);
       await tx.$executeRaw(Prisma.sql`INSERT INTO "HotelBookingHold" ("id","organizationId","propertyId","roomTypeId","reference","quantity","checkIn","checkOut","expiresAt","status","updatedAt","ratePlanId","currency","totalAmount","nightlyRates","cancellationPolicySnapshot") VALUES (${input.holdId},${input.scope.organizationId},${input.propertyId},${input.roomTypeId},${input.reference},1,${dateValue(input.query.window.checkIn)},${dateValue(input.query.window.checkOut)},${expiresAt},'ACTIVE',${input.now},${input.ratePlanId},${planRow.currency},${BigInt(resolution.total)},${JSON.stringify(resolution.nights.map((night) => night.amount))}::jsonb,${planRow.cancellationPolicy ? JSON.stringify({ ...cancellationPolicy(planRow.cancellationPolicy), organizationId: input.scope.organizationId, policyVersion: planRow.cancellationPolicy.version, capturedAt: input.now.toISOString() }) : null}::jsonb)`);
@@ -308,7 +313,7 @@ export class PrismaHotelRepositories
   async listPhysicalRooms(scope: TenantScope, propertyId: string): Promise<readonly PhysicalRoom[]> {
     if (!(await this.ownedProperty(this.client, scope, propertyId))) return [];
     const rows = await this.client.hotelRoom.findMany({ where: { organizationId: scope.organizationId, propertyId, isActive: true, deletedAt: null } });
-    return rows.map((row) => ({ id: row.id, propertyId: row.propertyId, roomTypeId: row.roomTypeId, code: row.code, ...(row.floor ? { floor: row.floor } : {}), isActive: row.isActive }));
+    return rows.map((row) => ({ id: row.id, propertyId: row.propertyId, roomTypeId: row.roomTypeId, code: row.code, ...(row.floor ? { floor: row.floor } : {}), isActive: row.isActive, isOutOfService: row.isOutOfService }));
   }
 
   async listRatePlans(scope: TenantScope, propertyId: string): Promise<readonly RatePlan[]> {
@@ -343,6 +348,18 @@ export class PrismaHotelRepositories
     return roomTypeIds.flatMap((roomTypeId) => nights.map((date) => { const row = byKey.get(`${roomTypeId}:${date}`); return { propertyId, roomTypeId, date, allotment: row?.allotment ?? 0, booked: row?.booked ?? 0, held: row?.held ?? 0, outOfService: row?.outOfService ?? 0, closedToArrival: row?.closedToArrival ?? false, closedToDeparture: row?.closedToDeparture ?? false }; }));
   }
 
+  async getPhysicalRoomCapacities(scope: TenantScope, propertyId: string, roomTypeIds: readonly string[]) {
+    if (!(await this.ownedProperty(this.client, scope, propertyId)) || !roomTypeIds.length) return [];
+    return this.client.$queryRaw<Array<{ roomTypeId: string; totalRooms: number; availableRooms: number }>>(Prisma.sql`
+      SELECT "roomTypeId", COUNT(*)::int AS "totalRooms",
+        COUNT(*) FILTER (WHERE "isOutOfService" = false AND "isActive"=true AND "deletedAt" IS NULL)::int AS "availableRooms"
+      FROM "HotelRoom"
+      WHERE "organizationId"=${scope.organizationId} AND "propertyId"=${propertyId}
+        AND "roomTypeId" IN (${Prisma.join([...roomTypeIds])})
+      GROUP BY "roomTypeId"
+    `);
+  }
+
   async claimInventoryForHold(input: Parameters<HotelBookingRepository["claimInventoryForHold"]>[0]): Promise<InventoryClaimResult> {
     const result = await this.claimInventoryAndCreateHold({ ...input, hold: { id: input.holdId, organizationId: input.scope.organizationId, propertyId: input.propertyId, roomTypeId: input.roomTypeId, reference: input.holdId, checkIn: input.nights[0]!, checkOut: input.nights[input.nights.length - 1]!, nights: input.nights, quantity: input.quantity, expiresAt: input.expiresAt, status: "ACTIVE", createdAt: input.now }, now: input.now });
     return result;
@@ -353,12 +370,15 @@ export class PrismaHotelRepositories
     try {
       return await this.transact(async (tx) => {
         if (!(await this.ownedProperty(tx, input.scope, input.propertyId))) return { isClaimed: false as const, reason: "TENANT_MISMATCH" as const, failedDates: [...input.nights] };
-        const roomType = await tx.hotelRoomType.findFirst({ where: { id: input.roomTypeId, propertyId: input.propertyId, organizationId: input.scope.organizationId } });
+      const lockedRoomType = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${input.roomTypeId} AND "propertyId"=${input.propertyId} AND "organizationId"=${input.scope.organizationId} AND "isActive"=true AND "deletedAt" IS NULL FOR UPDATE`);
+      const roomType = lockedRoomType.length ? await tx.hotelRoomType.findFirst({ where: { id: input.roomTypeId, propertyId: input.propertyId, organizationId: input.scope.organizationId } }) : null;
         if (!roomType) return { isClaimed: false as const, reason: "TENANT_MISMATCH" as const, failedDates: [...input.nights] };
         const dates = [...input.nights].sort();
         const rows = await tx.$queryRaw<any[]>(Prisma.sql`SELECT "id", "date", "allotment", "booked", "held", "outOfService", "closedToArrival", "closedToDeparture" FROM "HotelInventory" WHERE "organizationId" = ${input.scope.organizationId} AND "propertyId" = ${input.propertyId} AND "roomTypeId" = ${input.roomTypeId} AND "date" IN (${Prisma.join(dates.map(dateValue))}) ORDER BY "date" FOR UPDATE`);
         const byDate = new Map(rows.map((row) => [dateOnly(row.date), row]));
-        const failedDates = dates.filter((date) => { const row = byDate.get(date); return !row || row.closedToArrival || row.closedToDeparture || row.allotment - row.booked - row.held - row.outOfService < input.quantity; });
+      const physical = await tx.$queryRaw<Array<{ totalRooms: number; availableRooms: number }>>(Prisma.sql`SELECT COUNT(*)::int AS "totalRooms", COUNT(*) FILTER (WHERE "isOutOfService"=false AND "isActive"=true AND "deletedAt" IS NULL)::int AS "availableRooms" FROM "HotelRoom" WHERE "organizationId"=${input.scope.organizationId} AND "propertyId"=${input.propertyId} AND "roomTypeId"=${input.roomTypeId}`);
+      const physicalCap = physical[0]?.totalRooms ? physical[0].availableRooms : null;
+      const failedDates = dates.filter((date) => { const row = byDate.get(date); return !row || sellableUnitsForNight({ scope: { kind: "ROOM_TYPE", roomTypeId: input.roomTypeId }, date, allotment: row.allotment, booked: row.booked, held: row.held, outOfService: row.outOfService, closedToArrival: row.closedToArrival, closedToDeparture: row.closedToDeparture }, physicalCap) < input.quantity; });
         if (failedDates.length) return { isClaimed: false as const, reason: "NO_INVENTORY" as const, failedDates };
         for (const date of dates) await tx.hotelInventory.update({ where: { id: byDate.get(date).id }, data: { held: { increment: input.quantity } } });
         const saved = await tx.hotelBookingHold.create({ data: { id: input.hold.id, organizationId: input.scope.organizationId, propertyId: input.propertyId, roomTypeId: input.roomTypeId, reference: input.hold.reference, quantity: input.quantity, checkIn: dateValue(input.hold.checkIn), checkOut: dateValue(input.hold.checkOut), expiresAt: input.hold.expiresAt, status: "ACTIVE", createdAt: input.hold.createdAt } });

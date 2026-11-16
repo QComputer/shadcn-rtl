@@ -27,7 +27,11 @@ export async function searchPublicHotelAvailability(input: PublicHotelSearchInpu
   const ratePlans = await repositories.listRatePlans(input.scope, property.id);
   const seasonalRates = await repositories.listSeasonalRates(input.scope, ratePlans.map((plan) => plan.id));
   const nights = enumerateStayNights(input.query.window.checkIn, input.query.window.checkOut);
-  const persistedInventory = await repositories.getInventoryNights(input.scope, property.id, roomTypeIds, nights);
+  const [persistedInventory, physicalCapacity] = await Promise.all([
+    repositories.getInventoryNights(input.scope, property.id, roomTypeIds, nights),
+    repositories.getPhysicalRoomCapacities(input.scope, property.id, roomTypeIds),
+  ]);
+  const capacityByType = new Map(physicalCapacity.map((roomType) => [roomType.roomTypeId, roomType]));
   const result = searchAvailability({
     query: input.query,
     property,
@@ -39,9 +43,11 @@ export async function searchPublicHotelAvailability(input: PublicHotelSearchInpu
       nights: persistedInventory.filter((night) => night.roomTypeId === roomTypeId).map((night) => ({
         scope: { kind: "ROOM_TYPE" as const, roomTypeId },
         date: night.date,
-        allotment: Math.max(0, night.allotment - night.outOfService),
+        allotment: night.allotment,
         booked: night.booked,
         held: night.held,
+        outOfService: night.outOfService,
+        ...(capacityByType.has(roomTypeId) ? { physicalRoomCapacity: capacityByType.get(roomTypeId)!.availableRooms } : {}),
         closedToArrival: night.closedToArrival,
         closedToDeparture: night.closedToDeparture,
       })),

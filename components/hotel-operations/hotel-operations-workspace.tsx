@@ -13,9 +13,10 @@ type RoomType = {
 type RatePlan = {
   id: string; roomTypeId: string; code: string; name: string; currency: string;
   baseNightlyRate: string; minNights: number | null; maxNights: number | null;
-  isRefundable: boolean; validFrom: string | null; validTo: string | null;
+  isRefundable: boolean; validFrom: string | null; validTo: string | null; cancellationPolicyId: string | null;
   nightlyRates: Array<{ id: string; from: string; to: string; nightlyRate: string | null; minNights: number | null; maxNights: number | null }>;
 };
+type CancellationPolicy = { id: string; key: string; name: string; freeCancellationCutoffHours: number; fullCancellationRetention: number; isActive: boolean; version: number };
 type InventoryNight = {
   id: string; roomTypeId: string; date: string; allotment: number; booked: number;
   held: number; outOfService: number; available: number; closedToArrival: boolean; closedToDeparture: boolean;
@@ -26,6 +27,7 @@ type OperationsData = {
   roomTypes: RoomType[];
   ratePlans: RatePlan[];
   inventory: InventoryNight[];
+  cancellationPolicies: CancellationPolicy[];
 };
 
 const labels = {
@@ -37,10 +39,12 @@ const labels = {
     slug: "شناسه نوع اتاق", name: "نام", description: "توضیحات", adults: "بزرگسالان", children: "کودکان", occupancy: "ظرفیت کل", beds: "تخت", bedKind: "نوع تخت", bedCount: "تعداد", bedKinds: { single: "یک‌نفره", double: "دو‌نفره", queen: "کوئین", king: "کینگ", sofa: "مبل تخت‌خواب‌شو", bunk: "دوطبقه", crib: "تخت کودک" },
     roomType: "نوع اتاق", code: "کد اتاق", floor: "طبقه", unavailable: "خارج از سرویس", active: "فعال", room: "اتاق",
     planCode: "کد طرح نرخ", planName: "نام طرح", baseRate: "نرخ پایه (تومان)", createPlan: "ایجاد طرح نرخ", planValidity: "اعتبار طرح",
+    policies: "قوانین لغو", policyKey: "شناسه قانون لغو", policyName: "نام قانون لغو", cutoff: "مهلت لغو رایگان (ساعت)", retention: "میزان کسر در لغو دیرهنگام (۰ تا ۱)", createPolicy: "ثبت قانون لغو", selectPolicy: "قانون لغو را انتخاب کنید", noPolicy: "قانون لغو تنظیم نشده؛ نرخ به مسیر رزرو مهمان متصل نمی‌شود.", inactivePolicy: "غیرفعال", policyRequired: "برای قابل رزرو شدن نرخ، یک قانون لغو فعال ایجاد و به طرح نرخ متصل کنید.",
     from: "از (شامل)", to: "تا (غیرشامل)", nightlyRate: "نرخ شبانه (تومان)", saveNightly: "ذخیره نرخ این بازه",
     date: "تاریخ شب", allotment: "ظرفیت کل", allotmentDelta: "تغییر ظرفیت", outDelta: "تغییر خارج از سرویس", reason: "دلیل ثبت", initialize: "ساخت شب‌های ظرفیتِ موجودنیست", adjust: "ثبت تغییر ظرفیت", refresh: "بارگذاری دوباره",
     available: "قابل فروش", booked: "رزروشده", held: "در انتظار", oos: "خارج از سرویس", none: "رکوردی موجود نیست.", errorPrefix: "خطا:", saved: "تغییر ذخیره شد.", range: "بازه نمایش", load: "نمایش بازه",
     bedsError: "تخت را انتخاب کنید و تعداد معتبر وارد کنید.", deltasError: "حداقل یک تغییر ظرفیت یا خارج از سرویس وارد کنید.",
+    setupIncomplete: "این پیش‌نمایش فقط با داده‌های تأییدشده مدیر قابل رزرو است؛ نمونه یا نرخ و ظرفیت فرضی جایگزین نمی‌شود.", noRoomsConfigured: "هنوز نوع اتاقی پیکربندی نشده است.", noRateConfigured: "برای این نوع اتاق طرح نرخ فعالی ثبت نشده است.", noInventoryConfigured: "برای بخشی از بازه، ظرفیت شبانه ثبت نشده است؛ آن شب‌ها قابل رزرو نیستند.",
   },
   en: {
     title: "Hotel operations",
@@ -50,10 +54,12 @@ const labels = {
     slug: "Room type slug", name: "Name", description: "Description", adults: "Adults", children: "Children", occupancy: "Max occupancy", beds: "Bed", bedKind: "Bed type", bedCount: "Count", bedKinds: { single: "Single", double: "Double", queen: "Queen", king: "King", sofa: "Sofa bed", bunk: "Bunk", crib: "Crib" },
     roomType: "Room type", code: "Room code", floor: "Floor", unavailable: "Out of service", active: "Active", room: "Room",
     planCode: "Rate plan code", planName: "Rate plan name", baseRate: "Base nightly rate (Toman)", createPlan: "Create rate plan", planValidity: "Plan validity",
+    policies: "Cancellation policies", policyKey: "Cancellation policy key", policyName: "Cancellation policy name", cutoff: "Free cancellation cutoff (hours)", retention: "Late cancellation retention (0 to 1)", createPolicy: "Create cancellation policy", selectPolicy: "Select a cancellation policy", noPolicy: "No cancellation policy is configured; this rate cannot be used in the guest reservation flow.", inactivePolicy: "Inactive", policyRequired: "Create and attach an active cancellation policy before this rate can be reserved by guests.",
     from: "From (inclusive)", to: "To (exclusive)", nightlyRate: "Nightly rate (Toman)", saveNightly: "Save nightly-rate range",
     date: "Night date", allotment: "Allotment", allotmentDelta: "Allotment change", outDelta: "Out-of-service change", reason: "Reason", initialize: "Initialize missing nights", adjust: "Save inventory adjustment", refresh: "Reload",
     available: "Available", booked: "Booked", held: "Held", oos: "Out of service", none: "No records yet.", errorPrefix: "Error:", saved: "Changes saved.", range: "Date range", load: "Load range",
     bedsError: "Choose a bed type and enter a valid count.", deltasError: "Enter a non-zero allotment or out-of-service change.",
+    setupIncomplete: "This preview uses manager-confirmed data only; no sample price or assumed inventory is substituted.", noRoomsConfigured: "No room type has been configured yet.", noRateConfigured: "This room type has no active rate plan.", noInventoryConfigured: "Nightly inventory is missing for part of the selected range; those nights cannot be reserved.",
   },
   ar: {
     title: "عمليات الفندق",
@@ -63,10 +69,12 @@ const labels = {
     slug: "معرّف نوع الغرفة", name: "الاسم", description: "الوصف", adults: "البالغون", children: "الأطفال", occupancy: "السعة القصوى", beds: "السرير", bedKind: "نوع السرير", bedCount: "العدد", bedKinds: { single: "مفرد", double: "مزدوج", queen: "كوين", king: "كينغ", sofa: "سرير أريكة", bunk: "طابقي", crib: "سرير أطفال" },
     roomType: "نوع الغرفة", code: "رمز الغرفة", floor: "الطابق", unavailable: "خارج الخدمة", active: "نشطة", room: "غرفة",
     planCode: "رمز خطة السعر", planName: "اسم الخطة", baseRate: "السعر الأساسي لليلة (تومان)", createPlan: "إنشاء خطة سعر", planValidity: "صلاحية الخطة",
+    policies: "سياسات الإلغاء", policyKey: "معرّف سياسة الإلغاء", policyName: "اسم سياسة الإلغاء", cutoff: "مهلة الإلغاء المجاني (ساعات)", retention: "الاقتطاع عند الإلغاء المتأخر (من ٠ إلى ١)", createPolicy: "إنشاء سياسة إلغاء", selectPolicy: "اختر سياسة إلغاء", noPolicy: "لم يتم إعداد سياسة إلغاء؛ لا يمكن استخدام هذا السعر في مسار حجز الضيوف.", inactivePolicy: "غير نشطة", policyRequired: "أنشئ سياسة إلغاء نشطة واربطها بخطة السعر قبل أن يتمكن الضيف من الحجز.",
     from: "من (شامل)", to: "إلى (غير شامل)", nightlyRate: "سعر الليلة (تومان)", saveNightly: "حفظ أسعار الفترة",
     date: "تاريخ الليلة", allotment: "السعة", allotmentDelta: "تغيير السعة", outDelta: "تغيير خارج الخدمة", reason: "سبب التغيير", initialize: "إنشاء الليالي المفقودة", adjust: "حفظ تعديل المخزون", refresh: "إعادة التحميل",
     available: "متاح", booked: "محجوز", held: "معلّق", oos: "خارج الخدمة", none: "لا توجد سجلات.", errorPrefix: "خطأ:", saved: "تم حفظ التغييرات.", range: "الفترة", load: "عرض الفترة",
     bedsError: "اختر نوع السرير وأدخل عددًا صالحًا.", deltasError: "أدخل تغييرًا غير صفري في السعة أو خارج الخدمة.",
+    setupIncomplete: "تستخدم هذه المعاينة البيانات التي أكدها المدير فقط؛ لا يتم استبدال الأسعار أو السعة ببيانات افتراضية.", noRoomsConfigured: "لم يتم إعداد أي نوع غرفة بعد.", noRateConfigured: "لا توجد خطة أسعار فعالة لهذا النوع من الغرف.", noInventoryConfigured: "المخزون الليلي مفقود لبعض الفترة المحددة؛ لا يمكن حجز تلك الليالي.",
   },
 } as const;
 
@@ -118,6 +126,11 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
   const [planCode, setPlanCode] = useState("");
   const [planName, setPlanName] = useState("");
   const [baseRate, setBaseRate] = useState("");
+  const [ratePolicyId, setRatePolicyId] = useState("");
+  const [policyKey, setPolicyKey] = useState("");
+  const [policyName, setPolicyName] = useState("");
+  const [policyCutoff, setPolicyCutoff] = useState("48");
+  const [policyRetention, setPolicyRetention] = useState("0");
   const [ratePlanId, setRatePlanId] = useState("");
   const [rateFrom, setRateFrom] = useState(initialFrom);
   const [rateTo, setRateTo] = useState(() => addDays(initialFrom, 1));
@@ -134,6 +147,8 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
   const rangeKey = `${from}|${to}`;
   const activeData = dataRange === rangeKey ? data : null;
   const isLoading = loading || (dataRange !== rangeKey && !error);
+  const roomTypesWithoutRates = activeData?.roomTypes.filter((room) => !activeData.ratePlans.some((plan) => plan.roomTypeId === room.id)) ?? [];
+  const roomTypesWithoutFullInventory = activeData?.roomTypes.filter((room) => activeData.inventory.filter((night) => night.roomTypeId === room.id).length < activeData.range.nights) ?? [];
 
   const load = useCallback(async (signal?: AbortSignal) => {
     const response = await fetch(`${baseUrl}/operations?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { cache: "no-store", credentials: "same-origin", signal });
@@ -227,8 +242,15 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
   }
   async function createRatePlan(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = await mutate("/rate-plans", "POST", { roomTypeId: planTypeId, code: planCode, name: planName, baseNightlyRate: baseRate });
+    const result = await mutate("/rate-plans", "POST", { roomTypeId: planTypeId, code: planCode, name: planName, baseNightlyRate: baseRate, cancellationPolicyId: ratePolicyId });
     if (result?.ratePlan?.id) setRatePlanId(result.ratePlan.id);
+  }
+  async function createCancellationPolicy(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const retention = Number(policyRetention);
+    if (!Number.isFinite(retention) || retention < 0 || retention > 1) { setError(text.saveError); return; }
+    const result = await mutate("/cancellation-policies", "POST", { key: policyKey, name: policyName, freeCancellationCutoffHours: Number(policyCutoff), fullCancellationRetention: retention });
+    if (result?.policy?.id) setRatePolicyId(result.policy.id);
   }
   async function saveNightlyRate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -256,6 +278,7 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
       {error ? <p role="alert" className="mt-3 text-sm text-destructive">{text.errorPrefix} {error}</p> : null}
       {notice ? <p role="status" className="mt-3 text-sm text-green-700">{notice}</p> : null}
       {isLoading ? <p className="mt-3 text-sm" role="status">{text.loading}</p> : null}
+      {activeData ? <div className="mt-3 space-y-1 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" role="status"><p>{text.setupIncomplete}</p>{activeData.roomTypes.length === 0 ? <p>{text.noRoomsConfigured}</p> : null}{roomTypesWithoutRates.map((room) => <p key={`rate:${room.id}`}>{room.name}: {text.noRateConfigured}</p>)}{roomTypesWithoutFullInventory.map((room) => <p key={`inventory:${room.id}`}>{room.name}: {text.noInventoryConfigured}</p>)}</div> : null}
     </section>
 
     <section className="space-y-4 rounded-xl border bg-card p-4">
@@ -291,11 +314,24 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
 
     <section className="space-y-4 rounded-xl border bg-card p-4">
       <h2 className="text-lg font-semibold">{text.rates}</h2>
-      <ul className="space-y-2 text-sm">{(activeData?.ratePlans ?? []).map((plan) => <li key={plan.id} className="rounded-lg border p-3">{plan.name} · {plan.baseNightlyRate} {plan.currency}{plan.validFrom || plan.validTo ? <p className="mt-1 text-xs text-muted-foreground">{text.planValidity}: {plan.validFrom ?? "—"} – {plan.validTo ?? "—"}</p> : null}<ul className="mt-2 text-xs text-muted-foreground">{plan.nightlyRates.map((rate) => <li key={rate.id}>{rate.from} – {rate.to}: {rate.nightlyRate ?? "—"}</li>)}</ul></li>)}</ul>
+      <ul className="space-y-2 text-sm">{(activeData?.ratePlans ?? []).map((plan) => <li key={plan.id} className="rounded-lg border p-3">{plan.name} · {plan.baseNightlyRate} {plan.currency}{plan.validFrom || plan.validTo ? <p className="mt-1 text-xs text-muted-foreground">{text.planValidity}: {plan.validFrom ?? "—"} – {plan.validTo ?? "—"}</p> : null}{!plan.cancellationPolicyId ? <p className="mt-1 text-xs text-amber-700">{text.noPolicy}</p> : null}<ul className="mt-2 text-xs text-muted-foreground">{plan.nightlyRates.map((rate) => <li key={rate.id}>{rate.from} – {rate.to}: {rate.nightlyRate ?? "—"}</li>)}</ul></li>)}</ul>
+      <div className="rounded-lg border p-3">
+        <h3 className="font-medium">{text.policies}</h3>
+        <ul className="my-2 space-y-1 text-sm">{(activeData?.cancellationPolicies ?? []).map((policy) => <li key={policy.id}>{policy.name} · {policy.freeCancellationCutoffHours}h · {policy.fullCancellationRetention}{policy.isActive ? "" : ` · ${text.inactivePolicy}`}</li>)}</ul>
+        <form onSubmit={createCancellationPolicy} className="grid gap-3 sm:grid-cols-2">
+          <Field label={text.policyKey} value={policyKey} setValue={setPolicyKey} required />
+          <Field label={text.policyName} value={policyName} setValue={setPolicyName} required />
+          <Field label={text.cutoff} value={policyCutoff} setValue={setPolicyCutoff} type="number" required />
+          <Field label={text.retention} value={policyRetention} setValue={setPolicyRetention} type="number" required />
+          <Button type="submit" disabled={busy || !policyKey || !policyName}>{text.createPolicy}</Button>
+        </form>
+      </div>
       <form onSubmit={createRatePlan} className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1 text-sm"><span>{text.roomType}</span><select className="h-10 min-w-0 w-full rounded-md border bg-background px-3" value={planTypeId} onChange={(event) => setPlanTypeId(event.target.value)} required>{(activeData?.roomTypes ?? []).map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}</select></label>
         <Field label={text.planCode} value={planCode} setValue={setPlanCode} required /><Field label={text.planName} value={planName} setValue={setPlanName} required /><Field label={text.baseRate} value={baseRate} setValue={setBaseRate} type="number" required />
-        <Button type="submit" disabled={busy || !planTypeId || !baseRate}>{text.createPlan}</Button>
+        <label className="space-y-1 text-sm"><span>{text.policies}</span><select className="h-10 min-w-0 w-full rounded-md border bg-background px-3" value={ratePolicyId} onChange={(event) => setRatePolicyId(event.target.value)} required><option value="">{text.selectPolicy}</option>{(activeData?.cancellationPolicies ?? []).filter((policy) => policy.isActive).map((policy) => <option key={policy.id} value={policy.id}>{policy.name}</option>)}</select></label>
+        <p className="text-xs text-muted-foreground sm:col-span-2">{text.policyRequired}</p>
+        <Button type="submit" disabled={busy || !planTypeId || !baseRate || !ratePolicyId}>{text.createPlan}</Button>
       </form>
       <form onSubmit={saveNightlyRate} className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1 text-sm"><span>{text.planName}</span><select className="h-10 min-w-0 w-full rounded-md border bg-background px-3" value={ratePlanId} onChange={(event) => setRatePlanId(event.target.value)} required>{(activeData?.ratePlans ?? []).map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {plan.code}</option>)}</select></label>

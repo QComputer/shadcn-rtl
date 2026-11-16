@@ -128,6 +128,7 @@ export type PhysicalRoom = {
   readonly code: string
   readonly floor?: string
   readonly isActive: boolean
+  readonly isOutOfService?: boolean
 }
 
 export type HotelProperty = {
@@ -225,12 +226,16 @@ export type InventoryScope =
 export type InventoryNight = {
   readonly scope: InventoryScope
   readonly date: StayDate
-  /** Rooms sellable on this night. `Infinity` when closed-to-arrival is off. */
+  /** Room-type inventory allotment for the night, before bookings and service adjustments. */
   readonly allotment: number
   /** Rooms already committed to confirmed reservations. */
   readonly booked: number
   /** Rooms temporarily held by in-flight bookings, with a live expiry. */
   readonly held: number
+  /** Room-type inventory out-of-service units; capacity is reconciled by minimum, never summed against physical rooms. */
+  readonly outOfService?: number
+  /** Maximum concurrent physical occupancy when physical rooms are configured; null/undefined preserves inventory-only legacy mode. */
+  readonly physicalRoomCapacity?: number | null
   readonly closedToArrival?: boolean
   readonly closedToDeparture?: boolean
 }

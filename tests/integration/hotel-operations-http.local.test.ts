@@ -611,6 +611,7 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   await rangeDates.nth(1).fill(to);
   await rangeSection.getByRole("button", { name: "Load range" }).click();
   await page.getByRole("heading", { name: "Guest availability preview (owner only)" }).waitFor({ state: "visible" });
+  const beforeBrowserPreview = await readPreviewMutationSnapshot(orgAId);
   await page.getByRole("button", { name: "Check availability and rates" }).click();
   const previewPanel = page.getByRole("region", { name: "Guest availability preview (owner only)" });
   await previewPanel.getByText(`${prefix} Standard`, { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
@@ -618,8 +619,6 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   await nightlyPriceLines.first().waitFor({ state: "visible" });
   assert.equal(await nightlyPriceLines.count(), 2, "each stay night shows the actual configured rate");
   await previewPanel.getByText("Stay total: 550000 TOMAN", { exact: true }).waitFor({ state: "visible" });
-  assert.equal(await db.hotelBookingHold.count({ where: { organizationId: orgAId } }), 0, "owner preview must not create a hold");
-  assert.equal(await db.hotelReservation.count({ where: { organizationId: orgAId } }), 0, "owner preview must not create a reservation");
 
   let occupancyRequestUrl = "";
   const capturePreviewRequest = (request: import("playwright").Request) => { if (request.url().includes("/availability-preview?")) occupancyRequestUrl = request.url(); };
@@ -681,6 +680,7 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   await retriedPreviewResponse;
   await previewPanel.getByText(`${prefix} Standard`, { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
   await page.unroute("**/availability-preview?*");
+  assert.deepEqual(await readPreviewMutationSnapshot(orgAId), beforeBrowserPreview, "successful, failed, delayed, and retry preview UI requests do not create holds, reservations, payments, or inventory changes");
   const desktopLayout = await page.evaluate(() => ({
     documentFits: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
     workspaceDirection: document.querySelector("main > div")?.getAttribute("dir") ?? null,

@@ -17,6 +17,8 @@ on:
       - "tests/integration/hotel-offline-payment-rollback.local.test.ts"
       - "tests/integration/hotel-offline-receipt-attachment-failure.local.test.ts"
       - "tests/integration/hotel-offline-receipt-reconciliation.local.test.ts"
+      - "tests/integration/hotel-operations.local.test.ts"
+      - "tests/integration/hotel-operations-http.local.test.ts"
       - "scripts/hotel/reconcile-orphaned-payment-receipts.mts"
       - "tests/unit/hotel-offline-payment-route.test.ts"
       - "tests/unit/hotel-offline-receipt-route.test.ts"
@@ -83,6 +85,7 @@ jobs:
       HOTEL_OFFLINE_PAYMENT_PG_ACCEPTANCE: "1"
       HOTEL_OFFLINE_RECEIPT_PG_ACCEPTANCE: "1"
       HOTEL_RECEIPT_RECONCILIATION_PG_ACCEPTANCE: "1"
+      HOTEL_OPERATIONS_PG_ACCEPTANCE: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -119,6 +122,13 @@ jobs:
       - name: Run private receipt reconciliation acceptance
         id: receipt_reconciliation
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-offline-receipt-reconciliation.local.test.ts
+      - name: Run Hotel operations service and tenant-isolation acceptance
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-operations.local.test.ts
+      - name: Install Chromium for Hotel operations browser acceptance
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run Hotel operations HTTP and browser acceptance
+        id: hotel_operations_http
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-operations-http.local.test.ts
       - name: Run offline payment authorization tests
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --experimental-test-module-mocks --test tests/unit/hotel-offline-payment-route.test.ts
       - name: Run private receipt storage tests
@@ -143,5 +153,6 @@ jobs:
             if [[ '${{ steps.offline_payment.outcome }}' == 'failure' ]]; then echo '- Failed step: Run offline payment acceptance'; fi
             if [[ '${{ steps.payment_rollback.outcome }}' == 'failure' ]]; then echo '- Failed step: Run offline payment transactional rollback acceptance'; fi
             if [[ '${{ steps.receipt_failure.outcome }}' == 'failure' ]]; then echo '- Failed step: Run private receipt attachment failure acceptance'; fi
+            if [[ '${{ steps.hotel_operations_http.outcome }}' == 'failure' ]]; then echo '- Failed step: Run Hotel operations HTTP and browser acceptance'; fi
             if [[ '${{ steps.hotel_typescript.outcome }}' == 'failure' ]]; then echo '- Failed step: Check TypeScript'; fi
           } >> "$GITHUB_STEP_SUMMARY"

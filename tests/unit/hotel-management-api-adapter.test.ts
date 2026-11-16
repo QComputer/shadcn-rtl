@@ -7,6 +7,7 @@ class TestApiError extends Error {
 }
 class TestAuthorizationError extends Error {}
 class TestValidationError extends Error {}
+class TestConflictError extends Error {}
 
 mock.module("@/lib/api-guards", {
   namedExports: {
@@ -21,6 +22,7 @@ mock.module("@/lib/hotel/management/hotel-management.service", {
   namedExports: {
     HotelManagementAuthorizationError: TestAuthorizationError,
     HotelManagementValidationError: TestValidationError,
+    HotelManagementConflictError: TestConflictError,
   },
 });
 
@@ -40,6 +42,7 @@ test("shared adapter maps authentication and authorization errors", async () => 
 });
 
 test("shared adapter maps validation, conflict, and missing-resource errors", async () => {
+  assert.deepEqual(await body(managementError(new TestConflictError("private idempotency detail"))), { error: "Request conflict" });
   assert.equal(managementError(new TestValidationError("private validation detail")).status, 422);
   assert.deepEqual(await body(managementError(new TestValidationError("private validation detail"))), { error: "Invalid hotel management input" });
   const duplicate = new Prisma.PrismaClientKnownRequestError("raw SQL and schema detail", { code: "P2002", clientVersion: "6" });

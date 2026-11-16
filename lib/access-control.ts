@@ -135,6 +135,18 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
   "/dashboard/website-studio/[organizationId]": { allowedRoles: ORG_MANAGEMENT_ROLES, requiresOrgMembership: true },
   "/dashboard/website-studio/[organizationId]/preview/[revisionId]": { allowedRoles: ORG_MANAGEMENT_ROLES, requiresOrgMembership: true },
 
+  "/dashboard/hotel-operations": {
+    allowedRoles: ORG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+    requiredCapability: "HOTEL_BOOKING",
+  },
+
+  "/dashboard/hotel-operations/[organizationId]/[propertyId]": {
+    allowedRoles: ORG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+    requiredCapability: "HOTEL_BOOKING",
+  },
+
   "/dashboard/hotel-website": {
     allowedRoles: ORG_MANAGEMENT_ROLES,
     requiresOrgMembership: true,

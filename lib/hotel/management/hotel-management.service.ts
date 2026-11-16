@@ -136,7 +136,7 @@ export class HotelManagementService {
     if (!isUtcDate(input.from) || !isUtcDate(input.to) || !Number.isInteger(nightCount) || nightCount < 1 || nightCount > 31) throw new HotelManagementValidationError("Inventory range must be 1 to 31 whole property nights");
     return this.db.$transaction(async (tx) => {
       const property = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelProperty" WHERE "id"=${input.propertyId} AND "organizationId"=${scope.organizationId} AND "isActive"=true AND "deletedAt" IS NULL FOR SHARE`);
-      const roomType = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${input.roomTypeId} AND "propertyId"=${input.propertyId} AND "organizationId"=${scope.organizationId} AND "isActive"=true AND "deletedAt" IS NULL FOR SHARE`);
+      const roomType = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${input.roomTypeId} AND "propertyId"=${input.propertyId} AND "organizationId"=${scope.organizationId} AND "isActive"=true AND "deletedAt" IS NULL FOR UPDATE`);
       if (!property.length || !roomType.length) throw new HotelManagementAuthorizationError("Room type is outside the active property scope");
       const inserted = await tx.$queryRaw<Array<{ id: string; status: string; requestFingerprint: string; resultJson: unknown }>>(Prisma.sql`INSERT INTO "HotelInventoryIdempotency" ("id","organizationId","operationScope","idempotencyKey","requestFingerprint") VALUES (${randomUUID()},${scope.organizationId},${"HOTEL_INVENTORY_INITIALIZE"},${input.idempotencyKey},${input.requestFingerprint}) ON CONFLICT ("organizationId","operationScope","idempotencyKey") DO NOTHING RETURNING "id","status","requestFingerprint","resultJson"`);
       const record = inserted[0] ?? (await tx.$queryRaw<Array<{ id: string; status: string; requestFingerprint: string; resultJson: unknown }>>(Prisma.sql`SELECT "id","status","requestFingerprint","resultJson" FROM "HotelInventoryIdempotency" WHERE "organizationId"=${scope.organizationId} AND "operationScope"=${"HOTEL_INVENTORY_INITIALIZE"} AND "idempotencyKey"=${input.idempotencyKey} FOR UPDATE`))[0];
@@ -196,14 +196,39 @@ export class HotelManagementService {
   async updateRoomType(principal: HotelManagementPrincipal, scope: HotelManagementScope, roomTypeId: string, patch: { name?: string; description?: string | null; localizedContent?: LocalizedContent; maxAdults?: number; maxChildren?: number; maxOccupancy?: number; beds?: Prisma.InputJsonValue; isActive?: boolean }) {
     await this.authorize(principal, scope); if (patch.name !== undefined) assertText(patch.name, "Room type name"); assertLocalizedContent(patch.localizedContent);
     for (const [key, value] of Object.entries({ maxAdults: patch.maxAdults, maxChildren: patch.maxChildren, maxOccupancy: patch.maxOccupancy })) if (value !== undefined) assertInteger(value, key, key === "maxChildren" ? 0 : 1);
-    const row = await this.db.hotelRoomType.findFirst({ where: { id: roomTypeId, organizationId: scope.organizationId } }); if (!row) throw new HotelManagementAuthorizationError("Room type is outside the organization scope");
-    const adults = patch.maxAdults ?? row.maxAdults, children = patch.maxChildren ?? row.maxChildren, occupancy = patch.maxOccupancy ?? row.maxOccupancy;
-    if (occupancy < adults || occupancy < children) throw new HotelManagementValidationError("Occupancy is below configured limits");
-    if (patch.isActive === false) await this.assertNoActiveCommitments(scope, row.propertyId, roomTypeId);
-    return this.db.hotelRoomType.update({ where: { id: roomTypeId }, data: { ...patch, name: patch.name?.trim() } as never });
+    return this.db.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${roomTypeId} AND "organizationId"=${scope.organizationId} FOR UPDATE`);
+      const row = locked.length ? await tx.hotelRoomType.findFirst({ where: { id: roomTypeId, organizationId: scope.organizationId } }) : null;
+      if (!row) throw new HotelManagementAuthorizationError("Room type is outside the organization scope");
+      const adults = patch.maxAdults ?? row.maxAdults, children = patch.maxChildren ?? row.maxChildren, occupancy = patch.maxOccupancy ?? row.maxOccupancy;
+      if (occupancy < adults || occupancy < children) throw new HotelManagementValidationError("Occupancy is below configured limits");
+      if (patch.isActive === false) {
+        const where = { organizationId: scope.organizationId, propertyId: row.propertyId, roomTypeId };
+        const [hold, reservation] = await Promise.all([
+          tx.hotelBookingHold.findFirst({ where: { ...where, status: { in: ["ACTIVE", "CONSUMED"] } } }),
+          tx.hotelReservation.findFirst({ where: { ...where, status: { in: ["HELD", "PENDING_PAYMENT", "CONFIRMED", "CHECKED_IN"] } } }),
+        ]);
+        if (hold || reservation) throw new HotelManagementValidationError("Active hotel commitments prevent deactivation");
+      }
+      return tx.hotelRoomType.update({ where: { id: roomTypeId }, data: { ...patch, name: patch.name?.trim() } as never });
+    }, { maxWait: 5000, timeout: 10000 });
   }
 
-  async archiveRoomType(principal: HotelManagementPrincipal, scope: HotelManagementScope, roomTypeId: string) { await this.authorize(principal, scope); const row = await this.db.hotelRoomType.findFirst({ where: { id: roomTypeId, organizationId: scope.organizationId } }); if (!row) throw new HotelManagementAuthorizationError("Room type is outside the organization scope"); await this.assertNoActiveCommitments(scope, row.propertyId, roomTypeId); return this.db.hotelRoomType.update({ where: { id: roomTypeId }, data: { isActive: false, deletedAt: new Date() } }); }
+  async archiveRoomType(principal: HotelManagementPrincipal, scope: HotelManagementScope, roomTypeId: string) {
+    await this.authorize(principal, scope);
+    return this.db.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<Array<{ id: string; propertyId: string }>>(Prisma.sql`SELECT "id","propertyId" FROM "HotelRoomType" WHERE "id"=${roomTypeId} AND "organizationId"=${scope.organizationId} FOR UPDATE`);
+      const row = locked[0];
+      if (!row) throw new HotelManagementAuthorizationError("Room type is outside the organization scope");
+      const where = { organizationId: scope.organizationId, propertyId: row.propertyId, roomTypeId };
+      const [hold, reservation] = await Promise.all([
+        tx.hotelBookingHold.findFirst({ where: { ...where, status: { in: ["ACTIVE", "CONSUMED"] } } }),
+        tx.hotelReservation.findFirst({ where: { ...where, status: { in: ["HELD", "PENDING_PAYMENT", "CONFIRMED", "CHECKED_IN"] } } }),
+      ]);
+      if (hold || reservation) throw new HotelManagementValidationError("Active hotel commitments prevent deactivation");
+      return tx.hotelRoomType.update({ where: { id: roomTypeId }, data: { isActive: false, deletedAt: new Date() } });
+    }, { maxWait: 5000, timeout: 10000 });
+  }
 
   async createPhysicalRoom(principal: HotelManagementPrincipal, scope: HotelManagementScope, input: { propertyId: string; roomTypeId: string; code: string; floor?: string; description?: string; isOutOfService?: boolean }) {
     await this.authorize(principal, scope);

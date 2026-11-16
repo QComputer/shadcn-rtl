@@ -279,7 +279,7 @@ export class PrismaHotelRepositories
       const result = { isHeld: true as const, holdId: input.holdId, reference: input.reference, expiresAt, totalAmount: resolution.total, currency: planRow.currency, nightlyRates: resolution.nights.map((night) => night.amount), policySnapshot: planRow.cancellationPolicy ? { ...cancellationPolicy(planRow.cancellationPolicy), organizationId: input.scope.organizationId, policyVersion: planRow.cancellationPolicy.version, capturedAt: input.now.toISOString() } : null };
       await tx.$executeRaw(Prisma.sql`UPDATE "HotelBookingHoldIdempotency" SET "status"='COMPLETED',"holdId"=${input.holdId},"resultJson"=${JSON.stringify(result)}::jsonb,"completedAt"=${input.now} WHERE "id"=${existing.id}`);
       return result;
-        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, maxWait: 5000, timeout: 10000 });
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 5000, timeout: 10000 });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         const isRetryableSerialization = (error as { code?: string }).code === "P2034" || /could not serialize|serialization failure|deadlock detected/i.test(message);
@@ -383,7 +383,7 @@ export class PrismaHotelRepositories
         for (const date of dates) await tx.hotelInventory.update({ where: { id: byDate.get(date).id }, data: { held: { increment: input.quantity } } });
         const saved = await tx.hotelBookingHold.create({ data: { id: input.hold.id, organizationId: input.scope.organizationId, propertyId: input.propertyId, roomTypeId: input.roomTypeId, reference: input.hold.reference, quantity: input.quantity, checkIn: dateValue(input.hold.checkIn), checkOut: dateValue(input.hold.checkOut), expiresAt: input.hold.expiresAt, status: "ACTIVE", createdAt: input.hold.createdAt } });
         return { isClaimed: true as const, claims: dates.map((date) => ({ date, roomTypeId: input.roomTypeId })), hold: hold(saved) };
-      }, transaction, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, maxWait: 5000, timeout: 10000 });
+      }, transaction, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 5000, timeout: 10000 });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if ((error as { code?: string }).code === "P2034" || (error as { code?: string }).code === "40P01" || /serialize access|deadlock detected/i.test(message)) return { isClaimed: false, reason: "CONFLICT", failedDates: [...input.nights] };
@@ -404,6 +404,8 @@ export class PrismaHotelRepositories
         if (!row) return { isReleased: false as const, reason: "NOT_FOUND" as const };
         if (row.status === "CONSUMED") return { isReleased: false as const, reason: "ALREADY_CONSUMED" as const };
         if (row.status !== "ACTIVE") return { isReleased: false as const, reason: "NOT_FOUND" as const };
+        const roomType = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${row.roomTypeId} AND "organizationId"=${scope.organizationId} AND "propertyId"=${row.propertyId} FOR UPDATE`);
+        if (!roomType.length) throw new HotelReservationIntegrityError();
         const nights = enumerateStayNights(dateOnly(row.checkIn), dateOnly(row.checkOut));
         for (const date of nights) {
           const updated = await tx.hotelInventory.updateMany({
@@ -469,7 +471,8 @@ export class PrismaHotelRepositories
         if (!held || held.status !== "ACTIVE" || held.expiresAt <= record.createdAt || held.quantity !== 1 ||
           held.propertyId !== record.propertyId || held.roomTypeId !== record.roomTypeId || held.reference !== record.reference ||
           dateOnly(held.checkIn) !== record.checkIn || dateOnly(held.checkOut) !== record.checkOut || record.status !== "PENDING_PAYMENT") throw invalid();
-        const activeType = await tx.hotelRoomType.findFirst({ where: { id: record.roomTypeId, propertyId: record.propertyId, organizationId: record.organizationId, isActive: true, deletedAt: null, property: { isActive: true, deletedAt: null, organization: { isActive: true, deletedAt: null } } }, select: { id: true } });
+        const activeTypeLock = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${record.roomTypeId} AND "propertyId"=${record.propertyId} AND "organizationId"=${record.organizationId} AND "isActive"=true AND "deletedAt" IS NULL FOR UPDATE`);
+        const activeType = activeTypeLock.length ? await tx.hotelRoomType.findFirst({ where: { id: record.roomTypeId, propertyId: record.propertyId, organizationId: record.organizationId, isActive: true, deletedAt: null, property: { isActive: true, deletedAt: null, organization: { isActive: true, deletedAt: null } } }, select: { id: true } }) : null;
         if (!activeType) throw invalid();
         const inventory = await tx.$queryRaw<Array<{ id: string; date: Date; held: number }>>(Prisma.sql`SELECT "id","date","held" FROM "HotelInventory" WHERE "organizationId"=${record.organizationId} AND "propertyId"=${record.propertyId} AND "roomTypeId"=${record.roomTypeId} AND "date" IN (${Prisma.join(nights.map(dateValue))}) ORDER BY "date" FOR UPDATE`);
         if (inventory.length !== nights.length || inventory.some(night => night.held < held.quantity)) throw invalid();
@@ -508,6 +511,8 @@ export class PrismaHotelRepositories
       const held = current.holdId ? await tx.hotelBookingHold.findFirst({ where: { id: current.holdId, organizationId, propertyId: current.propertyId, roomTypeId: current.roomTypeId, status: "CONSUMED", quantity: 1 } }) : null;
       const nights = enumerateStayNights(dateOnly(current.checkIn), dateOnly(current.checkOut));
       if (!held || dateOnly(held.checkIn) !== dateOnly(current.checkIn) || dateOnly(held.checkOut) !== dateOnly(current.checkOut) || nights.length !== current.nights.length || nights.some(date => !current.nights.some(row => dateOnly(row.date) === date && row.roomTypeId === current.roomTypeId))) throw new HotelReservationIntegrityError();
+      const roomType = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${current.roomTypeId} AND "organizationId"=${organizationId} AND "propertyId"=${current.propertyId} FOR UPDATE`);
+      if (!roomType.length) throw new HotelReservationIntegrityError();
       const inventory = await tx.$queryRaw<Array<{ id: string; booked: number }>>(Prisma.sql`SELECT "id","booked" FROM "HotelInventory" WHERE "organizationId"=${organizationId} AND "propertyId"=${current.propertyId} AND "roomTypeId"=${current.roomTypeId} AND "date" IN (${Prisma.join(nights.map(dateValue))}) ORDER BY "date" FOR UPDATE`);
       if (inventory.length !== nights.length || inventory.some(row => row.booked < 1)) throw new HotelReservationIntegrityError();
       for (const row of inventory) await tx.hotelInventory.update({ where: { id: row.id }, data: { booked: { decrement: 1 } } });

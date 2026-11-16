@@ -390,7 +390,7 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   const roomIds = [roomResult.data!.room.id, secondRoomResult.data!.room.id];
   const disableSecond = await apiJson(`${roomPath}/${roomIds[1]}`, cookie, "PATCH", { isOutOfService: true });
   assert.equal(disableSecond.response.status, 200);
-  const partialPhysical = await searchPublicHotelAvailability({ scope: { organizationId: orgAId }, propertySlug: `${prefix}-property-a`, query: { propertyId: propertyAId, window: { checkIn: from, checkOut: from === to ? to : "2027-06-11" }, occupancy: { adults: 2, children: 0, childAges: [] } } }, repository);
+  const partialPhysical = await searchPublicHotelAvailability({ scope: { organizationId: orgAId }, propertySlug: `${prefix}-property-a`, query: { propertyId: propertyAId, window: { checkIn: from, checkOut: "2027-06-11" }, occupancy: { adults: 2, children: 0, childAges: [] } } }, repository);
   const partialOption = partialPhysical?.options.find((option) => option.roomType.id === roomTypeId);
   assert.equal(partialOption?.availableRoomCount, 1, "inactive physical capacity constrains the higher aggregate inventory");
 
@@ -418,6 +418,21 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   assert.equal(cannotDisableCommittedRoom.response.status, 422, "manager cannot remove capacity beneath an active hold");
   const released = await repository.releaseHold({ organizationId: orgAId }, claimedHold!.hold!.id, new Date("2027-01-01T00:01:00.000Z"));
   assert.equal(released.isReleased, true);
+
+  const [racingHold, racingRoomDeactivation] = await Promise.all([
+    attemptHold(2),
+    apiJson(`${roomPath}/${roomIds[0]}`, cookie, "PATCH", { isOutOfService: true }),
+  ]);
+  assert.ok(
+    (racingHold.isClaimed && racingRoomDeactivation.response.status === 422) ||
+      (!racingHold.isClaimed && racingHold.reason === "NO_INVENTORY" && racingRoomDeactivation.response.status === 200),
+    "a final-room hold and physical-room deactivation serialize under READ COMMITTED without overselling",
+  );
+  if (racingHold.isClaimed && racingHold.hold?.id) {
+    assert.equal((await repository.releaseHold({ organizationId: orgAId }, racingHold.hold.id, new Date("2027-01-01T00:02:00.000Z"))).isReleased, true);
+  } else {
+    assert.equal((await apiJson(`${roomPath}/${roomIds[0]}`, cookie, "PATCH", { isOutOfService: false })).response.status, 200);
+  }
 
   stage = "missing-inventory-is-not-synthesized";
   const missingInventoryRange = await searchPublicHotelAvailability({ scope: { organizationId: orgAId }, propertySlug: `${prefix}-property-a`, query: { propertyId: propertyAId, window: { checkIn: "2027-06-12", checkOut: "2027-06-13" }, occupancy: { adults: 2, children: 0, childAges: [] } } }, repository);

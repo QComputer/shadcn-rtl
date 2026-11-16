@@ -8,6 +8,7 @@ import { seedOperationalGuestFixture } from "./operational-fixture.mjs";
 const env = process.env;
 const appOrigin = new URL(env.DAMOON_APP_URL || "").origin;
 const standaloneOrigin = new URL(env.DAMOON_STANDALONE_URL || "").origin;
+const publicRuntimeOrigin = new URL(env.DAMOON_SHARED_RUNTIME_URL || "").origin;
 const tenantHostname = new URL(standaloneOrigin).hostname;
 const guestOrigin = `http://${tenantHostname}:3000`;
 const organizationId = env.DAMOON_ORGANIZATION_ID;
@@ -19,13 +20,23 @@ const paymentPath = (reservationId) => `${reservationsPath(organizationId, prope
 
 function assertTestTarget() {
   if (env.CI !== "true" || env.NODE_ENV !== "test" || env.DAMOON_E2E_ENABLED !== "1" || env.VERCEL_ENV === "production" || env.VERCEL) throw new Error("Damoon operational acceptance requires isolated CI test mode");
-  if (appOrigin !== "http://127.0.0.1:3000" || tenantHostname !== "damoon-hotel.localhost" || standaloneOrigin !== "http://damoon-hotel.localhost:8080") throw new Error("Only the synthetic loopback-mapped Damoon test origins are permitted");
+  if (appOrigin !== "http://127.0.0.1:3000" || tenantHostname !== "damoon-hotel.localhost" || standaloneOrigin !== "http://damoon-hotel.localhost:8080" || publicRuntimeOrigin !== "http://damoon-hotel.ir:3000") throw new Error("Only the synthetic loopback-mapped Damoon test origins are permitted");
   if (!/^\/damoon_[a-f0-9]{16}$/i.test(new URL(env.DATABASE_URL || "https://invalid.local").pathname) || env.DATABASE_URL !== env.DIRECT_URL) throw new Error("Damoon operational acceptance requires the workflow-owned disposable database");
-  for (const name of ["DAMOON_MANAGER_USERNAME", "DAMOON_MANAGER_PASSWORD", "DAMOON_ORGANIZATION_ID", "DAMOON_PROPERTY_ID", "DAMOON_FOREIGN_ORGANIZATION_ID", "DAMOON_FOREIGN_PROPERTY_ID", "DAMOON_STANDALONE_URL", "DAMOON_APP_URL"]) {
+  for (const name of ["DAMOON_MANAGER_USERNAME", "DAMOON_MANAGER_PASSWORD", "DAMOON_ORGANIZATION_ID", "DAMOON_PROPERTY_ID", "DAMOON_FOREIGN_ORGANIZATION_ID", "DAMOON_FOREIGN_PROPERTY_ID", "DAMOON_STANDALONE_URL", "DAMOON_APP_URL", "DAMOON_SHARED_RUNTIME_URL"]) {
     if (!env[name]?.trim()) throw new Error(`${name} is required by the Damoon operational acceptance`);
   }
   if (env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED !== "1" || env.HOTEL_GUEST_PORTAL_ENABLED !== "1" || env.HOTEL_OFFLINE_PAYMENT_OPERATIONAL_ENABLED !== "1") throw new Error("Operational reservation, guest portal, and offline payment gates must be enabled for this disposable acceptance");
   if (env.HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED === "1" || env.HOTEL_PAYMENT_OPERATIONAL_ENABLED === "1" || env.HOTEL_PAYMENT_SIMULATOR_ENABLED === "1" || env.HOTEL_SMS_ENABLED === "1" || env.CUSTOMER_AUTH_SMS_WORKER_ENABLED === "1") throw new Error("Anonymous holds, payment processing/simulation, and SMS must stay disabled");
+}
+
+async function choosePublicStayDates(page, checkIn, checkOut) {
+  await page.locator('[data-date-field="checkIn"]').click();
+  let moves = 0;
+  while (!(await page.locator(`[data-calendar-day="${checkIn}"]`).count()) && moves++ < 3) await page.locator("[data-month-next]").click();
+  await page.locator(`[data-calendar-day="${checkIn}"]`).click();
+  moves = 0;
+  while (!(await page.locator(`[data-calendar-day="${checkOut}"]`).count()) && moves++ < 3) await page.locator("[data-month-next]").click();
+  await page.locator(`[data-calendar-day="${checkOut}"]`).click();
 }
 
 async function login(page, origin, username, password, callbackPath) {
@@ -54,6 +65,46 @@ function daysFromNow(offset) {
   date.setUTCDate(date.getUTCDate() + offset);
   return date.toISOString().slice(0, 10);
 }
+
+test("public Damoon booking entry preserves stay choices into the authenticated guest preview", async ({ browser }) => {
+  test.setTimeout(90_000);
+  assertTestTarget();
+  const resolved = await lookup(new URL(publicRuntimeOrigin).hostname, { all: true, verbatim: true });
+  if (!resolved.length || resolved.some(({ address }) => address !== "::1" && !/^127(?:\.\d{1,3}){3}$/.test(address))) throw new Error("Public Damoon runtime must resolve exclusively to loopback");
+  const fixture = await seedOperationalGuestFixture();
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    await page.goto(`${publicRuntimeOrigin}/fa/`, { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-booking-slot]")).toBeVisible();
+    const checkIn = daysFromNow(15);
+    const checkOut = daysFromNow(16);
+    await choosePublicStayDates(page, checkIn, checkOut);
+    await page.getByLabel("تعداد بزرگسالان").selectOption("1");
+    const startPath = "/fa/hotel-reservations/start";
+    await Promise.all([
+      page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === startPath && url.searchParams.get("property") === "damoon-hotel"),
+      page.getByRole("button", { name: /ادامه برای بررسی اتاق و نرخ نمونه/ }).click(),
+    ]);
+    const startUrl = new URL(page.url());
+    expect(startUrl.searchParams.get("checkIn")).toBe(checkIn);
+    expect(startUrl.searchParams.get("checkOut")).toBe(checkOut);
+    expect(startUrl.searchParams.get("adults")).toBe("1");
+
+    const callbackPath = `${startPath}${startUrl.search}`;
+    await page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === "/fa/login");
+    await login(page, publicRuntimeOrigin, fixture.username, fixture.password, callbackPath);
+    await expect(page.getByRole("note")).toContainText("پیش‌نمایش هتل دامون");
+    await expect(page.locator("section[aria-label='رزروهای هتل']")).toBeVisible();
+    await expect(page.getByLabel("تاریخ ورود")).toHaveValue(checkIn);
+    await expect(page.getByLabel("تاریخ خروج")).toHaveValue(checkOut);
+
+    const reservation = await createReservationThroughGuestControls(page, checkIn, checkOut, "Synthetic Public Journey Guest", fixture);
+    expect(reservation.status).toBe("PENDING_PAYMENT");
+  } finally {
+    await context.close();
+  }
+});
 
 async function createReservationThroughGuestControls(page, checkIn, checkOut, guestName, fixture) {
   const reservations = page.locator("section[aria-label='رزروهای هتل']");

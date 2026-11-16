@@ -11,6 +11,7 @@ import { localeForPath, normalizePath } from "./content.js";
 import translations from "./translations.js";
 import {
   availableOptions,
+  buildReservationEntryUrl,
   buildHoldPayload,
   buildGuestRequestPayload,
   createIdempotencyKey,
@@ -117,7 +118,7 @@ function nightsLabel(count, locale, ui) {
 }
 function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]); }
 
-export function mountBooking(slot, { routeHref = (path) => path, locale = localeForPath(window.location.pathname), coordinationOnly = true, requestOnly = false } = {}) {
+export function mountBooking(slot, { routeHref = (path) => path, locale = localeForPath(window.location.pathname), coordinationOnly = true, requestOnly = false, reservationEntry = false } = {}) {
   if (!(slot instanceof Element)) return () => {};
   const ui = { ...faUi, ...(translations[locale]?.ui || {}) };
   if (requestOnly) {
@@ -128,6 +129,10 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   if (coordinationOnly) {
     ui.datePlanningOnly = locale === "fa" ? "تاریخ و مهمانان را برای هماهنگی با پذیرش انتخاب کنید؛ این انتخاب تأیید اتاق، نرخ یا موجودی نیست." : locale === "ar" ? "اختر التواريخ والضيوف للتنسيق مع الاستقبال؛ هذا الاختيار لا يؤكد الغرفة أو السعر أو التوفر." : "Choose dates and guests to coordinate with reception; this does not confirm a room, rate or availability.";
     ui.bookingSubmit = locale === "fa" ? "ادامه برای هماهنگی اقامت" : locale === "ar" ? "المتابعة لتنسيق الإقامة" : "Continue to stay coordination";
+  }
+  if (reservationEntry) {
+    ui.datePlanningOnly = locale === "fa" ? "این پیش‌نمایش نمونه است؛ موجودی، نرخ و قوانین باید پیش از استفاده واقعی توسط هتل تأیید شوند." : locale === "ar" ? "هذه معاينة تجريبية؛ يجب أن يؤكد الفندق التوفر والأسعار والسياسات قبل الاستخدام الفعلي." : "This is a preview; the hotel must confirm inventory, rates, and policies before real use.";
+    ui.bookingSubmit = locale === "fa" ? "ادامه برای بررسی اتاق و نرخ نمونه" : locale === "ar" ? "المتابعة لمراجعة الغرف والأسعار التجريبية" : "Continue to preview rooms and rates";
   }
   const weekdays = weekdayLabels(locale);
   const today = todayLocalISO();
@@ -499,6 +504,11 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       childAges = validatedAges;
     }
     persist();
+    if (reservationEntry) {
+      const target = buildReservationEntryUrl(new URL(routeHref("/hotel-reservations/start"), window.location.href), DAMOON_PROPERTY_SLUG, { range, adults, children, childAges: validatedAges });
+      window.location.assign(target.href);
+      return;
+    }
     if (coordinationOnly) {
       const target = withStaySelection(new URL(routeHref("/contact"), window.location.href), { range, adults, children, childAges: validatedAges });
       const room = normalizePath(window.location.pathname).match(/^\/rooms\/(single|double|suite-3-bed|suite-4-5-bed)$/)?.[1];

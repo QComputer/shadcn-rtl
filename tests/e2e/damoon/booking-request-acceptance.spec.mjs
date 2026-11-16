@@ -198,6 +198,32 @@ async function chooseStayDates(page, checkIn, checkOut) {
   await expect(page.locator("#booking-calendar")).not.toBeVisible();
 }
 
+async function clickExposed(locator, label) {
+  const target = await locator.evaluate((element) => {
+    const headerBottom = document.querySelector(".site-header")?.getBoundingClientRect().bottom ?? 0;
+    let rect = element.getBoundingClientRect();
+    // Date selection scrolls the hero booking strip beneath the header. Move
+    // the submit control to a clear viewport point before a normal pointer click.
+    const safeCenterY = Math.max(headerBottom + 16, Math.round(window.innerHeight * 0.35));
+    const centerY = rect.top + rect.height / 2;
+    const delta = centerY - safeCenterY;
+    if (Math.abs(delta) > 2) {
+      const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      window.scrollTo({ top: Math.max(0, Math.min(maxScroll, window.scrollY + delta)), behavior: "instant" });
+      rect = element.getBoundingClientRect();
+    }
+    const x = rect.width / 2;
+    const candidates = [0.5, 0.72, 0.28].map((fraction) => ({ x, y: Math.min(rect.height - 2, Math.max(2, rect.height * fraction)) }));
+    const points = candidates.map((position) => {
+      const hit = document.elementFromPoint(rect.left + position.x, rect.top + position.y);
+      return { position, exposed: hit === element || element.contains(hit), hit: hit && { tag: hit.tagName, className: typeof hit.className === "string" ? hit.className : "", id: hit.id } };
+    });
+    return { rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, headerBottom, scrollY: window.scrollY, point: points.find(({ exposed }) => exposed), points };
+  });
+  if (!target.point) throw new Error(`${label} has no unobstructed pointer target: ${JSON.stringify(target)}`);
+  await locator.click({ position: target.point.position });
+}
+
 const faPayload = (checkIn, checkOut) => ({
   property: propertySlug,
   roomType: roomTypeSlug,
@@ -260,7 +286,7 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await page.locator("[data-child-count]").selectOption("1");
     await page.locator('[data-child-age="0"]').fill("8");
 
-    await page.locator(".booking-form .booking-submit[type=submit]").click();
+    await clickExposed(page.locator(".booking-form .booking-submit[type=submit]"), "Availability search submit");
     await expect(page.locator("[data-booking-flow] .booking-options")).toBeVisible();
     await page.locator(".booking-option__select").first().click();
     await expect(page.locator("[data-booking-flow] .booking-step")).toBeVisible();
@@ -375,7 +401,7 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await guestPage.locator("[data-adult-count]").selectOption("2");
     await guestPage.locator("[data-child-count]").selectOption("1");
     await guestPage.locator('[data-child-age="0"]').fill("8");
-    await guestPage.locator(".booking-form .booking-submit[type=submit]").click();
+    await clickExposed(guestPage.locator(".booking-form .booking-submit[type=submit]"), "Availability search submit");
     await expect(guestPage.locator("[data-booking-flow] .booking-options")).toBeVisible();
     await guestPage.locator(".booking-option__select").first().click();
     await expect(guestPage.locator('[data-booking-flow] [data-child-age="0"]')).toHaveValue("8");

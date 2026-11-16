@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { resolveAppBasePath } from "./lib/app-base-path";
+import { resolveBuildRevision } from "./scripts/build/deployment-revision";
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -23,7 +24,12 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: process.env.RUNFLARE_SKIP_DUPLICATE_TYPECHECK === "1" && !process.env.VERCEL,
   },
   basePath: appBasePath || undefined,
-  env: { NEXT_PUBLIC_APP_BASE_PATH: appBasePath },
+  // Only a 12-character, non-sensitive source revision is embedded in the
+  // build. Next config `env` values are bundled, so no runtime secrets belong here.
+  env: {
+    NEXT_PUBLIC_APP_BASE_PATH: appBasePath,
+    APP_BUILD_REVISION: resolveBuildRevision(),
+  },
   allowedDevOrigins: [
     "192.168.1.6",
     "*.localtest.me",

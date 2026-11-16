@@ -44,3 +44,8 @@ jobs:
         run: pnpm exec next typegen
       - name: TypeScript check
         run: pnpm exec tsc --noEmit
+      - name: Build revision provenance tests
+        run: >-
+          pnpm exec node --import tsx --test
+          tests/unit/deployment-revision.test.ts
+          tests/unit/build-deployment-revision.test.ts

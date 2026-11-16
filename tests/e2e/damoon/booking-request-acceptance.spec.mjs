@@ -164,7 +164,25 @@ const dayAfterISO = (base) => {
 };
 
 async function chooseStayDates(page, checkIn, checkOut) {
-  await page.locator('[data-date-field="checkIn"]').click();
+  const arrival = page.locator('[data-date-field="checkIn"]');
+  await arrival.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const headerBottom = document.querySelector(".site-header")?.getBoundingClientRect().bottom ?? 0;
+    const safeTop = Math.max(headerBottom + 24, Math.round(window.innerHeight * 0.35));
+    window.scrollTo({ top: Math.max(0, window.scrollY + rect.top - safeTop), behavior: "instant" });
+  });
+  const clickPoint = await arrival.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const header = document.querySelector(".site-header")?.getBoundingClientRect();
+    const x = rect.width / 2;
+    const centerY = rect.height / 2;
+    const safeDocumentY = Math.max(rect.top + centerY, (header?.bottom ?? 0) + 4);
+    const y = Math.min(rect.height - 2, Math.max(centerY, safeDocumentY - rect.top));
+    const hit = document.elementFromPoint(rect.left + x, rect.top + y);
+    return { position: { x, y }, exposed: hit === element || element.contains(hit), scrollY: window.scrollY, target: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, header: header && { y: header.y, height: header.height }, hit: hit && { tag: hit.tagName, className: typeof hit.className === "string" ? hit.className : "", id: hit.id } };
+  });
+  if (!clickPoint.exposed) throw new Error(`Calendar button has no unobstructed pointer target: ${JSON.stringify(clickPoint)}`);
+  await arrival.click({ position: clickPoint.position });
   let moves = 0;
   while (!(await page.locator(`[data-calendar-day="${checkIn}"]`).count()) && moves++ < 3) {
     await page.locator("[data-month-next]").click();

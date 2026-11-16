@@ -102,3 +102,11 @@
 .accommodation-booking .booking-strip__heading > p:last-child { margin: 0; }
 .accommodation-booking .booking-field strong { font-size: 12px; }
 @media(max-width:760px) { .accommodation-booking .booking-strip { padding: 12px; } }
+@media (max-width: 480px) {
+  .accommodation-card { grid-template-columns: 1fr; }
+  .accommodation-card__image img { min-height: 210px; max-height: 58vw; }
+  .accommodation-card__body { min-height: 190px; padding: 20px; }
+  .accommodation-card__body h2 { font-size: 22px; }
+  .accommodation-card__body > p:not(.accommodation-kicker) { font-size: 12px; }
+  .accommodation-link { min-height: 44px; }
+}

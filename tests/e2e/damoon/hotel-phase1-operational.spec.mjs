@@ -100,7 +100,7 @@ test("new Damoon customer registers, joins the host-bound tenant, and resumes th
     expect(callbackUrl.searchParams.get("adults")).toBe("1");
 
     const callbackPath = `${callbackUrl.pathname}${callbackUrl.search}`;
-    const registerLink = page.getByRole("link", { name: /ثبت نام/ });
+    const registerLink = page.getByRole("link", { name: "ثبت نام", exact: true });
     const registerUrl = new URL(await registerLink.getAttribute("href") || "", publicRuntimeOrigin);
     expect(registerUrl.searchParams.get("callbackUrl")).toBe(callbackPath);
     await registerLink.click();
@@ -152,11 +152,17 @@ test("existing Damoon customer without membership can join this host tenant and 
   try {
     const page = await context.newPage();
     const browserErrors = [];
+    const expectedHttpCoopWarnings = [];
     const nextAssetStatuses = [];
     const nextSockets = [];
     const socketErrors = [];
     page.on("pageerror", (error) => browserErrors.push(error.message));
-    page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
+    page.on("console", (message) => {
+      if (message.type() !== "error") return;
+      const text = message.text();
+      if (text.startsWith("The Cross-Origin-Opener-Policy header has been ignored, because the URL's origin was untrustworthy.")) expectedHttpCoopWarnings.push(text);
+      else browserErrors.push(text);
+    });
     page.on("response", (response) => { if (response.url().includes("/_next/static/") && response.request().resourceType() === "script") nextAssetStatuses.push(response.status()); });
     page.on("websocket", (socket) => {
       if (socket.url().includes("/_next/")) {
@@ -184,7 +190,9 @@ test("existing Damoon customer without membership can join this host tenant and 
     const guestReservations = await page.request.get(`${publicRuntimeOrigin}/api/hotel/v1/guest-reservations?property=damoon-hotel`);
     expect(guestReservations.status(), await guestReservations.text()).toBe(200);
     expect(socketErrors, "The allowed Next development HMR socket should not fail").toEqual([]);
-    expect(browserErrors, "The interactive login and onboarding flow should hydrate without browser errors").toEqual([]);
+    expect(expectedHttpCoopWarnings.length, "Only the known COOP warning from the synthetic HTTP host may be present").toBeGreaterThan(0);
+    expect(expectedHttpCoopWarnings.every((warning) => warning.startsWith("The Cross-Origin-Opener-Policy header has been ignored, because the URL's origin was untrustworthy."))).toBe(true);
+    expect(browserErrors, "The interactive login and onboarding flow should hydrate without application errors").toEqual([]);
   } finally {
     await context.close();
   }

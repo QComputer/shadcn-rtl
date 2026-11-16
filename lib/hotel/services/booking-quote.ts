@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import type { HotelProperty, Prisma } from "@prisma/client";
+import { Prisma, type HotelProperty } from "@prisma/client";
 import { ApiError } from "@/lib/api-guards";
 import { enumerateStayNights, validateOccupancyFitsRoom } from "@/lib/hotel/domain/stay-dates";
 import { sellableUnitsForNight } from "@/lib/hotel/domain/availability";

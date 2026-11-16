@@ -421,7 +421,7 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   const anonymousPreview = await apiJson(previewPath, "");
   assert.equal(anonymousPreview.response.status, 401, "availability preview requires an authenticated owner");
   const invalidDatePreview = await apiJson(`/api/organizations/${orgAId}/hotels/${propertyAId}/availability-preview?checkIn=${from}&checkOut=${from}&adults=2&children=0`, cookie);
-  assert.equal(invalidDatePreview.response.status, 400, "same-day check-in and check-out is rejected without searching availability");
+  assert.equal(invalidDatePreview.response.status, 422, "same-day check-in and check-out follows the established Hotel validation contract");
   const invalidChildrenPreview = await apiJson(`/api/organizations/${orgAId}/hotels/${propertyAId}/availability-preview?checkIn=${from}&checkOut=${to}&adults=2&children=1&childAges=`, cookie);
   assert.equal(invalidChildrenPreview.response.status, 400, "child occupancy requires one valid age per child");
   const crossTenantPreview = await apiJson(`/api/organizations/${ownedOrgIds[1]}/hotels/${propertyBId}/availability-preview?checkIn=${from}&checkOut=${to}&adults=2&children=0`, cookie);

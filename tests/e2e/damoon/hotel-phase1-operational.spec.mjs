@@ -111,7 +111,7 @@ test("new Damoon customer registers, joins the host-bound tenant, and resumes th
     await page.locator("#confirmPassword").fill(fixture.password);
     const guestReservationsResponses = [];
     page.on("response", (response) => {
-      if (response.url().includes("/api/hotel/v1/guest-reservations") && response.request().method() === "GET") {
+      if (new URL(response.url()).pathname === reservationsPath(organizationId, propertyId) && response.request().method() === "GET") {
         guestReservationsResponses.push(response);
       }
     });
@@ -121,14 +121,15 @@ test("new Damoon customer registers, joins the host-bound tenant, and resumes th
     const registration = await registrationResponse.json();
     expect(registrationResponse.status(), JSON.stringify(registration)).toBe(201);
     let guestResponse;
+    const isGuestReservationsSnapshot = (response) => new URL(response.url()).pathname === reservationsPath(organizationId, propertyId) && response.request().method() === "GET";
     if (registration.autoLogin) {
       await page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === startPath && url.searchParams.get("checkIn") === checkIn, { timeout: 45_000 });
-      guestResponse = guestReservationsResponses.at(-1) ?? await page.waitForResponse((response) => response.url().includes("/api/hotel/v1/guest-reservations") && response.request().method() === "GET", { timeout: 20_000 });
+      guestResponse = guestReservationsResponses.at(-1) ?? await page.waitForResponse(isGuestReservationsSnapshot, { timeout: 20_000 });
     } else {
       await page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === "/fa/login", { timeout: 30_000 });
       await page.locator("#username").fill(newUsername);
       await page.locator("#password").fill(fixture.password);
-      const guestReservationsResponse = page.waitForResponse((response) => response.url().includes("/api/hotel/v1/guest-reservations") && response.request().method() === "GET", { timeout: 20_000 });
+      const guestReservationsResponse = page.waitForResponse(isGuestReservationsSnapshot, { timeout: 20_000 });
       await page.locator("form button[type='submit']").click();
       await page.waitForURL((url) => url.origin === publicRuntimeOrigin && url.pathname === startPath && url.searchParams.get("checkIn") === checkIn, { timeout: 45_000 });
       guestResponse = guestReservationsResponses.at(-1) ?? await guestReservationsResponse;

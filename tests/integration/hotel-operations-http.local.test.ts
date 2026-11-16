@@ -93,6 +93,7 @@ function isolatedServerEnv(): NodeJS.ProcessEnv {
     NEXTAUTH_SECRET: `fixture-${randomUUID()}-${randomUUID()}`,
     CUSTOMER_SSO_SECRET: `fixture-${randomUUID()}-${randomUUID()}`,
     CUSTOMER_SSO_ENABLED: "1",
+    HOTEL_INVENTORY_IDEMPOTENCY_ENABLED: "1",
     AUTH_TRUST_HOST: "true",
     NEXT_PUBLIC_APP_URL: baseUrl,
     NEXT_PUBLIC_DEPLOYED_APP_URL: baseUrl,
@@ -377,7 +378,7 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   stage = "nightly-inventory-difference-across-stay";
   const adjustmentPath = `/api/organizations/${orgAId}/hotels/${propertyAId}/inventory/adjustments`;
   const adjustment = await apiJson(adjustmentPath, cookie, "POST", { roomTypeId, date: "2027-06-11", outOfServiceDelta: 2, reason: "test a single constrained night" }, { "idempotency-key": `hotel-oos-${suffix}` });
-  assert.equal(adjustment.response.status, 200);
+  assert.equal(adjustment.response.status, 200, `isolated inventory adjustment should succeed: ${JSON.stringify(adjustment.data)}`);
   const constrainedSearch = await searchPublicHotelAvailability({ scope: { organizationId: orgAId }, propertySlug: `${prefix}-property-a`, query: { propertyId: propertyAId, window: { checkIn: from, checkOut: to }, occupancy: { adults: 2, children: 0, childAges: [] } } }, repository);
   const constrainedOption = constrainedSearch?.options.find((option) => option.roomType.id === roomTypeId && option.ratePlan.id === ratePlanId);
   assert.equal(constrainedOption?.availableRoomCount, 1, "the stay uses the lowest per-night capacity across consecutive nights");

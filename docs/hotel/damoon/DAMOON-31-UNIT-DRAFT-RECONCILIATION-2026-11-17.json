@@ -1,0 +1,1626 @@
+{
+  "schemaVersion": 1,
+  "property": {
+    "organizationId": "cmvbltspu0000jt08zfn7xltj",
+    "propertyId": "cmvbltsrc0009jt08k3o8jdip",
+    "slug": "damoon-hotel",
+    "draftOnly": true,
+    "publiclyBookable": false
+  },
+  "sourceAvailability": {
+    "v2Zip": "NOT_AVAILABLE_IN_ACCESSIBLE_TASK_ATTACHMENTS",
+    "questionnaireDocx": "NOT_AVAILABLE_IN_ACCESSIBLE_TASK_ATTACHMENTS",
+    "clarificationDocx": "NOT_AVAILABLE_IN_ACCESSIBLE_TASK_ATTACHMENTS",
+    "unitManifestJson": "NOT_AVAILABLE_IN_ACCESSIBLE_TASK_ATTACHMENTS",
+    "appliedEvidence": "Only explicit facts and assumptions in the owner task text"
+  },
+  "ownerConfirmed": {
+    "regularRoomCount": {
+      "value": 20,
+      "status": "OWNER_CONFIRMED"
+    },
+    "suiteCount": {
+      "value": 11,
+      "status": "OWNER_CONFIRMED"
+    },
+    "accommodationUnitCount": {
+      "value": 31,
+      "status": "OWNER_CONFIRMED"
+    },
+    "checkInTime": {
+      "value": "14:00",
+      "status": "OWNER_CONFIRMED"
+    },
+    "checkOutTime": {
+      "value": "12:00",
+      "status": "OWNER_CONFIRMED_PENDING_APPLICATION"
+    },
+    "restaurantOperating": {
+      "value": false,
+      "status": "OWNER_CONFIRMED"
+    },
+    "banquetHallOperating": {
+      "value": false,
+      "status": "OWNER_CONFIRMED"
+    },
+    "breakfastHall": {
+      "value": "UNDER_PREPARATION",
+      "status": "OWNER_CONFIRMED"
+    },
+    "independentCafe": {
+      "value": false,
+      "status": "OWNER_CONFIRMED"
+    },
+    "guestroomCafeStyleService": {
+      "value": true,
+      "status": "OWNER_CONFIRMED"
+    }
+  },
+  "commonUnverifiedFields": {
+    "physicalRoomCode": {
+      "value": null,
+      "status": "PENDING_VERIFICATION"
+    },
+    "floor": {
+      "value": null,
+      "status": "PENDING_VERIFICATION"
+    },
+    "bedConfiguration": {
+      "value": null,
+      "status": "PENDING_VERIFICATION"
+    },
+    "roomSizeSquareMeters": {
+      "value": null,
+      "status": "PENDING_VERIFICATION"
+    },
+    "amenities": {
+      "value": null,
+      "status": "PENDING_VERIFICATION"
+    },
+    "nightlyPriceToman": {
+      "value": null,
+      "status": "PENDING_VERIFICATION"
+    },
+    "physicalStatus": {
+      "value": null,
+      "status": "PENDING_VERIFICATION"
+    }
+  },
+  "draftIdentifierPolicy": {
+    "value": "DRAFT-prefixed internal design identifiers only",
+    "status": "MODEL_ASSUMED",
+    "physicalRoomCodesCreated": false
+  },
+  "safety": {
+    "draftIdentifiersArePhysicalRoomCodes": false,
+    "databaseRoomTypesCreated": false,
+    "databasePhysicalRoomsCreated": false,
+    "liveRatePlansCreated": false,
+    "saleableInventoryCreated": false,
+    "publicBookingEnabledByThisManifest": false,
+    "importStatus": "NOT_IMPORTABLE_PENDING_VERIFICATION",
+    "note": "This file supports internal layout/design only. Do not use its assumptions as public room facts, capacity guarantees, prices, or availability."
+  },
+  "draftUnits": [
+    {
+      "draftUnitId": "DRAFT-ROOM-SINGLE-01",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "ROOM",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "SINGLE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 1,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-ROOM-SINGLE-02",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "ROOM",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "SINGLE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 1,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-ROOM-SINGLE-03",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "ROOM",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "SINGLE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 1,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-ROOM-DOUBLE-01",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "ROOM",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "DOUBLE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 2,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-ROOM-DOUBLE-02",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "ROOM",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "DOUBLE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 2,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-ROOM-DOUBLE-03",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "ROOM",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "DOUBLE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 2,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-ROOM-DOUBLE-04",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "ROOM",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "DOUBLE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 2,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-ROOM-DOUBLE-05",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "ROOM",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "DOUBLE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 2,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-ROOM-DOUBLE-06",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "ROOM",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "DOUBLE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 2,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-ROOM-DOUBLE-07",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "ROOM",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "DOUBLE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 2,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-ROOM-DOUBLE-08",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "ROOM",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "DOUBLE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 2,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-ROOM-DOUBLE-09",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "ROOM",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "DOUBLE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 2,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-ROOM-DOUBLE-10",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "ROOM",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "DOUBLE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 2,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-ROOM-DOUBLE-11",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "ROOM",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "DOUBLE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 2,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-ROOM-DOUBLE-12",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "ROOM",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "DOUBLE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 2,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-ROOM-DOUBLE-13",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "ROOM",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "DOUBLE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 2,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-ROOM-DOUBLE-14",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "ROOM",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "DOUBLE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 2,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-ROOM-DOUBLE-15",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "ROOM",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "DOUBLE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 2,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-ROOM-DOUBLE-16",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "ROOM",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "DOUBLE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 2,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-ROOM-DOUBLE-17",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "ROOM",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "DOUBLE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 2,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-SUITE-3G-01",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "SUITE",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "THREE_GUEST",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 3,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-SUITE-3G-02",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "SUITE",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "THREE_GUEST",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 3,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-SUITE-3G-03",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "SUITE",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "THREE_GUEST",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 3,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-SUITE-3G-04",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "SUITE",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "THREE_GUEST",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 3,
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-SUITE-4G-01",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "SUITE",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "FOUR_GUEST_LABEL_PLUS_UNRESOLVED_ONE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 4,
+        "extraBedGuestCount": null,
+        "extraBedStatus": "PENDING_VERIFICATION",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-SUITE-4G-02",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "SUITE",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "FOUR_GUEST_LABEL_PLUS_UNRESOLVED_ONE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 4,
+        "extraBedGuestCount": null,
+        "extraBedStatus": "PENDING_VERIFICATION",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-SUITE-5G-01",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "SUITE",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "FIVE_GUEST_LABEL_PLUS_UNRESOLVED_ONE",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "capacityProposal": {
+        "guestCount": 5,
+        "extraBedGuestCount": null,
+        "extraBedStatus": "PENDING_VERIFICATION",
+        "status": "QUESTIONNAIRE_TRANSCRIBED"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-SUITE-UNCLASSIFIED-01",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "SUITE",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "THREE_GUEST",
+        "status": "MODEL_ASSUMED"
+      },
+      "capacityProposal": {
+        "guestCount": 3,
+        "status": "MODEL_ASSUMED"
+      },
+      "previousCategory": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-SUITE-UNCLASSIFIED-02",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "SUITE",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "THREE_GUEST",
+        "status": "MODEL_ASSUMED"
+      },
+      "capacityProposal": {
+        "guestCount": 3,
+        "status": "MODEL_ASSUMED"
+      },
+      "previousCategory": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-SUITE-UNCLASSIFIED-03",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "SUITE",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "FOUR_GUEST_LABEL_PLUS_UNRESOLVED_ONE",
+        "status": "MODEL_ASSUMED"
+      },
+      "capacityProposal": {
+        "guestCount": 4,
+        "extraBedGuestCount": null,
+        "extraBedStatus": "PENDING_VERIFICATION",
+        "status": "MODEL_ASSUMED"
+      },
+      "previousCategory": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    },
+    {
+      "draftUnitId": "DRAFT-SUITE-UNCLASSIFIED-04",
+      "draftIdentifierStatus": "MODEL_ASSUMED",
+      "unitKind": {
+        "value": "SUITE",
+        "status": "OWNER_CONFIRMED"
+      },
+      "categoryProposal": {
+        "value": "FIVE_GUEST_LABEL_PLUS_UNRESOLVED_ONE",
+        "status": "MODEL_ASSUMED"
+      },
+      "capacityProposal": {
+        "guestCount": 5,
+        "extraBedGuestCount": null,
+        "extraBedStatus": "PENDING_VERIFICATION",
+        "status": "MODEL_ASSUMED"
+      },
+      "previousCategory": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalRoomCode": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "floor": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "bedConfiguration": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "roomSizeSquareMeters": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "amenities": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "nightlyPriceToman": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "physicalStatus": {
+        "value": null,
+        "status": "PENDING_VERIFICATION"
+      },
+      "saleable": {
+        "value": false,
+        "status": "PENDING_VERIFICATION"
+      }
+    }
+  ],
+  "reconciliation": {
+    "mode": "DETERMINISTIC_DRY_RUN_ONLY",
+    "idempotencyKey": "propertyId + draftUnitId + schemaVersion",
+    "applicationAllowed": false,
+    "reason": "Current data model has no safe unpublished draft accommodation records; all physical codes and operational fields remain unverified."
+  }
+}

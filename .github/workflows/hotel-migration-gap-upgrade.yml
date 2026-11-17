@@ -1,0 +1,71 @@
+name: Hotel Production-Gap Upgrade Rehearsal
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/hotel-migration-gap-upgrade.yml"
+      - "prisma/schema.prisma"
+      - "prisma/migrations/**"
+      - "scripts/db/validate-hotel-migration-gap-upgrade.ts"
+      - "scripts/db/validate-hotel-production-shape-migrations.ts"
+      - "scripts/hotel/validate-damoon-room-reconciliation.mjs"
+      - "lib/hotel/management/hotel-management.service.ts"
+      - "docs/hotel/damoon/OWNER-DECISIONS-2026-11-17.md"
+      - "docs/hotel/damoon/PRODUCTION-SCHEMA-PREFLIGHT-2026-11-17.md"
+      - "docs/hotel/damoon/DAMOON-31-UNIT-DRAFT-RECONCILIATION-2026-11-17.json"
+      - "package.json"
+      - "pnpm-lock.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hotel-migration-gap-upgrade-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  migration-gap-upgrade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: damoon_migration_gap_rehearsal
+          POSTGRES_USER: hotel_gap_test
+          POSTGRES_PASSWORD: disposable_ci_only
+        ports:
+          - 55439:5432
+        options: >-
+          --health-cmd "pg_isready -U hotel_gap_test -d damoon_migration_gap_rehearsal"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      CI: "true"
+      NODE_ENV: test
+      DATABASE_URL: postgresql://hotel_gap_test:disposable_ci_only@127.0.0.1:55439/damoon_migration_gap_rehearsal?schema=public
+      DIRECT_URL: postgresql://hotel_gap_test:disposable_ci_only@127.0.0.1:55439/damoon_migration_gap_rehearsal?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate Prisma schema and generate client
+        run: |
+          pnpm exec prisma validate
+          pnpm exec prisma generate
+      - name: Validate the non-bookable 31-unit draft reconciliation manifest
+        run: node scripts/hotel/validate-damoon-room-reconciliation.mjs --plan
+      - name: Rehearse the five pending migrations and tenant-scoped property update
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs scripts/db/validate-hotel-migration-gap-upgrade.ts
+      - name: Rehearse five migrations against the sanitized current Production Hotel table shape
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs scripts/db/validate-hotel-production-shape-migrations.ts

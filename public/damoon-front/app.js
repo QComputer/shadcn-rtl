@@ -61,9 +61,11 @@ function languageSwitcher(path) {
 }
 
 function header(path) {
+  const attractionsLabel = locale === "fa" ? "دیدنی‌های نزدیک" : locale === "ar" ? "معالم قريبة" : "Nearby attractions";
   const homeNavigation = [
     ["/", locale === "fa" ? "صفحه اصلی" : locale === "ar" ? "الرئيسية" : "Home"],
     ["/rooms", locale === "fa" ? "اقامت" : locale === "ar" ? "الإقامة" : "Stay"],
+    ["/attractions", attractionsLabel],
     ["/policies", ui.policies],
     ["/gallery", ui.gallery], ["/facilities", ui.facilities], ["/about", ui.aboutDamoon], ["/contact", ui.contact],
   ];
@@ -98,7 +100,8 @@ function header(path) {
 }
 
 function footer() {
-  const footerLinks = [["/rooms", ui.rooms], ["/facilities", ui.facilities], ["/gallery", ui.gallery], ["/about", ui.aboutDamoon], ["/contact", ui.contact], ["/policies", ui.policies], ["/virtual-tour", ui.virtualTour]];
+  const attractionsLabel = locale === "fa" ? "دیدنی‌های نزدیک" : locale === "ar" ? "معالم قريبة" : "Nearby attractions";
+  const footerLinks = [["/rooms", ui.rooms], ["/attractions", attractionsLabel], ["/facilities", ui.facilities], ["/gallery", ui.gallery], ["/about", ui.aboutDamoon], ["/contact", ui.contact], ["/policies", ui.policies], ["/virtual-tour", ui.virtualTour]];
   const alwaysOpen = locale === "fa" ? "هماهنگی با پذیرش" : locale === "ar" ? "التنسيق مع الاستقبال" : "Coordinate with reception";
   return `<footer class="site-footer"><div class="site-footer__main"><div class="site-footer__brand"><span class="brand__mark" aria-hidden="true">${locale === "fa" ? "د" : "D"}</span><div><strong>${safeText(site.name)}</strong><p>${safeText(site.city)}</p></div></div><p class="site-footer__note">${safeText(site.address)} · ${alwaysOpen}</p><nav class="footer-links" aria-label="${safeText(ui.footerLinks)}">${footerLinks.map(([href, label]) => link(href, label)).join("")}</nav></div><div class="site-footer__bottom"><span>© ${new Date().getFullYear()} ${safeText(site.name)}</span><a href="tel:${site.phone}">${safeText(ui.reception)}: <bdi>${safeText(site.phoneDisplay)}</bdi></a></div></footer>`;
 }

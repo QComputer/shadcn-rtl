@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { pages, rooms } from './content.js';
+import { damoonAttractionsData } from './damoon-attractions-data.js';
 import { paletteStyles } from './themes.js';
 const root = dirname(fileURLToPath(import.meta.url));
 const directPublic = process.argv.includes('--sync-public-direct');
@@ -10,12 +11,12 @@ const publicDir = join(root, '..', '..', 'public', 'damoon-front');
 const output = directPublic ? publicDir : join(root, 'dist');
 const assetPrefix = process.argv.includes('--shared-runtime') ? '/damoon-front' : '';
 await mkdir(output, { recursive: true });
-const files = ['index.html','styles.css','booking.css','accommodation.css','hospitality.css','accommodation.js','hospitality.js','app.js','content.js','translations.js','themes.js','booking.js','booking-flow.js','calendar.js','virtual-tour.js','robots.txt'];
+const files = ['index.html','styles.css','booking.css','accommodation.css','hospitality.css','damoon-attractions.css','accommodation.js','hospitality.js','damoon-attractions-data.js','damoon-attractions-view.js','damoon-attractions-detail-view.js','app.js','content.js','translations.js','themes.js','booking.js','booking-flow.js','calendar.js','virtual-tour.js','robots.txt'];
 for (const f of files) {
   let text = (await readFile(join(root,f),'utf8')).replaceAll('\r\n','\n');
   if (assetPrefix) {
     text = text.replaceAll('/assets/', `${assetPrefix}/assets/`);
-    for (const sheet of ['styles.css','booking.css','theme-tokens.css','accommodation.css','hospitality.css']) text = text.replaceAll(`href="/${sheet}"`, `href="${assetPrefix}/${sheet}"`);
+    for (const sheet of ['styles.css','booking.css','theme-tokens.css','accommodation.css','hospitality.css','damoon-attractions.css']) text = text.replaceAll(`href="/${sheet}"`, `href="${assetPrefix}/${sheet}"`);
     text = text.replace('src="/app.js"', `src="${assetPrefix}/app.js"`);
   }
   await writeFile(join(output,f),text);
@@ -24,7 +25,7 @@ await writeFile(join(root,'theme-tokens.css'),paletteStyles());
 await writeFile(join(output,'theme-tokens.css'),paletteStyles());
 if (!directPublic) await cp(join(root,'assets'), join(output,'assets'), { recursive: true });
 const html = await readFile(join(output,'index.html'),'utf8');
-const routes = [...Object.keys(pages), ...rooms.map(r=>`/rooms/${r.slug}`)];
+const routes = [...Object.keys(pages), ...rooms.map(r=>`/rooms/${r.slug}`), ...damoonAttractionsData.attractions.map((attraction)=>`/attractions/${attraction.id}`)];
 for (const route of [...routes,...['fa','en','ar'].flatMap(locale=>routes.map(r=>`/${locale}${r === '/' ? '' : r}`))]) {
   if (route === '/') continue;
   const folder = join(output, route.slice(1));

@@ -26,6 +26,10 @@ test("serves only the Damoon host and its explicit read-only public routes", () 
     "/ar",
     "/en/rooms",
     "/ar/contact",
+    "/attractions",
+    "/fa/attractions",
+    "/en/attractions",
+    "/ar/attractions",
     "/rooms",
     "/fa/rooms/",
     "/rooms/single",
@@ -48,10 +52,12 @@ test("serves only the Damoon host and its explicit read-only public routes", () 
 
   for (const hostHeader of ["damoon-hotel.ir", "WWW.DAMOON-HOTEL.IR."]) {
     for (const pathname of paths) {
-      assert.deepEqual(resolveDamoonPublicRoute({ hostHeader, pathname, method: "GET" }), {
-        kind: "rewrite",
-        pathname: "/damoon-front/index.html",
-      }, `${hostHeader} ${pathname}`);
+      for (const method of ["GET", "HEAD"]) {
+        assert.deepEqual(resolveDamoonPublicRoute({ hostHeader, pathname, method }), {
+          kind: "rewrite",
+          pathname: "/damoon-front/index.html",
+        }, `${hostHeader} ${method} ${pathname}`);
+      }
     }
   }
 });

@@ -22,6 +22,7 @@ export const site = {
   nav: [
     ["/", "خانه"],
     ["/rooms", "اتاق‌ها و سوئیت‌ها"],
+    ["/attractions", "دیدنی‌های شهرکرد"],
     ["/facilities", "خدمات مهمانان"],
     ["/virtual-tour", "تور مجازی"],
   ],
@@ -61,6 +62,15 @@ export const pages = {
     intro: "فضاهای اقامت",
     text: "هتل دامون ۳۱ واحد اقامتی دارد: ۲۰ اتاق و ۱۱ سوئیت. نام گروه‌های اقامتی در این صفحه آمده است؛ ظرفیت دقیق، امکانات اختصاصی، نرخ و موجودی هر گروه نمایش داده نمی‌شوند.",
     sections: rooms.map((room) => ({ heading: room.title, text: room.description, link: `/rooms/${room.slug}`, label: "جزئیات", image: room.image, note: "تصویر مفهومی؛ عکس واقعی اتاق نیست." })),
+  },
+  "/attractions": {
+    title: "دیدنی‌های شهرکرد و اطراف",
+    intro: "دیدنی‌های نزدیک دامون",
+    text: "چند دیدنی شهرکرد و اطراف را ببینید. فاصلهٔ جاده‌ای تقریبی است و ممکن است با مسیر انتخابی تغییر کند.",
+    sections: [
+      { heading: "موزهٔ باستان‌شناسی شهرکرد", text: "موزه در حمام تاریخی پرهیزگار قرار دارد.", roadDistanceKm: 1.2, directionsUrl: "https://www.google.com/maps/dir/?api=1&origin=32.32657%2C50.85848&destination=32.32759%2C50.85337&travelmode=driving" },
+      { heading: "مجموعهٔ تاریخی چالشتر", text: "مجموعهٔ تاریخی چالشتر در شهر چالشتر، در غرب شهرکرد قرار دارد.", roadDistanceKm: 9.3, directionsUrl: "https://www.google.com/maps/dir/?api=1&origin=32.32657%2C50.85848&destination=32.3774%2C50.78772&travelmode=driving" },
+    ],
   },
   "/restaurant": {
     title: "اطلاعات پذیرایی هتل دامون",

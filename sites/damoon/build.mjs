@@ -5,7 +5,9 @@ import { createHash } from 'node:crypto';
 import { pages, rooms } from './content.js';
 import { paletteStyles } from './themes.js';
 const root = dirname(fileURLToPath(import.meta.url));
-const output = join(root, 'dist');
+const directPublic = process.argv.includes('--sync-public-direct');
+const publicDir = join(root, '..', '..', 'public', 'damoon-front');
+const output = directPublic ? publicDir : join(root, 'dist');
 const assetPrefix = process.argv.includes('--shared-runtime') ? '/damoon-front' : '';
 await mkdir(output, { recursive: true });
 const files = ['index.html','styles.css','booking.css','accommodation.css','hospitality.css','accommodation.js','hospitality.js','app.js','content.js','translations.js','themes.js','booking.js','booking-flow.js','calendar.js','virtual-tour.js','robots.txt'];
@@ -20,7 +22,7 @@ for (const f of files) {
 }
 await writeFile(join(root,'theme-tokens.css'),paletteStyles());
 await writeFile(join(output,'theme-tokens.css'),paletteStyles());
-await cp(join(root,'assets'), join(output,'assets'), { recursive: true });
+if (!directPublic) await cp(join(root,'assets'), join(output,'assets'), { recursive: true });
 const html = await readFile(join(output,'index.html'),'utf8');
 const routes = [...Object.keys(pages), ...rooms.map(r=>`/rooms/${r.slug}`)];
 for (const route of [...routes,...['fa','en','ar'].flatMap(locale=>routes.map(r=>`/${locale}${r === '/' ? '' : r}`))]) {
@@ -51,8 +53,7 @@ await hashTree(output);
 await writeFile(join(output,'release-manifest.json'),JSON.stringify({ site:'damoon',contentMode:'DEVELOPMENT_WITH_CONCEPT_IMAGES',builtAt:new Date().toISOString(),files:manifest },null,2));
 console.log(`Built ${routes.length} routes with /fa, /en and /ar aliases; no package installation required.`);
 
-if (process.argv.includes("--sync-public")) {
-  const publicDir = join(root, "..", "..", "public", "damoon-front");
+if (process.argv.includes("--sync-public") && !directPublic) {
   await mkdir(publicDir, { recursive: true });
   await cp(output, publicDir, { recursive: true, force: true });
   console.log(`Synced ${output} -> ${publicDir}`);

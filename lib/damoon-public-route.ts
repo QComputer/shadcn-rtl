@@ -3,6 +3,7 @@ const DAMOON_HOST = /^(?:www\.)?damoon-hotel\.ir\.?(:\d{1,5})?$/i;
 const PUBLIC_PATHS = new Set([
   "/",
   "/rooms",
+  "/attractions",
   "/rooms/single",
   "/rooms/double",
   "/rooms/suite",

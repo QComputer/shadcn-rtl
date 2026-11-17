@@ -23,7 +23,7 @@ export const translations = {
       mapUrl: "https://www.waze.com/live-map/directions?to=place.w.33358147.333319329.15567976",
       imageNote: "Concept image used to illustrate the site layout; not an actual hotel photo.",
       nav: [
-        ["/", "Home"], ["/rooms", "Rooms and suites"], ["/facilities", "Guest services"], ["/virtual-tour", "Virtual tour"],
+        ["/", "Home"], ["/rooms", "Rooms and suites"], ["/attractions", "Local attractions"], ["/facilities", "Guest services"], ["/virtual-tour", "Virtual tour"],
       ],
     },
     rooms: {
@@ -56,6 +56,13 @@ export const translations = {
           { ...{ heading: "Single room", text: "Single room category; confirm exact capacity and in-room details with reception." }, link: "/rooms/single", label: "Details", note: "Concept image; not an actual room photo." },
           { heading: "Double room", text: "Double room category; confirm exact capacity and in-room details with reception.", link: "/rooms/double", label: "Details", note: "Concept image; not an actual room photo." },
           { heading: "Suite", text: "Suite category; confirm exact capacity and in-room details with reception.", link: "/rooms/suite", label: "Details", note: "Concept image; not an actual room photo." },
+        ],
+      },
+      "/attractions": {
+        title: "Shahrekord attractions", intro: "Explore nearby sights", text: "Browse a few sights in Shahrekord and nearby. Road distances are approximate and can vary by route.",
+        sections: [
+          { heading: "Shahrekord Archaeological Museum", text: "The museum is housed in the historic Parhizgar Bathhouse.", roadDistanceKm: 1.2, directionsUrl: "https://www.google.com/maps/dir/?api=1&origin=32.32657%2C50.85848&destination=32.32759%2C50.85337&travelmode=driving" },
+          { heading: "Chaleshtor Historical Complex", text: "The historic complex is in Chaleshtor, west of Shahrekord.", roadDistanceKm: 9.3, directionsUrl: "https://www.google.com/maps/dir/?api=1&origin=32.32657%2C50.85848&destination=32.3774%2C50.78772&travelmode=driving" },
         ],
       },
       "/restaurant": {
@@ -146,7 +153,7 @@ export const translations = {
       mapUrl: "https://www.waze.com/live-map/directions?to=place.w.33358147.333319329.15567976",
       imageNote: "صورة تصورية لتوضيح تصميم الموقع؛ وليست صورة حقيقية للفندق.",
       nav: [
-        ["/", "الرئيسية"], ["/rooms", "الغرف والأجنحة"], ["/facilities", "خدمات الضيوف"], ["/virtual-tour", "الجولة الافتراضية"],
+        ["/", "الرئيسية"], ["/rooms", "الغرف والأجنحة"], ["/attractions", "معالم قريبة"], ["/facilities", "خدمات الضيوف"], ["/virtual-tour", "الجولة الافتراضية"],
       ],
     },
     rooms: {
@@ -179,6 +186,13 @@ export const translations = {
           { heading: "غرفة مفردة", text: "فئة غرفة مفردة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", link: "/rooms/single", label: "التفاصيل", note: "صورة تصورية؛ وليست صورة حقيقية للغرفة." },
           { heading: "غرفة مزدوجة", text: "فئة غرفة مزدوجة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", link: "/rooms/double", label: "التفاصيل", note: "صورة تصورية؛ وليست صورة حقيقية للغرفة." },
           { heading: "جناح", text: "فئة جناح؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", link: "/rooms/suite", label: "التفاصيل", note: "صورة تصورية؛ وليست صورة حقيقية للغرفة." },
+        ],
+      },
+      "/attractions": {
+        title: "معالم شهركرد", intro: "استكشفوا المعالم القريبة", text: "تعرّفوا على بعض معالم شهركرد وما حولها. المسافات البرية تقريبية وقد تختلف حسب الطريق المختار.",
+        sections: [
+          { heading: "متحف شهركرد للآثار", text: "يقع المتحف في الحمام التاريخي پرهيزگار.", roadDistanceKm: 1.2, directionsUrl: "https://www.google.com/maps/dir/?api=1&origin=32.32657%2C50.85848&destination=32.32759%2C50.85337&travelmode=driving" },
+          { heading: "مجمع جالشتر التاريخي", text: "يقع المجمع التاريخي في جالشتر غرب شهركرد.", roadDistanceKm: 9.3, directionsUrl: "https://www.google.com/maps/dir/?api=1&origin=32.32657%2C50.85848&destination=32.3774%2C50.78772&travelmode=driving" },
         ],
       },
       "/restaurant": {

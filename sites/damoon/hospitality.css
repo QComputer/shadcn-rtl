@@ -54,6 +54,12 @@ html[data-theme="dark"] .hospitality-card { background: color-mix(in srgb, var(-
 html[data-theme="dark"] .hospitality-contact-details > div { background: color-mix(in srgb, var(--hospitality-paper), white 4%); }
 .hospitality-contact-details span { display: block; margin-bottom: .45rem; color: var(--hospitality-muted); font-size: .85rem; }
 .hospitality-contact-details a, .hospitality-contact-details p { margin: 0; color: var(--hospitality-ink); font-weight: 700; text-decoration: none; line-height: 1.8; }
+.hospitality-contact-location { max-width: 75rem; margin: 1.2rem auto 0; padding: clamp(1.2rem, 3vw, 2rem); border: 1px solid var(--hospitality-line); border-radius: 1rem; background: color-mix(in srgb, var(--hospitality-paper), white 24%); }
+html[data-theme="dark"] .hospitality-contact-location { background: color-mix(in srgb, var(--hospitality-paper), white 4%); }
+.hospitality-contact-location h2 { margin: 0 0 .6rem; color: var(--hospitality-ink); font-size: clamp(1.2rem, 2vw, 1.6rem); }
+.hospitality-contact-location p { margin: .3rem 0; color: var(--hospitality-muted); line-height: 1.8; }
+.hospitality-contact-location .hospitality-button { margin-top: 1rem; }
+.hospitality-road-distance { margin-top: .65rem !important; color: var(--hospitality-wood) !important; font-size: .9rem; font-weight: 700; }
 .hospitality-phone-lines { display: grid; justify-items: start; gap: .15rem; }
 .hospitality-fax { margin-top: .45rem !important; font-size: .9rem; font-weight: 600 !important; }
 .hospitality-note { display: flex; gap: 1rem; max-width: 75rem; margin: 2.5rem auto 0; padding: 1.4rem 1.6rem; border: 1px solid var(--hospitality-line); border-radius: 1rem; background: color-mix(in srgb, var(--hospitality-paper), var(--hospitality-orange) 7%); }

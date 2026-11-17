@@ -2,16 +2,18 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { pages, rooms } from './content.js';
 import { damoonAttractionsData } from './damoon-attractions-data.js';
 import { paletteStyles } from './themes.js';
 const root = dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
 const directPublic = process.argv.includes('--sync-public-direct');
 const publicDir = join(root, '..', '..', 'public', 'damoon-front');
 const output = directPublic ? publicDir : join(root, 'dist');
 const assetPrefix = process.argv.includes('--shared-runtime') ? '/damoon-front' : '';
 await mkdir(output, { recursive: true });
-const files = ['index.html','styles.css','booking.css','accommodation.css','hospitality.css','damoon-attractions.css','accommodation.js','hospitality.js','damoon-attractions-data.js','damoon-attractions-view.js','damoon-attractions-detail-view.js','app.js','content.js','translations.js','themes.js','booking.js','booking-flow.js','calendar.js','virtual-tour.js','robots.txt'];
+const files = ['index.html','styles.css','booking.css','accommodation.css','hospitality.css','damoon-attractions.css','accommodation.js','hospitality.js','damoon-attractions-data.js','damoon-attractions-view.js','damoon-attractions-detail-view.js','damoon-leaflet-maps.js','app.js','content.js','translations.js','themes.js','booking.js','booking-flow.js','calendar.js','virtual-tour.js','robots.txt'];
 for (const f of files) {
   let text = (await readFile(join(root,f),'utf8')).replaceAll('\r\n','\n');
   if (assetPrefix) {
@@ -24,6 +26,12 @@ for (const f of files) {
 await writeFile(join(root,'theme-tokens.css'),paletteStyles());
 await writeFile(join(output,'theme-tokens.css'),paletteStyles());
 if (!directPublic) await cp(join(root,'assets'), join(output,'assets'), { recursive: true });
+const leafletDist = dirname(require.resolve('leaflet'));
+const leafletOutput = join(output, 'vendor', 'leaflet');
+await mkdir(join(leafletOutput, 'images'), { recursive: true });
+for (const file of ['leaflet.js', 'leaflet.css']) await cp(join(leafletDist, file), join(leafletOutput, file));
+await cp(join(leafletDist, '..', 'LICENSE'), join(leafletOutput, 'LICENSE'));
+for (const file of ['marker-icon.png', 'marker-icon-2x.png', 'marker-shadow.png', 'layers.png', 'layers-2x.png']) await cp(join(leafletDist, 'images', file), join(leafletOutput, 'images', file));
 const html = await readFile(join(output,'index.html'),'utf8');
 const routes = [...Object.keys(pages), ...rooms.map(r=>`/rooms/${r.slug}`), ...damoonAttractionsData.attractions.map((attraction)=>`/attractions/${attraction.id}`)];
 for (const route of [...routes,...['fa','en','ar'].flatMap(locale=>routes.map(r=>`/${locale}${r === '/' ? '' : r}`))]) {
@@ -41,7 +49,7 @@ async function hashTree(folder, prefix = '') {
     else {
       const file = join(folder, entry.name);
       let bytes = await readFile(file);
-      if (/\.(?:html|js|css|json|svg|txt)$/.test(entry.name)) {
+      if (entry.name === 'LICENSE' || /\.(?:html|js|css|json|svg|txt)$/.test(entry.name)) {
         const normalized = Buffer.from(bytes.toString('utf8').replaceAll('\r\n', '\n'));
         if (!bytes.equals(normalized)) await writeFile(file, normalized);
         bytes = normalized;
@@ -51,7 +59,7 @@ async function hashTree(folder, prefix = '') {
   }
 }
 await hashTree(output);
-await writeFile(join(output,'release-manifest.json'),JSON.stringify({ site:'damoon',contentMode:'DEVELOPMENT_WITH_CONCEPT_IMAGES',builtAt:new Date().toISOString(),files:manifest },null,2));
+await writeFile(join(output,'release-manifest.json'),JSON.stringify({ site:'damoon',contentMode:'DEVELOPMENT_WITH_CONCEPT_IMAGES',files:manifest },null,2));
 console.log(`Built ${routes.length} routes with /fa, /en and /ar aliases; no package installation required.`);
 
 if (process.argv.includes("--sync-public") && !directPublic) {

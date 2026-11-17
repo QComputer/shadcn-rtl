@@ -3,6 +3,7 @@ import { renderAccommodation, wireAccommodation } from "./accommodation.js";
 import { renderHospitality } from "./hospitality.js";
 import { renderDamoonAttractionsPage, mountDamoonAttractionsPage } from "./damoon-attractions-view.js";
 import { renderDamoonAttractionDetailPage } from "./damoon-attractions-detail-view.js";
+import { renderDamoonMap, mountDamoonMaps, hotelMapUrl } from "./damoon-leaflet-maps.js";
 import { validateStayRange, todayLocalISO, jalaliAccessibleDay } from "./calendar.js";
 import translations from "./translations.js";
 import { palettes, readPalette, applyPalette } from "./themes.js";
@@ -246,9 +247,10 @@ function wireInteractions() {
   if (normalizePath(window.location.pathname) === "/contact" && !root.querySelector(".hospitality-contact-details")) {
     const contact = document.createElement("section");
     contact.className = "contact-actions content-section";
-    contact.innerHTML = `<h2>${safeText(`${ui.reception} ${site.name}`)}</h2><p>${safeText(site.address)}</p><div class="page-hero__actions"><a class="button button--primary" href="tel:${site.phone}">${safeText(ui.callReception)} <bdi>${safeText(site.phoneDisplay)}</bdi></a><a class="button button--outline" href="${safeText(site.mapUrl)}" target="_blank" rel="noopener noreferrer">${safeText(ui.directions)}</a></div>`;
+    contact.innerHTML = `<h2>${safeText(`${ui.reception} ${site.name}`)}</h2><p>${safeText(site.address)}</p><div class="page-hero__actions"><a class="button button--primary" href="tel:${site.phone}">${safeText(ui.callReception)} <bdi>${safeText(site.phoneDisplay)}</bdi></a><a class="button button--outline" href="${hotelMapUrl()}" target="_blank" rel="noopener noreferrer">${safeText(locale === "fa" ? "نمایش موقعیت تقریبی" : locale === "ar" ? "عرض الموقع التقريبي" : "View approximate location")}</a></div>${renderDamoonMap({ kind: "hotel", locale })}`;
     document.querySelector("main").append(contact);
   }
+  mountDamoonMaps(root);
   if (normalizePath(window.location.pathname) === '/contact') {
     const contactNotice = document.createElement('p');
     contactNotice.className = 'hospitality-note';

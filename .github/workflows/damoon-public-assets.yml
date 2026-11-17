@@ -16,9 +16,15 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: pnpm
+      - name: Install locked dependencies for local Leaflet assets
+        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Generate Damoon public assets in place
         run: node sites/damoon/build.mjs --shared-runtime --sync-public-direct
       - name: Package changed public outputs and hashes
@@ -28,8 +34,9 @@ jobs:
           git add --intent-to-add -- public/damoon-front
           git diff --name-only --diff-filter=ACMRT -- public/damoon-front > "$RUNNER_TEMP/damoon-generated-files.txt"
           if [[ ! -s "$RUNNER_TEMP/damoon-generated-files.txt" ]]; then
-            echo "The Damoon build produced no changed public outputs." >&2
-            exit 1
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo 'The generated Damoon bundle matches the checked-in public assets; no artifact upload is needed.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
 
           artifact_dir="$RUNNER_TEMP/damoon-public-artifact"
@@ -46,11 +53,13 @@ jobs:
           size="$(du -sh "$artifact_dir" | cut -f1)"
           echo "count=$count" >> "$GITHUB_OUTPUT"
           echo "size=$size" >> "$GITHUB_OUTPUT"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
           {
             echo "Generated $count changed Damoon public files ($size compressed artifact input)."
             echo 'Artifact paths preserve the `public/damoon-front/` prefix; `SHA256SUMS.txt` records file hashes.'
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
+        if: steps.outputs.outputs.changed == 'true'
         with:
           name: damoon-public-pr-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
           path: ${{ runner.temp }}/damoon-public-artifact/

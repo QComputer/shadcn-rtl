@@ -34,7 +34,9 @@ test("reviewed Damoon shared bundle matches its manifest and retains concept-ima
   for (const [name, expected] of Object.entries(manifest.files)) {
     const file = resolve(root, name);
     assert.ok(file.startsWith(root + sep), "manifest entry stays in the public bundle");
-    assert.equal(createHash("sha256").update(await readFile(file)).digest("hex"), expected, name);
+    const bytes = await readFile(file);
+    const normalized = name === "vendor/leaflet/LICENSE" ? Buffer.from(bytes.toString("utf8").replaceAll("\r\n", "\n")) : bytes;
+    assert.equal(createHash("sha256").update(normalized).digest("hex"), expected, name);
   }
   for (const [name] of Object.entries(manifest.files).filter(([name]) => /\.(?:html|js|css|json|txt)$/.test(name))) {
     const contents = await readFile(resolve(root, name), "utf8");

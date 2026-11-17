@@ -1,19 +1,16 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
-import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const node24 = "C:/Users/disso/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe";
-const chrome = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const output = resolve(process.argv[2]);
 const portServer = createServer();
 await new Promise((resolveListen, reject) => portServer.once("error", reject).listen(0, "127.0.0.1", resolveListen));
 const { port } = portServer.address();
 await new Promise((resolveClose, reject) => portServer.close(error => error ? reject(error) : resolveClose()));
-const child = spawn(existsSync(node24) ? node24 : process.execPath, ["server.mjs"], {
+const child = spawn(process.execPath, ["server.mjs"], {
   cwd: root, env: { ...process.env, PORT: String(port) }, windowsHide: true, stdio: "ignore",
 });
 let browser;
@@ -25,7 +22,7 @@ try {
     await new Promise(resolveWait => setTimeout(resolveWait, 100));
   }
   if (!ready) throw new Error("Damoon local server did not become ready");
-  browser = await chromium.launch({ executablePath: chrome, headless: true });
+  browser = await chromium.launch({ ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}), headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
   const findings = [];
   for (const locale of ["fa", "en", "ar"]) {

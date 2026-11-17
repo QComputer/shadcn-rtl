@@ -49,7 +49,7 @@ async function hashTree(folder, prefix = '') {
     else {
       const file = join(folder, entry.name);
       let bytes = await readFile(file);
-      if (/\.(?:html|js|css|json|svg|txt)$/.test(entry.name)) {
+      if (entry.name === 'LICENSE' || /\.(?:html|js|css|json|svg|txt)$/.test(entry.name)) {
         const normalized = Buffer.from(bytes.toString('utf8').replaceAll('\r\n', '\n'));
         if (!bytes.equals(normalized)) await writeFile(file, normalized);
         bytes = normalized;
@@ -59,7 +59,7 @@ async function hashTree(folder, prefix = '') {
   }
 }
 await hashTree(output);
-await writeFile(join(output,'release-manifest.json'),JSON.stringify({ site:'damoon',contentMode:'DEVELOPMENT_WITH_CONCEPT_IMAGES',builtAt:new Date().toISOString(),files:manifest },null,2));
+await writeFile(join(output,'release-manifest.json'),JSON.stringify({ site:'damoon',contentMode:'DEVELOPMENT_WITH_CONCEPT_IMAGES',files:manifest },null,2));
 console.log(`Built ${routes.length} routes with /fa, /en and /ar aliases; no package installation required.`);
 
 if (process.argv.includes("--sync-public") && !directPublic) {

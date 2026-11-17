@@ -6,6 +6,7 @@ public/damoon-front/*.js text eol=lf
 public/damoon-front/*.css text eol=lf
 public/damoon-front/*.json text eol=lf
 public/damoon-front/*.txt text eol=lf
+public/damoon-front/vendor/leaflet/LICENSE text eol=lf
 public/damoon-front/**/*.html text eol=lf
 public/damoon-front/assets/*.svg text eol=lf
 public/damoon-front/assets/*.txt text eol=lf

@@ -1,7 +1,7 @@
 {
   "site": "damoon",
   "contentMode": "DEVELOPMENT_WITH_CONCEPT_IMAGES",
-  "builtAt": "2026-11-16T22:47:01.683Z",
+  "builtAt": "2026-11-17T01:34:46.761Z",
   "files": {
     "about/index.html": "cbb46db3aaa1df3f7eb5c4f96311510bfe204c5ba665d09f8a81793fc6c118c2",
     "accommodation.css": "0702cee61ee4eb98716852f92ecf2dbeae66bdcfd64899ab901eb5474d038d01",
@@ -89,7 +89,7 @@
     "rooms/suite/index.html": "cbb46db3aaa1df3f7eb5c4f96311510bfe204c5ba665d09f8a81793fc6c118c2",
     "rooms/suite-3-bed/index.html": "cbb46db3aaa1df3f7eb5c4f96311510bfe204c5ba665d09f8a81793fc6c118c2",
     "rooms/suite-4-5-bed/index.html": "cbb46db3aaa1df3f7eb5c4f96311510bfe204c5ba665d09f8a81793fc6c118c2",
-    "styles.css": "06e6f2c4a99c94da2cc5032e04d034975709a849073584fac2fb3914ecb3c2b1",
+    "styles.css": "cd2ab663b01a9df8fffaee709a45caffd62c53db8034bd9463f1d1b3236f7cee",
     "theme-tokens.css": "e45530f56d3674ed13e018a9fa5e92e438f28ef89970751c221e0d588e1fb336",
     "themes.js": "5324a1d7d3676762c109041dd1c8210e8818bd72a01523251ed1bf612fd88f52",
     "translations.js": "3dbc7c3bf323da5297881caa3d277f15ef04d7c1f49c0d3e4331c0c1451583d8",

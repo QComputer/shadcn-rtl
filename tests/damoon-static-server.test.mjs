@@ -37,6 +37,17 @@ test("Damoon standalone server serves its complete browser module graph", { time
     assert.ok(visited.has("/damoon-attractions-data.js"), "the reviewed attractions dataset is public to the frontend");
     assert.ok(visited.has("/damoon-attractions-view.js"), "the attractions listing renderer is served");
     assert.ok(visited.has("/damoon-attractions-detail-view.js"), "the attractions detail renderer is served");
+    assert.ok(visited.has("/damoon-leaflet-maps.js"), "the lazy map adapter is part of the local browser module graph");
+    const mapResponse = await fetch(`${base}/attractions`);
+    const csp = mapResponse.headers.get("content-security-policy");
+    assert.match(csp, /img-src 'self' data: https:\/\/tile\.openstreetmap\.org/);
+    assert.doesNotMatch(csp, /img-src[^;]*\*/);
+    assert.match(mapResponse.headers.get("referrer-policy"), /^strict-origin-when-cross-origin$/);
+    for (const asset of ["leaflet.js", "leaflet.css", "images/marker-icon.png", "images/marker-icon-2x.png", "images/marker-shadow.png", "images/layers.png", "images/layers-2x.png"]) {
+      const response = await fetch(`${base}/damoon-front/vendor/leaflet/${asset}`);
+      if (process.env.CI === "true") assert.equal(response.status, 200, `${asset} is served from the locked local Leaflet package`);
+      else assert.ok([200, 404].includes(response.status), `${asset} is an explicit static allowlist route`);
+    }
     for (const pathname of ["/fa/contact", "/en/contact", "/ar/contact"]) {
       assert.equal((await fetch(`${base}${pathname}`)).status, 200);
     }

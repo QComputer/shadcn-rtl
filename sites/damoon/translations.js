@@ -20,7 +20,6 @@ export const translations = {
       fax: { number: "+983832261986", display: "+98 38 3226 1986" },
       receptionHours: "06:00–01:00 the following morning",
       address: "Shahrekord, North 12 Moharram Street, Basij Square",
-      mapUrl: "https://www.waze.com/live-map/directions?to=place.w.33358147.333319329.15567976",
       imageNote: "Concept image used to illustrate the site layout; not an actual hotel photo.",
       nav: [
         ["/", "Home"], ["/rooms", "Rooms and suites"], ["/attractions", "Local attractions"], ["/facilities", "Guest services"], ["/virtual-tour", "Virtual tour"],
@@ -146,7 +145,6 @@ export const translations = {
       fax: { number: "+983832261986", display: "+98 38 3226 1986" },
       receptionHours: "من الساعة 06:00 حتى الساعة 01:00 من صباح اليوم التالي",
       address: "شهركرد، شارع 12 محرم الشمالي، ساحة بسيج",
-      mapUrl: "https://www.waze.com/live-map/directions?to=place.w.33358147.333319329.15567976",
       imageNote: "صورة تصورية لتوضيح تصميم الموقع؛ وليست صورة حقيقية للفندق.",
       nav: [
         ["/", "الرئيسية"], ["/rooms", "الغرف والأجنحة"], ["/attractions", "معالم قريبة"], ["/facilities", "خدمات الضيوف"], ["/virtual-tour", "الجولة الافتراضية"],

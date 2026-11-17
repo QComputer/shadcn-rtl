@@ -4,6 +4,9 @@ import { normalizePath, pageForPath } from "../content.js";
 import { damoonAttractionsData } from "../damoon-attractions-data.js";
 import { getDamoonAttraction, renderDamoonAttractionDetailPage } from "../damoon-attractions-detail-view.js";
 import { renderDamoonAttractionsPage } from "../damoon-attractions-view.js";
+import { renderHospitality } from "../hospitality.js";
+import { siteForLocale } from "../content.js";
+import { attractionMapUrl, getDamoonMapPoints, hotelMapUrl, renderDamoonMap } from "../damoon-leaflet-maps.js";
 
 const locales = ["fa", "en", "ar"];
 const expectedSlugs = ["museum-archaeology", "grand-mosque", "atabakan-mosque", "do-khatun-shrine", "mellat-park", "chaleshtar-castle", "gerdab-ben", "zaman-khan-bridge"];
@@ -34,10 +37,12 @@ test("list renders eight localized cards, map fallbacks and explicit pending-pin
     assert.match(html, /straight-line|فاصله مستقیم|المسافة المباشرة|مسافة مباشرة/i);
     assert.ok(html.includes(damoonAttractionsData.labels[locale].pinPending));
     assert.match(html, /openstreetmap\.org\/\?mlat=/);
-    assert.match(html, /waze\.com\/live-map\/directions/);
-    assert.doesNotMatch(html, /<iframe\b|data-da-load-map|export\/embed\.html/i);
+    assert.doesNotMatch(html, /waze/i, "Waze must not appear in Damoon public routes");
+    assert.match(html, /data-da-map data-map-kind="attractions"/);
+    assert.doesNotMatch(html, /<iframe\b|export\/embed\.html/i);
     assert.doesNotMatch(stripTags(html), /32\.32657|50\.85848/);
-    assert.doesNotMatch(html, /&origin=/, "directions do not imply the provisional hotel pin is a verified start point");
+    assert.doesNotMatch(html, /&origin=|waze/i, "no route assumes a verified hotel origin or links Waze");
+    assert.equal((html.match(/class="da-map-shell"/g) || []).length, 1);
     for (const slug of expectedSlugs) assert.match(html, new RegExp(`/${locale}/attractions/${slug}(?:["?])`));
     for (const anchor of externalAnchors(html)) assert.match(anchor, /rel="noopener noreferrer"/);
     assert.equal((html.match(/class="da-details"/g) || []).length, 8, `${locale} exposes sources for all eight locations`);
@@ -56,10 +61,51 @@ test("all 24 detail routes render localized source-backed copy; unknown slugs st
       assert.match(html, /straight-line|فاصله مستقیم|المسافة المباشرة|مسافة مباشرة/i);
       assert.match(html, /road distance|مسافت جاده‌ای|مسافة الطريق/i);
       assert.doesNotMatch(html, /<iframe\b|&origin=/i);
+      assert.match(html, /data-map-kind="attraction"/);
+      assert.match(html, new RegExp(`data-map-id="${slug}"`));
+      assert.equal((html.match(/class="da-map-shell"/g) || []).length, 1);
+      assert.doesNotMatch(html, /waze/i);
       for (const anchor of externalAnchors(html)) assert.match(anchor, /rel="noopener noreferrer"/);
     }
   }
   assert.equal(renderDamoonAttractionDetailPage("en", "unknown-slug"), null);
   assert.equal(pageForPath("/attractions/unknown-slug", "en"), null);
   assert.equal(pageForPath("/attractions/museum-archaeology/extra", "fa"), null);
+});
+
+test("Leaflet points use only canonical coordinates, pending hotel status, destination OSM URLs and neutral directions labels", () => {
+  const points = getDamoonMapPoints("attractions");
+  assert.equal(points.length, 9);
+  assert.equal(points[0].lat, damoonAttractionsData.hotel.geo.lat);
+  assert.equal(points[0].lng, damoonAttractionsData.hotel.geo.lng);
+  assert.deepEqual(points.slice(1).map(({ id, lat, lng }) => ({ id, lat, lng })), damoonAttractionsData.attractions.map(item => ({ id: item.id, lat: item.geo.lat, lng: item.geo.lng })));
+  assert.equal(getDamoonMapPoints("attraction", "unknown").length, 0);
+  const hotelUrl = new URL(hotelMapUrl());
+  assert.equal(hotelUrl.hostname, "www.openstreetmap.org");
+  assert.equal(Number(hotelUrl.searchParams.get("mlat")), damoonAttractionsData.hotel.geo.lat);
+  assert.equal(Number(hotelUrl.searchParams.get("mlon")), damoonAttractionsData.hotel.geo.lng);
+  for (const attraction of damoonAttractionsData.attractions) {
+    const url = new URL(attractionMapUrl(attraction));
+    assert.equal(Number(url.searchParams.get("mlat")), attraction.geo.lat);
+    assert.equal(Number(url.searchParams.get("mlon")), attraction.geo.lng);
+  }
+  for (const locale of locales) {
+    const html = renderDamoonMap({ kind: "hotel", locale });
+    assert.ok(html.includes(damoonAttractionsData.labels[locale].pinPending));
+    assert.match(html, /tile\.openstreetmap\.org|OpenStreetMap contributors/);
+    assert.match(html, /openstreetmap\.org\//);
+    assert.doesNotMatch(html, /waze/i);
+  }
+  assert.equal(damoonAttractionsData.hotel.geo.status, "PUBLIC_MAP_POINT_NOT_OWNER_APPROVED");
+  assert.ok(locales.every(locale => ["Directions", "مسیریابی", "الاتجاهات"].includes(damoonAttractionsData.labels[locale].directions)));
+});
+
+test("localized contact pages expose the hotel map and its pending public-point notice", () => {
+  for (const locale of locales) {
+    const html = renderHospitality({ path: "/contact", page: { title: "Contact", sections: [] }, locale, site: siteForLocale(locale), routeHref: value => value, escapeHtml: value => String(value) });
+    assert.match(html, /data-map-kind="hotel"/);
+    assert.ok(html.includes(damoonAttractionsData.labels[locale].pinPending));
+    assert.match(html, /openstreetmap\.org/);
+    assert.doesNotMatch(html, /waze\.com/i);
+  }
 });

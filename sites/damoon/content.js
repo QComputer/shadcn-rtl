@@ -18,7 +18,6 @@ export const site = {
   fax: { number: "+983832261986", display: "+98 38 3226 1986" },
   receptionHours: "۰۶:۰۰ تا ۰۱:۰۰ بامداد روز بعد",
   address: "شهرکرد، خیابان دوازده محرم شمالی، میدان بسیج",
-  mapUrl: "https://www.waze.com/live-map/directions?to=place.w.33358147.333319329.15567976",
   imageNote: "تصویر مفهومی برای نمایش چیدمان سایت؛ عکس واقعی هتل نیست.",
   nav: [
     ["/", "خانه"],

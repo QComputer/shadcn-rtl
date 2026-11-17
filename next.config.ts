@@ -47,6 +47,10 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: securityHeaders,
       },
+      {
+        source: "/damoon-front/:path*",
+        headers: [{ key: "Content-Security-Policy", value: "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; style-src 'self'; font-src 'self'; script-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'self'" }],
+      },
     ];
   },
 };

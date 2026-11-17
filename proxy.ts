@@ -89,7 +89,7 @@ const damoonContentSecurityPolicy = [
   "script-src 'self'",
   "style-src 'self'",
   "font-src 'self'",
-  "img-src 'self' data:",
+  "img-src 'self' data: https://tile.openstreetmap.org",
   "connect-src 'self'",
   "media-src 'self'",
   "frame-src 'none'",

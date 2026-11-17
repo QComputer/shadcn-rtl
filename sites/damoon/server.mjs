@@ -9,7 +9,7 @@ const root = dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT || 8080);
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.webp': 'image/webp', '.png': 'image/png', '.svg': 'image/svg+xml', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.json': 'application/json; charset=utf-8' };
 const security = { 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'X-Robots-Tag': 'noindex, nofollow, noarchive', 'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; style-src 'self'; font-src 'self'; script-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'self'" };
-const leafletNames = ['leaflet.js', 'leaflet.css', 'images/marker-icon.png', 'images/marker-icon-2x.png', 'images/marker-shadow.png', 'images/layers.png', 'images/layers-2x.png'];
+const leafletNames = ['LICENSE', 'leaflet.js', 'leaflet.css', 'images/marker-icon.png', 'images/marker-icon-2x.png', 'images/marker-shadow.png', 'images/layers.png', 'images/layers-2x.png'];
 const leafletFiles = new Set(leafletNames.flatMap(name => [`/vendor/leaflet/${name}`, `/damoon-front/vendor/leaflet/${name}`]));
 const leafletDist = process.env.DAMOON_LEAFLET_DIST || join(root, '..', '..', 'node_modules', 'leaflet', 'dist');
 http.createServer(async (req, res) => {

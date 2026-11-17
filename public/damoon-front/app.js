@@ -1,6 +1,8 @@
 import { galleryForLocale, localeForPath, normalizePath, pageForPath, siteForLocale, roomForLocale } from "./content.js";
 import { renderAccommodation, wireAccommodation } from "./accommodation.js";
 import { renderHospitality } from "./hospitality.js";
+import { renderDamoonAttractionsPage, mountDamoonAttractionsPage } from "./damoon-attractions-view.js";
+import { renderDamoonAttractionDetailPage } from "./damoon-attractions-detail-view.js";
 import { validateStayRange, todayLocalISO, jalaliAccessibleDay } from "./calendar.js";
 import translations from "./translations.js";
 import { palettes, readPalette, applyPalette } from "./themes.js";
@@ -71,7 +73,7 @@ function header(path) {
   ];
   const navItems = normalizePath(window.location.pathname) === "/" ? homeNavigation : site.nav;
   const nav = navItems.map(([href, label]) => {
-    const active = href === path || (href === "/rooms" && path.startsWith("/rooms/"));
+    const active = href === path || (href === "/rooms" && path.startsWith("/rooms/")) || (href === "/attractions" && path.startsWith("/attractions/"));
     return `<a class="site-nav__link${active ? " is-active" : ""}" href="${routeHref(href)}"${active ? ' aria-current="page"' : ""}>${safeText(label)}</a>`;
   }).join("");
   const brandLabel = locale === "fa" ? `${site.name}، صفحهٔ اصلی` : `${site.name}, home`;
@@ -187,6 +189,8 @@ function render() {
   if (!page) body = `<section class="not-found"><p class="eyebrow">404</p><h1>${safeText(ui.pageNotFound)}</h1><p>${safeText(ui.pageNotFoundText)}</p>${link("/", ui.backHome, "button button--primary")}</section>`;
   else if (isAccommodation) body = renderAccommodation({ path, page, locale, site, routeHref, stayHref, escapeHtml: safeText });
   else if (path === '/') body = `<div class="home-top">${hero(page, path)}<div data-booking-slot></div></div>${homeContent()}`;
+  else if (path === "/attractions") body = renderDamoonAttractionsPage(locale);
+  else if (path.startsWith("/attractions/")) body = renderDamoonAttractionDetailPage(locale, path.slice("/attractions/".length));
   else if (path === "/virtual-tour") body = `${hero(page, path)}${virtualTourSection()}`; else body = renderHospitality({ path, page, locale, site, routeHref, escapeHtml: safeText }) || `${hero(page, path)}${cards(page.sections)}`;
   root.innerHTML = `${header(page?.path || path)}<main id="main" class="site-main${path === "/" ? " home-main" : ""}">${body}</main>${footer()}<div id="gallery-dialog-root"></div>`;
   const gallerySlot = root.querySelector('[data-hospitality-gallery-slot]');
@@ -196,6 +200,7 @@ function render() {
 
 function wireInteractions() {
   wireAccommodation(root);
+  if (root.querySelector("[data-da-filter]")) mountDamoonAttractionsPage(root);
   const stayLinks = [...root.querySelectorAll('a[href]')].filter(a => a.origin === window.location.origin && !a.closest('.language-switcher') && !a.getAttribute('href').startsWith('#'));
   const syncStayLinks = () => {
     stayLinks.forEach(a => {

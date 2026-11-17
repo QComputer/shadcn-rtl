@@ -59,11 +59,7 @@ export const translations = {
         ],
       },
       "/attractions": {
-        title: "Shahrekord attractions", intro: "Explore nearby sights", text: "Browse a few sights in Shahrekord and nearby. Road distances are approximate and can vary by route.",
-        sections: [
-          { heading: "Shahrekord Archaeological Museum", text: "The museum is housed in the historic Parhizgar Bathhouse.", roadDistanceKm: 1.2, directionsUrl: "https://www.google.com/maps/dir/?api=1&origin=32.32657%2C50.85848&destination=32.32759%2C50.85337&travelmode=driving" },
-          { heading: "Chaleshtor Historical Complex", text: "The historic complex is in Chaleshtor, west of Shahrekord.", roadDistanceKm: 9.3, directionsUrl: "https://www.google.com/maps/dir/?api=1&origin=32.32657%2C50.85848&destination=32.3774%2C50.78772&travelmode=driving" },
-        ],
+        title: "Discover Shahrekord from Damoon", intro: "A local guide for Damoon guests", text: "Explore historic places and nearby landscapes with approximate straight-line distances from a public map point. The hotel pin and road distances have not been verified.",
       },
       "/restaurant": {
         title: "Guest dining information", intro: "Dining information for hotel guests", text: "Damoon Hotel does not currently operate a restaurant or banquet hall. The large dining hall for complimentary guest breakfast is under preparation and is not yet operational.", actions: [["/rooms", "Explore accommodation"], ["/contact", "Contact reception"]],
@@ -189,11 +185,7 @@ export const translations = {
         ],
       },
       "/attractions": {
-        title: "معالم شهركرد", intro: "استكشفوا المعالم القريبة", text: "تعرّفوا على بعض معالم شهركرد وما حولها. المسافات البرية تقريبية وقد تختلف حسب الطريق المختار.",
-        sections: [
-          { heading: "متحف شهركرد للآثار", text: "يقع المتحف في الحمام التاريخي پرهيزگار.", roadDistanceKm: 1.2, directionsUrl: "https://www.google.com/maps/dir/?api=1&origin=32.32657%2C50.85848&destination=32.32759%2C50.85337&travelmode=driving" },
-          { heading: "مجمع جالشتر التاريخي", text: "يقع المجمع التاريخي في جالشتر غرب شهركرد.", roadDistanceKm: 9.3, directionsUrl: "https://www.google.com/maps/dir/?api=1&origin=32.32657%2C50.85848&destination=32.3774%2C50.78772&travelmode=driving" },
-        ],
+        title: "معالم شهركرد من دامون", intro: "دليل محلي لضيوف دامون", text: "اكتشفوا المواقع التاريخية والمناظر القريبة مع مسافات مباشرة تقريبية من نقطة عامة على الخريطة. لم يُعتمد موقع الفندق ميدانياً ولم تُتحقق مسافات الطريق.",
       },
       "/restaurant": {
         title: "معلومات الطعام لضيوف الفندق", intro: "معلومات الطعام والضيافة", text: "لا يوجد في فندق دامون مطعم أو قاعة مناسبات عاملة. القاعة الكبيرة المخصصة لإفطار الضيوف المجاني قيد التجهيز ولم يبدأ تشغيلها بعد.", actions: [["/rooms", "استعراض أماكن الإقامة"], ["/contact", "التواصل مع الاستقبال"]],

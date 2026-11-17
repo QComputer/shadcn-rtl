@@ -1,4 +1,5 @@
 import translations from "./translations.js";
+import { damoonAttractionsData } from "./damoon-attractions-data.js";
 
 export const site = {
   name: "هتل دامون",
@@ -64,13 +65,9 @@ export const pages = {
     sections: rooms.map((room) => ({ heading: room.title, text: room.description, link: `/rooms/${room.slug}`, label: "جزئیات", image: room.image, note: "تصویر مفهومی؛ عکس واقعی اتاق نیست." })),
   },
   "/attractions": {
-    title: "دیدنی‌های شهرکرد و اطراف",
-    intro: "دیدنی‌های نزدیک دامون",
-    text: "چند دیدنی شهرکرد و اطراف را ببینید. فاصلهٔ جاده‌ای تقریبی است و ممکن است با مسیر انتخابی تغییر کند.",
-    sections: [
-      { heading: "موزهٔ باستان‌شناسی شهرکرد", text: "موزه در حمام تاریخی پرهیزگار قرار دارد.", roadDistanceKm: 1.2, directionsUrl: "https://www.google.com/maps/dir/?api=1&origin=32.32657%2C50.85848&destination=32.32759%2C50.85337&travelmode=driving" },
-      { heading: "مجموعهٔ تاریخی چالشتر", text: "مجموعهٔ تاریخی چالشتر در شهر چالشتر، در غرب شهرکرد قرار دارد.", roadDistanceKm: 9.3, directionsUrl: "https://www.google.com/maps/dir/?api=1&origin=32.32657%2C50.85848&destination=32.3774%2C50.78772&travelmode=driving" },
-    ],
+    title: damoonAttractionsData.labels.fa.headline,
+    intro: damoonAttractionsData.labels.fa.headline,
+    text: `${damoonAttractionsData.labels.fa.lead} فاصله‌ها مستقیم و تقریبی‌اند؛ پین هتل تأیید نشده و مسافت جاده‌ای در دسترس نیست.`,
   },
   "/restaurant": {
     title: "اطلاعات پذیرایی هتل دامون",
@@ -176,6 +173,13 @@ export function roomForLocale(slug, locale = "fa") {
 }
 
 export function pageForPath(path, locale = "fa") {
+  const attractionMatch = path.match(/^\/attractions\/([a-z0-9-]+)$/);
+  if (attractionMatch) {
+    const attraction = damoonAttractionsData.attractions.find((item) => item.id === attractionMatch[1]);
+    if (!attraction) return null;
+    const copy = attraction.content[locale] || attraction.content.fa;
+    return { path, title: copy.name, intro: copy.name, text: copy.summary };
+  }
   const source = locale === "fa" ? pages : translations[locale]?.pages;
   if (source?.[path]) {
     const base = pages[path] || {};

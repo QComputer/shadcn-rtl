@@ -18,7 +18,6 @@ export const damoonAttractionsData = {
       "status": "PUBLIC_MAP_POINT_NOT_OWNER_APPROVED",
       "sourceUrl": "https://maps.me/catalog/lodging/tourism-hotel/country-yrn/city-shhrkhrd-32676699/"
     },
-    "existingDirectionsUrl": "https://www.waze.com/live-map/directions?to=place.w.33358147.333319329.15567976"
   },
   "labels": {
     "fa": {
@@ -35,7 +34,7 @@ export const damoonAttractionsData = {
       "pending": "پس از بررسی مسیر",
       "walk": "پیاده‌روی گزارش‌شده",
       "drive": "رانندگی گزارش‌شده",
-      "directions": "دیدن مقصد در Google Maps؛ مبدأ را خودتان انتخاب کنید",
+      "directions": "مسیریابی",
       "details": "درباره این مکان",
       "map": "نمایش نقشه هتل",
       "mapnote": "نقاط جاذبه‌ها و پین هتل از نقشه‌های عمومی و تقریبی‌اند؛ موقعیت هتل هنوز محلی تأیید نشده است. فاصله‌ها مستقیم و تقریبی‌اند، نه مسافت جاده‌ای؛ زمان‌های سفر زنده نیستند.",
@@ -68,7 +67,7 @@ export const damoonAttractionsData = {
       "pending": "Check the route",
       "walk": "Reported walk",
       "drive": "Reported drive",
-      "directions": "Open destination in Google Maps; choose your start point",
+      "directions": "Directions",
       "details": "About this place",
       "map": "Show hotel map",
       "mapnote": "Hotel and attraction pins are approximate public map points; the hotel pin has not been locally confirmed. Distances are approximate straight-line measurements, not road distances; reported travel times are not live.",
@@ -101,7 +100,7 @@ export const damoonAttractionsData = {
       "pending": "تحقّق من المسار",
       "walk": "المشي وفق المصدر",
       "drive": "القيادة وفق المصدر",
-      "directions": "افتح الوجهة في خرائط Google واختر نقطة الانطلاق",
+      "directions": "الاتجاهات",
       "details": "عن الموقع",
       "map": "خريطة موقع الفندق",
       "mapnote": "نقاط المعالم وموقع الفندق نقاط تقريبية من خرائط عامة؛ لم يُتحقق من موقع الفندق محلياً. المسافات مباشرة تقريبية وليست مسافات طريق، ومدد الرحلات المنشورة ليست آنية.",

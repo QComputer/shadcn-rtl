@@ -1,11 +1,11 @@
 /* Hotel Damoon attractions public page — isolated, dependency-free, HTML-only rendering.
    Existing Damoon app must provide the shared header/footer and route integration. */
 import { damoonAttractionsData as dataset } from './damoon-attractions-data.js';
+import { renderDamoonMap, attractionMapUrl } from './damoon-leaflet-maps.js';
 
 const e = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const nf = (locale) => new Intl.NumberFormat(locale === 'fa' ? 'fa-IR' : locale === 'ar' ? 'ar' : 'en-US', { maximumFractionDigits: 1 });
 const urlGoogle = (p) => `https://www.google.com/maps/dir/?api=1&destination=${p.geo.lat}%2C${p.geo.lng}&travelmode=driving`;
-const urlWaze = (p) => `https://www.waze.com/ul?ll=${p.geo.lat}%2C${p.geo.lng}&navigate=yes`;
 
 export function renderDamoonAttractionsPage(locale='fa') {
   if (!dataset.labels[locale]) locale='fa';
@@ -22,7 +22,7 @@ export function renderDamoonAttractionsPage(locale='fa') {
       <h3>${e(c.name)}</h3><p class="da-summary">${e(c.summary)}</p>
       <div class="da-metrics"><strong>${n.format(d.straightLineKm)} ${lang==='fa'?'کیلومتر':lang==='ar'?'كم':'km'}</strong><small>${e(t.direct)}</small>${reported}</div>
       <p class="da-tip"><strong>ⓘ</strong> ${e(c.tip)}</p>
-      <div class="da-card-actions"><a class="da-mini-link" href="/${locale}/attractions/${e(p.id)}">${e(t.readMore)} →</a><a class="da-button da-button-primary" href="${urlGoogle(p)}" target="_blank" rel="noopener noreferrer">${e(t.directions)} ↗</a><a class="da-mini-link" href="${urlWaze(p)}" target="_blank" rel="noopener noreferrer">Waze ↗</a></div>
+      <div class="da-card-actions"><a class="da-mini-link" href="/${locale}/attractions/${e(p.id)}">${e(t.readMore)} →</a><a class="da-button da-button-primary" href="${urlGoogle(p)}" target="_blank" rel="noopener noreferrer">${e(t.directions)} ↗</a><a class="da-mini-link" href="${attractionMapUrl(p)}" target="_blank" rel="noopener noreferrer">OpenStreetMap ↗</a></div>
       <details class="da-details"><summary>${e(t.details)}</summary><p>${e(c.address)}</p><div class="da-source-list">${p.sourceUrls.map((s,i)=>`<a target="_blank" rel="noopener noreferrer" href="${e(s)}">${lang==='fa'?'منبع':lang==='ar'?'المصدر':'Source'} ${n.format(i+1)}</a>`).join('')}</div></details>
       </div></article>`;
   };
@@ -33,7 +33,7 @@ export function renderDamoonAttractionsPage(locale='fa') {
     <section id="da-list" aria-labelledby="da-list-title" class="da-list-section"><div class="da-section-heading"><div><p class="da-eyebrow">${e(t.navAttractions)}</p><h2 id="da-list-title">${e(t.all)} · ${n.format(dataset.attractions.length)}</h2></div><div class="da-filters" role="group" aria-label="${e(t.navAttractions)}"><button type="button" data-da-filter="all" aria-pressed="true">${e(t.all)}</button><button type="button" data-da-filter="heritage" aria-pressed="false">${e(t.heritage)}</button><button type="button" data-da-filter="nature" aria-pressed="false">${e(t.nature)}</button></div></div>
       <div class="da-grid" data-da-cards>${dataset.attractions.map(card).join('')}</div><p class="da-empty" data-da-empty hidden>${e(t.empty)}</p></section>
     <section class="da-itineraries" aria-labelledby="da-plan-title"><div class="da-section-heading"><h2 id="da-plan-title">${e(t.halfDay)} / ${e(t.inTown)}</h2></div><div class="da-itinerary-grid">${dataset.itineraries.map(itin).join('')}</div></section>
-    <section class="da-map-section" id="da-map" aria-labelledby="da-map-title"><div class="da-map-info"><p class="da-eyebrow">${e(t.map)}</p><h2 id="da-map-title">${e(dataset.hotel.name)}</h2><p>${e(dataset.hotel.address[locale])}</p><p class="da-pin-pending" role="note">${e(t.pinPending)}</p><div class="da-card-actions"><a class="da-button da-button-primary" href="${e(dataset.hotel.existingDirectionsUrl)}" target="_blank" rel="noopener noreferrer">Waze ↗</a><a class="da-button da-button-secondary" href="https://www.openstreetmap.org/?mlat=${dataset.hotel.geo.lat}&mlon=${dataset.hotel.geo.lng}#map=15/${dataset.hotel.geo.lat}/${dataset.hotel.geo.lng}" target="_blank" rel="noopener noreferrer">OpenStreetMap ↗</a></div><p class="da-disclaimer">${e(t.mapnote)}</p></div><div class="da-map-panel" aria-label="${e(t.pinPending)}"><span aria-hidden="true">⌖</span><p>${e(t.map)}</p><small>${e(t.pinPending)}</small></div></section>
+    <section class="da-map-section" id="da-map" aria-labelledby="da-map-title"><div class="da-map-info"><p class="da-eyebrow">${e(t.map)}</p><h2 id="da-map-title">${e(dataset.hotel.name)}</h2><p>${e(dataset.hotel.address[locale])}</p><p class="da-disclaimer">${e(t.mapnote)}</p></div>${renderDamoonMap({ kind: "attractions", locale })}</section>
     <p class="da-publishing-note">${e(t.disclaimer)}</p></div>
     </section>`;
 }

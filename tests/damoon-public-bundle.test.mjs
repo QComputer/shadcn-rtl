@@ -23,7 +23,13 @@ test("reviewed Damoon shared bundle matches its manifest and retains concept-ima
   const manifest = JSON.parse(await readFile(resolve(root, "release-manifest.json"), "utf8"));
   assert.equal(manifest.site, "damoon");
   assert.equal(manifest.contentMode, "DEVELOPMENT_WITH_CONCEPT_IMAGES", "missing approved photos must not be presented as real photography");
-  for (const name of ["app.js", "booking.js", "booking-flow.js", "content.js", "translations.js"]) assert.ok(manifest.files[name], name);
+  for (const name of ["app.js", "booking.js", "booking-flow.js", "content.js", "translations.js", "damoon-attractions-data.js", "damoon-attractions-view.js", "damoon-attractions-detail-view.js", "damoon-attractions.css"]) assert.ok(manifest.files[name], name);
+  for (const locale of ["", "fa/", "en/", "ar/"]) {
+    assert.ok(manifest.files[`${locale}attractions/index.html`], `${locale || "fa-default/"}attractions list route`);
+    for (const slug of ["museum-archaeology", "grand-mosque", "atabakan-mosque", "do-khatun-shrine", "mellat-park", "chaleshtar-castle", "gerdab-ben", "zaman-khan-bridge"]) {
+      assert.ok(manifest.files[`${locale}attractions/${slug}/index.html`], `${locale}${slug} route`);
+    }
+  }
   for (const [name, expected] of Object.entries(manifest.files)) {
     const file = resolve(root, name);
     assert.ok(file.startsWith(root + sep), "manifest entry stays in the public bundle");

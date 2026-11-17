@@ -34,9 +34,18 @@ test("Damoon standalone server serves its complete browser module graph", { time
     }
     assert.ok(visited.has("/booking-flow.js"), "booking flow is a transitive app dependency");
     assert.ok(visited.has("/virtual-tour.js"), "virtual tour origin validation is part of the served app module graph");
+    assert.ok(visited.has("/damoon-attractions-data.js"), "the reviewed attractions dataset is public to the frontend");
+    assert.ok(visited.has("/damoon-attractions-view.js"), "the attractions listing renderer is served");
+    assert.ok(visited.has("/damoon-attractions-detail-view.js"), "the attractions detail renderer is served");
     for (const pathname of ["/fa/contact", "/en/contact", "/ar/contact"]) {
       assert.equal((await fetch(`${base}${pathname}`)).status, 200);
     }
+    const slugs = ["museum-archaeology", "grand-mosque", "atabakan-mosque", "do-khatun-shrine", "mellat-park", "chaleshtar-castle", "gerdab-ben", "zaman-khan-bridge"];
+    for (const locale of ["", "/fa", "/en", "/ar"]) {
+      assert.equal((await fetch(`${base}${locale}/attractions`)).status, 200, `${locale || "default"} attractions list`);
+      for (const slug of slugs) assert.equal((await fetch(`${base}${locale}/attractions/${slug}`)).status, 200, `${locale || "default"} ${slug}`);
+    }
+    assert.equal((await fetch(`${base}/attractions/unknown-slug`)).status, 404, "unknown attraction slugs remain 404");
     assert.equal((await fetch(`${base}/server.mjs`)).status, 404, "server source remains private");
   } finally {
     if (child.exitCode === null) { const exited = once(child, "exit"); child.kill(); await exited; }

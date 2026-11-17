@@ -23,7 +23,7 @@ export const translations = {
       mapUrl: "https://www.waze.com/live-map/directions?to=place.w.33358147.333319329.15567976",
       imageNote: "Concept image used to illustrate the site layout; not an actual hotel photo.",
       nav: [
-        ["/", "Home"], ["/rooms", "Rooms and suites"], ["/facilities", "Guest services"], ["/virtual-tour", "Virtual tour"],
+        ["/", "Home"], ["/rooms", "Rooms and suites"], ["/attractions", "Local attractions"], ["/facilities", "Guest services"], ["/virtual-tour", "Virtual tour"],
       ],
     },
     rooms: {
@@ -57,6 +57,9 @@ export const translations = {
           { heading: "Double room", text: "Double room category; confirm exact capacity and in-room details with reception.", link: "/rooms/double", label: "Details", note: "Concept image; not an actual room photo." },
           { heading: "Suite", text: "Suite category; confirm exact capacity and in-room details with reception.", link: "/rooms/suite", label: "Details", note: "Concept image; not an actual room photo." },
         ],
+      },
+      "/attractions": {
+        title: "Discover Shahrekord from Damoon", intro: "A local guide for Damoon guests", text: "Explore historic places and nearby landscapes with approximate straight-line distances from a public map point. The hotel pin and road distances have not been verified.",
       },
       "/restaurant": {
         title: "Guest dining information", intro: "Dining information for hotel guests", text: "Damoon Hotel does not currently operate a restaurant or banquet hall. The large dining hall for complimentary guest breakfast is under preparation and is not yet operational.", actions: [["/rooms", "Explore accommodation"], ["/contact", "Contact reception"]],
@@ -146,7 +149,7 @@ export const translations = {
       mapUrl: "https://www.waze.com/live-map/directions?to=place.w.33358147.333319329.15567976",
       imageNote: "صورة تصورية لتوضيح تصميم الموقع؛ وليست صورة حقيقية للفندق.",
       nav: [
-        ["/", "الرئيسية"], ["/rooms", "الغرف والأجنحة"], ["/facilities", "خدمات الضيوف"], ["/virtual-tour", "الجولة الافتراضية"],
+        ["/", "الرئيسية"], ["/rooms", "الغرف والأجنحة"], ["/attractions", "معالم قريبة"], ["/facilities", "خدمات الضيوف"], ["/virtual-tour", "الجولة الافتراضية"],
       ],
     },
     rooms: {
@@ -180,6 +183,9 @@ export const translations = {
           { heading: "غرفة مزدوجة", text: "فئة غرفة مزدوجة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", link: "/rooms/double", label: "التفاصيل", note: "صورة تصورية؛ وليست صورة حقيقية للغرفة." },
           { heading: "جناح", text: "فئة جناح؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", link: "/rooms/suite", label: "التفاصيل", note: "صورة تصورية؛ وليست صورة حقيقية للغرفة." },
         ],
+      },
+      "/attractions": {
+        title: "معالم شهركرد من دامون", intro: "دليل محلي لضيوف دامون", text: "اكتشفوا المواقع التاريخية والمناظر القريبة مع مسافات مباشرة تقريبية من نقطة عامة على الخريطة. لم يُعتمد موقع الفندق ميدانياً ولم تُتحقق مسافات الطريق.",
       },
       "/restaurant": {
         title: "معلومات الطعام لضيوف الفندق", intro: "معلومات الطعام والضيافة", text: "لا يوجد في فندق دامون مطعم أو قاعة مناسبات عاملة. القاعة الكبيرة المخصصة لإفطار الضيوف المجاني قيد التجهيز ولم يبدأ تشغيلها بعد.", actions: [["/rooms", "استعراض أماكن الإقامة"], ["/contact", "التواصل مع الاستقبال"]],

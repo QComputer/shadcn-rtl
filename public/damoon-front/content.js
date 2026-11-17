@@ -1,4 +1,5 @@
 import translations from "./translations.js";
+import { damoonAttractionsData } from "./damoon-attractions-data.js";
 
 export const site = {
   name: "هتل دامون",
@@ -22,6 +23,7 @@ export const site = {
   nav: [
     ["/", "خانه"],
     ["/rooms", "اتاق‌ها و سوئیت‌ها"],
+    ["/attractions", "دیدنی‌های شهرکرد"],
     ["/facilities", "خدمات مهمانان"],
     ["/virtual-tour", "تور مجازی"],
   ],
@@ -61,6 +63,11 @@ export const pages = {
     intro: "فضاهای اقامت",
     text: "هتل دامون ۳۱ واحد اقامتی دارد: ۲۰ اتاق و ۱۱ سوئیت. نام گروه‌های اقامتی در این صفحه آمده است؛ ظرفیت دقیق، امکانات اختصاصی، نرخ و موجودی هر گروه نمایش داده نمی‌شوند.",
     sections: rooms.map((room) => ({ heading: room.title, text: room.description, link: `/rooms/${room.slug}`, label: "جزئیات", image: room.image, note: "تصویر مفهومی؛ عکس واقعی اتاق نیست." })),
+  },
+  "/attractions": {
+    title: damoonAttractionsData.labels.fa.headline,
+    intro: damoonAttractionsData.labels.fa.headline,
+    text: `${damoonAttractionsData.labels.fa.lead} فاصله‌ها مستقیم و تقریبی‌اند؛ پین هتل تأیید نشده و مسافت جاده‌ای در دسترس نیست.`,
   },
   "/restaurant": {
     title: "اطلاعات پذیرایی هتل دامون",
@@ -166,6 +173,13 @@ export function roomForLocale(slug, locale = "fa") {
 }
 
 export function pageForPath(path, locale = "fa") {
+  const attractionMatch = path.match(/^\/attractions\/([a-z0-9-]+)$/);
+  if (attractionMatch) {
+    const attraction = damoonAttractionsData.attractions.find((item) => item.id === attractionMatch[1]);
+    if (!attraction) return null;
+    const copy = attraction.content[locale] || attraction.content.fa;
+    return { path, title: copy.name, intro: copy.name, text: copy.summary };
+  }
   const source = locale === "fa" ? pages : translations[locale]?.pages;
   if (source?.[path]) {
     const base = pages[path] || {};

@@ -27,8 +27,13 @@ const PUBLIC_PATHS = new Set([
   "/virtual-tour",
 ]);
 
+const PUBLIC_STATIC_ASSETS = new Set([
+  "/damoon-front/vendor/leaflet/LICENSE",
+]);
+
 export type DamoonPublicRoute =
   | { kind: "rewrite"; pathname: "/damoon-front/index.html" }
+  | { kind: "asset"; pathname: string }
   | { kind: "redirect"; pathname: "/" }
   | { kind: "robots"; body: string }
   | { kind: "not-found" }
@@ -79,6 +84,9 @@ export function resolveDamoonPublicRoute(input: {
   }
   if (rawPath === "/sitemap.xml") return { kind: "not-found" };
   if (rawPath === "/favicon.ico") return { kind: "no-content" };
+  if (PUBLIC_STATIC_ASSETS.has(rawPath)) {
+    return { kind: "asset", pathname: rawPath };
+  }
   const path = normalizedPath(rawPath);
   if (!path) return null;
   if (!PUBLIC_PATHS.has(path)) return null;

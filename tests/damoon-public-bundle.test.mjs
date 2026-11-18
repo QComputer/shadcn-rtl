@@ -31,6 +31,7 @@ test("reviewed Damoon shared bundle matches its manifest and retains concept-ima
       assert.ok(manifest.files[`${locale}attractions/${slug}/index.html`], `${locale}${slug} route`);
     }
   }
+  assert.ok(manifest.files["vendor/leaflet/LICENSE"], "Leaflet LICENSE must be present in manifest");
   for (const [name, expected] of Object.entries(manifest.files)) {
     const file = resolve(root, name);
     assert.ok(file.startsWith(root + sep), "manifest entry stays in the public bundle");

@@ -124,6 +124,10 @@ function damoonPublicResponse(request: NextRequest, route: DamoonPublicRoute): N
   if (route.kind === "no-content") {
     return withDamoonPublicHeaders(new NextResponse(null, { status: 204 }));
   }
+  if (route.kind === "asset") {
+    const requestHeaders = sanitizedProxyBoundaryHeaders(request);
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
 
   const target = request.nextUrl.clone();
   target.pathname = route.pathname;

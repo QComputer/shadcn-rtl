@@ -82,6 +82,18 @@ test("redirects the legacy localized Damoon path and returns the special crawler
   assert.deepEqual(resolveDamoonPublicRoute({ hostHeader, pathname: "/favicon.ico", method: "HEAD" }), { kind: "no-content" });
 });
 
+test("serves the exact extensionless Leaflet LICENSE asset on Damoon host only", () => {
+  for (const hostHeader of ["damoon-hotel.ir", "www.damoon-hotel.ir", "WWW.DAMOON-HOTEL.IR.:443"]) {
+    for (const method of ["GET", "HEAD"]) {
+      assert.deepEqual(
+        resolveDamoonPublicRoute({ hostHeader, pathname: "/damoon-front/vendor/leaflet/LICENSE", method }),
+        { kind: "asset", pathname: "/damoon-front/vendor/leaflet/LICENSE" },
+        `${hostHeader} ${method}`,
+      );
+    }
+  }
+});
+
 test("leaves spoofed, unrelated, API, unknown, and mutating requests to existing routing", () => {
   for (const hostHeader of [
     null,
@@ -107,11 +119,18 @@ test("leaves spoofed, unrelated, API, unknown, and mutating requests to existing
     "/ar/api/health",
     "/en/rooms/unknown",
     "/%2frooms",
+    "/damoon-front/vendor/leaflet/UNKNOWN",
+    "/damoon-front/vendor/leaflet/license",
+    "/damoon-front/vendor/leaflet/LICENSE.bak",
+    "/damoon-front/LICENSE",
+    "/en/damoon-front/vendor/leaflet/LICENSE",
+    "/ar/damoon-front/vendor/leaflet/LICENSE",
   ]) {
     assert.equal(resolveDamoonPublicRoute({ hostHeader: "damoon-hotel.ir", pathname, method: "GET" }), null, pathname);
   }
 
   for (const method of ["POST", "PUT", "PATCH", "DELETE", "OPTIONS"]) {
     assert.equal(resolveDamoonPublicRoute({ hostHeader: "damoon-hotel.ir", pathname: "/", method }), null, method);
+    assert.equal(resolveDamoonPublicRoute({ hostHeader: "damoon-hotel.ir", pathname: "/damoon-front/vendor/leaflet/LICENSE", method }), null, `LICENSE ${method}`);
   }
 });

@@ -202,7 +202,26 @@ async function main(): Promise<void> {
     if (db) await db.$disconnect();
     if (schemaCreated) await publicDb.$executeRawUnsafe(`DROP SCHEMA "${SHAPE_SCHEMA}" CASCADE`);
     await publicDb.$disconnect();
-    if (tempRoot) await rm(tempRoot, { recursive: true, force: true });
+    if (tempRoot) {
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        try {
+          await rm(tempRoot, { recursive: true, force: true });
+          tempRoot = undefined;
+          break;
+        } catch (error) {
+          const code = (error as NodeJS.ErrnoException).code;
+          if (!["EBUSY", "EPERM", "ENOTEMPTY"].includes(code ?? "") || attempt === 7) {
+            if (["EBUSY", "EPERM", "ENOTEMPTY"].includes(code ?? "")) {
+              console.warn(`WARN: disposable rehearsal temp directory cleanup was skipped after assertions passed: ${tempRoot}`);
+              tempRoot = undefined;
+              break;
+            }
+            throw error;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)));
+        }
+      }
+    }
   }
 }
 

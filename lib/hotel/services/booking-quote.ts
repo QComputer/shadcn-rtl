@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { Prisma, type HotelProperty } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { ApiError } from "@/lib/api-guards";
 import { enumerateStayNights, validateOccupancyFitsRoom } from "@/lib/hotel/domain/stay-dates";
 import { sellableUnitsForNight } from "@/lib/hotel/domain/availability";
@@ -9,11 +9,12 @@ import { BED_CAPACITY, type BedConfiguration, type CancellationTier, type Reserv
 export type HotelPricedQuote = { id: string; actorUserId: string; propertyId: string; roomTypeId: string; ratePlanId: string; checkIn: string; checkOut: string; adults: number; childAges: number[]; nightlyRates: number[]; totalAmount: string; currency: string; expiresAt: string; policyVersion: number; policy: ReservationCancellationPolicySnapshot; holdId?: string; reservationId?: string };
 type Quote = HotelPricedQuote;
 export type HotelStayCriteria = { action: "search" | "quote"; roomTypeId: string; ratePlanId: string; checkIn: string; checkOut: string; adults: number; childAges: number[] };
+export type HotelPricingProperty = { id: string; organizationId: string; currency: string; timezone: string; minStayNights: number; maxStayNights: number };
 const date = (value: string) => new Date(value + "T00:00:00.000Z");
 const dateOnly = (value: Date) => value.toISOString().slice(0, 10);
 const fail = (message: string, status = 409): never => { throw new ApiError(status, message); };
 /** Server-only pricing; no hold, reservation, payment or inventory mutation. */
-export async function priceHotelStay(tx: Prisma.TransactionClient, property: HotelProperty, actorUserId: string, command: HotelStayCriteria, now: Date, options: { requireAvailability?: boolean } = {}): Promise<{ quote?: HotelPricedQuote; available?: boolean; remaining?: number }> {
+export async function priceHotelStay(tx: Prisma.TransactionClient, property: HotelPricingProperty, actorUserId: string, command: HotelStayCriteria, now: Date, options: { requireAvailability?: boolean } = {}): Promise<{ quote?: HotelPricedQuote; available?: boolean; remaining?: number }> {
 const organizationId = property.organizationId; const propertyId = property.id;
         const count = (date(command.checkOut).getTime() - date(command.checkIn).getTime()) / 86_400_000;
         if (!Number.isInteger(count) || count < 1 || count > 31) fail("Stay must be 1 to 31 nights", 422);

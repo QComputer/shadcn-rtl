@@ -10,6 +10,8 @@ import { priceHotelStay, type HotelPricedQuote } from "./booking-quote";
 import { PrismaHotelRepositories } from "../persistence/prisma-hotel-repositories";
 import { enumerateStayNights } from "../domain/stay-dates";
 import { decideReservationTransition } from "../domain/booking-state";
+import { HOTEL_BOOKING_BASE_PROPERTY_SELECT } from "./booking-context";
+import { assertHotelOperationalReservationSchemaReady } from "./hotel-schema-readiness";
 
 const id = z.string().trim().min(1).max(200);
 const MAX_TOMAN = BigInt(Number.MAX_SAFE_INTEGER);
@@ -51,6 +53,7 @@ export class HotelOperationalReservationService {
     await authorizeHotelBookingActor(this.db, actor, organizationId, propertyId);
     if (!["ADMIN", "SUPER_ADMIN"].includes(actor.role)) fail("Organization administrator required", 403);
     if (actor.role !== "SUPER_ADMIN" && !await this.db.organizationMember.findFirst({ where: { organizationId, userId: actor.userId, isActive: true, role: "ADMIN" } })) fail("Organization administrator required", 403);
+    await assertHotelOperationalReservationSchemaReady(this.db);
     const hasPaymentConfig = parsed.manualConfirmationPolicy !== undefined || parsed.allowedOfflinePaymentMethods !== undefined || parsed.minimumVerifiedDepositAmount !== undefined;
     const data: Prisma.HotelPropertyUpdateInput = { operationalMode: mode };
     if (parsed.pendingPaymentMinutes !== undefined) data.pendingPaymentMinutes = parsed.pendingPaymentMinutes;
@@ -73,8 +76,13 @@ export class HotelOperationalReservationService {
   }
   private async authorize(actor: HotelBookingActor, organizationId: string, propertyId: string) {
     if (process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED !== "1" || process.env.HOTEL_GUEST_PORTAL_ENABLED !== "1") fail("Operational reservations are disabled", 403);
-    const property = await authorizeHotelBookingActor(this.db, actor, organizationId, propertyId);
-    if (property.operationalMode !== "RESERVATION") fail("Operational reservations are disabled for this property", 403);
+    await assertHotelOperationalReservationSchemaReady(this.db);
+    await authorizeHotelBookingActor(this.db, actor, organizationId, propertyId);
+    const property = await this.db.hotelProperty.findFirst({
+      where: { id: propertyId, organizationId, operationalMode: "RESERVATION", isActive: true, deletedAt: null },
+      select: { ...HOTEL_BOOKING_BASE_PROPERTY_SELECT, operationalMode: true, manualConfirmationPolicy: true, allowedOfflinePaymentMethods: true, minimumVerifiedDepositAmount: true, pendingPaymentMinutes: true },
+    });
+    if (!property) fail("Operational reservations are disabled for this property", 403);
     return property;
   }
   private async quotes(tx: Prisma.TransactionClient | PrismaClient, organizationId: string, propertyId: string, actor?: HotelBookingActor) {
@@ -124,12 +132,13 @@ export class HotelOperationalReservationService {
     if (["quote", "search", "quote-request"].includes(submitted.action)) await this.expire(organizationId, propertyId);
     const fingerprint = createHash("sha256").update(JSON.stringify([actor.userId, propertyId, submitted])).digest("hex");
     return this.db.$transaction(async tx => {
+      await assertHotelOperationalReservationSchemaReady(tx);
       await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify([organizationId, ACTIONS, idempotencyKey])},0))`);
       const key = { organizationId_operationScope_idempotencyKey: { organizationId, operationScope: ACTIONS, idempotencyKey } };
       const replay = await tx.hotelInventoryIdempotency.findUnique({ where: key });
       if (replay) { if (replay.requestFingerprint !== fingerprint) fail("Idempotency-Key conflict"); return replay.resultJson; }
       await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelProperty" WHERE "id"=${propertyId} AND "organizationId"=${organizationId} FOR SHARE`);
-        const property = await tx.hotelProperty.findFirst({ where: { id: propertyId, organizationId, operationalMode: "RESERVATION", isActive: true, deletedAt: null } });
+        const property = await tx.hotelProperty.findFirst({ where: { id: propertyId, organizationId, operationalMode: "RESERVATION", isActive: true, deletedAt: null }, select: { ...HOTEL_BOOKING_BASE_PROPERTY_SELECT, operationalMode: true, manualConfirmationPolicy: true, allowedOfflinePaymentMethods: true, minimumVerifiedDepositAmount: true, pendingPaymentMinutes: true } });
       if (!property) fail("Operational reservations disabled", 403);
       const now = this.now(); const repo = new PrismaHotelRepositories(this.db);
       let result: Record<string, unknown>;

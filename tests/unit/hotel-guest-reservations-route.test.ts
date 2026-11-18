@@ -25,6 +25,9 @@ mock.module("@/lib/db-runtime", { namedExports: { prisma } });
 mock.module("@/lib/hotel/services/hotel-publication.service", { namedExports: {
   resolveHotelTenantForHost: async (host: string | null) => { calls.push({ name: "resolveTenant", args: [host] }); return host === "hotel.example" ? resolvedTenant : null; },
 } });
+mock.module("@/lib/hotel/services/hotel-schema-readiness", { namedExports: {
+  assertHotelOperationalReservationSchemaReady: async () => { calls.push({ name: "assertSchemaReady", args: [] }); },
+} });
 mock.module("@/lib/hotel/services/hotel-operational-reservation.service", { namedExports: {
   HotelOperationalReservationService: class {
     get(...args: unknown[]) { calls.push({ name: "service.get", args }); return Promise.resolve({ view: "guest", reservations: [] }); }

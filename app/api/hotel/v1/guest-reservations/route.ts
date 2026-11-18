@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ApiError, jsonError, requireAuthSession, requireSameOriginMutation } from "@/lib/api-guards";
 import { prisma } from "@/lib/db-runtime";
 import { HotelOperationalReservationService } from "@/lib/hotel/services/hotel-operational-reservation.service";
+import { assertHotelOperationalReservationSchemaReady } from "@/lib/hotel/services/hotel-schema-readiness";
 import { resolveHotelTenantForHost } from "@/lib/hotel/services/hotel-publication.service";
 import { readBoundedJson } from "@/lib/security/bounded-json";
 
@@ -19,6 +20,7 @@ async function guestScope(request: NextRequest) {
   if (session.user.role !== "CUSTOMER" || session.customerContext?.organizationId !== tenant.organizationId) {
     throw new ApiError(403, "Customer tenant context required");
   }
+  await assertHotelOperationalReservationSchemaReady(prisma);
   return {
     actor: { userId: session.user.id, role: "CUSTOMER" as const, organizationId: tenant.organizationId, customerContextVerified: true },
     organizationId: tenant.organizationId,

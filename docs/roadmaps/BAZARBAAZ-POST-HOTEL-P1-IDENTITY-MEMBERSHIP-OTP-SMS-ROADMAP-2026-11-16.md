@@ -14,6 +14,22 @@
 ### 0.1 هدف کسب‌وکاری
 ایجاد تجربه پایدار و امن «ورود/ثبت‌نام با موبایل»، «عضویت اختیاری در کسب‌وکارها»، «باشگاه مشتریان»، «اعلان تراکنشی» و «پیامک چندمستاجری» برای BazarBaaz و کسب‌وکارهای دارای دامنه/PWA مستقل، با استفاده مجدد از زیرساخت موجود. راهکار باید با هتل دامون، رستوران ۱۳، کافه لئو، آکا شوز و سازمان‌های آینده سازگار باشد؛ نام‌ها صرفاً پایلوت‌اند و نباید در منطق سرویس هاردکد شوند.
 
+### 0.0 Architectural Principle: Guest-First, Identity-Optional
+**`OWNER_APPROVED`** — See `docs/architecture/ADR-GUEST-FIRST-IDENTITY-OPTIONAL.md`
+
+All visitors and guests must be able to use maximum safe and permitted functionality without mandatory registration. This principle adds a parallel **GF0–GF5** workstream to the existing G0–G9 roadmap:
+
+| GF Milestone | Name | Priority | Addresses |
+|--------------|------|----------|-----------|
+| **GF0** | Guest Cart & Checkout Foundation (SHOP) | P0 | Session cart, guest checkout, cart merge |
+| **GF1** | Secure Guest Appointment Tracking | P0 (P0-A) | Opaque token lookup, verified ownership, negative tests |
+| **GF2** | Hotel Guest Enquiry Decoupling | P0 (P0-B) | Independent feature gate, no operational coupling |
+| **GF3** | Guest-to-CUSTOMER Conversion | P1 | Secure, idempotent, non-destructive linking |
+| **GF4** | CustomerClubMembership & Consent | P1 | Explicit opt-in, per-tenant, audited |
+| **GF5** | Cross-Domain SSO & PWA Integration | P2 | User-mediated, verified domains, no silent creation |
+
+**Critical:** `OWNER_APPROVED` applies to the architectural principle only. GF0–GF5 execution requires separate owner approval per milestone. GF0–GF2 can proceed in parallel; GF3–GF5 are sequential per dependencies. See `plans/guest-first-implementation-plan.md` for engineering contracts.
+
 ### 0.2 ترتیب اجباری
 1. ~~بستن مرحله اول هتل دامون~~ — **`HOTEL_PHASE1_CLOSED`**؛ مستند نهایی و شواهد در [گزارش closure](../hotel/HOTEL-PHASE1-FINAL-CLOSURE-2026-11-16.md).
 2. شروع `G0` فقط پس از **تصویب جداگانه مالک** — ممیزی دقیق و تست مستقل OTP/عضویت/SMS روی baseline همان روز؛ بدون تغییر Production.
@@ -384,6 +400,16 @@ phases:
   G7: NOT_STARTED
   G8: NOT_STARTED
   G9: NOT_STARTED
+guest_first_workstream:
+  architectural_principle: OWNER_APPROVED
+  gf0_guest_cart_checkout: PLANNED
+  gf1_secure_appointment_tracking: PLANNED
+  gf2_hotel_enquiry_decoupling: PLANNED
+  gf3_guest_to_customer_conversion: PLANNED
+  gf4_customer_club_consent: PLANNED
+  gf5_cross_domain_sso_pwa: PLANNED
+  p0_a_appointment_pii: IDENTIFIED_IN_GF1
+  p0_b_hotel_enquiry_coupling: IDENTIFIED_IN_GF2
 ```
 
 ---

@@ -639,3 +639,51 @@ BB-AI-MEDIA-P04 - Integrate only confirmed AI media capabilities into tenant UI,
 After BB-AI-MEDIA-ONLINE-MILESTONE-01 is accepted, return to **BB-B2B-P14 - Transactional Tenant Provisioning Execution** only with fresh explicit P14 execution authorization. Do not execute tenant provisioning during the AI media milestone.
 
 See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails, `docs/PHASE_81_EXPORT_DOWNLOADS.md` for protected export downloads, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md` for deployed verification, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md` for the roadmap reconciliation, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md` for the AI media health gate, `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md` for product suggestion MOCK-flow acceptance, `docs/PHASE_86_AI_MEDIA_DURABLE_STORAGE.md` for durable selected-image storage, `docs/PHASE_87_AI_MEDIA_LONG_RUNNING_UX.md` for long-running job UX, `docs/PHASE_88_AI_MEDIA_USAGE_CONTROLS.md` for usage and quota controls, `docs/PHASE_89_IMPORT_AI_MEDIA_BRIDGE.md` for import-to-AI-media workflow integration, `docs/PHASE_90_DEPLOYED_AI_MEDIA_ROLLOUT_GATE.md` for deployed Bazar Baz AI media rollout validation, `docs/PHASE_91_AI_MEDIA_ROLLOUT_EVIDENCE.md` for operator-safe rollout evidence retention, `docs/PHASE_92_AI_MEDIA_PAID_PROVIDER_CONTROLS.md` for explicit paid-provider controls, `docs/PHASE_93_AI_MEDIA_COST_ROLLBACK.md` for cost telemetry and rollback guardrails, `docs/PHASE_94_AI_MEDIA_SELLER_STATE_UX.md` for seller-facing AI media state UX, `docs/PHASE_95_SOURCE_CLEANUP_VERIFICATION.md` for source cleanup and security verification, `docs/PHASE_96_OPEN_FIELDS_AUDIT.md` for open-fields workflow audit, `docs/PHASE_97_PWA_FOUNDATION.md` for PWA install foundation, `docs/PHASE_98_PWA_OFFLINE_SHELL.md` for PWA offline shell quality gates, `docs/PHASE_99_NOTIFICATION_PREFERENCES.md` for notification preference policy, `docs/PHASE_100_WEB_PUSH_DELIVERY.md` for preference-aware Web Push delivery, `docs/PHASE_101_SMS_PROVIDER.md` for SMS provider abstraction, `docs/PHASE_102_NOTIFICATION_ROUTING.md` for template routing, `docs/PHASE_103_NOTIFICATION_OPERATIONS_DASHBOARD.md` for the operator dashboard, `docs/PHASE_104_DEPLOYED_PWA_PUSH_SMS_SMOKE.md` for deployed smoke gates, `docs/PHASE_105_PRODUCTION_ROLLOUT_RUNBOOK.md` for production rollout operations, `docs/PHASE_106_PWA_PUSH_SMS_ACCEPTANCE_GATE.md` for the acceptance and packaging gate, `docs/PHASE_107_CREATIVE_STUDIO_INTEGRATION_PLANNING.md` for the Creative Studio planning contract, `docs/PHASE_108_CREATIVE_STUDIO_SERVER_FOUNDATION.md` for the Creative Studio server foundation, `docs/PHASE_109_CREATIVE_STUDIO_DASHBOARD_REVIEW.md` for the Creative Studio dashboard review surface, `docs/PHASE_110_CREATIVE_STUDIO_APPLY_CONTROLS.md` for the Creative Studio apply-controls surface, `docs/PHASE_111_CREATIVE_STUDIO_GENERATION_READINESS.md` for the Creative Studio generation readiness gate, `docs/PHASE_112_CREATIVE_STUDIO_PRODUCT_IMAGE_GENERATION.md` for product-image generation request controls, `docs/PHASE_113_CREATIVE_STUDIO_GENERATED_ASSET_SELECTION.md` for generated-asset selection polish, `docs/PHASE_114_CREATIVE_STUDIO_ORGANIZATION_BRAND_READINESS.md` for organization-brand readiness, `docs/PHASE_115_CREATIVE_STUDIO_ORGANIZATION_BRAND_REQUEST_CONTROLS.md` for organization-brand request controls, `docs/PHASE_116_CREATIVE_STUDIO_ORGANIZATION_BRAND_ACCEPTANCE.md` for organization-brand acceptance, `docs/PHASE_117_CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_ROLLOUT_GATE.md` for organization-brand provider rollout gating, `docs/PHASE_118_CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_EXECUTION.md` for organization-brand provider execution wiring, and `docs/PHASE_119_CREATIVE_STUDIO_PROVIDER_RESULT_INGESTION.md` for provider result ingestion.
+
+## 2026-11-20 Guest-First, Identity-Optional Architecture
+
+**Decision:** `OWNER_APPROVED` — Permanent architectural principle: BAZARBAAZ SHALL BE GUEST-FIRST AND IDENTITY-OPTIONAL.
+
+**Branch:** `docs/guest-first-architecture-20261120` (from `origin/main` at `441dd4d46fec83c9f546c6ae4c2f3403c0c3793d`)
+
+**Base SHA:** `441dd4d46fec83c9f546c6ae4c2f3403c0c3793d` (PR99 merged)
+
+**Canonical Documents:**
+- `docs/architecture/ADR-GUEST-FIRST-IDENTITY-OPTIONAL.md` — Architectural Decision Record
+- `docs/identity/GUEST-FIRST-ACCESS-MATRIX.md` — Capability access matrix (CURRENT vs TARGET vs GAP)
+- `docs/identity/GUEST-TO-CUSTOMER-LIFECYCLE.md` — Complete lifecycle: Visitor → Guest → GuestCustomer → CUSTOMER → ClubMember
+- `docs/roadmaps/BAZARBAAZ-POST-HOTEL-P1-IDENTITY-MEMBERSHIP-OTP-SMS-ROADMAP-2026-11-16.md` — GF0–GF5 workstream added parallel to G0–G9
+- `docs/roadmaps/BAZARBAAZ-DELIVERY-ROADMAP.md` — Guest-first direction added
+- `plans/guest-first-implementation-plan.md` — Engineering execution plan (GF0–GF5 contracts)
+- `docs/customer-identity-foundation.md` — Reconciled: GuestCustomer, CustomerIdentity, CustomerClubMembership relationships
+- `docs/ARCHITECTURE_AND_WORKFLOWS.md` — Guest-first principle reference added
+- `docs/CURRENT_SOURCE_OF_TRUTH.md` — This entry
+
+**Key Distinctions (enforced):**
+- `Visitor` ≠ `UserRole`; `Guest` ≠ `UserRole`; no `GUEST` UserRole introduced
+- `GuestCustomer` = persisted data entity for account-less interactions
+- `CUSTOMER` = authenticated `User` with `role: "CUSTOMER"`
+- `CustomerIdentity` = organization-scoped relationship
+- `CustomerClubMembership` = explicit per-tenant opt-in membership
+
+**P0 Security Findings (source-verified):**
+- **P0-A:** `app/api/public/appointments/lookup/route.ts` (lines 78-118) — Phone-only lookup exposes PII → Fixed in GF1 (opaque token + verified ownership)
+- **P0-B:** Hotel guest onboarding coupled to `HOTEL_OPERATIONAL_RESERVATIONS_ENABLED` → Fixed in GF2 (independent feature gate)
+
+**GF0–GF5 Workstreams (parallel to G0–G9):**
+| Milestone | Name | Priority | Status |
+|-----------|------|----------|--------|
+| GF0 | Guest Cart & Checkout Foundation (SHOP) | P0 | PLANNED |
+| GF1 | Secure Guest Appointment Tracking | P0 (P0-A) | PLANNED |
+| GF2 | Hotel Guest Enquiry Decoupling | P0 (P0-B) | PLANNED |
+| GF3 | Guest-to-CUSTOMER Conversion | P1 | PLANNED |
+| GF4 | CustomerClubMembership & Consent | P1 | PLANNED |
+| GF5 | Cross-Domain SSO & PWA Integration | P2 | PLANNED |
+
+**Constraints:**
+- Documentation-only PR; no runtime TypeScript, Prisma schema, migrations, generated assets, env vars, production data, tenant flags, or Runflare config changes
+- `OWNER_APPROVED` applies to architectural principle only; GF0–GF5 execution requires separate owner approval
+- Five pending Hotel Production migrations (13–17) remain blocked, unaffected
+- No live OTP/SMS or operational Hotel booking readiness claimed
+- Runflare Auto Deploy follows `main` merge (project 37622, service 87432, image v89)
+- Vercel deprecated

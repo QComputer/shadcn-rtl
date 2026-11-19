@@ -166,6 +166,24 @@ test("Hotel stay requests price from server data and never mutate booking invent
 
     const requestKey = `request-shared-${token}`;
     const requestCommand = { action: "request", quoteId: quoteA.id, guestName: `Primary guest ${token}`, message: `Please contact me ${token}` };
+    // Unverified/non-bookable inventory-only room type: positive inventory rows cannot make it sellable
+    // when no physical rooms exist and totalAllotment is not explicitly configured.
+    const unverifiedRoomType = await db.hotelRoomType.create({ data: {
+      organizationId: organizationA.id, propertyId: propertyA.id, slug: `unverified-room-${token}`, name: `Unverified room ${token}`,
+      maxAdults: 2, maxChildren: 1, maxOccupancy: 3, beds: [{ kind: "queen", count: 1 }], totalAllotment: 0,
+    } });
+    roomTypeIds.push(unverifiedRoomType.id);
+    const unverifiedRatePlan = await db.hotelRatePlan.create({ data: {
+      organizationId: organizationA.id, propertyId: propertyA.id, roomTypeId: unverifiedRoomType.id, code: `UNVERIFIED-${token}`,
+      name: "Unverified plan", baseNightlyRate: BigInt(100000), cancellationPolicyId: policyA.id,
+    } });
+    ratePlanIds.push(unverifiedRatePlan.id);
+    await db.hotelInventory.createMany({ data: ["2027-12-10", "2027-12-11"].map(date => ({
+      organizationId: organizationA.id, propertyId: propertyA.id, roomTypeId: unverifiedRoomType.id, date: day(date), allotment: 1,
+    })) });
+    await assert.rejects(() => service.execute(customerA, organizationA.id, propertyA.id,
+      quoteCommand(unverifiedRoomType.id, unverifiedRatePlan.id), `unverified-positive-inventory-${token}`), /inventory|not available/i);
+
     const beforeCounts = await readOperationalCounts(db, organizationIds);
     await db.hotelRatePlan.update({ where: { id: ratePlanA.id }, data: { baseNightlyRate: BigInt(900000) } });
     await db.hotelCancellationPolicy.update({ where: { id: policyA.id }, data: { fullCancellationRetention: 5000, version: { increment: 1 } } });
@@ -294,6 +312,7 @@ test("Hotel stay requests price from server data and never mutate booking invent
     assert.equal(await db.hotelStayRequest.count({ where: { organizationId: { in: organizationIds }, quoteId: { in: quoteIds } } }), 3);
     assert.equal(await db.hotelStayRequest.count({ where: { organizationId: organizationA.id, quoteId: quoteA.id } }), 1, "the quote's unique relation prevents duplicate requests");
     assert.equal(new Set(requestIds).size, 3, "each fixture quote owns one distinct request");
+
     passed = true;
   } catch (error) {
     const failure = error instanceof Error ? error : new Error(String(error));

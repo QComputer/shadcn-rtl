@@ -11,7 +11,7 @@ import { test } from "node:test";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { chromium } from "playwright";
+import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 
 const enabled = process.env.HOTEL_STAY_REQUESTS_HTTP_ACCEPTANCE === "1";
 const loopback = "127.0.0.1";
@@ -29,6 +29,7 @@ const adminPassword = `Fixture-${randomUUID()}-${randomUUID()}`;
 const customerPassword = `Fixture-${randomUUID()}-${randomUUID()}`;
 const resultDirectory = join(process.cwd(), ".tmp", "hotel-stay-requests");
 const resultPath = join(resultDirectory, "http.result.json");
+const diagnosticsDirectory = join(resultDirectory, "diagnostics");
 
 let resultStage = "not-started";
 let passed = false;
@@ -56,6 +57,35 @@ if (enabled) process.on("exit", () => {
     process.exitCode = 1;
   }
 });
+
+async function captureDiagnostics(input: {
+  error: unknown;
+  serverLogs: string;
+  pages: Array<{ name: string; page?: Page }>;
+  consoleMessages: string[];
+  browserErrors: string[];
+  navigation?: { url: string; status: number | null } | null;
+}) {
+  try {
+    mkdirSync(diagnosticsDirectory, { recursive: true });
+    const failure = input.error instanceof Error ? { name: input.error.name, message: input.error.message, stack: input.error.stack } : { message: String(input.error) };
+    writeFileSync(join(diagnosticsDirectory, "failure.json"), `${JSON.stringify({ stage: resultStage, failure, navigation: input.navigation ?? null, consoleMessages: input.consoleMessages, browserErrors: input.browserErrors }, null, 2)}\n`, "utf8");
+    writeFileSync(join(diagnosticsDirectory, "server.log"), input.serverLogs.slice(-200_000), "utf8");
+    for (const entry of input.pages) {
+      if (!entry.page || entry.page.isClosed()) continue;
+      try {
+        writeFileSync(join(diagnosticsDirectory, `${entry.name}.url.txt`), entry.page.url(), "utf8");
+        const html = await entry.page.content();
+        writeFileSync(join(diagnosticsDirectory, `${entry.name}.html`), html.slice(0, 300_000), "utf8");
+        await entry.page.screenshot({ path: join(diagnosticsDirectory, `${entry.name}.png`), fullPage: true });
+      } catch {
+        // best-effort diagnostics
+      }
+    }
+  } catch {
+    // diagnostics must not mask the primary failure
+  }
+}
 
 function guardedConnection() {
   assert.notEqual(process.env.NODE_ENV, "production");
@@ -248,8 +278,16 @@ test("request-only Hotel stay coordination works through authenticated browser a
   const ownedRoomTypeIds: string[] = [];
   const ownedPolicyIds: string[] = [];
   let server: ChildProcess | undefined;
-  let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
+  let browser: Browser | undefined;
+  let guestPage: Page | undefined;
+  let adminPage: Page | undefined;
+  let damoonPage: Page | undefined;
+  let guestContext: BrowserContext | undefined;
+  let adminContext: BrowserContext | undefined;
   const browserErrors: string[] = [];
+  const consoleMessages: string[] = [];
+  let serverLogs = "";
+  let lastNavigation: { url: string; status: number | null } | null = null;
   let inventoryBefore: Awaited<ReturnType<typeof operationalState>> | undefined;
   let fixtureFinalized = false;
 
@@ -308,8 +346,10 @@ test("request-only Hotel stay coordination works through authenticated browser a
     resultStage = "isolated-server";
     await assertPortFree();
     server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "--webpack", "--hostname", loopback, "--port", String(port)], {
-      cwd: process.cwd(), env: isolatedServerEnv(connection.toString()), stdio: ["ignore", "ignore", "ignore"], windowsHide: true,
+      cwd: process.cwd(), env: isolatedServerEnv(connection.toString()), stdio: ["ignore", "pipe", "pipe"], windowsHide: true,
     });
+    server.stdout?.on("data", (chunk) => { serverLogs += String(chunk); });
+    server.stderr?.on("data", (chunk) => { serverLogs += String(chunk); });
     serverStopped = false;
     await waitForServer(server);
 
@@ -320,6 +360,13 @@ test("request-only Hotel stay coordination works through authenticated browser a
     const publicPortalB = await apiJson<{ enabled: boolean; organizationId?: string; propertyId?: string }>("/api/hotel/v1/guest-portal", hostB, undefined, "");
     assert.equal(publicPortalB.response.status, 200);
     assert.deepEqual(publicPortalB.data, { enabled: true, organizationId: orgB.id, propertyId: propertyB.id });
+
+    resultStage = "hotel-guest-path-boundaries";
+    for (const badPath of [`/en/hotel/${orgA.id}`, `/en/hotel/${orgA.id}/${propertyA.id}/extra`, `/en/hotel/${orgA.id}/${propertyA.id}/rooms`, `/en/hotel-extra/${orgA.id}/${propertyA.id}`]) {
+      const denied = await request(badPath, hostA);
+      const body = await denied.text();
+      assert.ok(!body.includes("Stay coordination requests"), `unexpected guest portal application surface for ${badPath}`);
+    }
 
     resultStage = "tenant-bound-authentication";
     const adminLogin = await passwordLogin(hostA, originA, adminName, adminPassword);
@@ -362,6 +409,17 @@ test("request-only Hotel stay coordination works through authenticated browser a
     const reenablePortal = await apiJson<{ mode: string }>(endpointA, hostA, originA, adminCookieA, "PATCH", { mode: "REQUEST_ONLY" });
     assert.equal(reenablePortal.response.status, 200);
     assert.equal(reenablePortal.data?.mode, "REQUEST_ONLY");
+    resultStage = "http-org-admin-authorization-regression";
+    const staffName = `${prefix}-staff`;
+    const staffPassword = `Fixture-${randomUUID()}-${randomUUID()}`;
+    const staffUser = await db.user.create({ data: { name: staffName, password: await bcrypt.hash(staffPassword, 10), role: "ADMIN", isTeamMember: true } });
+    ownedUserIds.push(staffUser.id);
+    await db.organizationMember.create({ data: { organizationId: orgA.id, organizationSlug: orgA.slug, userId: staffUser.id, role: "STAFF", isActive: true } });
+    const staffLogin = await passwordLogin(hostA, originA, staffName, staffPassword);
+    assert.ok([200, 302].includes(staffLogin.callback.status));
+    const deniedStaffConfiguration = await apiJson(endpointA, hostA, originA, cookieHeader(staffLogin.cookies), "PATCH", { mode: "DISABLED" });
+    assert.equal(deniedStaffConfiguration.response.status, 403, "global ADMIN with STAFF org membership cannot configure property mode");
+
     const wrongTenantPath = await apiJson(endpointB, hostA, undefined, customerCookieA);
     assert.equal(wrongTenantPath.response.status, 403, "tenant A customer cannot read tenant B path");
     const wrongTenantSession = await apiJson(endpointB, hostB, undefined, customerCookieA);
@@ -370,12 +428,14 @@ test("request-only Hotel stay coordination works through authenticated browser a
     resultStage = "browser-request-flow-and-query-rehydration";
     browser = await chromium.launch({ channel: "chrome", headless: true, args: ["--no-sandbox", "--host-resolver-rules=MAP damoon-hotel.ir 127.0.0.1"] });
     browserStopped = false;
-    const customerContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-    await customerContext.addCookies(browserCookies(customerLoginA.cookies, originA));
-    const guestPage = await customerContext.newPage();
+    guestContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await guestContext.addCookies(browserCookies(customerLoginA.cookies, originA));
+    guestPage = await guestContext.newPage();
     guestPage.setDefaultNavigationTimeout(120_000);
     guestPage.on("pageerror", error => browserErrors.push(error.name));
-    await guestPage.goto(`${originA}/en/hotel/${orgA.id}/${propertyA.id}?checkIn=2027-12-10&checkOut=2027-12-12&adults=1`, { waitUntil: "domcontentloaded" });
+    guestPage.on("console", msg => { if (msg.type() === "error") consoleMessages.push(msg.text()); });
+    const guestGotoResponse = await guestPage.goto(`${originA}/en/hotel/${orgA.id}/${propertyA.id}?checkIn=2027-12-10&checkOut=2027-12-12&adults=1`, { waitUntil: "domcontentloaded" });
+    lastNavigation = { url: guestPage.url(), status: guestGotoResponse?.status() ?? null };
     const guestPortal = guestPage.getByRole("region", { name: "Stay coordination requests" });
     await guestPortal.getByRole("heading", { name: "Stay coordination requests" }).waitFor({ state: "visible", timeout: 120_000 });
     assert.equal(await guestPortal.getByLabel("Check-in").inputValue(), "2027-12-10");
@@ -411,10 +471,35 @@ test("request-only Hotel stay coordination works through authenticated browser a
     assert.equal(browserRequestIds.length, 3);
 
     resultStage = "damoon-public-contact-to-guest-portal-link";
-    const damoonPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    const damoonContactPath = "/en/contact?checkIn=2027-12-10&checkOut=2027-12-12&adults=1&children=0";
+    const damoonHttp = await request(damoonContactPath, "damoon-hotel.ir", undefined);
+    assert.equal(damoonHttp.status, 200, "Damoon public contact page must be reachable over tenant-bound HTTP");
+    const damoonHttpBody = await damoonHttp.text();
+    assert.ok(damoonHttpBody.includes("/damoon-front/app.js"), "Damoon public contact page should serve the guest portal shell");
+
+    damoonPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     damoonPage.setDefaultNavigationTimeout(120_000);
     damoonPage.on("pageerror", error => browserErrors.push(error.name));
-    await damoonPage.goto("http://damoon-hotel.ir:3036/en/contact?checkIn=2027-12-10&checkOut=2027-12-12&adults=1&children=0", { waitUntil: "domcontentloaded" });
+    damoonPage.on("console", msg => { if (msg.type() === "error") consoleMessages.push(msg.text()); });
+    await damoonPage.route("http://damoon-hotel.ir:3036/**", async (route) => {
+      const req = route.request();
+      const u = new URL(req.url());
+      const headers = new Headers();
+      for (const [key, value] of Object.entries(req.headers())) {
+        if (key.toLowerCase() === "host") continue;
+        if (value !== undefined) headers.set(key, value);
+      }
+      const resp = await request(`${u.pathname}${u.search}`, "damoon-hotel.ir", undefined, {
+        method: req.method(),
+        headers,
+        body: req.postDataBuffer() ?? undefined,
+      });
+      const body = Buffer.from(await resp.arrayBuffer());
+      const responseHeaders: Record<string, string> = {};
+      resp.headers.forEach((value, key) => { responseHeaders[key] = value; });
+      await route.fulfill({ status: resp.status, headers: responseHeaders, body });
+    });
+    await damoonPage.goto(`http://damoon-hotel.ir:3036${damoonContactPath}`, { waitUntil: "domcontentloaded" });
     const guestPortalLink = damoonPage.getByRole("link", { name: "Continue in guest portal" });
     await guestPortalLink.waitFor({ state: "visible", timeout: 30_000 });
     const damoonGuestPortalHref = await guestPortalLink.getAttribute("href");
@@ -443,11 +528,12 @@ test("request-only Hotel stay coordination works through authenticated browser a
     assert.equal(adminReception.response.status, 200);
     assert.equal(adminReception.data?.view, "reception");
     assert.deepEqual(new Set(adminReception.data?.requests.map(row => row.id)), new Set(browserRequestIds));
-    const adminContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    adminContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     await adminContext.addCookies(browserCookies(adminLogin.cookies, originA));
-    const adminPage = await adminContext.newPage();
+    adminPage = await adminContext.newPage();
     adminPage.setDefaultNavigationTimeout(120_000);
     adminPage.on("pageerror", error => browserErrors.push(error.name));
+    adminPage.on("console", msg => { if (msg.type() === "error") consoleMessages.push(msg.text()); });
     await adminPage.goto(`${originA}/en/hotel/${orgA.id}/${propertyA.id}?checkIn=2027-12-10&checkOut=2027-12-12&adults=1`, { waitUntil: "domcontentloaded" });
     const receptionPortal = adminPage.getByRole("region", { name: "Stay coordination requests" });
     await receptionPortal.getByRole("heading", { name: "Stay coordination requests" }).waitFor({ state: "visible", timeout: 120_000 });
@@ -471,14 +557,15 @@ test("request-only Hotel stay coordination works through authenticated browser a
     const inventoryAfter = await operationalState(db, ownedOrgIds);
     assert.deepEqual(inventoryAfter, inventoryBefore, "request-only interactions leave inventory, holds, reservations and payment state unchanged");
     assert.deepEqual(browserErrors, [], "guest and reception portal pages have no browser runtime errors");
-    await adminContext.close();
-    await customerContext.close();
+    if (adminContext) await adminContext.close();
+    if (guestContext) await guestContext.close();
     browserPassed = true;
     resultStage = "complete";
     passed = true;
   } catch (error) {
     const failure = error instanceof Error ? error : new Error(String(error));
     console.error(`HOTEL_STAY_REQUESTS_HTTP_FAILURE=${failure.name}: ${failure.message}`);
+    await captureDiagnostics({ error, serverLogs, pages: [{ name: "guest", page: guestPage }, { name: "admin", page: adminPage }, { name: "damoon", page: damoonPage }], consoleMessages, browserErrors, navigation: lastNavigation });
     throw error;
   } finally {
     resultStage = passed ? "cleanup" : resultStage;

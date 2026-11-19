@@ -20,7 +20,10 @@ test("hotel guest accounts use only the explicit reservation routes", () => {
   for (const path of ["/hotel-reservations/start", "/fa/hotel-reservations/start", "/en/hotel-reservations/start", "/ar/hotel-reservations/start"]) {
     assert.equal(isHotelGuestApplicationPath(path), true);
   }
-  for (const path of ["/hotel-reservations", "/hotel-reservations/org", "/hotel-reservations/start/extra", "/hotel-reservations/org/property/extra", "/hotel-reservations-extra/org/property"]) {
+  for (const path of ["/hotel/org/property", "/fa/hotel/org/property", "/en/hotel/org/property", "/ar/hotel/org/property", "/hotel/org-123/property-456", "/en/hotel/org_1/property-2/"]) {
+    assert.equal(isHotelGuestApplicationPath(path), true);
+  }
+  for (const path of ["/hotel-reservations", "/hotel-reservations/org", "/hotel-reservations/start/extra", "/hotel-reservations/org/property/extra", "/hotel-reservations-extra/org/property", "/hotel", "/hotel/org", "/hotel/org/property/extra", "/hotel/org/property/rooms", "/hotel-extra/org/property"]) {
     assert.equal(isHotelGuestApplicationPath(path), false);
   }
 });

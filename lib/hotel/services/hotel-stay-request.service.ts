@@ -29,6 +29,7 @@ export class HotelStayRequestService {
     const { mode } = z.object({ mode: z.enum(["DISABLED", "REQUEST_ONLY"]) }).strict().parse(input);
     await authorizeHotelBookingActor(this.db, actor, organizationId, propertyId);
     if (!["ADMIN", "SUPER_ADMIN"].includes(actor.role)) fail("Organization administrator required", 403);
+    if (actor.role !== "SUPER_ADMIN" && !await this.db.organizationMember.findFirst({ where: { organizationId, userId: actor.userId, isActive: true, role: "ADMIN" } })) fail("Organization administrator required", 403);
     await assertHotelStayRequestSchemaReady(this.db);
     await this.db.hotelProperty.update({ where: { id: propertyId, organizationId }, data: { operationalMode: mode } });
     return { mode };

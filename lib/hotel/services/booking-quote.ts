@@ -38,6 +38,9 @@ const organizationId = property.organizationId; const propertyId = property.id;
           tx.hotelRoom.count({ where: { organizationId, propertyId, roomTypeId: room!.id } }),
           tx.hotelRoom.count({ where: { organizationId, propertyId, roomTypeId: room!.id, isActive: true, deletedAt: null, isOutOfService: false } }),
         ]);
+        // Physical rooms are the hard cap when modeled. Inventory-only room types must be explicitly
+        // configured (totalAllotment) so unverified/draft rows cannot become sellable by stray inventory.
+        if (physicalRoomCount === 0 && room!.totalAllotment <= 0) return command.action === "search" ? { available: false, remaining: 0 } : fail("No inventory");
         const physicalCap = physicalRoomCount > 0 ? availablePhysicalRoomCount : null;
         const remaining = inventory.length === nights.length ? Math.min(...inventory.map(row => sellableUnitsForNight({ scope: { kind: "ROOM_TYPE", roomTypeId: room!.id }, date: dateOnly(row.date), allotment: row.allotment, booked: row.booked, held: row.held, outOfService: row.outOfService, closedToArrival: row.closedToArrival, closedToDeparture: row.closedToDeparture }, physicalCap))) : 0;
         if (command.action === "search") return { available: remaining > 0, remaining };

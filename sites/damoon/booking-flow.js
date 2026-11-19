@@ -18,6 +18,17 @@ export function withStaySelection(target, { range, adults, guests, children, chi
   return url;
 }
 
+export function guestPortalHref(currentUrl, locale, mapping, selection) {
+  let current;
+  try { current = new URL(currentUrl); } catch { return null; }
+  if (!/^https?:$/.test(current.protocol) || current.username || current.password) return null;
+  if (!mapping || mapping.enabled !== true || !/^[A-Za-z0-9_-]{1,128}$/.test(mapping.organizationId || "") || !/^[A-Za-z0-9_-]{1,128}$/.test(mapping.propertyId || "")) return null;
+  if (!["fa", "en", "ar"].includes(locale)) return null;
+  const target = new URL(`/${locale}/hotel/${encodeURIComponent(mapping.organizationId)}/${encodeURIComponent(mapping.propertyId)}`, current.origin);
+  const link = withStaySelection(target, selection);
+  return link.pathname + link.search;
+}
+
 /** Build a same-origin, host-bound entry into the authenticated hotel booking flow. */
 export function buildReservationEntryUrl(target, propertySlug, stay) {
   if (typeof propertySlug !== "string" || !/^[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?$/.test(propertySlug)) {

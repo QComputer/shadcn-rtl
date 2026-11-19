@@ -87,6 +87,9 @@ export function resolveDamoonPublicRoute(input: {
   if (PUBLIC_STATIC_ASSETS.has(rawPath)) {
     return { kind: "asset", pathname: rawPath };
   }
+  if (rawPath.startsWith("/damoon-front/") && !rawPath.includes("..")) {
+    return { kind: "asset", pathname: rawPath };
+  }
   const path = normalizedPath(rawPath);
   if (!path) return null;
   if (!PUBLIC_PATHS.has(path)) return null;

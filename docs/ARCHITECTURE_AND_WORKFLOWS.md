@@ -2,6 +2,26 @@
 
 _Last updated from source inspection: 2026-06-02._
 
+## 0. Architectural Principle: Guest-First, Identity-Optional
+
+**`OWNER_APPROVED`** (2026-11-20) — See `docs/architecture/ADR-GUEST-FIRST-IDENTITY-OPTIONAL.md`
+
+**Core Principle:** All visitors and guests must be able to use the maximum safe and permitted functionality of BazarBaaz without mandatory registration or sign-in.
+
+**Key Distinctions:**
+- **`Visitor`** — Unauthenticated browser actor, not a `UserRole`
+- **`Guest`** — Interaction state without registered account, not a `UserRole`
+- **`GuestCustomer`** — Persisted data entity supporting guest interactions
+- **`CUSTOMER`** — Authenticated `User` with `role: "CUSTOMER"`
+- **`CustomerIdentity`** — Organization-scoped customer relationship
+- **`CustomerClubMembership`** — Explicit per-tenant membership (opt-in)
+
+**Invariants:** No `GUEST` UserRole; no automatic account creation on OTP; no cross-tenant claiming; tenant isolation mandatory; conversion optional/explicit/secure/idempotent/non-destructive.
+
+**Implementation Workstreams (GF0–GF5):** Defined in `plans/guest-first-implementation-plan.md`, parallel to existing G0–G9 roadmap.
+
+---
+
 ## 1. Architecture overview
 
 Bazar Baz uses the Next.js App Router with locale-prefixed routes under `app/[locale]` and API route handlers under `app/api`. The application is organized around public pages, authenticated dashboard pages, shared UI components, client hooks/contexts, service modules, Prisma data models, and quality/deployed smoke scripts.

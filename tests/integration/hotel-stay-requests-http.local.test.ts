@@ -163,7 +163,7 @@ async function assertPortFree() {
   });
 }
 
-async function request(path: string, host: string, origin?: string, init: RequestInit = {}) {
+async function request(path: string, host: string, origin?: string, init: { method?: string; headers?: Record<string, string> | Headers; body?: Uint8Array | Buffer | string | URLSearchParams | null; redirect?: RequestRedirect } = {}) {
   const headers = new Headers(init.headers);
   headers.set("host", `${host}:${port}`);
   if (origin) headers.set("origin", origin);
@@ -179,7 +179,17 @@ async function request(path: string, host: string, origin?: string, init: Reques
       incoming.on("error", reject);
     });
     outgoing.on("error", reject);
-    if (init.body !== undefined && init.body !== null) outgoing.write(String(init.body));
+    if (init.body !== undefined && init.body !== null) {
+      if (typeof init.body === "string") {
+        outgoing.write(init.body);
+      } else if (Buffer.isBuffer(init.body)) {
+        outgoing.write(init.body);
+      } else if (init.body instanceof Uint8Array) {
+        outgoing.write(Buffer.from(init.body));
+      } else if (init.body instanceof URLSearchParams) {
+        outgoing.write(init.body.toString());
+      }
+    }
     outgoing.end();
   });
 }

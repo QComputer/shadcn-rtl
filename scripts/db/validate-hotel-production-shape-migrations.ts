@@ -116,6 +116,7 @@ async function main(): Promise<void> {
   let db: PrismaClient | undefined;
   let tempRoot: string | undefined;
   let schemaCreated = false;
+  let assertionsPassed = false;
   try {
     const identity = await publicDb.$queryRawUnsafe<Array<{ database: string }>>(
       `SELECT current_database() AS database`,
@@ -195,6 +196,7 @@ async function main(): Promise<void> {
       () => db!.$executeRawUnsafe(`INSERT INTO "HotelOfflinePayment" ("id", "organizationId", "reservationId", "method", "status", "amountToman", "recordedByUserId") VALUES ('payment-cross', 'shape-other', 'shape-reservation-a', 'BANK_TRANSFER', 'SUBMITTED', 100, 'test-user-b')`),
       "A payment referencing another tenant's reservation",
     );
+    assertionsPassed = true;
     console.log("PASS: exactly five ordered migrations apply to the disposable Production-shaped affected tables.");
     console.log("PASS: legacy property and reservation data persist; existing bookings receive only a NULL paymentMethod; public/manual modes stay DISABLED.");
     console.log("PASS: same-tenant quote succeeds; cross-tenant property quote and reservation payment are rejected by composite foreign keys.");
@@ -202,7 +204,28 @@ async function main(): Promise<void> {
     if (db) await db.$disconnect();
     if (schemaCreated) await publicDb.$executeRawUnsafe(`DROP SCHEMA "${SHAPE_SCHEMA}" CASCADE`);
     await publicDb.$disconnect();
-    if (tempRoot) await rm(tempRoot, { recursive: true, force: true });
+    if (tempRoot) {
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        try {
+          await rm(tempRoot, { recursive: true, force: true });
+          tempRoot = undefined;
+          break;
+        } catch (error) {
+          const code = (error as NodeJS.ErrnoException).code;
+          if (!["EBUSY", "EPERM", "ENOTEMPTY"].includes(code ?? "") || attempt === 7) {
+            if (["EBUSY", "EPERM", "ENOTEMPTY"].includes(code ?? "")) {
+              console.warn(assertionsPassed
+                ? `WARN: disposable rehearsal temp directory cleanup was skipped after successful assertions: ${tempRoot}`
+                : `WARN: disposable rehearsal temp directory cleanup was skipped after rehearsal did not complete successfully: ${tempRoot}`);
+              tempRoot = undefined;
+              break;
+            }
+            throw error;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)));
+        }
+      }
+    }
   }
 }
 

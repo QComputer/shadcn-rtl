@@ -110,9 +110,9 @@ test("standalone and shared Damoon bundles preserve localized contact party deta
     const checkOut = now.toISOString().slice(0, 10);
 
     const locales = [
-      { locale: "fa", category: "vip", adults: "۲ بزرگسال", children: "۱ کودک", ages: "سن کودکان: ۷" },
-      { locale: "en", category: "single-room", adults: "2 adults", children: "1 child", ages: "Child ages: 7" },
-      { locale: "ar", category: "fourth-floor-suite", adults: "2 بالغين", children: "1 طفل", ages: "أعمار الأطفال: 7" },
+      { locale: "fa", category: "vip-suite", alias: "vip", adults: "۲ بزرگسال", children: "۱ کودک", ages: "سن کودکان: ۷" },
+      { locale: "en", category: "standard-room", alias: "single-room", adults: "2 adults", children: "1 child", ages: "Child ages: 7" },
+      { locale: "ar", category: "studio-suite", alias: "fourth-floor-suite", adults: "2 بالغين", children: "1 طفل", ages: "أعمار الأطفال: 7" },
     ];
 
     for (const runtime of [{ name: "standalone source", base }, { name: "shared public bundle", base: sharedServer.base }]) {
@@ -185,6 +185,10 @@ test("standalone and shared Damoon bundles preserve localized contact party deta
         assert.equal(categoryContact.searchParams.get("adults"), "2");
         assert.equal(categoryContact.searchParams.get("children"), "1");
         assert.equal(categoryContact.searchParams.get("childAges"), "7");
+        await page.goto(`${runtime.base}/${expected.locale}/rooms/${expected.alias}?${query}`, { waitUntil: "networkidle" });
+        const aliasContact = new URL(await page.locator(".booking-summary a").getAttribute("href"), runtime.base);
+        assert.equal(aliasContact.href, categoryContact.href, "interim category URLs retain the current stay context");
+
 
         await page.goto(`${runtime.base}${categoryPath}?${partialPlan}`, { waitUntil: "networkidle" });
         await page.locator("#booking-title").waitFor();

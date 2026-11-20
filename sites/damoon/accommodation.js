@@ -64,7 +64,6 @@ export function renderAccommodation({ path, page, locale = "fa", site, routeHref
           </figure>
           <div class="accommodation-card__body">
             <h2>${escapeHtml(room.title)}</h2>
-            ${room.floor ? `<p class="accommodation-kicker">${escapeHtml(room.floor)}</p>` : ""}
             <p>${escapeHtml(room.description)}</p>
             <a class="accommodation-link" href="${escapeHtml(href)}" aria-label="${escapeHtml(`${ui.detail}: ${room.title}`)}">${escapeHtml(ui.detail)} <span aria-hidden="true">↗</span></a>
           </div>
@@ -81,7 +80,7 @@ export function renderAccommodation({ path, page, locale = "fa", site, routeHref
     tour.representation !== "CONCEPTUAL_PREVIEW" && tour.roomSlugs.includes(slug));
   const generalAmenities = ui.generalText;
   return `<div class="accommodation-page accommodation-detail" lang="${escapeHtml(locale)}" dir="${locale === "en" ? "ltr" : "rtl"}">
-    <header class="accommodation-detail__heading">${breadcrumb(room.title, locale, routeHref, escapeHtml, true)}<h1>${escapeHtml(room.title)}</h1>${room.floor ? `<p class="accommodation-kicker">${escapeHtml(room.floor)}</p>` : ""}<p>${escapeHtml(room.description)}</p></header>
+    <header class="accommodation-detail__heading">${breadcrumb(room.title, locale, routeHref, escapeHtml, true)}<h1>${escapeHtml(room.title)}</h1><p>${escapeHtml(room.description)}</p></header>
     <section class="accommodation-detail__layout" aria-label="${escapeHtml(room.title)}">
       <div class="accommodation-gallery" data-accommodation-gallery>
         <button class="accommodation-gallery__main" type="button" data-accommodation-image="0" aria-label="${escapeHtml(`${ui.imageOpen}: ${room.title}`)}"><img src="${escapeHtml(heroImage)}" alt=""><span>${escapeHtml(ui.concept)}</span></button>

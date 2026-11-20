@@ -15,8 +15,7 @@ const locales = {
     inRoom: "به مهمانان در اتاق",
     breakfastReady: "آمادهٔ استفاده",
     complimentaryBreakfast: "برای مهمانان هتل رایگان",
-    roomCount: "۲۰ اتاق",
-    suiteCount: "۱۱ سوئیت",
+    unitCount: "۳۱ واحد اقامتی",
     parkingLimited: "ظرفیت محدود",
     receptionStart: "۰۶:۰۰",
     receptionEnd: "۰۱:۰۰",
@@ -28,8 +27,7 @@ const locales = {
     inRoom: "served to hotel guests in their rooms",
     breakfastReady: "ready for use",
     complimentaryBreakfast: "complimentary for hotel guests",
-    roomCount: "20 rooms",
-    suiteCount: "11 suites",
+    unitCount: "31 accommodation units",
     parkingLimited: "limited parking",
     receptionStart: "06:00",
     receptionEnd: "01:00",
@@ -41,8 +39,7 @@ const locales = {
     inRoom: "لضيوف الفندق داخل غرفهم",
     breakfastReady: "جاهزة للاستخدام",
     complimentaryBreakfast: "مجاني لنزلاء الفندق",
-    roomCount: "٢٠ غرفة",
-    suiteCount: "١١ جناحاً",
+    unitCount: "٣١ وحدة إقامة",
     parkingLimited: "مواقف سيارات محدودة",
     receptionStart: "06:00",
     receptionEnd: "01:00",
@@ -71,8 +68,7 @@ test("Damoon public content uses owner-confirmed hospitality facts in fa/en/ar",
     const site = siteForLocale(locale);
     const contact = pageForPath("/contact", locale);
 
-    assert.ok(home.includes(expected.roomCount), `${locale} home exposes confirmed room total`);
-    assert.ok(home.includes(expected.suiteCount), `${locale} home exposes confirmed suite total`);
+    assert.ok(home.includes(expected.unitCount), `${locale} home exposes confirmed total units`);
     assert.ok(dining.includes(expected.noRestaurant), `${locale} legacy restaurant route corrects venue status`);
     assert.ok(refreshments.includes(expected.noCafe), `${locale} legacy cafe route corrects venue status`);
     assert.ok(refreshments.includes(expected.inRoom), `${locale} explains in-room refreshment service`);
@@ -81,7 +77,7 @@ test("Damoon public content uses owner-confirmed hospitality facts in fa/en/ar",
     assert.doesNotMatch(facilities, /under preparation|not yet operational|قيد التجهيز|لم يبدأ تشغيلها بعد|در دست آماده‌سازی|عملیاتی نیست/i, `${locale} removes superseded breakfast status`);
     assert.ok(policies.includes("14:00") || policies.includes("۱۴:۰۰") || policies.includes("١٤:٠٠"), `${locale} policy states check-in at 14:00`);
     assert.ok(policies.includes("12:00") || policies.includes("۱۲:۰۰") || policies.includes("١٢:٠٠"), `${locale} policy states check-out at 12:00`);
-    assert.ok(rooms.includes(expected.roomCount) && rooms.includes(expected.suiteCount), `${locale} accommodation page has confirmed aggregate totals`);
+    assert.ok(rooms.includes(expected.unitCount), `${locale} accommodation page has confirmed aggregate totals`);
     assert.ok(!/one-bed|two-bed|three-bed|four- and five-bed|سرير واحد|سريرين|ثلاثة أسرّة|خمسة أسرّة/i.test(rooms), `${locale} room summary avoids unverified bed layouts`);
     assert.ok(facilities.toLowerCase().includes(expected.parkingLimited.toLowerCase()), `${locale} states parking is limited`);
     const receptionCopy = facilityPage.sections[0].text;

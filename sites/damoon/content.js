@@ -29,9 +29,9 @@ export const site = {
 };
 
 export const accommodationCategories = [
-  { slug: "vip", title: "VIP", description: "واحد VIP چیدمانی دو اتاقه دارد.", image: "/assets/room-concept-2.webp" },
-  { slug: "single-room", title: "تک‌اتاقه", floor: "طبقهٔ سوم", description: "این واحد یک اتاق دارد.", image: "/assets/room-concept-1.webp" },
-  { slug: "fourth-floor-suite", title: "سوئیت", floor: "طبقهٔ چهارم", description: "سوئیت فضای یکپارچه دارد و اتاق خواب جداگانه ندارد.", image: "/assets/room-concept-3.webp" },
+  { slug: "vip-suite", title: "سوئیت دو اتاقه VIP", description: "هتل ۷ سوئیت VIP دارد که هر کدام دو اتاق دارند.", image: "/assets/room-concept-2.webp" },
+  { slug: "standard-room", title: "اتاق استاندارد", description: "هتل ۱۷ واحد استاندارد تک‌اتاقه دارد.", image: "/assets/room-concept-1.webp" },
+  { slug: "studio-suite", title: "سوئیت استودیو", description: "هتل ۷ سوئیت استودیو با فضای یکپارچه دارد. این سوئیت‌ها اتاق خواب جداگانه ندارند.", image: "/assets/room-concept-3.webp" },
 ];
 
 export const rooms = [
@@ -40,6 +40,18 @@ export const rooms = [
   { slug: "double", title: "اتاق دونفره", description: "گروه اتاق دونفره؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/assets/room-concept-2.webp" },
   { slug: "suite", title: "سوئیت", description: "گروه سوئیت؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/assets/room-concept-3.webp" },
 ];
+
+const accommodationAliases = {
+  vip: "vip-suite",
+  "single-room": "standard-room",
+  "fourth-floor-suite": "studio-suite",
+  "suite-3-bed": "suite",
+  "suite-4-5-bed": "suite",
+};
+
+export const legacyAccommodationPaths = Object.fromEntries(
+  Object.entries(accommodationAliases).map(([alias, slug]) => [`/rooms/${alias}`, `/rooms/${slug}`]),
+);
 
 export const gallery = [
   { src: "/assets/architecture-concept.webp", alt: "تصویرسازی مفهومی معماری برای چیدمان صفحه" },
@@ -54,7 +66,7 @@ export const pages = {
   "/": {
     title: "اقامت و مهمان‌نوازی در شهرکرد",
     intro: "به هتل دامون خوش آمدید",
-    text: "هتل دامون در شهرکرد با ۳۱ واحد اقامتی، شامل ۲۰ اتاق و ۱۱ سوئیت، پذیرای مهمانان است. گروه‌های اقامتی را ببینید و برای برنامه‌ریزی سفر با پذیرش هماهنگ کنید.",
+    text: "هتل دامون در شهرکرد با ۳۱ واحد اقامتی پذیرای مهمانان است. گروه‌های اقامتی را ببینید و برای برنامه‌ریزی سفر با پذیرش هماهنگ کنید.",
     image: "/assets/architecture-concept.webp",
     actions: [["/rooms", "دیدن اتاق‌ها"], ["/contact", "تماس و هماهنگی"]],
     sections: [
@@ -68,7 +80,7 @@ export const pages = {
     title: "اتاق‌ها و سوئیت‌ها",
     intro: "فضاهای اقامت",
     sections: accommodationSections("fa"),
-    text: "هتل دامون ۳۱ واحد اقامتی دارد: ۲۰ اتاق و ۱۱ سوئیت. نام گروه‌های اقامتی در این صفحه آمده است؛ ظرفیت دقیق، امکانات اختصاصی، نرخ و موجودی هر گروه نمایش داده نمی‌شوند.",
+    text: "هتل دامون ۳۱ واحد اقامتی دارد. نام گروه‌های اقامتی در این صفحه آمده است؛ ظرفیت دقیق، امکانات اختصاصی، نرخ و موجودی هر گروه نمایش داده نمی‌شوند.",
   },
   "/attractions": {
     title: damoonAttractionsData.labels.fa.headline,
@@ -113,11 +125,11 @@ export const pages = {
   "/about": {
     title: "دربارهٔ هتل دامون",
     intro: "دربارهٔ هتل",
-    text: "هتل دامون در شهرکرد، با ۲۰ اتاق و ۱۱ سوئیت، در مجموع ۳۱ واحد اقامتی دارد. برای هماهنگی اقامت و پرسش دربارهٔ خدمات با پذیرش تماس بگیرید.",
+    text: "هتل دامون در شهرکرد ۳۱ واحد اقامتی دارد. برای هماهنگی اقامت و پرسش دربارهٔ خدمات با پذیرش تماس بگیرید.",
     actions: [["/contact", "تماس با هتل"]],
     sections: [
       { heading: "مهمان‌نوازی دامون", text: "دامون با رویکردی گرم، صمیمی و آرام، می‌خواهد مهمان در طول اقامت احساس آسودگی و خانهٔ دوم داشته باشد." },
-      { heading: "اقامت در دامون", text: "گروه‌های VIP، تک‌اتاقه و سوئیت را در بخش اقامت ببینید. برای ظرفیت دقیق، امکانات واحد و نرخ روز با پذیرش هماهنگ کنید.", link: "/rooms", label: "دیدن گروه‌های اقامتی" },
+      { heading: "اقامت در دامون", text: "سوئیت‌های دو اتاقه VIP، اتاق‌های استاندارد و سوئیت‌های استودیو را در بخش اقامت ببینید. برای ظرفیت دقیق، امکانات واحد و نرخ روز با پذیرش هماهنگ کنید.", link: "/rooms", label: "دیدن گروه‌های اقامتی" },
       { heading: "زمان ورود و خروج", text: "زمان ورود ساعت ۱۴:۰۰ و زمان خروج ساعت ۱۲:۰۰ است.", link: "/policies", label: "اطلاعات اقامت" },
     ],
   },
@@ -152,11 +164,6 @@ export const pages = {
   },
 };
 
-export const legacyAccommodationPaths = {
-  "/rooms/suite-3-bed": "/rooms/suite",
-  "/rooms/suite-4-5-bed": "/rooms/suite",
-};
-
 export function normalizePath(pathname) {
   let path = decodeURIComponent(pathname || "/").replace(/\/+$/, "") || "/";
   const prefix = path.match(/^\/(fa|en|ar)(?=\/|$)/)?.[1];
@@ -177,9 +184,10 @@ export function galleryForLocale(locale = "fa") {
 }
 
 export function roomForLocale(slug, locale = "fa") {
-  const original = rooms.find((item) => item.slug === slug);
+  const canonicalSlug = Object.hasOwn(accommodationAliases, slug) ? accommodationAliases[slug] : slug;
+  const original = rooms.find((item) => item.slug === canonicalSlug);
   if (!original || locale === "fa") return original;
-  return translations[locale]?.rooms?.[slug] ? { ...original, ...translations[locale].rooms[slug] } : original;
+  return translations[locale]?.rooms?.[canonicalSlug] ? { ...original, ...translations[locale].rooms[canonicalSlug] } : original;
 }
 
 export function roomForPath(path, locale = "fa") {
@@ -190,7 +198,7 @@ export function roomForPath(path, locale = "fa") {
 function accommodationSections(locale) {
   return accommodationCategories.map(({ slug }) => {
     const room = roomForLocale(slug, locale);
-    return { heading: room.title, text: [room.floor, room.description].filter(Boolean).join(" · "), link: `/rooms/${slug}`, image: room.image };
+    return { heading: room.title, text: room.description, link: `/rooms/${slug}`, image: room.image };
   });
 }
 
@@ -218,7 +226,7 @@ export function pageForPath(path, locale = "fa") {
     path,
     title: room.title,
     intro: room.title,
-    text: [room.floor, room.description, locale === "fa"
+    text: [room.description, locale === "fa"
       ? "ظرفیت دقیق، امکانات اختصاصی، نرخ و موجودی را برای تاریخ سفر از پذیرش بپرسید."
       : translations[locale].roomDetails.textSuffix].filter(Boolean).join(" "),
     image: room.image,

@@ -338,6 +338,10 @@ export class HotelManagementService {
       if (!canTransitionHotelGuestBookingRequest(current.status as HotelGuestBookingRequestStatus, input.status)) {
         throw new HotelManagementValidationError("Invalid booking request status transition");
       }
+      if (current.roomTypeSlug === null && current.ratePlanCode === null &&
+          (input.status === "OPTION_OFFERED" || input.status === "UNAVAILABLE")) {
+        throw new HotelManagementValidationError("Coordination requests support review, decline and closure");
+      }
       const managerMessage = input.managerMessage?.trim() || null;
       if (input.status === "OPTION_OFFERED" && !managerMessage) throw new HotelManagementValidationError("Add a message explaining the option or requested changes");
       const changed = await tx.hotelGuestBookingRequest.updateMany({
@@ -366,6 +370,9 @@ export class HotelManagementService {
     const property = await this.assertProperty(scope, propertyId);
     const request = await this.db.hotelGuestBookingRequest.findFirst({ where: { id: requestId, organizationId: scope.organizationId, propertyId } });
     if (!request) throw new HotelManagementAuthorizationError("Booking request is outside the property scope");
+    if (request.roomTypeSlug === null && request.ratePlanCode === null) {
+      throw new HotelManagementValidationError("Coordination requests have no room or rate to check");
+    }
 
     const availability = await searchPublicHotelAvailability({
       scope: { organizationId: scope.organizationId },

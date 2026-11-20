@@ -115,6 +115,8 @@ jobs:
       - name: Run public availability-to-hold HTTP acceptance
         id: public_hold
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-hold-r2b.local.test.ts
+      - name: Run physical room capacity PostgreSQL acceptance
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-postgres-booking-engine.local.test.ts
       - name: Run operational reservation acceptance
         id: operational_reservation
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-operational-reservations.local.test.ts

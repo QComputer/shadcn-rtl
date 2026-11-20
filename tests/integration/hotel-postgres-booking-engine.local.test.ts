@@ -5,7 +5,9 @@ import { PrismaHotelRepositories } from "@/lib/hotel/persistence/prisma-hotel-re
 import { HotelIdempotencyConflictError } from "@/lib/hotel/persistence/prisma-hotel-repositories";
 import { priceHotelStay } from "@/lib/hotel/services/booking-quote";
 
-const EXPECTED_DB = "bazarbaaz_h3c1_verify";
+const ciUrl = process.env.CI === "true" ? new URL(process.env.DATABASE_URL ?? "postgresql://invalid") : null;
+const EXPECTED_DB = ciUrl?.hostname === "127.0.0.1" && ciUrl.port === "55439" && ciUrl.pathname === "/retail_hero_test"
+  ? "retail_hero_test" : "bazarbaaz_h3c1_verify";
 let organizationId = "";
 let propertyId = "";
 let roomTypeId = "";

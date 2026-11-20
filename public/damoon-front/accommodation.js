@@ -1,4 +1,5 @@
 import { rooms, roomForLocale } from "./content.js";
+import { publishedDamoonTours, tourViewerMarkup } from "./virtual-tour.js";
 
 const copy = {
   fa: {
@@ -34,9 +35,9 @@ const copy = {
 };
 
 const roomImages = {
-  single: "/damoon-front/assets/room-concept-1.webp",
-  double: "/damoon-front/assets/room-concept-2.webp",
-  suite: "/damoon-front/assets/room-concept-3.webp",
+  single: "/assets/room-concept-1.webp",
+  double: "/assets/room-concept-2.webp",
+  suite: "/assets/room-concept-3.webp",
 };
 
 function t(locale) { return copy[locale] || copy.fa; }
@@ -69,17 +70,18 @@ export function renderAccommodation({ path, page, locale = "fa", site, routeHref
   const room = roomForLocale(slug, locale);
   if (!room) return "";
   const heroImage = roomImages[slug] || room.image;
+  const roomTours = publishedDamoonTours().filter((tour) => tour.roomSlugs.includes(slug));
   const generalAmenities = ui.generalText;
   return `<div class="accommodation-page accommodation-detail" lang="${escapeHtml(locale)}" dir="${locale === "en" ? "ltr" : "rtl"}">
     <header class="accommodation-detail__heading">${breadcrumb(room.title, locale, routeHref, escapeHtml, true)}<p class="accommodation-kicker">${escapeHtml(ui.room)}</p><h1>${escapeHtml(room.title)}</h1><p>${escapeHtml(room.description)}</p></header>
     <section class="accommodation-detail__layout" aria-label="${escapeHtml(room.title)}">
       <div class="accommodation-gallery" data-accommodation-gallery>
         <button class="accommodation-gallery__main" type="button" data-accommodation-image="0" aria-label="${escapeHtml(ui.imageOpen)}"><img src="${escapeHtml(heroImage)}" alt="${escapeHtml(`${room.title} · ${ui.imageLabel}`)}"><span>${escapeHtml(ui.concept)}</span></button>
-        <div class="accommodation-gallery__thumbs"><button type="button" data-accommodation-image="0" aria-label="${escapeHtml(ui.imageOpen)}"><img src="${escapeHtml(heroImage)}" alt=""><span>${escapeHtml(ui.imageLabel)}</span></button><button type="button" data-accommodation-image="1" aria-label="${escapeHtml(ui.imageOpen)}"><img src="/damoon-front/assets/lobby-concept.webp" alt=""><span>${escapeHtml(ui.lobbyLabel)}</span></button></div>
+        <div class="accommodation-gallery__thumbs"><button type="button" data-accommodation-image="0" aria-label="${escapeHtml(ui.imageOpen)}"><img src="${escapeHtml(heroImage)}" alt=""><span>${escapeHtml(ui.imageLabel)}</span></button><button type="button" data-accommodation-image="1" aria-label="${escapeHtml(ui.imageOpen)}"><img src="/assets/lobby-concept.webp" alt=""><span>${escapeHtml(ui.lobbyLabel)}</span></button></div>
       </div>
       <aside class="accommodation-coordination"><p class="accommodation-kicker">${escapeHtml(ui.coordination)}</p><h2>${escapeHtml(ui.coordination)}</h2><p>${escapeHtml(ui.coordinationText)}</p><div class="accommodation-coordination__actions"><a class="button button--primary" href="tel:${escapeHtml(site.phone)}">${escapeHtml(ui.call)} <bdi>${escapeHtml(site.phoneDisplay)}</bdi></a><a class="accommodation-link" href="${escapeHtml(stayHref(`/contact?room=${encodeURIComponent(slug)}`))}">${escapeHtml(ui.contact)}</a></div><div class="accommodation-times"><h3>${escapeHtml(ui.timings)}</h3><p>${escapeHtml(ui.checkIn)} <span aria-hidden="true">·</span> ${escapeHtml(ui.checkOut)}</p></div></aside>
     </section>
-    <div class="accommodation-detail__after">${bookingSlot()}<section class="accommodation-general"><div><p class="accommodation-kicker">${escapeHtml(ui.general)}</p><h2>${escapeHtml(ui.general)}</h2></div><div><p>${escapeHtml(generalAmenities)}</p><p class="accommodation-muted">${escapeHtml(ui.askRoom)}</p><a class="accommodation-link" href="${escapeHtml(stayHref("/facilities"))}">${escapeHtml(locale === "fa" ? "آشنایی با امکانات هتل" : locale === "ar" ? "تعرّف على مرافق الفندق" : "Explore hotel facilities")}</a></div></section></div>
+    <div class="accommodation-detail__after">${bookingSlot()}${roomTours.length ? `<section class="accommodation-tour"><h2>${escapeHtml(locale === "fa" ? "تور این گروه اقامتی" : locale === "ar" ? "جولة فئة الإقامة" : "Tour this room category")}</h2>${roomTours.map((tour) => tourViewerMarkup(tour, `${room.title} · ${tour.id}`)).join("")}</section>` : ""}<section class="accommodation-general"><div><p class="accommodation-kicker">${escapeHtml(ui.general)}</p><h2>${escapeHtml(ui.general)}</h2></div><div><p>${escapeHtml(generalAmenities)}</p><p class="accommodation-muted">${escapeHtml(ui.askRoom)}</p><a class="accommodation-link" href="${escapeHtml(stayHref("/facilities"))}">${escapeHtml(locale === "fa" ? "آشنایی با امکانات هتل" : locale === "ar" ? "تعرّف على مرافق الفندق" : "Explore hotel facilities")}</a></div></section></div>
     <section class="accommodation-related"><h2>${escapeHtml(ui.related)}</h2><div>${rooms.filter((item) => item.slug !== slug).map((item) => { const other = roomForLocale(item.slug, locale) || item; const href = stayHref(`/rooms/${item.slug}`); return `<a href="${escapeHtml(href)}">${escapeHtml(other.title)} <span aria-hidden="true">↗</span></a>`; }).join("")}</div><a class="accommodation-back" href="${escapeHtml(stayHref("/rooms"))}">← ${escapeHtml(ui.allRooms)}</a></section>
     <dialog class="accommodation-lightbox" data-accommodation-dialog aria-label="${escapeHtml(ui.concept)}"><button type="button" class="accommodation-lightbox__close" data-accommodation-close>${escapeHtml(ui.close)}</button><img data-accommodation-dialog-image src="${escapeHtml(heroImage)}" alt=""><p data-accommodation-dialog-caption>${escapeHtml(ui.concept)}</p></dialog>
   </div>`;
@@ -95,7 +97,7 @@ export function wireAccommodation(root) {
       const isLobby = trigger.dataset.accommodationImage === "1";
       const image = dialog.querySelector("[data-accommodation-dialog-image]");
       const caption = dialog.querySelector("[data-accommodation-dialog-caption]");
-      const source = isLobby ? "/damoon-front/assets/lobby-concept.webp" : root.querySelector(".accommodation-gallery__main img")?.src;
+      const source = isLobby ? "/assets/lobby-concept.webp" : root.querySelector(".accommodation-gallery__main img")?.src;
       const alt = trigger.querySelector("span")?.textContent || trigger.getAttribute("aria-label") || "";
       image.src = source;
       image.alt = alt;

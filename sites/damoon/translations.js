@@ -106,8 +106,8 @@ export const translations = {
         ],
       },
       "/virtual-tour": {
-        title: "Damoon Hotel virtual tour", intro: "Virtual tour", text: "Damoon offers a virtual-tour service. Online display on this site is being prepared; browse the rooms page to learn about accommodation categories.", badge: "Online display in preparation", actions: [["/contact", "Contact the hotel"]],
-        sections: [{ heading: "Explore Damoon’s spaces", text: "The tour will be available from this page once its viewer is ready. Images in this site gallery are concepts and do not show the actual virtual tour.", link: "/contact", label: "Contact the hotel" }],
+        title: "Damoon Hotel virtual tour", intro: "Virtual tour", text: "Explore the supplied Andarama tour preview. Its panorama is conceptual imagery and is not verified hotel photography.", badge: "Conceptual preview", actions: [["/rooms", "Browse accommodation"]],
+        sections: [{ heading: "Explore the tour", text: "This conceptual panorama is provided for preview and should not be treated as a verified photograph of Damoon Hotel.", link: "/rooms", label: "Browse accommodation" }],
       },
     },
     roomDetails: {
@@ -231,8 +231,8 @@ export const translations = {
         ],
       },
       "/virtual-tour": {
-        title: "الجولة الافتراضية لفندق دامون", intro: "الجولة الافتراضية", text: "يقدم دامون خدمة الجولة الافتراضية. يجري إعداد عرضها عبر هذا الموقع؛ ويمكنكم استعراض صفحة الغرف للتعرّف على فئات الإقامة.", badge: "يجري إعداد العرض عبر الإنترنت", actions: [["/contact", "التواصل مع الفندق"]],
-        sections: [{ heading: "استكشفوا أماكن دامون", text: "ستتوفر الجولة من هذه الصفحة بعد تجهيز العارض. صور معرض الموقع تصاميم توضيحية ولا تعرض الجولة الافتراضية الحقيقية.", link: "/contact", label: "التواصل مع الفندق" }],
+        title: "الجولة الافتراضية لفندق دامون", intro: "الجولة الافتراضية", text: "استكشفوا معاينة الجولة المقدمة عبر أندراما. صور البانوراما تصورية وليست صوراً موثقة للفندق.", badge: "معاينة تصورية", actions: [["/rooms", "استعراض أماكن الإقامة"]],
+        sections: [{ heading: "استكشفوا الجولة", text: "هذه البانوراما التصورية للمعاينة فقط، ولا ينبغي اعتبارها صورة موثقة لفندق دامون.", link: "/rooms", label: "استعراض أماكن الإقامة" }],
       },
     },
     roomDetails: {

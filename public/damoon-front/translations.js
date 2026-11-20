@@ -26,17 +26,17 @@ export const translations = {
       ],
     },
     rooms: {
-      single: { title: "Single room", description: "Single room category; confirm exact capacity and in-room details with reception.", image: "/damoon-front/assets/room-concept-1.webp" },
-      double: { title: "Double room", description: "Double room category; confirm exact capacity and in-room details with reception.", image: "/damoon-front/assets/room-concept-2.webp" },
-      "suite": { title: "Suite", description: "Suite category; confirm exact capacity and in-room details with reception.", image: "/damoon-front/assets/room-concept-3.webp" },
+      single: { title: "Single room", description: "Single room category; confirm exact capacity and in-room details with reception.", image: "/assets/room-concept-1.webp" },
+      double: { title: "Double room", description: "Double room category; confirm exact capacity and in-room details with reception.", image: "/assets/room-concept-2.webp" },
+      "suite": { title: "Suite", description: "Suite category; confirm exact capacity and in-room details with reception.", image: "/assets/room-concept-3.webp" },
     },
     gallery: [
-      { src: "/damoon-front/assets/architecture-concept.webp", alt: "Concept architectural illustration for the page layout" },
-      { src: "/damoon-front/assets/lobby-concept.webp", alt: "Concept lobby illustration, not a hotel photo" },
-      { src: "/damoon-front/assets/room-concept-1.webp", alt: "Concept room illustration, not a hotel photo" },
-      { src: "/damoon-front/assets/room-concept-2.webp", alt: "Concept accommodation illustration, not a hotel photo" },
-      { src: "/damoon-front/assets/room-concept-3.webp", alt: "Concept suite illustration, not a hotel photo" },
-      { src: "/damoon-front/assets/gallery-concept-1.webp", alt: "Concept image for the site gallery" },
+      { src: "/assets/architecture-concept.webp", alt: "Concept architectural illustration for the page layout" },
+      { src: "/assets/lobby-concept.webp", alt: "Concept lobby illustration, not a hotel photo" },
+      { src: "/assets/room-concept-1.webp", alt: "Concept room illustration, not a hotel photo" },
+      { src: "/assets/room-concept-2.webp", alt: "Concept accommodation illustration, not a hotel photo" },
+      { src: "/assets/room-concept-3.webp", alt: "Concept suite illustration, not a hotel photo" },
+      { src: "/assets/gallery-concept-1.webp", alt: "Concept image for the site gallery" },
     ],
     pages: {
       "/": {
@@ -106,8 +106,8 @@ export const translations = {
         ],
       },
       "/virtual-tour": {
-        title: "Damoon Hotel virtual tour", intro: "Virtual tour", text: "Damoon offers a virtual-tour service. Online display on this site is being prepared; browse the rooms page to learn about accommodation categories.", badge: "Online display in preparation", actions: [["/contact", "Contact the hotel"]],
-        sections: [{ heading: "Explore Damoon’s spaces", text: "The tour will be available from this page once its viewer is ready. Images in this site gallery are concepts and do not show the actual virtual tour.", link: "/contact", label: "Contact the hotel" }],
+        title: "Damoon Hotel virtual tour", intro: "Virtual tour", text: "Explore the supplied Andarama tour preview. Its panorama is conceptual imagery and is not verified hotel photography.", badge: "Conceptual preview", actions: [["/rooms", "Browse accommodation"]],
+        sections: [{ heading: "Explore the tour", text: "This conceptual panorama is provided for preview and should not be treated as a verified photograph of Damoon Hotel.", link: "/rooms", label: "Browse accommodation" }],
       },
     },
     roomDetails: {
@@ -151,17 +151,17 @@ export const translations = {
       ],
     },
     rooms: {
-      single: { title: "غرفة مفردة", description: "فئة غرفة مفردة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/damoon-front/assets/room-concept-1.webp" },
-      double: { title: "غرفة مزدوجة", description: "فئة غرفة مزدوجة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/damoon-front/assets/room-concept-2.webp" },
-      "suite": { title: "جناح", description: "فئة جناح؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/damoon-front/assets/room-concept-3.webp" },
+      single: { title: "غرفة مفردة", description: "فئة غرفة مفردة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/assets/room-concept-1.webp" },
+      double: { title: "غرفة مزدوجة", description: "فئة غرفة مزدوجة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/assets/room-concept-2.webp" },
+      "suite": { title: "جناح", description: "فئة جناح؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/assets/room-concept-3.webp" },
     },
     gallery: [
-      { src: "/damoon-front/assets/architecture-concept.webp", alt: "رسم معماري تصوري لتصميم الصفحة" },
-      { src: "/damoon-front/assets/lobby-concept.webp", alt: "تصميم تصوري للردهة، وليس صورة للفندق" },
-      { src: "/damoon-front/assets/room-concept-1.webp", alt: "تصميم تصوري لغرفة، وليس صورة للفندق" },
-      { src: "/damoon-front/assets/room-concept-2.webp", alt: "تصميم تصوري لمساحة إقامة، وليس صورة للفندق" },
-      { src: "/damoon-front/assets/room-concept-3.webp", alt: "تصميم تصوري لجناح، وليس صورة للفندق" },
-      { src: "/damoon-front/assets/gallery-concept-1.webp", alt: "صورة تصورية لمعرض الموقع" },
+      { src: "/assets/architecture-concept.webp", alt: "رسم معماري تصوري لتصميم الصفحة" },
+      { src: "/assets/lobby-concept.webp", alt: "تصميم تصوري للردهة، وليس صورة للفندق" },
+      { src: "/assets/room-concept-1.webp", alt: "تصميم تصوري لغرفة، وليس صورة للفندق" },
+      { src: "/assets/room-concept-2.webp", alt: "تصميم تصوري لمساحة إقامة، وليس صورة للفندق" },
+      { src: "/assets/room-concept-3.webp", alt: "تصميم تصوري لجناح، وليس صورة للفندق" },
+      { src: "/assets/gallery-concept-1.webp", alt: "صورة تصورية لمعرض الموقع" },
     ],
     pages: {
       "/": {
@@ -231,8 +231,8 @@ export const translations = {
         ],
       },
       "/virtual-tour": {
-        title: "الجولة الافتراضية لفندق دامون", intro: "الجولة الافتراضية", text: "يقدم دامون خدمة الجولة الافتراضية. يجري إعداد عرضها عبر هذا الموقع؛ ويمكنكم استعراض صفحة الغرف للتعرّف على فئات الإقامة.", badge: "يجري إعداد العرض عبر الإنترنت", actions: [["/contact", "التواصل مع الفندق"]],
-        sections: [{ heading: "استكشفوا أماكن دامون", text: "ستتوفر الجولة من هذه الصفحة بعد تجهيز العارض. صور معرض الموقع تصاميم توضيحية ولا تعرض الجولة الافتراضية الحقيقية.", link: "/contact", label: "التواصل مع الفندق" }],
+        title: "الجولة الافتراضية لفندق دامون", intro: "الجولة الافتراضية", text: "استكشفوا معاينة الجولة المقدمة عبر أندراما. صور البانوراما تصورية وليست صوراً موثقة للفندق.", badge: "معاينة تصورية", actions: [["/rooms", "استعراض أماكن الإقامة"]],
+        sections: [{ heading: "استكشفوا الجولة", text: "هذه البانوراما التصورية للمعاينة فقط، ولا ينبغي اعتبارها صورة موثقة لفندق دامون.", link: "/rooms", label: "استعراض أماكن الإقامة" }],
       },
     },
     roomDetails: {

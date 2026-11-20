@@ -62,7 +62,8 @@ test("shared-runtime home page opens the authenticated preview and preserves req
   ]);
 
   assert.match(home, /src="\/damoon-front\/app\.js"/);
-  assert.match(app, /mountBooking\(bookingSlot, \{ routeHref, locale, coordinationOnly: false, requestOnly: true, reservationEntry: true \}\)/);
+  assert.match(app, /endsWith\("\/hotel-reservations\/start"\)/);
+  assert.match(app, /mountBooking\(bookingSlot, \{ routeHref, locale, coordinationOnly: false, requestOnly: !reservationEntry, reservationEntry \}\)/);
   assert.match(booking, /\/api\/hotel\/v1\/requests/);
   assert.match(booking, /data-reservation-entry/);
   assert.match(booking, /postJson\("\/api\/hotel\/v1\/availability\/search"/);

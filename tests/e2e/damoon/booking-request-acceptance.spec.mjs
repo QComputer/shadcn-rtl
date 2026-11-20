@@ -739,7 +739,7 @@ test('inventory-free request reaches reception and tracks without creating a boo
     const tracked = await postStatus(page, received.reference);
     expect(tracked.status()).toBe(200);
     expect((await tracked.json()).status).toBe('IN_REVIEW');
-    const foreign = await postStatus(page, received.reference, foreignHost);
+    const foreign = await postStatus(page, received.reference, `${foreignHost}:8080`);
     expect(foreign.status()).toBe(404);
     expect(await Promise.all([db.hotelBookingHold.count({where:{organizationId,propertyId}}), db.hotelReservation.count({where:{organizationId,propertyId}})])).toEqual(before);
   } finally {

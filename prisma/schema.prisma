@@ -5921,6 +5921,7 @@ model HotelGuestBookingRequest {
   childAges             Int[]    @default([])
   roomTypeSlug          String?
   ratePlanCode          String?
+  preferredCategory     String?
   availabilityHint      String   @default("UNKNOWN")
   managerMessage        String?  @db.VarChar(500)
   guestName             String

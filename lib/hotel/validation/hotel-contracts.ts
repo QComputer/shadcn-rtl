@@ -135,6 +135,7 @@ export const hotelGuestBookingRequestSchema = z.union([
   }),
   hotelGuestRequestFields.extend({
     kind: z.literal("coordination"),
+    preferredCategory: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(80).optional(),
     checkIn: z.iso.date(),
     checkOut: z.iso.date(),
   }).strict(),

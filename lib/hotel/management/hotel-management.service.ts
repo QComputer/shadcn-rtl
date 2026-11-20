@@ -323,7 +323,7 @@ export class HotelManagementService {
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
       take: 50,
-      select: { id: true, status: true, checkIn: true, checkOut: true, adults: true, children: true, childAges: true, roomTypeSlug: true, ratePlanCode: true, availabilityHint: true, managerMessage: true, guestName: true, guestPhone: true, guestEmail: true, guestNote: true, version: true, createdAt: true, updatedAt: true },
+      select: { id: true, status: true, checkIn: true, checkOut: true, adults: true, children: true, childAges: true, roomTypeSlug: true, ratePlanCode: true, preferredCategory: true, availabilityHint: true, managerMessage: true, guestName: true, guestPhone: true, guestEmail: true, guestNote: true, version: true, createdAt: true, updatedAt: true },
     });
     return { requests: rows, nextCursor: rows.length === 50 ? rows[rows.length - 1]?.id ?? null : null };
   }

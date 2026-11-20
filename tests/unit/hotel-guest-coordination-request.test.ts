@@ -84,6 +84,7 @@ after(() => {
 
 const details = {
   kind: "coordination",
+  preferredCategory: "studio-suite",
   property: "damoon-hotel",
   checkIn: "2026-12-15",
   checkOut: "2026-12-16",
@@ -98,6 +99,9 @@ const hasStatus = (status: number) => (error: unknown) => error instanceof TestA
 
 test("coordination requires an explicit kind and calendar dates and rejects room or rate fields", () => {
   assert.equal(hotelGuestBookingRequestSchema.safeParse({ ...details, kind: undefined }).success, false);
+  assert.equal(hotelGuestBookingRequestSchema.safeParse({ ...details, preferredCategory: undefined }).success, true);
+  assert.equal(hotelGuestBookingRequestSchema.safeParse({ ...details, preferredCategory: "other-hotel-category" }).success, true);
+  assert.equal(hotelGuestBookingRequestSchema.safeParse({ ...details, preferredCategory: "../unsafe" }).success, false);
   assert.equal(hotelGuestBookingRequestSchema.safeParse({ ...details, checkIn: "2026-02-30" }).success, false);
   assert.equal(hotelGuestBookingRequestSchema.safeParse({ ...details, roomType: "suite", ratePlan: "standard" }).success, false);
   assert.equal(hotelGuestBookingRequestSchema.safeParse({ ...details, kind: undefined, roomType: "suite", ratePlan: "standard" }).success, true);
@@ -119,6 +123,7 @@ test("coordination persists once without publication or availability, with priva
   assert.equal(rows[0].propertyId, "property-damoon");
   assert.equal(rows[0].roomTypeSlug, null);
   assert.equal(rows[0].ratePlanCode, null);
+  assert.equal(rows[0].preferredCategory, "studio-suite");
   assert.equal(rows[0].availabilityHint, "UNKNOWN");
   assert.notEqual(rows[0].trackingReferenceHash, results[0].reference);
   assert.deepEqual(await readHotelGuestBookingRequestStatus(results[0].reference, "damoon.example"), {
@@ -128,6 +133,8 @@ test("coordination persists once without publication or availability, with priva
   });
   await assert.rejects(readHotelGuestBookingRequestStatus(results[0].reference, "other-hotel.example"), hasStatus(404));
   await assert.rejects(submitHotelGuestBookingRequest({ ...input, specialRequests: "Different note" }, requestHeaders(), key), hasStatus(409));
+  const changedCategory = hotelGuestBookingRequestSchema.parse({ ...details, preferredCategory: "standard-room" });
+  await assert.rejects(submitHotelGuestBookingRequest(changedCategory, requestHeaders(), key), hasStatus(409));
   assert.equal(availabilityChecks, 0);
 });
 

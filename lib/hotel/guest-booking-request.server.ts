@@ -18,7 +18,9 @@ function referenceFor(organizationId: string, idempotencyHash: string) {
 function fingerprint(input: HotelGuestBookingRequestInput) {
   return sha256(JSON.stringify({
     property: input.property,
-    ...(input.kind === "coordination" ? { kind: input.kind } : { roomType: input.roomType, ratePlan: input.ratePlan }),
+    ...(input.kind === "coordination"
+      ? { kind: input.kind, preferredCategory: input.preferredCategory }
+      : { roomType: input.roomType, ratePlan: input.ratePlan }),
     checkIn: input.checkIn,
     checkOut: input.checkOut,
     occupancy: { adults: input.occupancy.adults, children: input.occupancy.children, childAges: input.occupancy.childAges ?? [] },
@@ -81,7 +83,9 @@ export async function submitHotelGuestBookingRequest(input: HotelGuestBookingReq
           FOR SHARE
         `);
         if (!property) throw new ApiError(404, "Stay requests are not enabled for this property");
-        await tx.hotelGuestBookingRequest.create({ data: { ...data, propertyId: property.id } });
+        await tx.hotelGuestBookingRequest.create({
+          data: { ...data, propertyId: property.id, preferredCategory: input.preferredCategory },
+        });
       });
     } else {
       if (!isApprovedHotelPublicationAvailable()) throw new ApiError(503, "Hotel availability is not operationally enabled");

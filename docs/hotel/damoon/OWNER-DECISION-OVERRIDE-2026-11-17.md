@@ -1,5 +1,7 @@
 # Damoon public content — owner decision override
 
+> **Superseded in part on 2026-11-20:** Breakfast hall readiness and complimentary guest breakfast are governed by [OWNER-DECISION-BREAKFAST-2026-11-20.md](OWNER-DECISION-BREAKFAST-2026-11-20.md); the remaining dated decisions retain their authority.
+
 Date: 2026-11-17  
 Authority: direct owner instructions in the Hotel Damoon UI/UX implementation request.
 

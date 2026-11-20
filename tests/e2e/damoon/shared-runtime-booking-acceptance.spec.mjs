@@ -168,3 +168,32 @@ test("shared public Damoon bundle submits and tracks a persisted request through
     await prisma.$disconnect();
   }
 });
+
+test('shared accommodation tour preserves category and stay across locales and viewports', { timeout: 90000 }, async () => {
+  const { sharedUrl } = failClosed();
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const checkIn = dateAtOffset(7);
+    const checkOut = dateAtOffset(8);
+    for (const locale of ['fa','en','ar']) {
+      for (const viewport of [{width:375,height:800},{width:1280,height:800}]) {
+        const page = await browser.newPage({ viewport });
+        await page.route('https://andarama.bazarbaaz.ir/**', route => route.fulfill({status:200, contentType:'text/html', body:'<title>Conceptual tour fixture</title>'}));
+        const query = new URLSearchParams({checkIn,checkOut,adults:'2',guests:'2',children:'0'});
+        await page.goto(new URL(`${locale}/rooms/studio-suite?${query}`, sharedUrl).href, {waitUntil:'domcontentloaded'});
+        await page.locator('.accommodation-gallery a[href*="/virtual-tour"]').click();
+        await page.waitForURL('**/virtual-tour?**');
+        assert.equal(new URL(page.url()).searchParams.get('room'), 'studio-suite');
+        assert.equal(new URL(page.url()).searchParams.get('checkIn'), checkIn);
+        assert.equal(new URL(page.url()).searchParams.get('checkOut'), checkOut);
+        assert.equal(new URL(page.url()).searchParams.get('adults'), '2');
+        await page.locator('a[href*="/rooms/studio-suite"]').first().click();
+        await page.waitForURL('**/rooms/studio-suite?**');
+        assert.equal(new URL(page.url()).searchParams.get('checkIn'), checkIn);
+        await page.goto(new URL(`${locale}/contact?room=studio-suite&${query}`, sharedUrl).href, {waitUntil:'domcontentloaded'});
+        await expect(page.locator('[data-coordination-request]')).toBeVisible();
+        await page.close();
+      }
+    }
+  } finally { await browser.close(); }
+});

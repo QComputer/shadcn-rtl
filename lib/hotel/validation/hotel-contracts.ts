@@ -114,10 +114,8 @@ export const availabilitySearchSchema = z
 export type AvailabilitySearchInputDto = z.infer<typeof availabilitySearchSchema>;
 
 /** A request for reception follow-up; it never creates a hold or confirmed reservation. */
-export const hotelGuestBookingRequestSchema = z.object({
+const hotelGuestRequestFields = z.object({
   property: propertySlugSchema,
-  roomType: roomTypeSlugSchema,
-  ratePlan: z.string().min(1).max(64),
   checkIn: stayDateSchema,
   checkOut: stayDateSchema,
   occupancy: occupancySchema,
@@ -127,7 +125,21 @@ export const hotelGuestBookingRequestSchema = z.object({
     email: z.string().trim().email().max(200).optional(),
   }),
   specialRequests: z.string().trim().max(500).optional(),
-}).superRefine((value, ctx) => {
+});
+
+export const hotelGuestBookingRequestSchema = z.union([
+  hotelGuestRequestFields.extend({
+    kind: z.undefined().optional(),
+    roomType: roomTypeSlugSchema,
+    ratePlan: z.string().min(1).max(64),
+  }),
+  hotelGuestRequestFields.extend({
+    kind: z.literal("coordination"),
+    preferredCategory: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(80).optional(),
+    checkIn: z.iso.date(),
+    checkOut: z.iso.date(),
+  }).strict(),
+]).superRefine((value, ctx) => {
   if (value.checkOut <= value.checkIn) {
     ctx.addIssue({ code: "custom", path: ["checkOut"], message: "checkOut must be after checkIn" });
     return;

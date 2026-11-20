@@ -691,3 +691,61 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
  * the strongest executable subset is included above with comments
  * listing the exact fixture env contract.
  */
+
+// The request-only path does not depend on published rates or inventory.
+test('inventory-free request reaches reception and tracks without creating a booking', async ({ browser }) => {
+  failClosed();
+  const { PrismaClient } = await import('@prisma/client');
+  const db = new PrismaClient();
+  const property = await db.hotelProperty.findUniqueOrThrow({ where: { id: propertyId }, select: { operationalMode: true } });
+  const before = await Promise.all([db.hotelBookingHold.count({where:{organizationId,propertyId}}), db.hotelReservation.count({where:{organizationId,propertyId}})]);
+  await db.hotelProperty.update({ where: { id: propertyId }, data: { operationalMode: 'REQUEST_ONLY' } });
+  const context = await newContext(browser);
+  const page = await context.newPage();
+  const manager = await loginManager(browser);
+  const guestName = `CI coordination ${randomUUID()}`;
+  try {
+    const checkIn = tomorrowISO();
+    const checkOut = dayAfterISO(checkIn);
+    const query = new URLSearchParams({ room: 'studio-suite', checkIn, checkOut, adults: '2', guests: '2', children: '0' });
+    for (const locale of ['fa','en','ar']) {
+      for (const viewport of [{width:375,height:800},{width:1280,height:800}]) {
+        await page.setViewportSize(viewport);
+        await page.goto(`${standaloneUrl.origin}/${locale}/contact?${query}`, {waitUntil:'domcontentloaded'});
+        await expect(page.locator('[data-coordination-request]')).toBeVisible();
+      }
+    }
+    await page.goto(`${standaloneUrl.origin}/en/contact?${query}`, {waitUntil:'domcontentloaded'});
+    await page.locator('[data-coordination-request] [name=fullName]').fill(guestName);
+    await page.locator('[data-coordination-request] [name=phone]').fill('+989121234567');
+    const requestPromise = page.waitForRequest(req => req.url().endsWith('/api/hotel/v1/requests') && req.method() === 'POST');
+    const responsePromise = page.waitForResponse(res => res.url().endsWith('/api/hotel/v1/requests') && res.request().method() === 'POST');
+    await page.locator('[data-coordination-request] button').click();
+    const sent = await requestPromise;
+    const response = await responsePromise;
+    expect(response.status()).toBe(201);
+    const received = await response.json();
+    expect(received.reference).toBeTruthy();
+    expect(sent.postDataJSON().preferredCategory).toBe('studio-suite');
+    const replay = await postRequest(page, sent.postDataJSON(), sent.headers()['idempotency-key']);
+    expect(replay.status()).toBe(200);
+    expect((await replay.json()).reference).toBe(received.reference);
+    const inbox = await getRequestsApi(manager.page);
+    expect(inbox.status()).toBe(200);
+    const entry = (await inbox.json()).requests.find(r => r.guestName === guestName);
+    expect(entry?.preferredCategory).toBe('studio-suite');
+    const updated = await patchRequestStatus(manager.page, entry.id, 'IN_REVIEW', entry.version);
+    expect(updated.status()).toBe(200);
+    const tracked = await postStatus(page, received.reference);
+    expect(tracked.status()).toBe(200);
+    expect((await tracked.json()).status).toBe('IN_REVIEW');
+    const foreign = await postStatus(page, received.reference, `${foreignHost}:8080`);
+    expect(foreign.status()).toBe(404);
+    expect(await Promise.all([db.hotelBookingHold.count({where:{organizationId,propertyId}}), db.hotelReservation.count({where:{organizationId,propertyId}})])).toEqual(before);
+  } finally {
+    await context.close();
+    await manager.context.close();
+    await db.hotelProperty.update({ where: { id: propertyId }, data: { operationalMode: property.operationalMode } });
+    await db.$disconnect();
+  }
+});

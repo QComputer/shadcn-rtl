@@ -1,6 +1,7 @@
 export const DAMOON_VTOUR_TENANT = "damoon";
 export const DAMOON_VTOUR_ALLOWED_ORIGINS = Object.freeze(["https://andarama.bazarbaaz.ir"]);
 const DAMOON_VTOUR_ROOM_SLUGS = new Set([
+  "vip-suite", "standard-room", "studio-suite",
   "vip", "single-room", "fourth-floor-suite",
   "single", "double", "suite", "suite-3-bed", "suite-4-5-bed",
 ]);

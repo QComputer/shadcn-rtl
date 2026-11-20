@@ -48,20 +48,23 @@ test("owner-supplied Damoon tour preserves its initial scene and is labeled as c
 test("room pages resolve only explicitly associated and approved tenant scenes", () => {
   const origins = ["https://tour.example.test"];
   const catalog = [
-    { id: "vip-preview", tenantId: "damoon", url: "https://tour.example.test/t/hotel#s=vip-scene", roomSlugs: ["vip"], approved: true, representation: "CONCEPTUAL_PREVIEW" },
-    { id: "single-room", tenantId: "damoon", url: "https://tour.example.test/t/hotel#s=single-scene", roomSlugs: ["single-room", "single"], approved: true },
-    { id: "fourth-floor-suite", tenantId: "damoon", url: "https://tour.example.test/t/hotel#s=suite-scene", roomSlugs: ["fourth-floor-suite", "suite-3-bed", "bogus"], approved: true },
-    { id: "pending", tenantId: "damoon", url: "https://tour.example.test/t/hotel#s=pending-scene", roomSlugs: ["vip"], approved: false },
-    { id: "different-hotel", tenantId: "other", url: "https://tour.example.test/t/other#s=other-scene", roomSlugs: ["vip"], approved: true },
-    { id: "untrusted", tenantId: "damoon", url: "https://evil.test/t/hotel#s=vip-scene", roomSlugs: ["vip"], approved: true },
+    { id: "vip-preview", tenantId: "damoon", url: "https://tour.example.test/t/hotel#s=vip-scene", roomSlugs: ["vip-suite", "vip"], approved: true, representation: "CONCEPTUAL_PREVIEW" },
+    { id: "standard-room", tenantId: "damoon", url: "https://tour.example.test/t/hotel#s=standard-scene", roomSlugs: ["standard-room", "single-room", "single"], approved: true },
+    { id: "studio-suite", tenantId: "damoon", url: "https://tour.example.test/t/hotel#s=studio-scene", roomSlugs: ["studio-suite", "fourth-floor-suite", "suite-3-bed", "bogus"], approved: true },
+    { id: "pending", tenantId: "damoon", url: "https://tour.example.test/t/hotel#s=pending-scene", roomSlugs: ["vip-suite"], approved: false },
+    { id: "different-hotel", tenantId: "other", url: "https://tour.example.test/t/other#s=other-scene", roomSlugs: ["vip-suite"], approved: true },
+    { id: "untrusted", tenantId: "damoon", url: "https://evil.test/t/hotel#s=vip-scene", roomSlugs: ["vip-suite"], approved: true },
   ];
   const tours = publishedDamoonTours(catalog, origins);
   const idsFor = (slug) => tours.filter((tour) => tour.roomSlugs.includes(slug)).map(({ id }) => id);
+  assert.deepEqual(idsFor("vip-suite"), ["vip-preview"]);
+  assert.deepEqual(idsFor("standard-room"), ["standard-room"]);
+  assert.deepEqual(idsFor("studio-suite"), ["studio-suite"]);
   assert.deepEqual(idsFor("vip"), ["vip-preview"]);
-  assert.deepEqual(idsFor("single-room"), ["single-room"]);
-  assert.deepEqual(idsFor("single"), ["single-room"]);
-  assert.deepEqual(idsFor("fourth-floor-suite"), ["fourth-floor-suite"]);
-  assert.deepEqual(idsFor("suite-3-bed"), ["fourth-floor-suite"]);
+  assert.deepEqual(idsFor("single-room"), ["standard-room"]);
+  assert.deepEqual(idsFor("single"), ["standard-room"]);
+  assert.deepEqual(idsFor("fourth-floor-suite"), ["studio-suite"]);
+  assert.deepEqual(idsFor("suite-3-bed"), ["studio-suite"]);
   assert.deepEqual(idsFor("bogus"), []);
   const [vip] = tours;
   assert.equal(vip.url, "https://tour.example.test/t/hotel#s=vip-scene");

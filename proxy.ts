@@ -92,7 +92,7 @@ const damoonContentSecurityPolicy = [
   "img-src 'self' data: https://tile.openstreetmap.org",
   "connect-src 'self'",
   "media-src 'self'",
-  "frame-src 'none'",
+  "frame-src https://andarama.bazarbaaz.ir",
   "form-action 'none'",
   "object-src 'none'",
   "base-uri 'none'",

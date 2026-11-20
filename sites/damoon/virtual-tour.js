@@ -1,9 +1,14 @@
-// Public catalog stays empty until each tour is approved for Damoon publication.
-// Add entries here (not in page markup) after verifying its Andarama URL and rights.
 export const DAMOON_VTOUR_TENANT = "damoon";
-export const DAMOON_VTOUR_ALLOWED_ORIGINS = Object.freeze([]);
+export const DAMOON_VTOUR_ALLOWED_ORIGINS = Object.freeze(["https://andarama.bazarbaaz.ir"]);
 export const DAMOON_VTOUR_CATALOG = Object.freeze([
-  // { id: "lobby", tenantId: "damoon", url: "https://approved.andarama.host/tour/<id>", roomSlugs: [], approved: true }
+  {
+    id: "test-damoon-hotel",
+    tenantId: "damoon",
+    url: "https://andarama.bazarbaaz.ir/t/test-damoon-hotel#s=n2ohIYwAprMY3uMSoejp3&y=-76.6&p=3.1&f=111.3",
+    roomSlugs: [],
+    approved: true,
+    representation: "CONCEPTUAL_PREVIEW",
+  },
 ]);
 
 export function allowedVirtualTourUrl(value, allowedOrigins = DAMOON_VTOUR_ALLOWED_ORIGINS) {
@@ -28,9 +33,10 @@ export function publishedDamoonTours(catalog = DAMOON_VTOUR_CATALOG, allowedOrig
   });
 }
 
-export function tourViewerMarkup(tour, title, allowedOrigins = DAMOON_VTOUR_ALLOWED_ORIGINS) {
+export function tourViewerMarkup(tour, title, allowedOrigins = DAMOON_VTOUR_ALLOWED_ORIGINS, locale = "en") {
   const url = allowedVirtualTourUrl(tour?.url, allowedOrigins);
   if (!url) return "";
   const escaped = (value) => String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
-  return `<div class="vtour-viewer"><iframe src="${escaped(url)}" title="${escaped(title)}" loading="lazy" allow="fullscreen; xr-spatial-tracking" allowfullscreen referrerpolicy="no-referrer"></iframe><a class="vtour-viewer__direct" href="${escaped(url)}" target="_blank" rel="noopener noreferrer">${escaped(title)} ↗</a></div>`;
+  const directLabel = locale === "fa" ? "بازکردن مستقیم تور ↗" : locale === "ar" ? "فتح الجولة مباشرةً ↗" : "Open the tour directly ↗";
+  return `<div class="vtour-viewer" data-tour-representation="${tour?.representation === "CONCEPTUAL_PREVIEW" ? "conceptual" : "unverified"}"><iframe src="${escaped(url)}" title="${escaped(title)}" loading="lazy" allow="fullscreen; xr-spatial-tracking" allowfullscreen referrerpolicy="no-referrer"></iframe><a class="vtour-viewer__direct" href="${escaped(url)}" target="_blank" rel="noopener noreferrer">${escaped(directLabel)}</a></div>`;
 }

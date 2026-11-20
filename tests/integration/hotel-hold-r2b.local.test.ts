@@ -49,7 +49,7 @@ before(async () => {
     for (const propertySlug of key === "a" ? ["a1", "a2"] : ["b1"]) {
       const property = await prisma.hotelProperty.create({ data: { organizationId: org.id, organizationSlug: org.slug, slug: propertySlug, name: `R2-B ${propertySlug}` } });
       organizations[key].propertyIds[propertySlug] = property.id;
-      const room = await prisma.hotelRoomType.create({ data: { organizationId: org.id, propertyId: property.id, slug: "standard", name: "Standard", maxAdults: 2, maxChildren: 1, maxOccupancy: 3, beds: [{ kind: "queen", count: 1 }] } });
+      const room = await prisma.hotelRoomType.create({ data: { organizationId: org.id, propertyId: property.id, slug: "standard", name: "Standard", maxAdults: 2, maxChildren: 1, maxOccupancy: 3, beds: [{ kind: "queen", count: 1 }], totalAllotment: 2 } });
       organizations[key].roomIds[propertySlug] = room.id;
       const policy = await prisma.hotelCancellationPolicy.create({ data: { organizationId: org.id, propertyId: property.id, key: "flex", name: "Flexible", freeCancellationCutoffHours: 24 } });
       organizations[key].policyIds[propertySlug] = policy.id;

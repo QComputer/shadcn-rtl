@@ -26,6 +26,9 @@ export const translations = {
       ],
     },
     rooms: {
+      vip: { title: "VIP", description: "The VIP unit is arranged as two rooms." },
+      "single-room": { title: "Single-room unit", floor: "Third floor", description: "This unit is arranged as one room." },
+      "fourth-floor-suite": { title: "Suite", floor: "Fourth floor", description: "The suite has an open layout with no separate bedroom." },
       single: { title: "Single room", description: "Single room category; confirm exact capacity and in-room details with reception.", image: "/assets/room-concept-1.webp" },
       double: { title: "Double room", description: "Double room category; confirm exact capacity and in-room details with reception.", image: "/assets/room-concept-2.webp" },
       "suite": { title: "Suite", description: "Suite category; confirm exact capacity and in-room details with reception.", image: "/assets/room-concept-3.webp" },
@@ -51,11 +54,6 @@ export const translations = {
       },
       "/rooms": {
         title: "Rooms and suites", intro: "Accommodation spaces", text: "Damoon Hotel has 31 accommodation units: 20 rooms and 11 suites. This page lists the accommodation categories; exact capacity, in-room amenities, rates, and availability are not shown.",
-        sections: [
-          { ...{ heading: "Single room", text: "Single room category; confirm exact capacity and in-room details with reception." }, link: "/rooms/single", label: "Details", note: "Concept image; not an actual room photo." },
-          { heading: "Double room", text: "Double room category; confirm exact capacity and in-room details with reception.", link: "/rooms/double", label: "Details", note: "Concept image; not an actual room photo." },
-          { heading: "Suite", text: "Suite category; confirm exact capacity and in-room details with reception.", link: "/rooms/suite", label: "Details", note: "Concept image; not an actual room photo." },
-        ],
       },
       "/attractions": {
         title: "Discover Shahrekord from Damoon", intro: "A local guide for Damoon guests", text: "Explore historic places and nearby landscapes with approximate straight-line distances from a public map point. The hotel pin and road distances have not been verified.",
@@ -85,7 +83,7 @@ export const translations = {
         title: "About Damoon Hotel", intro: "About the hotel", text: "Damoon Hotel in Shahrekord has 31 accommodation units: 20 rooms and 11 suites. Contact reception to coordinate your stay and ask about guest services.", actions: [["/contact", "Contact the hotel"]],
         sections: [
           { heading: "A warm welcome", text: "Damoon aims to offer warm, friendly, and calm hospitality, so guests can feel at ease and at home throughout their stay." },
-          { heading: "Staying at Damoon", text: "The site lists single and double rooms and three-, four-, and five-bed suites. Ask reception to confirm capacity, in-room amenities, and current rates.", link: "/rooms", label: "Browse accommodation" },
+          { heading: "Staying at Damoon", text: "Browse the VIP, single-room and suite categories. Ask reception to confirm capacity, in-room amenities, and current rates.", link: "/rooms", label: "Browse accommodation" },
           { heading: "Check-in and check-out", text: "Check-in is from 14:00 and check-out is by 12:00 noon.", link: "/policies", label: "Stay information" },
         ],
       },
@@ -151,6 +149,9 @@ export const translations = {
       ],
     },
     rooms: {
+      vip: { title: "VIP", description: "تتألف وحدة VIP من غرفتين." },
+      "single-room": { title: "وحدة بغرفة واحدة", floor: "الطابق الثالث", description: "تتألف هذه الوحدة من غرفة واحدة." },
+      "fourth-floor-suite": { title: "جناح", floor: "الطابق الرابع", description: "الجناح ذو تصميم مفتوح دون غرفة نوم منفصلة." },
       single: { title: "غرفة مفردة", description: "فئة غرفة مفردة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/assets/room-concept-1.webp" },
       double: { title: "غرفة مزدوجة", description: "فئة غرفة مزدوجة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/assets/room-concept-2.webp" },
       "suite": { title: "جناح", description: "فئة جناح؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/assets/room-concept-3.webp" },
@@ -176,11 +177,6 @@ export const translations = {
       },
       "/rooms": {
         title: "الغرف والأجنحة", intro: "أماكن الإقامة", text: "يضم فندق دامون ٣١ وحدة إقامة: ٢٠ غرفة و١١ جناحاً. تعرض هذه الصفحة فئات الإقامة، ولا تعرض السعة الدقيقة أو التجهيزات أو الأسعار أو التوفر.",
-        sections: [
-          { heading: "غرفة مفردة", text: "فئة غرفة مفردة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", link: "/rooms/single", label: "التفاصيل", note: "صورة تصورية؛ وليست صورة حقيقية للغرفة." },
-          { heading: "غرفة مزدوجة", text: "فئة غرفة مزدوجة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", link: "/rooms/double", label: "التفاصيل", note: "صورة تصورية؛ وليست صورة حقيقية للغرفة." },
-          { heading: "جناح", text: "فئة جناح؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", link: "/rooms/suite", label: "التفاصيل", note: "صورة تصورية؛ وليست صورة حقيقية للغرفة." },
-        ],
       },
       "/attractions": {
         title: "معالم شهركرد من دامون", intro: "دليل محلي لضيوف دامون", text: "اكتشفوا المواقع التاريخية والمناظر القريبة مع مسافات مباشرة تقريبية من نقطة عامة على الخريطة. لم يُعتمد موقع الفندق ميدانياً ولم تُتحقق مسافات الطريق.",

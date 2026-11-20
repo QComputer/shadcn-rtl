@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { assertCleanDamoonAssets } from './encoding-guard.mjs';
-import { pages, rooms } from './content.js';
+import { legacyAccommodationPaths, pages, rooms } from './content.js';
 import { damoonAttractionsData } from './damoon-attractions-data.js';
 import { paletteStyles } from './themes.js';
 const root = dirname(fileURLToPath(import.meta.url));
@@ -34,7 +34,7 @@ for (const file of ['leaflet.js', 'leaflet.css']) await cp(join(leafletDist, fil
 await cp(join(leafletDist, '..', 'LICENSE'), join(leafletOutput, 'LICENSE'));
 for (const file of ['marker-icon.png', 'marker-icon-2x.png', 'marker-shadow.png', 'layers.png', 'layers-2x.png']) await cp(join(leafletDist, 'images', file), join(leafletOutput, 'images', file));
 const html = await readFile(join(output,'index.html'),'utf8');
-const routes = [...Object.keys(pages), '/hotel-reservations/start', ...rooms.map(r=>`/rooms/${r.slug}`), ...damoonAttractionsData.attractions.map((attraction)=>`/attractions/${attraction.id}`)];
+const routes = [...Object.keys(pages), '/hotel-reservations/start', ...rooms.map(r=>`/rooms/${r.slug}`), ...Object.keys(legacyAccommodationPaths), ...damoonAttractionsData.attractions.map((attraction)=>`/attractions/${attraction.id}`)];
 for (const route of [...routes,...['fa','en','ar'].flatMap(locale=>routes.map(r=>`/${locale}${r === '/' ? '' : r}`))]) {
   if (route === '/') continue;
   const folder = join(output, route.slice(1));

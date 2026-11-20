@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
+import { assertCleanDamoonAssets } from './encoding-guard.mjs';
 import { pages, rooms } from './content.js';
 import { damoonAttractionsData } from './damoon-attractions-data.js';
 import { paletteStyles } from './themes.js';
@@ -41,6 +42,7 @@ for (const route of [...routes,...['fa','en','ar'].flatMap(locale=>routes.map(r=
   await writeFile(join(folder,'index.html'),html);
 }
 const manifest = {};
+await assertCleanDamoonAssets(output);
 async function hashTree(folder, prefix = '') {
   for (const entry of await readdir(folder,{withFileTypes:true})) {
     if (entry.name === 'release-manifest.json') continue;

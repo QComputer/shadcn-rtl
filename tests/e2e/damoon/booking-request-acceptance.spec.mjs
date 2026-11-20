@@ -702,6 +702,7 @@ test('inventory-free request reaches reception and tracks without creating a boo
   await db.hotelProperty.update({ where: { id: propertyId }, data: { operationalMode: 'REQUEST_ONLY' } });
   const context = await newContext(browser);
   const page = await context.newPage();
+  const manager = await loginManager(browser);
   const guestName = `CI coordination ${randomUUID()}`;
   try {
     const checkIn = tomorrowISO();
@@ -729,11 +730,11 @@ test('inventory-free request reaches reception and tracks without creating a boo
     const replay = await postRequest(page, sent.postDataJSON(), sent.headers()['idempotency-key']);
     expect(replay.status()).toBe(200);
     expect((await replay.json()).reference).toBe(received.reference);
-    const inbox = await getRequestsApi(managerPage);
+    const inbox = await getRequestsApi(manager.page);
     expect(inbox.status()).toBe(200);
     const entry = (await inbox.json()).requests.find(r => r.guestName === guestName);
     expect(entry?.preferredCategory).toBe('studio-suite');
-    const updated = await patchRequestStatus(managerPage, entry.id, 'IN_REVIEW', entry.version);
+    const updated = await patchRequestStatus(manager.page, entry.id, 'IN_REVIEW', entry.version);
     expect(updated.status()).toBe(200);
     const tracked = await postStatus(page, received.reference);
     expect(tracked.status()).toBe(200);
@@ -743,6 +744,7 @@ test('inventory-free request reaches reception and tracks without creating a boo
     expect(await Promise.all([db.hotelBookingHold.count({where:{organizationId,propertyId}}), db.hotelReservation.count({where:{organizationId,propertyId}})])).toEqual(before);
   } finally {
     await context.close();
+    await manager.context.close();
     await db.hotelProperty.update({ where: { id: propertyId }, data: { operationalMode: property.operationalMode } });
     await db.$disconnect();
   }

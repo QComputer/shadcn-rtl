@@ -6,6 +6,7 @@ const copy = {
     listingLead: "گروه‌های اقامتی هتل دامون را ببینید و برای انتخاب مناسب برنامه‌تان با پذیرش هماهنگ کنید.",
     concept: "تصویر مفهومی؛ عکس واقعی اتاق نیست", detail: "مشاهدهٔ جزئیات", allRooms: "همهٔ گروه‌های اقامتی",
     lobbyLabel: "فضای عمومی هتل · تصویر مفهومی لابی",
+    generalTour: "دیدن پیش‌نمایش مفهومی تور عمومی هتل",
     coordination: "برای اقامتتان هماهنگ کنیم", coordinationText: "تاریخ سفر، تعداد مهمانان و نیازهایتان را با پذیرش در میان بگذارید تا ظرفیت، امکانات داخل واحد، نرخ و موجودی بررسی شود.",
     call: "تماس با پذیرش", contact: "راه‌های تماس", general: "امکانات عمومی هتل", generalText: "سالن صبحانهٔ هتل آمادهٔ استفاده است و صبحانه برای مهمانان هتل رایگان ارائه می‌شود. ساعت سرو را از پذیرش بپرسید.",
     timings: "زمان ورود و خروج", checkIn: "ورود: ساعت ۱۴:۰۰", checkOut: "خروج: ساعت ۱۲:۰۰ ظهر", askRoom: "امکانات اختصاصی این گروه را از پذیرش بپرسید.",
@@ -16,6 +17,7 @@ const copy = {
     listingLead: "Explore Damoon Hotel’s accommodation categories and contact reception to find an option for your plans.",
     concept: "Concept image; not an actual room photo", detail: "Explore this category", allRooms: "All accommodation",
     lobbyLabel: "Shared hotel space · concept lobby illustration",
+    generalTour: "Open the hotel’s general conceptual tour",
     coordination: "Let’s coordinate your stay", coordinationText: "Share your dates, guest count, and needs with reception so they can confirm capacity, in-room amenities, rates, and availability.",
     call: "Call reception", contact: "Contact details", general: "General hotel facilities", generalText: "The hotel breakfast hall is ready for use, and breakfast is complimentary for hotel guests. Ask reception for serving hours.",
     timings: "Check-in and check-out", checkIn: "Check-in: 14:00", checkOut: "Check-out: 12:00 noon", askRoom: "Ask reception which facilities are available in this category.",
@@ -26,6 +28,7 @@ const copy = {
     listingLead: "تعرّف على فئات الإقامة في فندق دامون وتواصل مع الاستقبال لاختيار ما يناسب خطتك.",
     concept: "تصميم تصوري؛ ليست صورة فعلية للغرفة", detail: "استكشف هذه الفئة", allRooms: "جميع فئات الإقامة",
     lobbyLabel: "مساحة مشتركة في الفندق · تصميم تصوري للردهة",
+    generalTour: "شاهد المعاينة التصورية للجولة العامة في الفندق",
     coordination: "لننسق إقامتك", coordinationText: "أخبر الاستقبال بتاريخ السفر وعدد الضيوف واحتياجاتك للتحقق من السعة والتجهيزات داخل الوحدة والأسعار والتوفر.",
     call: "اتصل بالاستقبال", contact: "بيانات الاتصال", general: "مرافق الفندق العامة", generalText: "قاعة الإفطار في الفندق جاهزة للاستخدام، والإفطار مجاني لنزلاء الفندق. يُرجى سؤال الاستقبال عن ساعات التقديم.",
     timings: "تسجيل الدخول والمغادرة", checkIn: "تسجيل الدخول: ١٤:٠٠", checkOut: "تسجيل المغادرة: ١٢:٠٠ ظهراً", askRoom: "اسأل الاستقبال عن المرافق المتاحة في هذه الفئة.",
@@ -74,7 +77,8 @@ export function renderAccommodation({ path, page, locale = "fa", site, routeHref
   const room = roomForPath(path, locale);
   if (!room) return "";
   const { slug, image: heroImage } = room;
-  const roomTours = publishedDamoonTours().filter((tour) => tour.roomSlugs.includes(slug));
+  const roomTours = publishedDamoonTours().filter((tour) =>
+    tour.representation !== "CONCEPTUAL_PREVIEW" && tour.roomSlugs.includes(slug));
   const generalAmenities = ui.generalText;
   return `<div class="accommodation-page accommodation-detail" lang="${escapeHtml(locale)}" dir="${locale === "en" ? "ltr" : "rtl"}">
     <header class="accommodation-detail__heading">${breadcrumb(room.title, locale, routeHref, escapeHtml, true)}<h1>${escapeHtml(room.title)}</h1>${room.floor ? `<p class="accommodation-kicker">${escapeHtml(room.floor)}</p>` : ""}<p>${escapeHtml(room.description)}</p></header>
@@ -82,6 +86,7 @@ export function renderAccommodation({ path, page, locale = "fa", site, routeHref
       <div class="accommodation-gallery" data-accommodation-gallery>
         <button class="accommodation-gallery__main" type="button" data-accommodation-image="0" aria-label="${escapeHtml(`${ui.imageOpen}: ${room.title}`)}"><img src="${escapeHtml(heroImage)}" alt=""><span>${escapeHtml(ui.concept)}</span></button>
         <div class="accommodation-gallery__thumbs"><button type="button" data-accommodation-image="1" aria-label="${escapeHtml(`${ui.imageOpen}: ${ui.lobbyLabel}`)}"><img src="/assets/lobby-concept.webp" alt="" loading="lazy"><span>${escapeHtml(ui.lobbyLabel)}</span></button></div>
+        <a class="accommodation-link" href="${escapeHtml(stayHref(`/virtual-tour?room=${encodeURIComponent(slug)}`))}">${escapeHtml(ui.generalTour)}</a>
       </div>
       <aside class="accommodation-coordination"><h2>${escapeHtml(ui.coordination)}</h2><p>${escapeHtml(ui.coordinationText)}</p><div class="accommodation-coordination__actions"><a class="button button--primary" href="tel:${escapeHtml(site.phone)}">${escapeHtml(ui.call)} <bdi>${escapeHtml(site.phoneDisplay)}</bdi></a><a class="accommodation-link" href="${escapeHtml(stayHref(`/contact?room=${encodeURIComponent(slug)}`))}">${escapeHtml(ui.contact)}</a></div><div class="accommodation-times"><h3>${escapeHtml(ui.timings)}</h3><p>${escapeHtml(ui.checkIn)} <span aria-hidden="true">·</span> ${escapeHtml(ui.checkOut)}</p></div></aside>
     </section>

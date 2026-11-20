@@ -144,10 +144,19 @@ function galleryGrid() {
   return `<section class="content-section"><div class="section-heading"><p class="eyebrow">${safeText(ui.referenceImages)}</p><h2>${safeText(ui.conceptGallery)}</h2><p>${safeText(locale === "fa" ? "این تصاویر برای نمایش ترکیب‌بندی هستند؛ هیچ‌کدام عکس واقعی هتل دامون نیستند." : locale === "ar" ? "هذه التصاميم لتوضيح التكوين؛ ولا تمثل صوراً حقيقية لفندق دامون." : "These images illustrate layout and are not actual photographs of Damoon Hotel.")}</p><a class="text-link" href="${routeHref("/virtual-tour")}">${safeText(ui.virtualTour)} ↗</a></div><div class="gallery-grid">${gallery.map((image, index) => `<button class="gallery-tile" type="button" data-gallery-index="${index}" aria-label="${safeText(`${ui.zoomConceptImage} ${index + 1}`)}"><img src="${safeText(image.src)}" alt="${safeText(image.alt)}" loading="lazy"><span>${safeText(ui.conceptImage)}</span></button>`).join("")}</div></section>`;
 }
 
+function virtualTourPage(page, path) {
+  const selection = roomForLocale(new URLSearchParams(window.location.search).get("room"), locale);
+  const contact = selection ? `/contact?room=${encodeURIComponent(selection.slug)}` : "/contact";
+  const back = selection
+    ? [`/rooms/${selection.slug}`, `${locale === "fa" ? "بازگشت به" : locale === "ar" ? "العودة إلى" : "Back to"} ${selection.title}`]
+    : page.actions[0];
+  return `${hero({ ...page, actions: [[contact, ui.contactHotel], back] }, path)}${virtualTourSection()}`;
+}
+
 function virtualTourSection() {
   const tours = publishedDamoonTours();
   if (tours.length) return `<section class="content-section"><div class="section-heading"><p class="eyebrow">${safeText(ui.virtualTour)}</p><h2>${safeText(ui.virtualTour)}</h2><p>${safeText(locale === "fa" ? "پیش‌نمایش مفهومی؛ تصاویر این تور به‌عنوان عکاسی تأییدشده از هتل دامون ارائه نمی‌شوند." : locale === "ar" ? "معاينة تصورية؛ لا تُعرض صور هذه الجولة على أنها صور فوتوغرافية موثقة لفندق دامون." : "Conceptual preview; this tour is not presented as verified photography of Damoon Hotel.")}</p></div>${tours.map((tour) => tourViewerMarkup(tour, `${ui.virtualTour} · ${tour.id}`, undefined, locale)).join("")}</section>`;
-  return `<section class="content-section"><div class="section-heading"><p class="eyebrow">${safeText(ui.virtualTour)}</p><h2>${safeText(ui.virtualTour)}</h2></div><p>${safeText(locale === "fa" ? "نمایش آنلاین تور مجازی در حال آماده‌سازی است. برای هماهنگی با پذیرش تماس بگیرید." : locale === "ar" ? "عرض Tour الافتراضي قيد الإعداد." : "Online virtual tour display is being prepared.")}</p><div class="page-hero__actions">${link("/contact", ui.contactHotel, "button button--primary")}</div></section>`;
+  return `<section class="content-section"><div class="section-heading"><p class="eyebrow">${safeText(ui.virtualTour)}</p><h2>${safeText(ui.virtualTour)}</h2></div><p>${safeText(locale === "fa" ? "نمایش آنلاین تور مجازی در حال آماده‌سازی است. برای هماهنگی با پذیرش تماس بگیرید." : locale === "ar" ? "عرض الجولة الافتراضية قيد الإعداد." : "Online virtual tour display is being prepared.")}</p></section>`;
 }
 function render() {
   locale = localeForPath(window.location.pathname);
@@ -177,7 +186,7 @@ function render() {
   else if (path === '/') body = `<div class="home-top">${hero(page, path)}<div data-booking-slot></div></div>${homeContent()}`;
   else if (path === "/attractions") body = renderDamoonAttractionsPage(locale);
   else if (path.startsWith("/attractions/")) body = renderDamoonAttractionDetailPage(locale, path.slice("/attractions/".length));
-  else if (path === "/virtual-tour") body = `${hero(page, path)}${virtualTourSection()}`; else body = renderHospitality({ path, page, locale, site, routeHref, escapeHtml: safeText }) || `${hero(page, path)}${cards(page.sections)}`;
+  else if (path === "/virtual-tour") body = virtualTourPage(page, path); else body = renderHospitality({ path, page, locale, site, routeHref, escapeHtml: safeText }) || `${hero(page, path)}${cards(page.sections)}`;
   root.innerHTML = `${header(page?.path || path)}<main id="main" class="site-main${path === "/" ? " home-main" : ""}">${body}</main>${footer()}<div id="gallery-dialog-root"></div>`;
   const gallerySlot = root.querySelector('[data-hospitality-gallery-slot]');
   if (gallerySlot) gallerySlot.innerHTML = galleryGrid();

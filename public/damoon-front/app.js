@@ -343,7 +343,8 @@ function wireInteractions() {
             const response = await fetch('/api/hotel/v1/requests/status', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ reference: event.currentTarget.elements.reference.value.trim() }) });
             const result = await response.json();
             if (!response.ok || !['RECEIVED', 'IN_REVIEW', 'DECLINED', 'CLOSED'].includes(result.status)) throw new Error('tracking failed');
-            output.textContent = result.status;
+            const statuses = locale === 'fa' ? { RECEIVED: 'دریافت‌شده', IN_REVIEW: 'در حال بررسی', DECLINED: 'پذیرفته نشد', CLOSED: 'بسته‌شده' } : locale === 'ar' ? { RECEIVED: 'تم الاستلام', IN_REVIEW: 'قيد المراجعة', DECLINED: 'مرفوض', CLOSED: 'مغلق' } : { RECEIVED: 'Received', IN_REVIEW: 'Under review', DECLINED: 'Declined', CLOSED: 'Closed' };
+            output.textContent = statuses[result.status];
           } catch { output.textContent = labels.fail; }
         });
       }

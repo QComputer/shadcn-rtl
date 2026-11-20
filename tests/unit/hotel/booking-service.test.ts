@@ -12,6 +12,7 @@ import {
 import type {
   HotelProperty,
   ReservationCancellationPolicySnapshot,
+  PhysicalRoom,
   RoomType,
 } from "../../../lib/hotel/domain/types";
 
@@ -53,7 +54,7 @@ const property: HotelProperty = {
   },
 };
 
-const roomType: RoomType = {
+const roomType = {
   id: ROOM_TYPE_ID,
   propertyId: PROPERTY_ID,
   slug: "deluxe",
@@ -63,7 +64,8 @@ const roomType: RoomType = {
   amenities: [{ key: "wifi", label: "Wi-Fi" }],
   maxOccupancy: 4,
   isActive: true,
-};
+  totalAllotment: 3,
+} satisfies RoomType & { totalAllotment: number };
 
 const policySnapshot: ReservationCancellationPolicySnapshot = {
   key: "flexible",
@@ -91,10 +93,11 @@ function inventory(allotment: number, overrides: Partial<PersistedInventoryNight
   }));
 }
 
-function build(seed: { allotment: number; inventory?: PersistedInventoryNight[] } = { allotment: 1 }) {
+function build(seed: { allotment: number; inventory?: PersistedInventoryNight[]; totalAllotment?: number; physicalRooms?: PhysicalRoom[] } = { allotment: 1 }) {
   const repos = new InMemoryHotelRepositories({
     property,
-    roomTypes: [roomType],
+    roomTypes: [{ ...roomType, totalAllotment: seed.totalAllotment ?? roomType.totalAllotment }],
+    physicalRooms: seed.physicalRooms,
     ratePlans: [
       {
         id: RATE_PLAN_ID,
@@ -146,6 +149,25 @@ describe("booking holds â€” inventory accounting", () => {
     for (const date of NIGHTS) {
       assert.equal(sellable[date], 1, `night ${date}`);
     }
+  });
+
+  it("rejects positive nightly inventory for a room type with no configured capacity", async () => {
+    const { repos, deps } = build({ allotment: 2, totalAllotment: 0 });
+    const result = await createBookingHold(deps, holdCommand("REF-DRAFT", "hold_draft"));
+
+    assert.equal(result.isHeld, false);
+    assert.deepEqual(repos.snapshotInventory(ROOM_TYPE_ID, NIGHTS), Object.fromEntries(NIGHTS.map((date) => [date, 0])));
+  });
+
+  it("does not claim aggregate inventory when all registered physical rooms are unavailable", async () => {
+    const { repos, deps } = build({ allotment: 2, physicalRooms: [
+      { id: "room-inactive", propertyId: PROPERTY_ID, roomTypeId: ROOM_TYPE_ID, code: "101", isActive: false, isOutOfService: false },
+      { id: "room-out-of-service", propertyId: PROPERTY_ID, roomTypeId: ROOM_TYPE_ID, code: "102", isActive: true, isOutOfService: true },
+    ] });
+    const result = await createBookingHold(deps, holdCommand("REF-OUT", "hold_out_of_service"));
+
+    assert.equal(result.isHeld, false);
+    assert.deepEqual(repos.snapshotInventory(ROOM_TYPE_ID, NIGHTS), Object.fromEntries(NIGHTS.map((date) => [date, 0])));
   });
 
   it("claims nothing when a single night is sold out", async () => {

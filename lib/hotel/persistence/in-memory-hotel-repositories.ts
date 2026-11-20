@@ -246,7 +246,8 @@ export class InMemoryHotelRepositories
       // Two-phase, all-or-nothing: validate every night before mutating any.
       const failedDates: StayDate[] = [];
       const configuredRooms = (this.roomsByProperty.get(input.propertyId) ?? []).filter((room) => room.roomTypeId === input.roomTypeId);
-      const physicalCapacity = configuredRooms.length ? configuredRooms.filter((room) => room.isActive && !room.isOutOfService).length : null;
+      const type = (this.roomTypesByProperty.get(input.propertyId) ?? []).find((room) => room.id === input.roomTypeId);
+      const physicalCapacity = configuredRooms.length ? configuredRooms.filter((room) => room.isActive && !room.isOutOfService).length : (type?.totalAllotment ?? 0) > 0 ? null : 0;
       for (const date of input.nights) {
         const cell = this.inventory.get(inventoryKey(input.roomTypeId, date));
         if (!cell || this.sellable(cell, input.now, physicalCapacity) < input.quantity) {
@@ -516,7 +517,8 @@ export class InMemoryHotelRepositories
     for (const date of dates) {
       const cell = this.inventory.get(inventoryKey(roomTypeId, date));
       const configuredRooms = (this.roomsByProperty.get(cell?.propertyId ?? "") ?? []).filter((room) => room.roomTypeId === roomTypeId);
-      const physicalCapacity = configuredRooms.length ? configuredRooms.filter((room) => room.isActive && !room.isOutOfService).length : null;
+      const type = (this.roomTypesByProperty.get(cell?.propertyId ?? "") ?? []).find((room) => room.id === roomTypeId);
+      const physicalCapacity = configuredRooms.length ? configuredRooms.filter((room) => room.isActive && !room.isOutOfService).length : (type?.totalAllotment ?? 0) > 0 ? null : 0;
       out[date] = cell ? this.sellable(cell, new Date(0), physicalCapacity) : 0;
     }
     return out;

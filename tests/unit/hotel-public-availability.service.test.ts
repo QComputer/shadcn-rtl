@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { searchPublicHotelAvailability, serializePublicAvailability } from "@/lib/hotel/services/public-availability.service";
 
 const property = { id: "property-1", organizationId: "org-1", slug: "hotel", name: "Synthetic hotel", timezone: "Asia/Tehran", currency: "TOMAN", checkInTime: "14:00", checkOutTime: "11:00", minStayNights: 1, maxStayNights: 30, policies: { key: "pending", name: "pending", description: "pending", freeCancellationCutoffHours: 0, fullCancellationRetention: 0 } };
-const roomType = { id: "room-1", propertyId: "property-1", slug: "standard", name: "Standard", capacity: { maxAdults: 2, maxChildren: 1, maxOccupancy: 3 }, beds: [{ kind: "queen", count: 1 }], amenities: [], maxOccupancy: 3, isActive: true };
+const roomType = { id: "room-1", propertyId: "property-1", slug: "standard", name: "Standard", capacity: { maxAdults: 2, maxChildren: 1, maxOccupancy: 3 }, beds: [{ kind: "queen", count: 1 }], amenities: [], maxOccupancy: 3, isActive: true, totalAllotment: 2 };
 const plan = { id: "plan-1", propertyId: "property-1", roomTypeId: "room-1", code: "flex", name: "Flexible", baseNightlyRate: 125000, currency: "TOMAN", mealPlan: "none", minNights: 1, maxNights: 0, isRefundable: true, isActive: true };
 const query = { propertyId: "property-1", window: { checkIn: "2027-08-12", checkOut: "2027-08-14" }, occupancy: { adults: 2, children: 0 } };
 
@@ -23,10 +23,27 @@ test("returns a TOMAN informational quote without reserving inventory", async ()
   const result = await searchPublicHotelAvailability({ scope: { organizationId: "org-1" }, propertySlug: "hotel", query }, repository());
   assert.ok(result);
   assert.equal(result.inventoryReserved, false);
+  assert.equal(result.options[0]?.availableRoomCount, 2, "explicit aggregate allotment supports inventory without physical rooms");
   assert.equal(result.options[0]?.totalRate, 250000);
   const serialized = serializePublicAvailability(result);
   assert.equal(serialized.options[0]?.totalRate, "250000");
   assert.equal(serialized.options[0]?.ratePlan.cancellationPolicy, null);
+});
+
+test("positive nightly inventory does not make an unconfigured room type available", async () => {
+  const result = await searchPublicHotelAvailability({ scope: { organizationId: "org-1" }, propertySlug: "hotel", query }, repository({
+    listRoomTypes: async () => [{ ...roomType, totalAllotment: 0 }],
+  }));
+  assert.ok(result);
+  assert.equal(result.options.some((option) => option.isAvailable), false);
+});
+
+test("configured rooms with none in service do not fall back to aggregate allotment", async () => {
+  const result = await searchPublicHotelAvailability({ scope: { organizationId: "org-1" }, propertySlug: "hotel", query }, repository({
+    getPhysicalRoomCapacities: async () => [{ roomTypeId: roomType.id, totalRooms: 3, availableRooms: 0 }],
+  }));
+  assert.ok(result);
+  assert.equal(result.options.some((option) => option.isAvailable), false);
 });
 
 test("uses commitments and out-of-service inventory when determining availability", async () => {

@@ -47,7 +47,11 @@ export async function searchPublicHotelAvailability(input: PublicHotelSearchInpu
         booked: night.booked,
         held: night.held,
         outOfService: night.outOfService,
-        ...(capacityByType.has(roomTypeId) ? { physicalRoomCapacity: capacityByType.get(roomTypeId)!.availableRooms } : {}),
+        ...(capacityByType.has(roomTypeId)
+          ? { physicalRoomCapacity: capacityByType.get(roomTypeId)!.availableRooms }
+          : (roomTypes.find((roomType) => roomType.id === roomTypeId)?.totalAllotment ?? 0) <= 0
+            ? { physicalRoomCapacity: 0 }
+            : {}),
         closedToArrival: night.closedToArrival,
         closedToDeparture: night.closedToDeparture,
       })),

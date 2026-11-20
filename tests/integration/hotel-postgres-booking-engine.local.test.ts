@@ -18,7 +18,7 @@ const dateOnly = (value: Date) => value.toISOString().slice(0, 10);
 
 describe("H3-C1 PostgreSQL booking engine", () => {
   before(async () => {
-    const rows = await prisma.$queryRaw<{ db: string }[]>`SELECT current_database() AS db`;
+    const rows = await prisma.$queryRaw<{ db: string }[]>`SELECT current_database()::text AS db`;
     assert.equal(rows[0]?.db, EXPECTED_DB, `must run against ${EXPECTED_DB}`);
     const org = await prisma.organization.create({ data: { name: "H3-C1 synthetic", slug: `h3c1-${Date.now()}`, type: "SHOP" } });
     organizationId = org.id;

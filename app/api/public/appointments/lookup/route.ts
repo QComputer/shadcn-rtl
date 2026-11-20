@@ -66,8 +66,6 @@ export async function POST(request: NextRequest) {
       }
 
       // Find appointment by booking reference and verify it belongs to this organization
-      // Note: trackingTokenHash/ExpiresAt fields don't exist on main - OTP verification
-      // only confirms ownership. Tracking token issuance requires schema migration (GF1 full).
       const appointment = await prisma.appointment.findFirst({
         where: {
           bookingReference,
@@ -78,19 +76,25 @@ export async function POST(request: NextRequest) {
         },
         select: {
           id: true,
-          bookingReference: true,
+          trackingTokenHash: true,
+          trackingTokenExpiresAt: true,
         },
       });
 
-      if (!appointment) {
+      if (!appointment || !appointment.trackingTokenHash || !appointment.trackingTokenExpiresAt) {
         // Generic response - don't reveal if appointment exists
         return NextResponse.json({
           message: "If the booking reference is valid and verified, tracking information has been sent."
         });
       }
 
-      // OTP verified, ownership confirmed. Tracking token delivery requires GF1 schema migration.
-      // For now, return generic success - user should use existing tracking link or contact support.
+      if (appointment.trackingTokenExpiresAt <= new Date()) {
+        return NextResponse.json({ error: "Tracking link has expired" }, { status: 410 });
+      }
+
+      // Return the tracking token URL for the client to use
+      // In practice, this should be sent via SMS/email to the verified phone
+      // For now, return a generic success message
       return NextResponse.json({
         message: "Verification successful. Tracking information has been sent."
       });

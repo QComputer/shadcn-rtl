@@ -130,12 +130,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const appointment = await appointmentService.createForGuest(guestCustomer.id, {
+    const result = await appointmentService.createForGuest(guestCustomer.id, {
       ...data,
       customerName: data.customerName,
     });
 
-    const response = NextResponse.json(appointment, { status: 201 });
+    const response = NextResponse.json(
+      { appointment: result.appointment, trackingToken: result.trackingToken },
+      { status: 201 }
+    );
     if (!request.cookies.get(process.env.SESSION_COOKIE_NAME || "guest_session_id_local")?.value) {
       response.cookies.set(process.env.SESSION_COOKIE_NAME || "guest_session_id_local", sessionId, {
         httpOnly: true,

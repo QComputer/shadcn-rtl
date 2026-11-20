@@ -2314,6 +2314,10 @@ model Appointment {
   // Booking reference for guest lookup
   bookingReference String? @unique
 
+  // Secure tracking token for guest appointment access (hashed, high-entropy)
+  trackingTokenHash     String?
+  trackingTokenExpiresAt DateTime?
+
   customerId      String?
   customer        User?          @relation("CustomerAppointmentRelation", fields: [customerId], references: [id])
   guestCustomerId String?
@@ -2335,6 +2339,7 @@ model Appointment {
   @@index([status])
   @@index([deletedAt])
   @@index([bookingReference])
+  @@index([trackingTokenHash])
 }
 
 // Staff availability for service providers

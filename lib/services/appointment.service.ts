@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { createHash, randomBytes } from "node:crypto";
 import type {
   CreateAppointmentInput,
   UpdateAppointmentInput,
@@ -26,6 +27,14 @@ function generateBookingReference(): string {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return result;
+}
+
+function generateTrackingToken(): { token: string; hash: string } {
+  // Generate 256-bit (32-byte) cryptographically secure random token
+  const token = randomBytes(32).toString("base64url");
+  // Hash with SHA-256 for storage (never store plaintext)
+  const hash = createHash("sha256").update(token).digest("hex");
+  return { token, hash };
 }
 
 type BookingOwner =
@@ -270,8 +279,20 @@ function buildGuardedAppointmentWindow(
 }
 
 export class AppointmentService {
-  private async createWithOwner(owner: BookingOwner, data: CreateAppointmentInput) {
-    const appointment = await prisma.$transaction(
+  private async createWithOwner(owner: BookingOwner, data: CreateAppointmentInput): Promise<{ appointment: any; trackingToken?: string }> {
+    // Generate tracking token outside transaction so it's accessible after
+    let trackingToken: string | null = null;
+    let trackingTokenHash: string | null = null;
+    let trackingTokenExpiresAt: Date | null = null;
+    
+    if (owner.kind === "guest") {
+      const { token, hash } = generateTrackingToken();
+      trackingToken = token;
+      trackingTokenHash = hash;
+      trackingTokenExpiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+    }
+
+    const result = await prisma.$transaction(
       async (tx) => {
         const service = await tx.service.findFirst({
           where: {
@@ -431,6 +452,8 @@ export class AppointmentService {
             guestCustomerId: owner.kind === "guest" ? owner.guestCustomerId : null,
             serviceId: data.serviceId,
             bookingReference,
+            trackingTokenHash,
+            trackingTokenExpiresAt,
             customerNameAtBooking:
               data.customerName ||
               guestName ||
@@ -483,7 +506,7 @@ export class AppointmentService {
     );
 
     revalidatePath("/dashboard/appointments");
-    return appointment;
+    return { appointment: result, trackingToken };
   }
 
   async create(customerId: string, data: CreateAppointmentInput) {

@@ -23,6 +23,7 @@ const PENDING_MIGRATIONS = [
   "20261114150000_hotel_reservation_payment_policy",
   "20261114160000_hotel_pending_payment_deadline",
   "20261114170000_hotel_offline_payment_audit",
+  "20261120160000_hotel_reservation_occupancy",
 ] as const;
 
 function assertDisposableDatabase(): string {
@@ -195,7 +196,7 @@ async function main(): Promise<void> {
     await db.$disconnect();
     db = undefined;
 
-    console.log("Applying the five pending Hotel migrations with standard prisma migrate deploy.");
+    console.log("Applying the six pending Hotel migrations with standard prisma migrate deploy.");
     runPrismaMigrateDeploy(path.join(REPO_ROOT, "prisma", "schema.prisma"));
 
     db = new PrismaClient();
@@ -219,7 +220,7 @@ async function main(): Promise<void> {
     assert.equal(otherAfterMigrations.checkOutTime, "10:30");
 
     await verifyAndExercisePropertyService(db);
-    console.log("PASS: five pending migrations apply to an existing-data checkpoint without losing tenant/property settings.");
+    console.log("PASS: six pending migrations apply to an existing-data checkpoint without losing tenant/property settings.");
     console.log("PASS: the authorized HotelManagementService changes only the target property's checkOutTime to 12:00.");
     console.log("PASS: cross-tenant property update is denied without changing the foreign property.");
   } finally {

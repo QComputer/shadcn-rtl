@@ -77,6 +77,11 @@ async function startSharedBundleServer() {
   return { base: `http://127.0.0.1:${port}`, close: () => new Promise((resolveClose, reject) => server.close(error => error ? reject(error) : resolveClose())) };
 }
 
+async function isolateContactDependencies(context) {
+  await context.route("https://tile.openstreetmap.org/**", route => route.abort());
+  await context.route("**/api/hotel/v1/guest-portal", route => route.fulfill({ status: 503 }));
+}
+
 test("standalone and shared Damoon bundles preserve localized contact party details", { timeout: 120000 }, async t => {
   const executablePath = process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe";
   if (!existsSync(executablePath)) {
@@ -105,21 +110,29 @@ test("standalone and shared Damoon bundles preserve localized contact party deta
     const checkOut = now.toISOString().slice(0, 10);
 
     const locales = [
-      { locale: "fa", adults: "۲ بزرگسال", children: "۱ کودک", ages: "سن کودکان: ۷" },
-      { locale: "en", adults: "2 adults", children: "1 child", ages: "Child ages: 7" },
-      { locale: "ar", adults: "2 بالغين", children: "1 طفل", ages: "أعمار الأطفال: 7" },
+      { locale: "fa", category: "vip", adults: "۲ بزرگسال", children: "۱ کودک", ages: "سن کودکان: ۷" },
+      { locale: "en", category: "single-room", adults: "2 adults", children: "1 child", ages: "Child ages: 7" },
+      { locale: "ar", category: "fourth-floor-suite", adults: "2 بالغين", children: "1 طفل", ages: "أعمار الأطفال: 7" },
     ];
 
     for (const runtime of [{ name: "standalone source", base }, { name: "shared public bundle", base: sharedServer.base }]) {
       for (const expected of locales) {
         const context = await browser.newContext();
+        await isolateContactDependencies(context);
         const page = await context.newPage();
         const query = new URLSearchParams({ checkIn, checkOut, guests: "2", children: "1", childAges: "7" });
-        await page.goto(`${runtime.base}/${expected.locale}/rooms/single?${query}`, { waitUntil: "networkidle" });
+        const roomPath = `/${expected.locale}/rooms/single`;
+        const partialPlan = new URLSearchParams(query);
+        partialPlan.delete("checkOut");
+        await page.goto(`${runtime.base}${roomPath}?${partialPlan}`, { waitUntil: "networkidle" });
         await page.locator("#booking-title").waitFor();
         assert.equal(await page.locator("[data-adult-count]").inputValue(), "2");
         assert.equal(await page.locator("[data-child-count]").inputValue(), "1");
         assert.equal(await page.locator('[data-child-age="0"]').inputValue(), "7");
+
+        await page.goto(`${runtime.base}${roomPath}?${query}`, { waitUntil: "networkidle" });
+        await page.locator("#booking-summary-title").waitFor();
+        assert.ok((await page.locator(".booking-summary").innerText()).includes(expected.adults));
 
         const contactHref = await page.locator(".accommodation-coordination__actions .accommodation-link").getAttribute("href");
         const contactUrl = new URL(contactHref, runtime.base);
@@ -134,6 +147,7 @@ test("standalone and shared Damoon bundles preserve localized contact party deta
         // A separate browser context has empty sessionStorage, so the contact view
         // must rehydrate the complete plan from the URL alone.
         const freshContext = await browser.newContext();
+        await isolateContactDependencies(freshContext);
         const freshPage = await freshContext.newPage();
         await freshPage.goto(contactUrl.href, { waitUntil: "networkidle" });
         assert.equal(await freshPage.evaluate(() => sessionStorage.length), 0);
@@ -149,11 +163,45 @@ test("standalone and shared Damoon bundles preserve localized contact party deta
         const zeroChildrenPage = await context.newPage();
         const staleAgeQuery = new URLSearchParams({ checkIn, checkOut, guests: "2", children: "0", childAges: "7" });
         await zeroChildrenPage.goto(`${runtime.base}/${expected.locale}/rooms/single?${staleAgeQuery}`, { waitUntil: "networkidle" });
-        await zeroChildrenPage.locator("#booking-title").waitFor();
+        await zeroChildrenPage.locator("#booking-summary-title").waitFor();
         const zeroChildrenHref = await zeroChildrenPage.locator(".accommodation-coordination__actions .accommodation-link").getAttribute("href");
         const zeroChildrenUrl = new URL(zeroChildrenHref, runtime.base);
         assert.equal(zeroChildrenUrl.searchParams.get("children"), "0", `${runtime.name} ${expected.locale} zero children`);
         assert.equal(zeroChildrenUrl.searchParams.has("childAges"), false, `${runtime.name} ${expected.locale} stale ages removed`);
+        const categoryPath = `/${expected.locale}/rooms/${expected.category}`;
+        const bookingRequests = [];
+        await context.route(url => url.pathname.startsWith("/api/hotel/") && url.pathname !== "/api/hotel/v1/guest-portal", (route) => {
+          bookingRequests.push(route.request().url());
+          return route.abort();
+        });
+        await page.goto(`${runtime.base}${categoryPath}?${query}`, { waitUntil: "networkidle" });
+        await page.locator("#booking-summary-title").waitFor();
+        const summaryHref = await page.locator(".booking-summary a").getAttribute("href");
+        const categoryContact = new URL(summaryHref, runtime.base);
+        assert.equal(categoryContact.pathname, `/${expected.locale}/contact`);
+        assert.equal(categoryContact.searchParams.get("room"), expected.category);
+        assert.equal(categoryContact.searchParams.get("checkIn"), checkIn);
+        assert.equal(categoryContact.searchParams.get("checkOut"), checkOut);
+        assert.equal(categoryContact.searchParams.get("adults"), "2");
+        assert.equal(categoryContact.searchParams.get("children"), "1");
+        assert.equal(categoryContact.searchParams.get("childAges"), "7");
+
+        await page.goto(`${runtime.base}${categoryPath}?${partialPlan}`, { waitUntil: "networkidle" });
+        await page.locator("#booking-title").waitFor();
+        assert.equal(await page.locator("[data-track-request]").count(), 0);
+        await page.locator('[data-date-field="checkOut"]').click();
+        const departureDay = page.locator(`[data-calendar-day="${checkOut}"]`);
+        if (!(await departureDay.count())) await page.locator("[data-month-next]").click();
+        await departureDay.click();
+        await Promise.all([
+          page.waitForURL(url => url.pathname === categoryContact.pathname),
+          page.locator('.booking-form button[type="submit"]').click(),
+        ]);
+        const submittedContact = new URL(page.url());
+        for (const [key, value] of categoryContact.searchParams) {
+          assert.equal(submittedContact.searchParams.get(key), value, `submitted category contact ${key}`);
+        }
+        assert.deepEqual(bookingRequests, [], "provisional category coordination does not call hotel booking APIs");
         await context.close();
       }
     }

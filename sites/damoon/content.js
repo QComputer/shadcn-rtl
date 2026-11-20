@@ -67,6 +67,7 @@ export const pages = {
   "/rooms": {
     title: "اتاق‌ها و سوئیت‌ها",
     intro: "فضاهای اقامت",
+    sections: accommodationSections("fa"),
     text: "هتل دامون ۳۱ واحد اقامتی دارد: ۲۰ اتاق و ۱۱ سوئیت. نام گروه‌های اقامتی در این صفحه آمده است؛ ظرفیت دقیق، امکانات اختصاصی، نرخ و موجودی هر گروه نمایش داده نمی‌شوند.",
   },
   "/attractions": {
@@ -186,6 +187,13 @@ export function roomForPath(path, locale = "fa") {
   return roomForLocale(slug, locale);
 }
 
+function accommodationSections(locale) {
+  return accommodationCategories.map(({ slug }) => {
+    const room = roomForLocale(slug, locale);
+    return { heading: room.title, text: [room.floor, room.description].filter(Boolean).join(" · "), link: `/rooms/${slug}`, image: room.image };
+  });
+}
+
 export function pageForPath(path, locale = "fa") {
   const attractionMatch = path.match(/^\/attractions\/([a-z0-9-]+)$/);
   if (attractionMatch) {
@@ -199,10 +207,7 @@ export function pageForPath(path, locale = "fa") {
     const base = pages[path] || {};
     const localized = { ...base, ...source[path], path };
     if (path === "/rooms") {
-      localized.sections = accommodationCategories.map(({ slug }) => {
-        const room = roomForLocale(slug, locale);
-        return { heading: room.title, text: [room.floor, room.description].filter(Boolean).join(" · "), link: `/rooms/${slug}`, image: room.image };
-      });
+      localized.sections = locale === "fa" ? base.sections : accommodationSections(locale);
     } else if (base.sections && localized.sections) {
       localized.sections = localized.sections.map((section, index) => ({ ...base.sections[index], ...section }));
     }

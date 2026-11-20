@@ -217,7 +217,8 @@ function wireInteractions() {
   applyPalette(readPalette(paletteStorage), document, paletteStorage);
   document.querySelectorAll("button[data-palette]").forEach(button => button.addEventListener("click", () => applyPalette(button.dataset.palette, document, paletteStorage)));
   const bookingSlot = document.querySelector("[data-booking-slot]");
-  if (bookingSlot) mountBooking(bookingSlot, { routeHref, locale, coordinationOnly: false, requestOnly: !reservationStart, reservationEntry: !reservationStart });
+  const reservationEntry = window.location.pathname.replace(/\/+$/, "").endsWith("/hotel-reservations/start");
+  if (bookingSlot) mountBooking(bookingSlot, { routeHref, locale, coordinationOnly: false, requestOnly: !reservationEntry, reservationEntry });
   const homeSlides = gallery.slice(1, 5);
   const homeImage = document.querySelector("[data-home-slide]");
   if (homeImage && homeSlides.length) {

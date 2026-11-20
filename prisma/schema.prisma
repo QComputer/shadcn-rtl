@@ -5219,6 +5219,7 @@ model HotelProperty {
   organization         Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   roomTypes            HotelRoomType[]
   rooms                HotelRoom[]
+  draftAccommodations  HotelDraftAccommodation[]
   amenities            HotelAmenity[]
   ratePlans            HotelRatePlan[]
   cancellationPolicies HotelCancellationPolicy[]
@@ -5236,6 +5237,33 @@ model HotelProperty {
   @@unique([organizationId, slug])
   @@unique([id, organizationId])
   @@index([organizationId, isActive])
+}
+
+/// An internal accommodation worksheet with no link to sellable inventory.
+model HotelDraftAccommodation {
+  id                 String    @id @default(cuid())
+  organizationId     String
+  propertyId         String
+  temporaryCode      String    @db.VarChar(80)
+  category           String    @db.VarChar(100)
+  floor              String?   @db.VarChar(80)
+  layout             String?   @db.VarChar(500)
+  description        String?   @db.VarChar(4000)
+  estimatedMinGuests Int?
+  estimatedMaxGuests Int?
+  maxAdults          Int?
+  maxChildren        Int?
+  maxOccupancy       Int?
+  beds               Json?
+  version            Int       @default(1)
+  archivedAt         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  property HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "HotelDraftAccommodation_property_scope_fkey")
+
+  @@unique([organizationId, propertyId, temporaryCode], map: "HotelDraftAccommodation_scope_code_key")
+  @@index([organizationId, propertyId, archivedAt], map: "HotelDraftAccommodation_scope_archived_idx")
 }
 
 /// A server-priced quote bound to the tenant, property and authenticated user.

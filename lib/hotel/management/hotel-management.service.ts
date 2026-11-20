@@ -86,7 +86,7 @@ export class HotelManagementService {
     if (!capability) throw new HotelManagementAuthorizationError("HOTEL_BOOKING capability is not enabled");
   }
 
-  private async authorizeOperations(principal: HotelManagementPrincipal, scope: HotelManagementScope) {
+  protected async authorizeOperations(principal: HotelManagementPrincipal, scope: HotelManagementScope) {
     await this.authorize(principal, scope);
     const [user, organization] = await Promise.all([
       this.db.user.findFirst({ where: { id: principal.userId, role: principal.role, isActive: true, deletedAt: null }, select: { id: true } }),

@@ -9,6 +9,13 @@ const globalForPrisma = globalThis as unknown as {
   bazarBazPrisma: PrismaClient | undefined;
 };
 
+const appointmentSecurityFieldOmit = {
+  appointment: {
+    trackingTokenHash: true,
+    trackingTokenExpiresAt: true,
+  },
+} as const;
+
 function shouldUseHermeticLocalRuntime(databaseUrl: string) {
   const localDockerE2eEnabled = process.env.AI_MEDIA_LOCAL_DOCKER_E2E === "1";
   const localPostgresUrl = /(?:localhost|127\.0\.0\.1)/i.test(databaseUrl) && !/neon/i.test(databaseUrl);
@@ -37,12 +44,14 @@ function createPrismaClient() {
         connectionTimeoutMillis: configuration.connectionTimeoutMillis,
         idleTimeoutMillis: configuration.idleTimeoutMillis,
       }),
+      omit: appointmentSecurityFieldOmit,
       log: ["error"],
     });
   }
 
   if (shouldUseHermeticLocalRuntime(databaseUrl)) {
     return new PrismaClient({
+      omit: appointmentSecurityFieldOmit,
       log: ["error"],
     });
   }
@@ -55,6 +64,7 @@ function createPrismaClient() {
 
   return new PrismaClient({
     adapter,
+    omit: appointmentSecurityFieldOmit,
     log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
   });
 }

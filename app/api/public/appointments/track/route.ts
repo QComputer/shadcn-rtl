@@ -1,113 +1,84 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { createHash } from "node:crypto";
+import { resolveTenantPwaRequestContext } from "@/lib/tenant-pwa-context.server";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { token } = body;
+    const token = typeof body?.token === "string" ? body.token : "";
 
-    if (!token || token.length < 32) {
-      return NextResponse.json(
-        { error: "Invalid tracking token" },
-        { status: 400 },
-      );
+    if (!/^[A-Za-z0-9_-]{43}$/.test(token)) {
+      return securedJson({ error: "Invalid tracking token" }, 400);
     }
 
     // Hash the provided token to look up in database
     const tokenHash = createHash("sha256").update(token).digest("hex");
+
+    const tenant = await resolveTenantPwaRequestContext(request.headers);
+    if (tenant.kind !== "tenant") {
+      return securedJson({ error: "Appointment not found or tracking expired" }, 404);
+    }
 
     const appointment = await prisma.appointment.findFirst({
       where: {
         trackingTokenHash: tokenHash,
         trackingTokenExpiresAt: { gt: new Date() },
         deletedAt: null,
+        service: { organizationId: tenant.organizationId },
       },
-      include: {
+      select: {
+        bookingReference: true,
+        date: true,
+        startTime: true,
+        endTime: true,
+        status: true,
         service: {
           select: {
-            id: true,
             name: true,
-            description: true,
             duration: true,
             price: true,
-            image: true,
             organization: {
               select: {
-                id: true,
                 name: true,
                 slug: true,
-                address: true,
-                phone: true,
-                email: true,
               },
             },
-            category: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-            serviceProvider: {
-              select: {
-                id: true,
-                name: true,
-                firstName: true,
-                lastName: true,
-                avatar: true,
-              },
-            },
-          },
-        },
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            firstName: true,
-            lastName: true,
-            phone: true,
-            email: true,
-          },
-        },
-        guestCustomer: {
-          select: {
-            id: true,
-            name: true,
-            firstName: true,
-            lastName: true,
-            phone: true,
-            email: true,
           },
         },
       },
     });
 
     if (!appointment) {
-      return NextResponse.json({ error: "Appointment not found or tracking expired" }, { status: 404 });
+      return securedJson({ error: "Appointment not found or tracking expired" }, 404);
     }
 
-    const response = NextResponse.json({
+    return securedJson({
       appointment: {
-        ...appointment,
+        bookingReference: appointment.bookingReference,
+        date: appointment.date,
+        startTime: appointment.startTime,
+        endTime: appointment.endTime,
+        status: appointment.status,
         service: {
-          ...appointment.service,
+          name: appointment.service.name,
+          duration: appointment.service.duration,
           price: Number(appointment.service.price),
+          organization: appointment.service.organization,
         },
       },
     });
-
-    // Security headers to prevent credential leakage
-    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
-    response.headers.set("Pragma", "no-cache");
-    response.headers.set("Referrer-Policy", "no-referrer");
-    response.headers.set("X-Content-Type-Options", "nosniff");
-
-    return response;
   } catch (error) {
-    console.error("Error getting appointment by tracking token:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    console.error("Error getting appointment by tracking token");
+    return securedJson({ error: "Internal server error" }, 500);
   }
+}
+
+function securedJson(body: unknown, status = 200) {
+  return NextResponse.json(body, { status, headers: {
+    "Cache-Control": "no-store, no-cache, must-revalidate, private",
+    Pragma: "no-cache",
+    "Referrer-Policy": "no-referrer",
+    "X-Content-Type-Options": "nosniff",
+  } });
 }

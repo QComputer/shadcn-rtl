@@ -420,6 +420,8 @@
     "noSlots": "No available slots for this date",
     "yourInfo": "Your Information",
     "bookingConfirmed": "Booking Confirmed!",
+    "trackingCredentialTitle": "Secure tracking credential",
+    "trackingCredentialSave": "Save this credential now. It is shown only once.",
     "thankYou": "Thank you for your booking. You will receive a confirmation shortly.",
     "bookingReference": "Booking Reference",
     "lookupTitle": "Find Your Appointment",

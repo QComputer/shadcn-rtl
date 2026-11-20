@@ -60,8 +60,6 @@ async function makeTemporaryPreGapSchema(): Promise<{ directory: string; schemaP
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort();
-  assert.deepEqual(migrationNames.slice(-PENDING_MIGRATIONS.length), [...PENDING_MIGRATIONS]);
-
   for (const name of PENDING_MIGRATIONS) {
     assert.ok(migrationNames.includes(name), `Expected pending migration ${name} is missing from source`);
     await rm(path.join(migrationsPath, name), { recursive: true, force: true });

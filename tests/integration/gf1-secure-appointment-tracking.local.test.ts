@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
-import { after, before, describe, it } from "node:test";
+import { after, before, describe, it, mock } from "node:test";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db-runtime";
-import { appointmentService } from "@/lib/services/appointment.service";
 import { createHash, randomBytes } from "node:crypto";
+
+mock.module("next/cache", { namedExports: { revalidatePath: () => undefined } });
+let appointmentService: typeof import("@/lib/services/appointment.service").appointmentService;
 
 const EXPECTED_DB = "bazarbaaz_h3c1_verify";
 let organizationId = "";
+let tenantHost = "";
 let serviceId = "";
 let guestCustomerId = "";
 let appointmentId = "";
@@ -25,9 +28,17 @@ function generateTestToken(): { token: string; hash: string } {
   return { token, hash };
 }
 
+function futureAppointmentSlot(daysFromNow: number, hour: number) {
+  const startTime = new Date();
+  startTime.setUTCDate(startTime.getUTCDate() + daysFromNow);
+  startTime.setUTCHours(hour, 0, 0, 0);
+  return { date: startTime.toISOString().slice(0, 10), startTime: startTime.toISOString() };
+}
+
 describe("GF1 Secure Guest Appointment Tracking", () => {
   before(async () => {
-    const rows = await prisma.$queryRaw<{ db: string }[]>`SELECT current_database() AS db`;
+    appointmentService = (await import("@/lib/services/appointment.service")).appointmentService;
+    const rows = await prisma.$queryRaw<{ db: string }[]>`SELECT current_database()::text AS db`;
     assert.equal(rows[0]?.db, EXPECTED_DB, `must run against ${EXPECTED_DB}`);
 
     // Create test organization with APPOINTMENT capability
@@ -40,6 +51,20 @@ describe("GF1 Secure Guest Appointment Tracking", () => {
       },
     });
     organizationId = org.id;
+    tenantHost = `${org.slug}.example.test`;
+
+    await prisma.organizationDomain.create({
+      data: {
+        organizationId,
+        domain: tenantHost,
+        normalizedDomain: tenantHost,
+        status: "ACTIVE",
+        providerVerified: true,
+        dnsConfigured: true,
+        sslReady: true,
+        verifiedAt: new Date(),
+      },
+    });
 
     await prisma.organizationCapability.create({
       data: {
@@ -48,6 +73,15 @@ describe("GF1 Secure Guest Appointment Tracking", () => {
         status: "ACTIVE",
         enabledAt: new Date(),
       },
+    });
+    await prisma.businessHour.createMany({
+      data: ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"].map((day) => ({
+        organizationId,
+        day: day as "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY",
+        openTime: "08:00",
+        closeTime: "17:00",
+        isOpen: true,
+      })),
     });
 
     // Create service category
@@ -98,6 +132,8 @@ describe("GF1 Secure Guest Appointment Tracking", () => {
       await prisma.service.deleteMany({ where: { id: serviceId } });
     }
     if (organizationId) {
+      await prisma.organizationDomain.deleteMany({ where: { organizationId } });
+      await prisma.businessHour.deleteMany({ where: { organizationId } });
       await prisma.organizationCapability.deleteMany({ where: { organizationId } });
       await prisma.serviceCategory.deleteMany({ where: { organizationId } });
       await prisma.organization.delete({ where: { id: organizationId } });
@@ -105,10 +141,10 @@ describe("GF1 Secure Guest Appointment Tracking", () => {
   });
 
   it("creates guest appointment with tracking token", async () => {
+    const slot = futureAppointmentSlot(10, 8);
     const result = await appointmentService.createForGuest(guestCustomerId, {
       serviceId,
-      date: "2030-01-01",
-      startTime: "2030-01-01T08:00:00.000Z",
+      ...slot,
       customerName: "Test Guest",
       customerPhone: "09123456789",
       customerEmail: "test@example.com",
@@ -140,6 +176,11 @@ describe("GF1 Secure Guest Appointment Tracking", () => {
     assert.ok(appointment.trackingTokenExpiresAt);
     assert.equal(appointment.trackingTokenHash, createHash("sha256").update(trackingToken).digest("hex"));
     assert.ok(appointment.trackingTokenExpiresAt > new Date());
+
+    const defaultAppointmentResult = await prisma.appointment.findUnique({ where: { id: appointmentId } });
+    assert.ok(defaultAppointmentResult);
+    assert.equal("trackingTokenHash" in defaultAppointmentResult, false, "global Prisma omit hides the token hash from default appointment results");
+    assert.equal("trackingTokenExpiresAt" in defaultAppointmentResult, false, "global Prisma omit hides token expiry from default appointment results");
   });
 
   it("tracks appointment with valid token via POST endpoint", async () => {
@@ -326,49 +367,12 @@ describe("GF1 Secure Guest Appointment Tracking", () => {
     await prisma.organization.delete({ where: { id: orgB.id } });
   });
 
-  it("phone-only lookup returns generic response (no PII)", async () => {
-    // This tests the database query behavior that the lookup endpoint uses
-    // Phone-only lookup should not return appointment details directly
-    const appointments = await prisma.appointment.findMany({
-      where: {
-        OR: [
-          { customerPhoneAtBooking: "09123456789" },
-          { customer: { phone: "09123456789" } },
-          { guestCustomer: { phone: "09123456789" } },
-        ],
-        deletedAt: null,
-        service: { organizationId },
-      },
-      select: { id: true, bookingReference: true }, // Minimal select - no PII
-    });
-
-    // The endpoint should not expose this data directly - it returns generic message
-    // This test verifies the query structure is correct for anti-enumeration
-    assert.ok(Array.isArray(appointments));
-  });
-
-  it("booking reference alone does not expose PII without OTP", async () => {
-    // Verify that booking reference lookup requires OTP verification
-    // The endpoint returns generic message prompting for OTP
-    const appointment = await prisma.appointment.findFirst({
-      where: {
-        bookingReference,
-        deletedAt: null,
-        service: { organizationId },
-      },
-      select: { id: true, trackingTokenHash: true },
-    });
-
-    assert.ok(appointment);
-    assert.ok(appointment.trackingTokenHash);
-    // The endpoint requires OTP before returning tracking info
-  });
-
   it("authenticated CUSTOMER appointment access still works", async () => {
+    const slot = futureAppointmentSlot(11, 9);
     // Create a customer user
     const customer = await prisma.user.create({
       data: {
-        name: "Test Customer",
+        name: `Test Customer ${Date.now()}`,
         phone: "09123456780",
         email: "customer@example.com",
         password: "hashed",
@@ -388,8 +392,7 @@ describe("GF1 Secure Guest Appointment Tracking", () => {
 
     const customerAppointment = await appointmentService.create(customer.id, {
       serviceId,
-      date: "2030-01-02",
-      startTime: "2030-01-02T09:00:00.000Z",
+      ...slot,
     });
 
     assert.ok(customerAppointment.appointment);
@@ -483,6 +486,8 @@ describe("GF1 Secure Guest Appointment Tracking", () => {
       // Get the organization slug from the setup
       const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { slug: true } });
       orgSlug = org?.slug || "";
+      testTrackingToken = trackingToken;
+      testBookingReference = bookingReference;
     });
 
     function makeRequest(body: unknown, origin = "https://platform.example") {
@@ -493,10 +498,10 @@ describe("GF1 Secure Guest Appointment Tracking", () => {
       });
     }
 
-    function makeTrackRequest(token: string, origin = "https://platform.example") {
-      return new NextRequest("https://platform.example/api/public/appointments/track", {
+    function makeTrackRequest(token: string, host = tenantHost) {
+      return new NextRequest(`https://${host}/api/public/appointments/track`, {
         method: "POST",
-        headers: { origin, "content-type": "application/json" },
+        headers: { host, "content-type": "application/json" },
         body: JSON.stringify({ token }),
       });
     }
@@ -506,7 +511,7 @@ describe("GF1 Secure Guest Appointment Tracking", () => {
       const response = await lookupPOST(makeRequest({ phone: "09123456789", organizationSlug: orgSlug }));
       assert.equal(response.status, 200);
       const json = await response.json();
-      assert.equal(json.message, "If an appointment exists for this phone number, tracking information has been sent.");
+      assert.equal(json.message, "Tracking credentials are provided at booking. Phone based recovery is unavailable.");
       assert.equal("appointments" in json, false);
     });
 
@@ -515,7 +520,8 @@ describe("GF1 Secure Guest Appointment Tracking", () => {
       const response = await lookupPOST(makeRequest({ phone: "09123456789", organizationSlug: "non-existent-org" }));
       assert.equal(response.status, 200);
       const json = await response.json();
-      assert.equal(json.message, "If the organization exists, tracking information has been sent.");
+      assert.equal(json.message, "Tracking credentials are provided at booking. Phone based recovery is unavailable.");
+      assert.equal(response.headers.get("Cache-Control"), "no-store, no-cache, must-revalidate, private");
     });
 
     it("POST /lookup - booking reference only returns generic OTP prompt", async () => {
@@ -523,7 +529,7 @@ describe("GF1 Secure Guest Appointment Tracking", () => {
       const response = await lookupPOST(makeRequest({ bookingReference: testBookingReference, organizationSlug: orgSlug }));
       assert.equal(response.status, 200);
       const json = await response.json();
-      assert.equal(json.message, "To access appointment details, please verify your phone number with the OTP sent to you.");
+      assert.equal(json.message, "Tracking credentials are provided at booking. Phone based recovery is unavailable.");
     });
 
     it("POST /lookup - booking reference + phone + OTP without phone match returns generic", async () => {
@@ -536,7 +542,7 @@ describe("GF1 Secure Guest Appointment Tracking", () => {
       }));
       assert.equal(response.status, 200);
       const json = await response.json();
-      assert.equal(json.message, "If the booking reference is valid and verified, tracking information has been sent.");
+      assert.equal(json.message, "Tracking credentials are provided at booking. Phone based recovery is unavailable.");
     });
 
     it("POST /track - valid token returns appointment with security headers", async () => {
@@ -545,7 +551,10 @@ describe("GF1 Secure Guest Appointment Tracking", () => {
       assert.equal(response.status, 200);
       const json = await response.json();
       assert.ok(json.appointment);
-      assert.equal(json.appointment.id, appointmentId);
+      assert.equal(json.appointment.bookingReference, bookingReference);
+      assert.equal(json.appointment.service.name, "Test Service");
+      assert.equal("trackingTokenHash" in json.appointment, false);
+      assert.equal("id" in json.appointment, false);
       // Security headers
       assert.equal(response.headers.get("Cache-Control"), "no-store, no-cache, must-revalidate, private");
       assert.equal(response.headers.get("Referrer-Policy"), "no-referrer");
@@ -554,7 +563,7 @@ describe("GF1 Secure Guest Appointment Tracking", () => {
 
     it("POST /track - invalid token returns 404", async () => {
       const { POST: trackPOST } = await import("../../app/api/public/appointments/track/route");
-      const response = await trackPOST(makeTrackRequest("invalid-token"));
+      const response = await trackPOST(makeTrackRequest("A".repeat(43)));
       assert.equal(response.status, 404);
       const json = await response.json();
       assert.equal(json.error, "Appointment not found or tracking expired");
@@ -581,6 +590,19 @@ describe("GF1 Secure Guest Appointment Tracking", () => {
       await prisma.organizationCapability.create({
         data: { organizationId: orgB.id, key: "APPOINTMENT", status: "ACTIVE", enabledAt: new Date() },
       });
+      const hostB = `${orgB.slug}.example.test`;
+      await prisma.organizationDomain.create({
+        data: {
+          organizationId: orgB.id,
+          domain: hostB,
+          normalizedDomain: hostB,
+          status: "ACTIVE",
+          providerVerified: true,
+          dnsConfigured: true,
+          sslReady: true,
+          verifiedAt: new Date(),
+        },
+      });
       const serviceCategoryB = await prisma.serviceCategory.create({
         data: { organizationId: orgB.id, name: "Test Category B", slug: "test-category-b" },
       });
@@ -596,16 +618,19 @@ describe("GF1 Secure Guest Appointment Tracking", () => {
       });
 
       const { POST: trackPOST } = await import("../../app/api/public/appointments/track/route");
-      const response = await trackPOST(makeTrackRequest(token));
-      // Token from orgB should not work (cross-tenant isolation)
-      // The token hash is globally unique by design (256-bit entropy), so this should 404
-      assert.equal(response.status, 404);
+      const ownTenantResponse = await trackPOST(makeTrackRequest(token, hostB));
+      assert.equal(ownTenantResponse.status, 200, "Tenant B token works on Tenant B's host");
+      assert.equal((await ownTenantResponse.json()).appointment.service.organization.slug, orgB.slug);
+
+      const unrelatedTenantResponse = await trackPOST(makeTrackRequest(token, tenantHost));
+      assert.equal(unrelatedTenantResponse.status, 404, "Tenant B token is rejected on Tenant A's host");
 
       // Cleanup
       await prisma.appointment.delete({ where: { id: appointmentB.id } });
       await prisma.guestCustomer.delete({ where: { id: guestCustomerB.id } });
       await prisma.service.delete({ where: { id: serviceB.id } });
       await prisma.serviceCategory.delete({ where: { id: serviceCategoryB.id } });
+      await prisma.organizationDomain.deleteMany({ where: { organizationId: orgB.id } });
       await prisma.organizationCapability.deleteMany({ where: { organizationId: orgB.id } });
       await prisma.organization.delete({ where: { id: orgB.id } });
     });
@@ -619,7 +644,7 @@ it("POST /lookup - legacy appointment without tracking token handled gracefully"
       const response = await lookupPOST(makeRequest({ bookingReference: "LEGACY-HTTP", organizationSlug: orgSlug }));
       assert.equal(response.status, 200);
       const json = await response.json();
-      assert.equal(json.message, "To access appointment details, please verify your phone number with the OTP sent to you.");
+      assert.equal(json.message, "Tracking credentials are provided at booking. Phone based recovery is unavailable.");
 
       await prisma.appointment.delete({ where: { id: legacyAppointment.id } });
     });

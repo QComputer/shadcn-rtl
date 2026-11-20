@@ -136,8 +136,34 @@ export async function POST(request: NextRequest) {
     });
 
     const response = NextResponse.json(
-      { appointment: result.appointment, trackingToken: result.trackingToken },
-      { status: 201 }
+      {
+        appointment: {
+          bookingReference: result.appointment.bookingReference,
+          date: result.appointment.date,
+          startTime: result.appointment.startTime,
+          endTime: result.appointment.endTime,
+          status: result.appointment.status,
+          service: {
+            name: result.appointment.service.name,
+            duration: result.appointment.service.duration,
+            price: Number(result.appointment.service.price),
+            organization: {
+              name: result.appointment.service.organization.name,
+              slug: result.appointment.service.organization.slug,
+            },
+          },
+        },
+        trackingToken: result.trackingToken,
+      },
+      {
+        status: 201,
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, private",
+          Pragma: "no-cache",
+          "Referrer-Policy": "no-referrer",
+          "X-Content-Type-Options": "nosniff",
+        },
+      }
     );
     if (!request.cookies.get(process.env.SESSION_COOKIE_NAME || "guest_session_id_local")?.value) {
       response.cookies.set(process.env.SESSION_COOKIE_NAME || "guest_session_id_local", sessionId, {

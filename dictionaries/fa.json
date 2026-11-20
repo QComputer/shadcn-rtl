@@ -429,6 +429,8 @@
     "minutes": "دقیقه",
     "hour": "ساعت",
     "bookingConfirmed": "رزرو شما تأیید شد",
+    "trackingCredentialTitle": "کد پیگیری امن",
+    "trackingCredentialSave": "این کد را ذخیره کنید؛ فقط همین‌بار نمایش داده می‌شود.",
     "bookingDetails": "جزئیات رزرو",
     "appointmentNumber": "شماره نوبت",
     "thankYou": "سپاس از انتخاب ما",

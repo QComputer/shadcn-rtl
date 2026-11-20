@@ -30,6 +30,10 @@ Parallel to G0–G9, the following Guest-first milestones are defined in `plans/
 
 `OWNER_APPROVED` applies to the architectural principle only. GF0–GF5 execution requires separate owner approval.
 
+## Independent P0 frontend defect
+
+`HOTEL-DAMOON-P0 — Persian/Arabic Text Corruption and Mojibake` is an active dedicated frontend recovery item. Live `damoon-hotel.ir` text is visibly corrupted in Persian while the document is UTF-8 and the configured font is loaded. Source recovery, generated-asset rejection checks, multilingual responsive browser acceptance, and Runflare verification are tracked in [the Damoon P0 recovery record](../hotel/damoon/HOTEL-DAMOON-P0-MOJIBAKE-RECOVERY.md). Keep it separate from Hotel reservation/payment operations and reconcile its final delivery state in the post-GF1 documentation refresh.
+
 ## Delivery constraints
 
 - Keep guest accommodation requests distinct from confirmed reservations and payments.

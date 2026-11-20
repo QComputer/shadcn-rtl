@@ -35,9 +35,9 @@ const copy = {
 };
 
 const roomImages = {
-  single: "/assets/room-concept-1.webp",
-  double: "/assets/room-concept-2.webp",
-  suite: "/assets/room-concept-3.webp",
+  single: "/damoon-front/assets/room-concept-1.webp",
+  double: "/damoon-front/assets/room-concept-2.webp",
+  suite: "/damoon-front/assets/room-concept-3.webp",
 };
 
 function t(locale) { return copy[locale] || copy.fa; }
@@ -77,7 +77,7 @@ export function renderAccommodation({ path, page, locale = "fa", site, routeHref
     <section class="accommodation-detail__layout" aria-label="${escapeHtml(room.title)}">
       <div class="accommodation-gallery" data-accommodation-gallery>
         <button class="accommodation-gallery__main" type="button" data-accommodation-image="0" aria-label="${escapeHtml(ui.imageOpen)}"><img src="${escapeHtml(heroImage)}" alt="${escapeHtml(`${room.title} · ${ui.imageLabel}`)}"><span>${escapeHtml(ui.concept)}</span></button>
-        <div class="accommodation-gallery__thumbs"><button type="button" data-accommodation-image="0" aria-label="${escapeHtml(ui.imageOpen)}"><img src="${escapeHtml(heroImage)}" alt=""><span>${escapeHtml(ui.imageLabel)}</span></button><button type="button" data-accommodation-image="1" aria-label="${escapeHtml(ui.imageOpen)}"><img src="/assets/lobby-concept.webp" alt=""><span>${escapeHtml(ui.lobbyLabel)}</span></button></div>
+        <div class="accommodation-gallery__thumbs"><button type="button" data-accommodation-image="0" aria-label="${escapeHtml(ui.imageOpen)}"><img src="${escapeHtml(heroImage)}" alt=""><span>${escapeHtml(ui.imageLabel)}</span></button><button type="button" data-accommodation-image="1" aria-label="${escapeHtml(ui.imageOpen)}"><img src="/damoon-front/assets/lobby-concept.webp" alt=""><span>${escapeHtml(ui.lobbyLabel)}</span></button></div>
       </div>
       <aside class="accommodation-coordination"><p class="accommodation-kicker">${escapeHtml(ui.coordination)}</p><h2>${escapeHtml(ui.coordination)}</h2><p>${escapeHtml(ui.coordinationText)}</p><div class="accommodation-coordination__actions"><a class="button button--primary" href="tel:${escapeHtml(site.phone)}">${escapeHtml(ui.call)} <bdi>${escapeHtml(site.phoneDisplay)}</bdi></a><a class="accommodation-link" href="${escapeHtml(stayHref(`/contact?room=${encodeURIComponent(slug)}`))}">${escapeHtml(ui.contact)}</a></div><div class="accommodation-times"><h3>${escapeHtml(ui.timings)}</h3><p>${escapeHtml(ui.checkIn)} <span aria-hidden="true">·</span> ${escapeHtml(ui.checkOut)}</p></div></aside>
     </section>
@@ -97,7 +97,7 @@ export function wireAccommodation(root) {
       const isLobby = trigger.dataset.accommodationImage === "1";
       const image = dialog.querySelector("[data-accommodation-dialog-image]");
       const caption = dialog.querySelector("[data-accommodation-dialog-caption]");
-      const source = isLobby ? "/assets/lobby-concept.webp" : root.querySelector(".accommodation-gallery__main img")?.src;
+      const source = isLobby ? "/damoon-front/assets/lobby-concept.webp" : root.querySelector(".accommodation-gallery__main img")?.src;
       const alt = trigger.querySelector("span")?.textContent || trigger.getAttribute("aria-label") || "";
       image.src = source;
       image.alt = alt;

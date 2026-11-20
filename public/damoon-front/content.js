@@ -29,18 +29,18 @@ export const site = {
 };
 
 export const rooms = [
-  { slug: "single", title: "اتاق یک‌نفره", description: "گروه اتاق یک‌نفره؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/assets/room-concept-1.webp" },
-  { slug: "double", title: "اتاق دونفره", description: "گروه اتاق دونفره؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/assets/room-concept-2.webp" },
-  { slug: "suite", title: "سوئیت", description: "گروه سوئیت؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/assets/room-concept-3.webp" },
+  { slug: "single", title: "اتاق یک‌نفره", description: "گروه اتاق یک‌نفره؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-1.webp" },
+  { slug: "double", title: "اتاق دونفره", description: "گروه اتاق دونفره؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-2.webp" },
+  { slug: "suite", title: "سوئیت", description: "گروه سوئیت؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-3.webp" },
 ];
 
 export const gallery = [
-  { src: "/assets/architecture-concept.webp", alt: "تصویرسازی مفهومی معماری برای چیدمان صفحه" },
-  { src: "/assets/lobby-concept.webp", alt: "تصویرسازی مفهومی فضای لابی، نه عکس هتل" },
-  { src: "/assets/room-concept-1.webp", alt: "تصویرسازی مفهومی اتاق، نه عکس هتل" },
-  { src: "/assets/room-concept-2.webp", alt: "تصویرسازی مفهومی فضای اقامت، نه عکس هتل" },
-  { src: "/assets/room-concept-3.webp", alt: "تصویرسازی مفهومی سوئیت، نه عکس هتل" },
-  { src: "/assets/gallery-concept-1.webp", alt: "تصویر مفهومی برای نمایش گالری سایت" },
+  { src: "/damoon-front/assets/architecture-concept.webp", alt: "تصویرسازی مفهومی معماری برای چیدمان صفحه" },
+  { src: "/damoon-front/assets/lobby-concept.webp", alt: "تصویرسازی مفهومی فضای لابی، نه عکس هتل" },
+  { src: "/damoon-front/assets/room-concept-1.webp", alt: "تصویرسازی مفهومی اتاق، نه عکس هتل" },
+  { src: "/damoon-front/assets/room-concept-2.webp", alt: "تصویرسازی مفهومی فضای اقامت، نه عکس هتل" },
+  { src: "/damoon-front/assets/room-concept-3.webp", alt: "تصویرسازی مفهومی سوئیت، نه عکس هتل" },
+  { src: "/damoon-front/assets/gallery-concept-1.webp", alt: "تصویر مفهومی برای نمایش گالری سایت" },
 ];
 
 export const pages = {
@@ -48,13 +48,13 @@ export const pages = {
     title: "اقامت و مهمان‌نوازی در شهرکرد",
     intro: "به هتل دامون خوش آمدید",
     text: "هتل دامون در شهرکرد با ۳۱ واحد اقامتی، شامل ۲۰ اتاق و ۱۱ سوئیت، پذیرای مهمانان است. گروه‌های اقامتی را ببینید و برای برنامه‌ریزی سفر با پذیرش هماهنگ کنید.",
-    image: "/assets/architecture-concept.webp",
+    image: "/damoon-front/assets/architecture-concept.webp",
     actions: [["/rooms", "دیدن اتاق‌ها"], ["/contact", "تماس و هماهنگی"]],
     sections: [
-      { heading: "فضای اقامت شما", text: "گروه‌های اتاق و سوئیت را ببینید. اطلاعات دقیق هر واحد پس از تأیید هتل تکمیل می‌شود.", link: "/rooms", label: "آشنایی با اتاق‌ها", image: "/assets/room-concept-2.webp", note: "تصویر مفهومی؛ عکس واقعی نیست." },
+      { heading: "فضای اقامت شما", text: "گروه‌های اتاق و سوئیت را ببینید. اطلاعات دقیق هر واحد پس از تأیید هتل تکمیل می‌شود.", link: "/rooms", label: "آشنایی با اتاق‌ها", image: "/damoon-front/assets/room-concept-2.webp", note: "تصویر مفهومی؛ عکس واقعی نیست." },
       { heading: "آسایش مهمانان", text: "برای آگاهی از خدمات قابل استفاده در طول اقامت، با پذیرش هماهنگ کنید.", link: "/facilities", label: "اطلاعات خدمات مهمانان" },
       { heading: "زمان برنامه‌ریزی اقامت", text: "پذیرش از ساعت ۱۴:۰۰ و خروج تا ساعت ۱۲:۰۰ است. برای هماهنگی سفر با پذیرش در تماس باشید.", link: "/policies", label: "اطلاعات اقامت" },
-      { heading: "تور مجازی", text: "پیش‌نمایش تور آندراما را ببینید. پانورامای این پیش‌نمایش مفهومی است و عکاسی تأییدشده از هتل دامون نیست.", link: "/virtual-tour", label: "تور مجازی دامون", image: "/assets/lobby-concept.webp", note: "تصویر مفهومی؛ نمای تور نیست." },
+      { heading: "تور مجازی", text: "پیش‌نمایش تور آندراما را ببینید. پانورامای این پیش‌نمایش مفهومی است و عکاسی تأییدشده از هتل دامون نیست.", link: "/virtual-tour", label: "تور مجازی دامون", image: "/damoon-front/assets/lobby-concept.webp", note: "تصویر مفهومی؛ نمای تور نیست." },
     ],
   },
   "/rooms": {
@@ -139,7 +139,7 @@ export const pages = {
     intro: "تور مجازی",
     text: "پیش‌نمایش تور ارائه‌شده از طریق آندراما را ببینید. تصاویر پانورامای این تور مفهومی هستند و به‌عنوان عکس تأییدشدهٔ هتل دامون معرفی نمی‌شوند.",
     badge: "پیش‌نمایش مفهومی",
-    image: "/assets/lobby-concept.webp",
+    image: "/damoon-front/assets/lobby-concept.webp",
     actions: [["/rooms", "مرور گروه‌های اقامتی"]],
     sections: [{ heading: "گشت‌وگذار در تور", text: "این پانورامای مفهومی فقط برای پیش‌نمایش ارائه شده و عکس تأییدشدهٔ هتل دامون نیست.", link: "/rooms", label: "مرور گروه‌های اقامتی" }],
   },

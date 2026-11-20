@@ -1,6 +1,6 @@
-@font-face { font-family: Vazirmatn; src: url('/assets/Vazirmatn-Regular.ttf') format('truetype'); font-style: normal; font-weight: 400; font-display: swap; }
-@font-face { font-family: Vazirmatn; src: url('/assets/Vazirmatn-Bold.ttf') format('truetype'); font-style: normal; font-weight: 600 900; font-display: swap; }
-@font-face { font-family: Vazirmatn; src: url('/assets/Vazirmatn-Black.ttf') format('truetype'); font-style: normal; font-weight: 900; font-display: swap; }
+@font-face { font-family: Vazirmatn; src: url('/damoon-front/assets/Vazirmatn-Regular.ttf') format('truetype'); font-style: normal; font-weight: 400; font-display: swap; }
+@font-face { font-family: Vazirmatn; src: url('/damoon-front/assets/Vazirmatn-Bold.ttf') format('truetype'); font-style: normal; font-weight: 600 900; font-display: swap; }
+@font-face { font-family: Vazirmatn; src: url('/damoon-front/assets/Vazirmatn-Black.ttf') format('truetype'); font-style: normal; font-weight: 900; font-display: swap; }
 :root {
   color-scheme: light;
   --paper: #f7f4ee;
@@ -453,7 +453,7 @@ html[dir="ltr"] .home-shortcut__arrow, html[dir="ltr"] .home-service__arrow { tr
 .home-intro__copy > p:not(.eyebrow) { margin-top: 10px; font-size: 12px; line-height: 1.8; }
 .home-intro__copy .text-link { font-size: 12px; }
 .home-lobby { position: relative; height: min(260px, 14.65vw); overflow: hidden; background: #4a3021; }
-.home-lobby { background: url("/assets/desktop-reference.png") no-repeat; background-size: 100vw auto; background-position: -24vw -33.65vw; }
+.home-lobby { background: url("/damoon-front/assets/desktop-reference.png") no-repeat; background-size: 100vw auto; background-position: -24vw -33.65vw; }
 .home-lobby > img { position: absolute; width: 100%; height: 100%; object-fit: cover; opacity: 0; }
 .home-lobby.is-live > img { opacity: 1; }
 .home-lobby > button { position: absolute; top: 50%; width: 36px; height: 36px; transform: translateY(-50%); border: 0; border-radius: 50%; background: #fff; color: var(--accent); font-size: 25px; cursor: pointer; }
@@ -466,7 +466,7 @@ html[dir="ltr"] .home-shortcut__arrow, html[dir="ltr"] .home-service__arrow { tr
 .home-side h2 { margin: 0 0 10px; font-size: 17px; }
 .home-room-list__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
 .home-room-list__grid a { position: relative; height: 105px; overflow: hidden; color: white; }
-.home-room-list__grid a::before { position: absolute; inset: 0; content: ""; background: url("/assets/desktop-reference.png") no-repeat; background-size: 100vw auto; }
+.home-room-list__grid a::before { position: absolute; inset: 0; content: ""; background: url("/damoon-front/assets/desktop-reference.png") no-repeat; background-size: 100vw auto; }
 .home-room-list__grid [data-room-sprite="0"]::before { background-position: -84.55vw -35.1vw; }
 .home-room-list__grid [data-room-sprite="1"]::before { background-position: -75.2vw -35.1vw; }
 .home-room-list__grid [data-room-sprite="2"]::before { background-position: -65.95vw -35.1vw; }
@@ -475,7 +475,7 @@ html[dir="ltr"] .home-shortcut__arrow, html[dir="ltr"] .home-service__arrow { tr
 .home-gallery-list { margin-top: 12px; }
 .home-gallery-list > div { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
 .home-gallery-list a { position: relative; display: block; height: 83px; overflow: hidden; }
-.home-gallery-list a::before { position: absolute; inset: 0; content: ""; background: url("/assets/desktop-reference.png") no-repeat; background-size: 100vw auto; }
+.home-gallery-list a::before { position: absolute; inset: 0; content: ""; background: url("/damoon-front/assets/desktop-reference.png") no-repeat; background-size: 100vw auto; }
 .home-gallery-list [data-gallery-sprite="0"]::before { background-position: -65.95vw -43.86vw; }
 .home-gallery-list [data-gallery-sprite="1"]::before { background-position: -72.6vw -43.86vw; }
 .home-gallery-list [data-gallery-sprite="2"]::before { background-position: -79.2vw -43.86vw; }
@@ -508,16 +508,16 @@ html[dir="ltr"] .home-shortcut__arrow, html[dir="ltr"] .home-service__arrow { tr
   .home-top .page-hero__actions .button { width: 100%; min-height: 40px; padding-block: 5px; }
   .home-intro { width: 100%; margin: 0; display: flex; flex-direction: column; gap: 0; }
   .home-intro__copy { display: none; }
-  .home-lobby { order: 0; height: 127px; background-image: url("/assets/desktop-reference.png"); background-size: 249vw auto; background-position: -60vw -84vw; }
+  .home-lobby { order: 0; height: 127px; background-image: url("/damoon-front/assets/desktop-reference.png"); background-size: 249vw auto; background-position: -60vw -84vw; }
   .home-side { display: contents; }
   .home-room-list { order: 1; padding: 20px 18px 8px; }
   .home-room-list h2, .home-gallery-list h2 { font-size: 18px; }
   .home-room-list__grid { gap: 9px; }
   .home-room-list__grid a { height: auto; overflow: visible; color: var(--ink); background: var(--surface); box-shadow: var(--shadow); }
   .home-room-list__grid img { height: 1px; }
-  .home-room-list__grid [data-room-sprite="0"]::before { background-image: url("/assets/mobile-reference.png"); background-size: 140vw auto; background-position: -88vw -204vw; }
-  .home-room-list__grid [data-room-sprite="1"]::before { background-image: url("/assets/mobile-reference.png"); background-size: 140vw auto; background-position: -55.5vw -204vw; }
-  .home-room-list__grid [data-room-sprite="2"]::before { background-image: url("/assets/mobile-reference.png"); background-size: 140vw auto; background-position: -22.8vw -204vw; }
+  .home-room-list__grid [data-room-sprite="0"]::before { background-image: url("/damoon-front/assets/mobile-reference.png"); background-size: 140vw auto; background-position: -88vw -204vw; }
+  .home-room-list__grid [data-room-sprite="1"]::before { background-image: url("/damoon-front/assets/mobile-reference.png"); background-size: 140vw auto; background-position: -55.5vw -204vw; }
+  .home-room-list__grid [data-room-sprite="2"]::before { background-image: url("/damoon-front/assets/mobile-reference.png"); background-size: 140vw auto; background-position: -22.8vw -204vw; }
   .home-room-list__grid strong { position: static; display: block; padding: 7px 6px; background: transparent; font-size: 10px; }
   .home-gallery-list { display: none; }
   .home-features { display: grid; grid-template-columns: repeat(3, 1fr); padding: 10px 8px 18px; }
@@ -543,7 +543,7 @@ html[dir="ltr"] .home-shortcut__arrow, html[dir="ltr"] .home-service__arrow { tr
   .mobile-menu:not([hidden]) { position: absolute; inset-inline: 0; inset-block-start: 100%; display: grid; gap: 0; padding: 8px 20px 18px; background: var(--surface); border-bottom: 1px solid var(--line); box-shadow: var(--shadow); }
 }
 /* Final reference alignment: live controls over isolated photographic crops. */
-@font-face { font-family: DamoonTitle; src: url('/assets/Lalezar-Regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: DamoonTitle; src: url('/damoon-front/assets/Lalezar-Regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
 html[lang="fa"] .home-top h1 { font-family: DamoonTitle, Vazirmatn, serif; font-weight: 700; font-size: clamp(64px, 4.9vw, 87px); }
 .site-header:has(+ .home-main) .site-header__actions > .button { display: none; }
 .site-header:has(+ .home-main) .site-nav { gap: clamp(12px, 1.2vw, 22px); }
@@ -637,8 +637,8 @@ html[lang="fa"] .home-top h1 { font-size: clamp(58px, 4.28vw, 76px); line-height
  .home-room-list__grid strong small { display: block; font-size: 9px; color: var(--muted); font-weight: 400; }
  .home-features { margin-top: 0; padding-top: 12px; padding-bottom: 22px; }
 }
-.home-top::before { content: ''; position: absolute; top: 28px; left: -14px; z-index: 3; width: 90px; height: 430px; background: url('/assets/leaf-border.svg') center / contain no-repeat; opacity: .4; pointer-events: none; }
-.home-intro::before, .home-intro::after { content: ''; position: absolute; top: 4px; width: 80px; height: 300px; background: url('/assets/leaf-border.svg') center / contain no-repeat; opacity: .35; pointer-events: none; }
+.home-top::before { content: ''; position: absolute; top: 28px; left: -14px; z-index: 3; width: 90px; height: 430px; background: url('/damoon-front/assets/leaf-border.svg') center / contain no-repeat; opacity: .4; pointer-events: none; }
+.home-intro::before, .home-intro::after { content: ''; position: absolute; top: 4px; width: 80px; height: 300px; background: url('/damoon-front/assets/leaf-border.svg') center / contain no-repeat; opacity: .35; pointer-events: none; }
 .home-intro { position: relative; }
 .home-intro::before { left: -118px; }
 .home-intro::after { right: -118px; transform: rotate(180deg); }

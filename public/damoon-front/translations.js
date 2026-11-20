@@ -26,17 +26,17 @@ export const translations = {
       ],
     },
     rooms: {
-      single: { title: "Single room", description: "Single room category; confirm exact capacity and in-room details with reception.", image: "/assets/room-concept-1.webp" },
-      double: { title: "Double room", description: "Double room category; confirm exact capacity and in-room details with reception.", image: "/assets/room-concept-2.webp" },
-      "suite": { title: "Suite", description: "Suite category; confirm exact capacity and in-room details with reception.", image: "/assets/room-concept-3.webp" },
+      single: { title: "Single room", description: "Single room category; confirm exact capacity and in-room details with reception.", image: "/damoon-front/assets/room-concept-1.webp" },
+      double: { title: "Double room", description: "Double room category; confirm exact capacity and in-room details with reception.", image: "/damoon-front/assets/room-concept-2.webp" },
+      "suite": { title: "Suite", description: "Suite category; confirm exact capacity and in-room details with reception.", image: "/damoon-front/assets/room-concept-3.webp" },
     },
     gallery: [
-      { src: "/assets/architecture-concept.webp", alt: "Concept architectural illustration for the page layout" },
-      { src: "/assets/lobby-concept.webp", alt: "Concept lobby illustration, not a hotel photo" },
-      { src: "/assets/room-concept-1.webp", alt: "Concept room illustration, not a hotel photo" },
-      { src: "/assets/room-concept-2.webp", alt: "Concept accommodation illustration, not a hotel photo" },
-      { src: "/assets/room-concept-3.webp", alt: "Concept suite illustration, not a hotel photo" },
-      { src: "/assets/gallery-concept-1.webp", alt: "Concept image for the site gallery" },
+      { src: "/damoon-front/assets/architecture-concept.webp", alt: "Concept architectural illustration for the page layout" },
+      { src: "/damoon-front/assets/lobby-concept.webp", alt: "Concept lobby illustration, not a hotel photo" },
+      { src: "/damoon-front/assets/room-concept-1.webp", alt: "Concept room illustration, not a hotel photo" },
+      { src: "/damoon-front/assets/room-concept-2.webp", alt: "Concept accommodation illustration, not a hotel photo" },
+      { src: "/damoon-front/assets/room-concept-3.webp", alt: "Concept suite illustration, not a hotel photo" },
+      { src: "/damoon-front/assets/gallery-concept-1.webp", alt: "Concept image for the site gallery" },
     ],
     pages: {
       "/": {
@@ -151,17 +151,17 @@ export const translations = {
       ],
     },
     rooms: {
-      single: { title: "غرفة مفردة", description: "فئة غرفة مفردة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/assets/room-concept-1.webp" },
-      double: { title: "غرفة مزدوجة", description: "فئة غرفة مزدوجة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/assets/room-concept-2.webp" },
-      "suite": { title: "جناح", description: "فئة جناح؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/assets/room-concept-3.webp" },
+      single: { title: "غرفة مفردة", description: "فئة غرفة مفردة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/damoon-front/assets/room-concept-1.webp" },
+      double: { title: "غرفة مزدوجة", description: "فئة غرفة مزدوجة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/damoon-front/assets/room-concept-2.webp" },
+      "suite": { title: "جناح", description: "فئة جناح؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/damoon-front/assets/room-concept-3.webp" },
     },
     gallery: [
-      { src: "/assets/architecture-concept.webp", alt: "رسم معماري تصوري لتصميم الصفحة" },
-      { src: "/assets/lobby-concept.webp", alt: "تصميم تصوري للردهة، وليس صورة للفندق" },
-      { src: "/assets/room-concept-1.webp", alt: "تصميم تصوري لغرفة، وليس صورة للفندق" },
-      { src: "/assets/room-concept-2.webp", alt: "تصميم تصوري لمساحة إقامة، وليس صورة للفندق" },
-      { src: "/assets/room-concept-3.webp", alt: "تصميم تصوري لجناح، وليس صورة للفندق" },
-      { src: "/assets/gallery-concept-1.webp", alt: "صورة تصورية لمعرض الموقع" },
+      { src: "/damoon-front/assets/architecture-concept.webp", alt: "رسم معماري تصوري لتصميم الصفحة" },
+      { src: "/damoon-front/assets/lobby-concept.webp", alt: "تصميم تصوري للردهة، وليس صورة للفندق" },
+      { src: "/damoon-front/assets/room-concept-1.webp", alt: "تصميم تصوري لغرفة، وليس صورة للفندق" },
+      { src: "/damoon-front/assets/room-concept-2.webp", alt: "تصميم تصوري لمساحة إقامة، وليس صورة للفندق" },
+      { src: "/damoon-front/assets/room-concept-3.webp", alt: "تصميم تصوري لجناح، وليس صورة للفندق" },
+      { src: "/damoon-front/assets/gallery-concept-1.webp", alt: "صورة تصورية لمعرض الموقع" },
     ],
     pages: {
       "/": {

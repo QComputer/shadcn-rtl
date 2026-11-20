@@ -18,9 +18,9 @@ function referenceFor(organizationId: string, idempotencyHash: string) {
 function fingerprint(input: HotelGuestBookingRequestInput) {
   return sha256(JSON.stringify({
     property: input.property,
-    ...(input.kind === "coordination"
-      ? { kind: input.kind, preferredCategory: input.preferredCategory }
-      : { roomType: input.roomType, ratePlan: input.ratePlan }),
+    ...("roomType" in input
+      ? { roomType: input.roomType, ratePlan: input.ratePlan }
+      : { kind: input.kind, preferredCategory: input.preferredCategory }),
     checkIn: input.checkIn,
     checkOut: input.checkOut,
     occupancy: { adults: input.occupancy.adults, children: input.occupancy.children, childAges: input.occupancy.childAges ?? [] },
@@ -40,7 +40,7 @@ export async function submitHotelGuestBookingRequest(input: HotelGuestBookingReq
   const requestFingerprint = fingerprint(input);
   const reference = referenceFor(tenant.organizationId, idempotencyHash);
   const trackingReferenceHash = sha256(reference);
-  const coordination = input.kind === "coordination";
+  const coordination = !("roomType" in input);
   const where = { organizationId: tenant.organizationId, idempotencyHash };
   const findExisting = () => prisma.hotelGuestBookingRequest.findFirst({
     where,

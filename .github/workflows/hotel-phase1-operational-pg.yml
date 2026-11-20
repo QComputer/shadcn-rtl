@@ -12,6 +12,7 @@ on:
       - "scripts/db/guard-local-prisma-env.mjs"
       - "scripts/e2e/register-server-only.cjs"
       - "tests/integration/hotel-reservation-atomic.local.test.ts"
+      - "tests/integration/hotel-hold-r2b.local.test.ts"
       - "tests/integration/hotel-operational-reservations.local.test.ts"
       - "tests/integration/hotel-offline-payments.local.test.ts"
       - "tests/integration/hotel-offline-payment-rollback.local.test.ts"
@@ -37,6 +38,7 @@ on:
       - "scripts/db/guard-local-prisma-env.mjs"
       - "scripts/e2e/register-server-only.cjs"
       - "tests/integration/hotel-reservation-atomic.local.test.ts"
+      - "tests/integration/hotel-hold-r2b.local.test.ts"
       - "tests/integration/hotel-operational-reservations.local.test.ts"
       - "tests/integration/hotel-offline-payments.local.test.ts"
       - "package.json"
@@ -82,6 +84,8 @@ jobs:
       HOTEL_OPERATIONAL_RESERVATIONS_ENABLED: "0"
       HOTEL_INVENTORY_IDEMPOTENCY_ENABLED: "1"
       HOTEL_RESERVATION_PG_ACCEPTANCE: "1"
+      HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED: "1"
+      HOTEL_TEST_DATABASE_NAME: retail_hero_test
       HOTEL_OPERATIONAL_RESERVATION_ACCEPTANCE: "1"
       HOTEL_OFFLINE_PAYMENT_PG_ACCEPTANCE: "1"
       HOTEL_OFFLINE_RECEIPT_PG_ACCEPTANCE: "1"
@@ -108,6 +112,9 @@ jobs:
       - name: Run atomic reservation repository acceptance
         id: atomic_reservation
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-reservation-atomic.local.test.ts
+      - name: Run public availability-to-hold HTTP acceptance
+        id: public_hold
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-hold-r2b.local.test.ts
       - name: Run operational reservation acceptance
         id: operational_reservation
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-operational-reservations.local.test.ts
@@ -152,6 +159,7 @@ jobs:
             echo '- PostgreSQL 17 is a job-owned ephemeral service and is destroyed with the GitHub-hosted runner.'
             if [[ '${{ steps.apply_migrations.outcome }}' == 'failure' ]]; then echo '- Failed step: Apply repository migrations through the local guard'; fi
             if [[ '${{ steps.atomic_reservation.outcome }}' == 'failure' ]]; then echo '- Failed step: Run atomic reservation repository acceptance'; fi
+            if [[ '${{ steps.public_hold.outcome }}' == 'failure' ]]; then echo '- Failed step: Run public availability-to-hold HTTP acceptance'; fi
             if [[ '${{ steps.operational_reservation.outcome }}' == 'failure' ]]; then echo '- Failed step: Run operational reservation acceptance'; fi
             if [[ '${{ steps.offline_payment.outcome }}' == 'failure' ]]; then echo '- Failed step: Run offline payment acceptance'; fi
             if [[ '${{ steps.payment_rollback.outcome }}' == 'failure' ]]; then echo '- Failed step: Run offline payment transactional rollback acceptance'; fi

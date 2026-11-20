@@ -26,6 +26,7 @@ import type {
   Reservation,
   ReservationCancellationPolicySnapshot,
   ReservationGuest,
+  Occupancy,
   RoomType,
   SeasonalRate,
   StayDate,
@@ -99,6 +100,7 @@ export type ReservationRecord = {
   readonly status: Reservation["status"]
   readonly checkIn: StayDate
   readonly checkOut: StayDate
+  readonly occupancy?: Occupancy
   readonly nights: readonly StayDate[]
   readonly guests: readonly ReservationGuest[]
   readonly nightlyRates: readonly TomanAmount[]

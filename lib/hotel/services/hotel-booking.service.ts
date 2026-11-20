@@ -7,6 +7,7 @@ import type {
   AvailabilityQuery,
   ReservationCancellationPolicySnapshot,
   ReservationGuest,
+  Occupancy,
   StayDate,
 } from "@/lib/hotel/domain/types";
 import type {
@@ -147,6 +148,7 @@ export type ConfirmHoldCommand = {
   readonly reservationId: string
   readonly ratePlanId: string
   readonly guests: readonly ReservationGuest[]
+  readonly occupancy?: Occupancy
   readonly policySnapshot: ReservationCancellationPolicySnapshot | null
   readonly nightlyRates: readonly number[]
   readonly totalAmount: number
@@ -201,6 +203,7 @@ export async function confirmBookingHold(
     status: "PENDING_PAYMENT",
     checkIn: hold.checkIn,
     checkOut: hold.checkOut,
+    ...(command.occupancy ? { occupancy: command.occupancy } : {}),
     nights: hold.nights,
     guests: command.guests,
     nightlyRates: [...command.nightlyRates],

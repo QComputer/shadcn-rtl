@@ -160,7 +160,8 @@ function render() {
   gallery = galleryForLocale(locale);
   ui = translations[locale]?.ui || faUI;
   const path = normalizePath(window.location.pathname);
-  const page = pageForPath(path, locale);
+  const reservationStart = path === "/hotel-reservations/start";
+  const page = pageForPath(path, locale) || (reservationStart ? { path, title: locale === "fa" ? "ثبت رزرو" : locale === "ar" ? "حجز الإقامة" : "Book your stay", text: locale === "fa" ? "تاریخ و ترکیب مهمانان را انتخاب کنید و موجودی و قیمت را از سامانه هتل بگیرید." : locale === "ar" ? "اختر التواريخ والضيوف للتحقق من التوفر والسعر لدى الفندق." : "Select dates and guests to check live hotel availability and pricing." } : null);
   document.documentElement.lang = locale;
   document.documentElement.dir = translations[locale]?.direction || "rtl";
   const noScript = document.querySelector("noscript");
@@ -176,6 +177,7 @@ function render() {
   let body;
   if (!page) body = `<section class="not-found"><p class="eyebrow">404</p><h1>${safeText(ui.pageNotFound)}</h1><p>${safeText(ui.pageNotFoundText)}</p>${link("/", ui.backHome, "button button--primary")}</section>`;
   else if (isAccommodation) body = renderAccommodation({ path, page, locale, site, routeHref, stayHref, escapeHtml: safeText });
+  else if (reservationStart) body = `${hero(page, path)}<section class="content-section"><div class="section-heading"><p class="eyebrow">${safeText(page.title)}</p><h2>${safeText(page.title)}</h2><p>${safeText(page.text)}</p></div><div data-booking-slot></div></section>`;
   else if (path === '/') body = `<div class="home-top">${hero(page, path)}<div data-booking-slot></div></div>${homeContent()}`;
   else if (path === "/attractions") body = renderDamoonAttractionsPage(locale);
   else if (path.startsWith("/attractions/")) body = renderDamoonAttractionDetailPage(locale, path.slice("/attractions/".length));
@@ -215,7 +217,7 @@ function wireInteractions() {
   applyPalette(readPalette(paletteStorage), document, paletteStorage);
   document.querySelectorAll("button[data-palette]").forEach(button => button.addEventListener("click", () => applyPalette(button.dataset.palette, document, paletteStorage)));
   const bookingSlot = document.querySelector("[data-booking-slot]");
-  if (bookingSlot) mountBooking(bookingSlot, { routeHref, locale, coordinationOnly: false, requestOnly: true, reservationEntry: true });
+  if (bookingSlot) mountBooking(bookingSlot, { routeHref, locale, coordinationOnly: false, requestOnly: !reservationStart, reservationEntry: !reservationStart });
   const homeSlides = gallery.slice(1, 5);
   const homeImage = document.querySelector("[data-home-slide]");
   if (homeImage && homeSlides.length) {

@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     const fingerprint = createHash("sha256").update(JSON.stringify({ organizationId: tenant.organizationId, property: input.property, roomType: input.roomType, ratePlan: input.ratePlan, input: { ...input, contact: { fullName: input.contact.fullName.trim(), phone: input.contact.phone.trim(), email: input.contact.email?.trim().toLowerCase() } } })).digest("hex");
     const replay = await repositories.findAnonymousHoldReplay({ scope: { organizationId: tenant.organizationId }, idempotencyKey, requestFingerprint: fingerprint, propertySlug: input.property, roomTypeSlug: input.roomType, ratePlanCode: input.ratePlan });
     if (replay?.isConflict) throw new ApiError(409, "Idempotency-Key was used with a different request");
-    if (replay?.isReplay) return Response.json({ holdId: replay.result.holdId, reference: replay.result.reference, status: "ACTIVE", expiresAt: replay.result.expiresAt.toISOString(), currency: replay.result.currency, totalRate: String(replay.result.totalAmount), nightlyRates: replay.result.nightlyRates.map(String), cancellationPolicy: replay.result.policySnapshot, inventoryReserved: true }, { status: 200 });
+    if (replay?.isReplay) return Response.json({ holdId: replay.result.holdId, idempotencyKey, reference: replay.result.reference, status: "ACTIVE", expiresAt: replay.result.expiresAt.toISOString(), currency: replay.result.currency, totalRate: String(replay.result.totalAmount), nightlyRates: replay.result.nightlyRates.map(String), cancellationPolicy: replay.result.policySnapshot, inventoryReserved: true }, { status: 200 });
     const availability = await searchPublishedHotelAvailability(host, {
       property: input.property,
       checkIn: input.checkIn,
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
       acceptedTotalRate: acceptedTotal,
     });
     if (hold.isHeld !== true) throw new ApiError(409, hold.reason === "IDEMPOTENCY_CONFLICT" ? "Idempotency-Key was used with a different request" : hold.reason === "IDEMPOTENCY_REPLAY_INACTIVE" ? "The original hold is no longer active" : hold.reason === "POLICY_TERMS_CHANGED" ? "Cancellation policy terms changed. Review the updated policy and try again." : hold.reason === "PRICE_CHANGED" ? "Price or terms changed. Review the updated availability and try again." : "The requested hotel inventory is not available");
-    return Response.json({ holdId: hold.holdId, reference: hold.reference, status: "ACTIVE", expiresAt: hold.expiresAt.toISOString(), currency: hold.currency, totalRate: String(hold.totalAmount), nightlyRates: hold.nightlyRates.map(String), cancellationPolicy: hold.policySnapshot, inventoryReserved: true }, { status: hold.replay ? 200 : 201 });
+    return Response.json({ holdId: hold.holdId, idempotencyKey, reference: hold.reference, status: "ACTIVE", expiresAt: hold.expiresAt.toISOString(), currency: hold.currency, totalRate: String(hold.totalAmount), nightlyRates: hold.nightlyRates.map(String), cancellationPolicy: hold.policySnapshot, inventoryReserved: true }, { status: hold.replay ? 200 : 201 });
   } catch (error) {
     return jsonError(error);
   }

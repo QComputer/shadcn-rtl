@@ -288,7 +288,9 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     const h = flow.hold; if (!h) return "";
     const expires = h.expiresAt ? new Date(h.expiresAt) : null;
     const expiresText = expires && !Number.isNaN(expires.getTime()) ? expires.toLocaleString(locale === "fa" ? "fa-IR" : locale === "ar" ? "ar" : "en-US") : String(h.expiresAt || "");
-    return `<section class="booking-step booking-step--confirmed"><h4>${escapeHtml(ui.holdCreated || "Hold created")}</h4><p><strong>${escapeHtml(ui.holdReference || "Reference")}:</strong> <span dir="ltr">${escapeHtml(h.reference || h.holdId || "")}</span></p><p><strong>${escapeHtml(ui.totalPrice || "Total")}:</strong> ${escapeHtml(formatMoney(h.totalRate || h.totalAmount, h.currency, locale))}</p><p><strong>${escapeHtml(ui.holdExpires || "Expires")}:</strong> <span dir="ltr">${escapeHtml(expiresText)}</span></p><div class="booking-step__actions"><button type="button" class="booking-link" data-flow-reset>${escapeHtml(ui.backToOptions || "Back")}</button></div></section>`;
+    const reservation = h.reservation;
+    const statusText = locale === "fa" ? (reservation?.status === "PENDING_PAYMENT" ? "در انتظار پرداخت و تأیید پذیرش" : "رزرو موقت") : locale === "ar" ? (reservation?.status === "PENDING_PAYMENT" ? "بانتظار الدفع وتأكيد الاستقبال" : "حجز مؤقت") : (reservation?.status === "PENDING_PAYMENT" ? "Awaiting payment and reception confirmation" : "Temporary hold");
+    return `<section class="booking-step booking-step--confirmed"><h4>${escapeHtml(reservation ? (locale === "fa" ? "درخواست رزرو ثبت شد" : locale === "ar" ? "تم تسجيل طلب الحجز" : "Reservation request received") : (ui.holdCreated || "Hold created"))}</h4><p><strong>${escapeHtml(ui.holdReference || "Reference")}:</strong> <span dir="ltr">${escapeHtml(reservation?.reference || h.reference || h.holdId || "")}</span></p><p><strong>${escapeHtml(ui.totalPrice || "Total")}:</strong> ${escapeHtml(formatMoney(reservation?.totalAmount || h.totalRate || h.totalAmount, reservation?.currency || h.currency, locale))}</p><p><strong>${escapeHtml(locale === "fa" ? "وضعیت" : locale === "ar" ? "الحالة" : "Status")}:</strong> ${escapeHtml(reservation ? statusText : expiresText)}</p>${reservation ? `<p>${escapeHtml(locale === "fa" ? "وضعیت پرداخت: " + (reservation.paymentStatus === "PAID" ? "پرداخت آزمایشی تأیید شد" : "پرداخت‌نشده") + "؛ تأیید نهایی اقامت با پذیرش هتل است." : locale === "ar" ? "حالة الدفع: " + (reservation.paymentStatus === "PAID" ? "تم التحقق من الدفع التجريبي" : "غير مدفوع") + "؛ ويظل التأكيد النهائي لدى الاستقبال." : "Payment: " + (reservation.paymentStatus === "PAID" ? "sandbox payment verified" : "unpaid") + "; reception still confirms the stay.")}</p><div class="booking-step__actions">${reservation.paymentStatus !== "PAID" && reservation.status === "PENDING_PAYMENT" ? `<button type="button" class="booking-submit" data-start-sandbox-payment ${flow.busy ? "disabled" : ""}>${escapeHtml(locale === "fa" ? "پرداخت آزمایشی" : locale === "ar" ? "الدفع التجريبي" : "Sandbox payment")}</button>` : ""}<button type="button" class="booking-link" data-check-reservation>${escapeHtml(locale === "fa" ? "بررسی وضعیت" : locale === "ar" ? "تحقق من الحالة" : "Check status")}</button>${reservation.paymentStatus !== "PAID" && reservation.status === "PENDING_PAYMENT" ? `<button type="button" class="booking-link" data-cancel-reservation>${escapeHtml(locale === "fa" ? "لغو رزرو پرداخت‌نشده" : locale === "ar" ? "إلغاء الحجز غير المدفوع" : "Cancel unpaid reservation")}</button>` : ""}</div>` : ""}<div class="booking-step__actions"><button type="button" class="booking-link" data-flow-reset>${escapeHtml(ui.backToOptions || "Back")}</button></div></section>`;
   }
   function renderFlow() {
     if (message) message.textContent = flow.message || ""; else message.textContent = "";
@@ -345,6 +347,45 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     return parseChildAges(inputs.map((i) => i.value), children);
   }
   function bindFlow() {
+    slot.querySelector("[data-check-reservation]")?.addEventListener("click", async () => {
+      const reservation = flow.hold?.reservation;
+      if (!reservation?.reference || flow.busy) return;
+      flow.busy = true; renderFlow();
+      try {
+        const result = await postJson("/api/hotel/v1/reservations/status", { reference: reservation.reference, contactPhone: flow.draftContact?.phone || "" });
+        if (!result.ok || typeof result.data?.status !== "string") throw new Error(apiErrorMessage(result.status, result.data, "Status unavailable."));
+        Object.assign(reservation, result.data);
+        flow.message = locale === "fa" ? "وضعیت رزرو به‌روز شد." : locale === "ar" ? "تم تحديث حالة الحجز." : "Reservation status updated.";
+      } catch (error) { flow.message = error instanceof Error ? error.message : "Status unavailable."; flow.error = true; }
+      finally { flow.busy = false; renderFlow(); }
+    });
+    slot.querySelector("[data-cancel-reservation]")?.addEventListener("click", async () => {
+      const reservation = flow.hold?.reservation;
+      if (!reservation?.reference || flow.busy) return;
+      flow.busy = true; renderFlow();
+      try {
+        const result = await postJson("/api/hotel/v1/reservations/cancel", { reference: reservation.reference, contactPhone: flow.draftContact?.phone || "" });
+        if (!result.ok || result.data?.status !== "CANCELLED") throw new Error(apiErrorMessage(result.status, result.data, "Cancellation unavailable."));
+        reservation.status = "CANCELLED";
+        flow.message = locale === "fa" ? "رزرو لغو و موجودی آزاد شد." : locale === "ar" ? "تم إلغاء الحجز وإعادة التوفر." : "Reservation cancelled and inventory released.";
+      } catch (error) { flow.message = error instanceof Error ? error.message : "Cancellation unavailable."; flow.error = true; }
+      finally { flow.busy = false; renderFlow(); }
+    });
+    slot.querySelector("[data-start-sandbox-payment]")?.addEventListener("click", async () => {
+      const reservation = flow.hold?.reservation;
+      if (!reservation?.reference || flow.busy) return;
+      flow.busy = true; renderFlow();
+      try {
+        const started = await postJson("/api/hotel/v1/sandbox-payments", { reference: reservation.reference, idempotencyKey: flow.hold.idempotencyKey, contactPhone: flow.draftContact?.phone || "" });
+        if (!started.ok || typeof started.data?.ticket !== "string") throw new Error(apiErrorMessage(started.status, started.data, "Sandbox payment unavailable."));
+        const verified = await postJson("/api/hotel/v1/sandbox-payments/verify", { ticket: started.data.ticket });
+        if (!verified.ok || !verified.data?.paymentStatus) throw new Error(apiErrorMessage(verified.status, verified.data, "Sandbox payment verification failed."));
+        flow.hold.reservation.paymentStatus = verified.data.paymentStatus;
+        flow.hold.reservation.status = verified.data.reservationStatus;
+        flow.message = locale === "fa" ? "پرداخت آزمایشی توسط سرور تأیید شد؛ رزرو همچنان در انتظار پذیرش است." : locale === "ar" ? "أكد الخادم الدفع التجريبي؛ ولا يزال الحجز بانتظار الاستقبال." : "Sandbox payment was verified by the server; reception confirmation is still pending.";
+      } catch (error) { flow.message = error instanceof Error ? error.message : "Sandbox payment failed."; flow.error = true; }
+      finally { flow.busy = false; renderFlow(); }
+    });
     slot.querySelectorAll("[data-select-option]").forEach((btn) => btn.addEventListener("click", () => {
       const option = availableOptions({ options: flow.options })[Number(btn.dataset.selectOption)];
       if (!option) return;
@@ -430,7 +471,18 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       } finally {
         flow.busy = false;
       }
-      if (result.ok && result.data?.holdId) { clearHoldAttempt(); flow = { ...flow, step: "confirmed", hold: result.data, message: "", error: false, policyAccepted: false }; renderFlow(); return; }
+      if (result.ok && result.data?.holdId) {
+        const holdKey = holdAttempt.key;
+        const confirmation = await postJson("/api/hotel/v1/reservations", { ...submitPayload, idempotencyKey: holdKey, holdId: result.data.holdId, holdIdempotencyKey: holdKey });
+        if (confirmation.ok && typeof confirmation.data?.reference === "string") {
+          clearHoldAttempt();
+          flow = { ...flow, step: "confirmed", hold: { ...result.data, idempotencyKey: holdKey, reservation: confirmation.data }, message: "", error: false, policyAccepted: false };
+          renderFlow(); return;
+        }
+        flow.busy = false;
+        setMessage(apiErrorMessage(confirmation.status, confirmation.data, locale === "fa" ? "ثبت رزرو انجام نشد؛ همان درخواست را دوباره ارسال کنید." : locale === "ar" ? "تعذر تسجيل الحجز؛ أعد إرسال الطلب نفسه." : "Reservation could not be created; retry the same request."), true);
+        renderFlow(); return;
+      }
       const err = typeof result.data?.error === "string" ? result.data.error : result.data?.error?.message || "";
       const lower = String(err).toLower();
       const policyChanged = result.status === 409 && /policy|terms|acceptance does not match|changed/i.test(lower);

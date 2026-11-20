@@ -145,6 +145,7 @@ function hold(row: any): HoldRecord {
     roomTypeId: row.roomTypeId,
     checkIn: dateOnly(row.checkIn),
     checkOut: dateOnly(row.checkOut),
+    ...(row.adults == null || row.children == null ? {} : { occupancy: { adults: row.adults, children: row.children, childAges: row.childAges ?? [] } }),
     nights: enumerateStayNights(dateOnly(row.checkIn), dateOnly(row.checkOut)),
     quantity: row.quantity,
     expiresAt: row.expiresAt,
@@ -160,6 +161,7 @@ function reservation(row: any): ReservationRecord {
     isPrimary: guest.isPrimary,
     ...(guest.isChild ? { isChild: true } : {}),
     ...(guest.age == null ? {} : { age: guest.age }),
+    ...(guest.phoneHash ? { phoneHash: guest.phoneHash } : {}),
   }));
   return {
     id: row.id,
@@ -448,6 +450,7 @@ export class PrismaHotelRepositories
       existing.propertyId === record.propertyId && existing.roomTypeId === record.roomTypeId &&
       existing.ratePlanId === record.ratePlanId && existing.reference === record.reference &&
       existing.holdId === record.holdId && existing.checkIn === record.checkIn && existing.checkOut === record.checkOut &&
+      isDeepStrictEqual(existing.occupancy ?? null, record.occupancy ?? null) &&
       existing.totalAmount === record.totalAmount && existing.currency === record.currency &&
       isDeepStrictEqual(existing.nights, record.nights) && isDeepStrictEqual(existing.nightlyRates, record.nightlyRates) &&
       isDeepStrictEqual(normalizeGuests(existing.guests), normalizeGuests(record.guests)) &&
@@ -482,11 +485,11 @@ export class PrismaHotelRepositories
       const row = await tx.hotelReservation.create({ data: {
         id: record.id, organizationId: record.organizationId, propertyId: record.propertyId,
         roomTypeId: record.roomTypeId, ratePlanId: record.ratePlanId, reference: record.reference, status: record.status,
-        checkIn: dateValue(record.checkIn), checkOut: dateValue(record.checkOut), currency: record.currency,
+        checkIn: dateValue(record.checkIn), checkOut: dateValue(record.checkOut), adults: record.occupancy?.adults ?? null, children: record.occupancy?.children ?? null, childAges: [...(record.occupancy?.childAges ?? [])], currency: record.currency,
         totalAmount: BigInt(record.totalAmount), cancellationPolicyKey: record.cancellationPolicySnapshot?.key ?? "PENDING_OWNER_INPUT",
         cancellationPolicySnapshot: record.cancellationPolicySnapshot ?? {}, holdId: record.holdId, idempotencyKey: key,
         nights: { create: nights.map((date, index) => ({ date: dateValue(date), roomTypeId: record.roomTypeId, rate: BigInt(record.nightlyRates[index]) })) },
-        guests: { create: record.guests.map(guest => ({ fullName: guest.fullName, isPrimary: guest.isPrimary, isChild: guest.isChild ?? false, age: guest.age })) },
+        guests: { create: record.guests.map(guest => ({ fullName: guest.fullName, isPrimary: guest.isPrimary, isChild: guest.isChild ?? false, age: guest.age, phoneHash: guest.phoneHash ?? null })) },
       }, include: { nights: true, guests: true } });
       return reservation(row);
     }, transaction, { maxWait: 5000, timeout: 10000 });

@@ -8,7 +8,7 @@ import { validateStayRange, todayLocalISO, jalaliAccessibleDay } from "./calenda
 import translations from "./translations.js";
 import { palettes, readPalette, applyPalette } from "./themes.js";
 import { mountBooking, readStaySelection } from "./booking.js";
-import { parseChildAges, withStaySelection, guestPortalHref } from "./booking-flow.js";
+import { parseChildAges, withStaySelection, guestPortalHref, createIdempotencyKey } from "./booking-flow.js";
 import { publishedDamoonTours, tourViewerMarkup } from "./virtual-tour.js";
 
 const root = document.querySelector("#app");
@@ -306,6 +306,47 @@ function wireInteractions() {
       edit.textContent = locale === 'fa' ? 'ویرایش برنامهٔ اقامت' : locale === 'ar' ? 'تعديل خطة الإقامة' : 'Edit stay plans';
       summary.append(edit);
       root.querySelector('.hospitality-contact-details')?.after(summary);
+
+      if (validateStayRange(range, todayLocalISO()) === 'OK' && parsedAges.ok) {
+        const labels = locale === 'fa'
+          ? {title:'درخواست اقامت', name:'نام و نام خانوادگی', phone:'شماره تماس', send:'ارسال درخواست', note:'این درخواست رزرو قطعی نیست و قیمت و موجودی هنوز تأیید نشده است.', reference:'کد پیگیری', fail:'ارسال ناموفق بود. بعداً دوباره تلاش کنید.', track:'پیگیری درخواست', check:'بررسی وضعیت'}
+          : locale === 'ar'
+            ? {title:'طلب إقامة', name:'الاسم الكامل', phone:'رقم الهاتف', send:'إرسال الطلب', note:'هذا الطلب ليس حجزاً مؤكداً ولم يتم تأكيد السعر أو التوفر.', reference:'رمز المتابعة', fail:'تعذر إرسال الطلب. حاول لاحقاً.', track:'متابعة الطلب', check:'التحقق من الحالة'}
+            : {title:'Request accommodation', name:'Full name', phone:'Phone number', send:'Send request', note:'This is not a confirmed booking; price and availability have not been confirmed.', reference:'Tracking reference', fail:'The request could not be submitted. Please try again.', track:'Track a request', check:'Check status'};
+        const panel = document.createElement('section');
+        panel.className = 'hospitality-stay-context';
+        panel.innerHTML = `<h2>${safeText(labels.title)}</h2><p>${safeText(labels.note)}</p><form data-coordination-request><label>${safeText(labels.name)} <input name="fullName" required minlength="2" maxlength="120" autocomplete="name"></label><label>${safeText(labels.phone)} <input name="phone" type="tel" required minlength="8" maxlength="24" autocomplete="tel"></label><button type="submit">${safeText(labels.send)}</button></form><p role="status" aria-live="polite" data-request-result></p><form data-coordination-track><label>${safeText(labels.track)} <input name="reference" required minlength="40" autocomplete="off"></label><button type="submit">${safeText(labels.check)}</button></form><p role="status" aria-live="polite" data-track-result></p>`;
+        summary.after(panel);
+        let attempt;
+        panel.querySelector('[data-coordination-request]').addEventListener('submit', async (event) => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const button = form.querySelector('button');
+          const output = panel.querySelector('[data-request-result]');
+          const preferredCategory = ['vip-suite', 'standard-room', 'studio-suite'].includes(selectedRoom?.slug) ? selectedRoom.slug : undefined;
+          const payload = { kind: 'coordination', property: 'damoon-hotel', checkIn: range.checkIn, checkOut: range.checkOut, occupancy: { adults: guests, children, childAges: parsedAges.ages }, contact: { fullName: form.elements.fullName.value.trim(), phone: form.elements.phone.value.trim() }, ...(preferredCategory ? { preferredCategory } : {}) };
+          const fingerprint = JSON.stringify(payload);
+          try {
+            if (!attempt || attempt.fingerprint !== fingerprint) attempt = { fingerprint, key: createIdempotencyKey() };
+            button.disabled = true;
+            const response = await fetch('/api/hotel/v1/requests', { method: 'POST', headers: { 'content-type': 'application/json', 'Idempotency-Key': attempt.key }, body: fingerprint });
+            const result = await response.json();
+            if (!response.ok || typeof result.reference !== 'string') throw new Error('request failed');
+            output.textContent = `${labels.reference}: ${result.reference}`;
+            panel.querySelector('[data-coordination-track] input').value = result.reference;
+          } catch { output.textContent = labels.fail; } finally { button.disabled = false; }
+        });
+        panel.querySelector('[data-coordination-track]').addEventListener('submit', async (event) => {
+          event.preventDefault();
+          const output = panel.querySelector('[data-track-result]');
+          try {
+            const response = await fetch('/api/hotel/v1/requests/status', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ reference: event.currentTarget.elements.reference.value.trim() }) });
+            const result = await response.json();
+            if (!response.ok || !['RECEIVED', 'IN_REVIEW', 'DECLINED', 'CLOSED'].includes(result.status)) throw new Error('tracking failed');
+            output.textContent = result.status;
+          } catch { output.textContent = labels.fail; }
+        });
+      }
 
       // Guest portal link: fetch tenant mapping and append "Continue in guest portal" link
       const continueLabel = locale === 'fa' ? 'ادامه در دروازه مهمان' : locale === 'ar' ? 'متابعة في بوابة الضيف' : 'Continue in guest portal';

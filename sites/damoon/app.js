@@ -1,4 +1,4 @@
-import { galleryForLocale, localeForPath, normalizePath, pageForPath, siteForLocale, roomForLocale } from "./content.js";
+import { accommodationCategories, galleryForLocale, localeForPath, normalizePath, pageForPath, siteForLocale, roomForLocale, roomForPath } from "./content.js";
 import { renderAccommodation, wireAccommodation } from "./accommodation.js";
 import { renderHospitality } from "./hospitality.js";
 import { renderDamoonAttractionsPage, mountDamoonAttractionsPage } from "./damoon-attractions-view.js";
@@ -8,7 +8,7 @@ import { validateStayRange, todayLocalISO, jalaliAccessibleDay } from "./calenda
 import translations from "./translations.js";
 import { palettes, readPalette, applyPalette } from "./themes.js";
 import { mountBooking, readStaySelection } from "./booking.js";
-import { parseChildAges, withStaySelection, guestPortalHref } from "./booking-flow.js";
+import { parseChildAges, withStaySelection, guestPortalHref, createIdempotencyKey } from "./booking-flow.js";
 import { publishedDamoonTours, tourViewerMarkup } from "./virtual-tour.js";
 
 const root = document.querySelector("#app");
@@ -20,7 +20,7 @@ let site;
 let gallery;
 let ui;
 const faUI = {
-  skipToMain: "رفتن به محتوای اصلی", mainMenu: "منوی اصلی", mobileMenu: "منوی موبایل", appearanceSettings: "تنظیم ظاهر سایت", choosePalette: "انتخاب رنگ‌بندی", contactHotel: "تماس با هتل", openMenu: "بازکردن منو", closeMenu: "بستن منو", footerLinks: "پیوندهای پایانی", breadcrumb: "مسیر صفحه", detailsMore: "جزئیات بیشتر", generalHotel: "هتل دامون", additionalInformation: "اطلاعات بیشتر", coordinateWithHotel: "هماهنگی با هتل", pageNotFound: "این صفحه پیدا نشد", pageNotFoundText: "ممکن است نشانی صفحه تغییر کرده باشد.", backHome: "بازگشت به خانه", reception: "پذیرش", callReception: "تماس با پذیرش", directions: "مسیریابی روی نقشه", checkIn: "ورود", checkOut: "خروج", guests: "مهمانان", room: "اتاق", rooms: "اتاق‌ها", restaurant: "اطلاعات پذیرایی", cafe: "پذیرایی در اتاق", facilities: "خدمات مهمانان", gallery: "گالری", aboutDamoon: "دربارهٔ دامون", contact: "تماس", policies: "قوانین و حریم خصوصی", virtualTour: "تور مجازی", conceptImage: "تصویر مفهومی", conceptGallery: "گالری مفهومی", referenceImages: "تصاویر مرجع", zoomConceptImage: "بزرگ‌نمایی تصویر مفهومی", closeImageViewer: "بستن نمایش تصویر", previousImage: "تصویر قبلی", nextImage: "تصویر بعدی", imageNotActual: "تصویر مفهومی؛ عکس واقعی هتل نیست.", imageCount: "{current} از {total}", colorPalette: "رنگ‌بندی", switchToDark: "رفتن به تم تیره", switchToLight: "رفتن به تم روشن", footerReception: "پذیرش", noscript: "برای نمایش این نسخهٔ در حال تکمیل، جاوااسکریپت مرورگر را فعال کنید.", homeSubtitle: "اقامت در دامون", homeLead: "هتل دامون در شهرکرد ۳۱ واحد اقامتی دارد: ۲۰ اتاق و ۱۱ سوئیت. برای برنامه‌ریزی اقامت با پذیرش هماهنگ کنید.", homeShortcuts: "دسترسی سریع", roomSpaces: "فضاهای اقامت", restaurantShort: "اطلاعات پذیرایی", tourShort: "گشت‌وگذار در فضاها", calmStay: "برای اقامتی آرام و لحظه‌هایی خوش", homeIntro: "هتل دامون در شهرکرد میزبان مهمانان و برنامه‌های اقامت شماست. برای هماهنگی با پذیرش در تماس باشید.", aboutMore: "بیشتر دربارهٔ هتل", accommodationSpaces: "فضاهای اقامت", aPlaceToRest: "جایی برای آسودن", browseRooms: "گروه‌های اقامتی هتل دامون را ببینید و برای انتخاب متناسب با برنامه‌تان هماهنگ کنید.", conceptCaption: "تصویر مفهومی", viewSpaces: "مشاهدهٔ فضاها", forYourStay: "برای اقامت شما", hotelSpaces: "فضاهای هتل", planYourStay: "برای برنامه‌ریزی اقامت", contactCoordination: "برای هماهنگی با هتل در تماس باشید", homeEyebrow: "اقامتی آرام در شهرکرد", guestComfort: "آسایش مهمانان", unitCount: "۳۱ واحد اقامتی", unitBreakdown: "۲۰ اتاق · ۱۱ سوئیت", checkInLabel: "ورود", checkOutLabel: "خروج", notFound: "این صفحه پیدا نشد", notFoundText: "ممکن است نشانی صفحه تغییر کرده باشد.", paletteNames: { hermes: "کرم و نارنجی", forest: "سبز روشن و طبیعی", wood: "قهوه‌ای چوبی" },
+  skipToMain: "رفتن به محتوای اصلی", mainMenu: "منوی اصلی", mobileMenu: "منوی موبایل", appearanceSettings: "تنظیم ظاهر سایت", choosePalette: "انتخاب رنگ‌بندی", contactHotel: "تماس با هتل", openMenu: "بازکردن منو", closeMenu: "بستن منو", footerLinks: "پیوندهای پایانی", breadcrumb: "مسیر صفحه", detailsMore: "جزئیات بیشتر", generalHotel: "هتل دامون", additionalInformation: "اطلاعات بیشتر", coordinateWithHotel: "هماهنگی با هتل", pageNotFound: "این صفحه پیدا نشد", pageNotFoundText: "ممکن است نشانی صفحه تغییر کرده باشد.", backHome: "بازگشت به خانه", reception: "پذیرش", callReception: "تماس با پذیرش", directions: "مسیریابی روی نقشه", checkIn: "ورود", checkOut: "خروج", guests: "مهمانان", room: "اتاق", rooms: "اتاق‌ها", restaurant: "اطلاعات پذیرایی", cafe: "پذیرایی در اتاق", facilities: "خدمات مهمانان", gallery: "گالری", aboutDamoon: "دربارهٔ دامون", contact: "تماس", policies: "قوانین و حریم خصوصی", virtualTour: "تور مجازی", conceptImage: "تصویر مفهومی", conceptGallery: "گالری مفهومی", referenceImages: "تصاویر مرجع", zoomConceptImage: "بزرگ‌نمایی تصویر مفهومی", closeImageViewer: "بستن نمایش تصویر", previousImage: "تصویر قبلی", nextImage: "تصویر بعدی", imageNotActual: "تصویر مفهومی؛ عکس واقعی هتل نیست.", imageCount: "{current} از {total}", colorPalette: "رنگ‌بندی", switchToDark: "رفتن به تم تیره", switchToLight: "رفتن به تم روشن", footerReception: "پذیرش", noscript: "برای نمایش این نسخهٔ در حال تکمیل، جاوااسکریپت مرورگر را فعال کنید.", homeSubtitle: "اقامت در دامون", homeLead: "هتل دامون در شهرکرد ۳۱ واحد اقامتی دارد. برای برنامه‌ریزی اقامت با پذیرش هماهنگ کنید.", homeShortcuts: "دسترسی سریع", roomSpaces: "فضاهای اقامت", restaurantShort: "اطلاعات پذیرایی", tourShort: "گشت‌وگذار در فضاها", calmStay: "برای اقامتی آرام و لحظه‌هایی خوش", homeIntro: "هتل دامون در شهرکرد میزبان مهمانان و برنامه‌های اقامت شماست. برای هماهنگی با پذیرش در تماس باشید.", aboutMore: "بیشتر دربارهٔ هتل", accommodationSpaces: "فضاهای اقامت", aPlaceToRest: "جایی برای آسودن", browseRooms: "گروه‌های اقامتی هتل دامون را ببینید و برای انتخاب متناسب با برنامه‌تان هماهنگ کنید.", conceptCaption: "تصویر مفهومی", viewSpaces: "مشاهدهٔ فضاها", forYourStay: "برای اقامت شما", hotelSpaces: "فضاهای هتل", planYourStay: "برای برنامه‌ریزی اقامت", contactCoordination: "برای هماهنگی با هتل در تماس باشید", homeEyebrow: "اقامتی آرام در شهرکرد", guestComfort: "آسایش مهمانان", unitCount: "۳۱ واحد اقامتی", checkInLabel: "ورود", checkOutLabel: "خروج", notFound: "این صفحه پیدا نشد", notFoundText: "ممکن است نشانی صفحه تغییر کرده باشد.", paletteNames: { hermes: "کرم و نارنجی", forest: "سبز روشن و طبیعی", wood: "قهوه‌ای چوبی" },
 };
 
 function prefixFor(localeCode = locale) {
@@ -30,7 +30,7 @@ function prefixFor(localeCode = locale) {
 const routeHref = (href) => `${prefixFor()}${href === "/" ? "/" : href}`;
 function stayHref(href) {
   const target = withStaySelection(new URL(routeHref(href), window.location.origin), readStaySelection());
-  const room = normalizePath(window.location.pathname).match(/^\/rooms\/(single|double|suite)$/)?.[1];
+  const room = roomForPath(normalizePath(window.location.pathname), locale)?.slug;
   if (room && normalizePath(target.pathname) === '/contact' && !target.searchParams.has('room')) target.searchParams.set('room', room);
   return target.pathname + target.search + target.hash;
 }
@@ -134,24 +134,29 @@ function cards(sections = []) {
 }
 
 function homeContent() {
-  const roomTiles = [
-    { title: locale === "fa" ? "اتاق یک‌نفره" : locale === "ar" ? "غرفة مفردة" : "Single room", image: "/assets/room-concept-1.webp", href: "/rooms/single" },
-    { title: locale === "fa" ? "اتاق دونفره" : locale === "ar" ? "غرفة مزدوجة" : "Double room", image: "/assets/room-concept-2.webp", href: "/rooms/double" },
-    { title: locale === "fa" ? "سوئیت‌های اقامتی" : locale === "ar" ? "أجنحة الإقامة" : "Accommodation suites", image: "/assets/room-concept-3.webp", href: "/rooms" },
-  ];
+  const roomTiles = accommodationCategories.map(({ slug }) => roomForLocale(slug, locale));
   const slides = gallery.slice(0, 4);
-  return `<section class="home-intro" aria-label="${safeText(ui.homeIntro)}"><div class="home-intro__copy"><p class="eyebrow">${safeText(locale === "fa" ? "درباره هتل دامون" : ui.aboutMore)}</p><h2 id="home-intro-title">${safeText(locale === "fa" ? "جایی متعادل برای سفر و آرامش" : ui.calmStay)}</h2><p>${safeText(ui.homeIntro)}</p><a class="text-link" href="${routeHref("/about")}">${safeText(ui.aboutMore)} ←</a><a class="text-link" href="${routeHref("/virtual-tour")}">${safeText(ui.virtualTour)} ↗</a></div><div class="home-lobby" aria-label="${safeText(ui.gallery)}"><img data-home-slide src="/assets/lobby-concept.webp" alt="${safeText(ui.imageNotActual)}" loading="lazy"><button type="button" data-home-prev aria-label="${safeText(ui.previousImage)}">‹</button><button type="button" data-home-next aria-label="${safeText(ui.nextImage)}">›</button><div class="home-lobby__dots">${slides.map((_, i) => `<button type="button" data-home-dot="${i}" aria-label="${safeText(ui.gallery)} ${i + 1}"${i === 0 ? ' aria-current="true"' : ""}></button>`).join("")}</div></div><div class="home-side"><div class="home-room-list"><h2>${safeText(locale === "fa" ? "اتاق‌ها و سوئیت‌ها" : ui.rooms)}</h2><div class="home-room-list__grid">${roomTiles.map((room, index) => `<a href="${routeHref(room.href)}" data-room-sprite="${index}"><img src="${room.image}" alt="${safeText(ui.imageNotActual)}" loading="lazy"><strong>${safeText(room.title)}<small>${safeText(ui.viewSpaces)}</small></strong></a>`).join("")}</div></div><div class="home-gallery-list"><h2>${safeText(locale === "fa" ? "تصاویر هتل" : ui.gallery)}</h2><div>${slides.map((image, i) => `<a href="${routeHref("/gallery")}" data-gallery-sprite="${i}"><img src="${safeText(image.src)}" alt="${safeText(image.alt)}" loading="lazy"></a>`).join("")}</div></div></div></section>
-    <div class="home-features"><span><svg viewBox="0 0 32 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M16 38C11 30 2 20 2 14a14 14 0 1 1 28 0c0 6-9 16-14 24Z"/><circle cx="16" cy="14" r="5"/></svg><strong>${safeText(ui.guestComfort)}</strong><small>${safeText(site.city)}</small></span><span><svg viewBox="0 0 40 36" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 29h34M6 25a14 14 0 0 1 28 0H6Zm14-17V4m-5 0h10M2 33h36"/></svg><strong>${safeText(ui.unitCount)}</strong><small>${safeText(ui.unitBreakdown)}</small></span><span><svg viewBox="0 0 32 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 38V2h22v36M1 38h30M12 38V28h8v10M10 8h3m6 0h3M10 14h3m6 0h3M10 20h3m6 0h3"/></svg><strong>${safeText(ui.checkInLabel)} · 14:00</strong><small>${safeText(ui.checkOutLabel)} · 12:00</small></span></div>`;
+  return `<section class="home-intro" aria-label="${safeText(ui.homeIntro)}"><div class="home-intro__copy"><p class="eyebrow">${safeText(locale === "fa" ? "درباره هتل دامون" : ui.aboutMore)}</p><h2 id="home-intro-title">${safeText(locale === "fa" ? "جایی متعادل برای سفر و آرامش" : ui.calmStay)}</h2><p>${safeText(ui.homeIntro)}</p><a class="text-link" href="${routeHref("/about")}">${safeText(ui.aboutMore)} ←</a><a class="text-link" href="${routeHref("/virtual-tour")}">${safeText(ui.virtualTour)} ↗</a></div><div class="home-lobby" aria-label="${safeText(ui.gallery)}"><img data-home-slide src="/assets/lobby-concept.webp" alt="${safeText(ui.imageNotActual)}" loading="lazy"><button type="button" data-home-prev aria-label="${safeText(ui.previousImage)}">‹</button><button type="button" data-home-next aria-label="${safeText(ui.nextImage)}">›</button><div class="home-lobby__dots">${slides.map((_, i) => `<button type="button" data-home-dot="${i}" aria-label="${safeText(ui.gallery)} ${i + 1}"${i === 0 ? ' aria-current="true"' : ""}></button>`).join("")}</div></div><div class="home-side"><div class="home-room-list"><h2>${safeText(locale === "fa" ? "اتاق‌ها و سوئیت‌ها" : ui.rooms)}</h2><div class="home-room-list__grid">${roomTiles.map((room, index) => `<a href="${routeHref(`/rooms/${room.slug}`)}" data-room-sprite="${index}"><img src="${room.image}" alt="${safeText(ui.imageNotActual)}" loading="lazy"><strong>${safeText(room.title)}<small>${safeText(ui.viewSpaces)}</small></strong></a>`).join("")}</div></div><div class="home-gallery-list"><h2>${safeText(locale === "fa" ? "تصاویر هتل" : ui.gallery)}</h2><div>${slides.map((image, i) => `<a href="${routeHref("/gallery")}" data-gallery-sprite="${i}"><img src="${safeText(image.src)}" alt="${safeText(image.alt)}" loading="lazy"></a>`).join("")}</div></div></div></section>
+    <div class="home-features"><span><svg viewBox="0 0 32 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M16 38C11 30 2 20 2 14a14 14 0 1 1 28 0c0 6-9 16-14 24Z"/><circle cx="16" cy="14" r="5"/></svg><strong>${safeText(ui.guestComfort)}</strong><small>${safeText(site.city)}</small></span><span><svg viewBox="0 0 40 36" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 29h34M6 25a14 14 0 0 1 28 0H6Zm14-17V4m-5 0h10M2 33h36"/></svg><strong>${safeText(ui.unitCount)}</strong></span><span><svg viewBox="0 0 32 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 38V2h22v36M1 38h30M12 38V28h8v10M10 8h3m6 0h3M10 14h3m6 0h3M10 20h3m6 0h3"/></svg><strong>${safeText(ui.checkInLabel)} · 14:00</strong><small>${safeText(ui.checkOutLabel)} · 12:00</small></span></div>`;
 }
 
 function galleryGrid() {
   return `<section class="content-section"><div class="section-heading"><p class="eyebrow">${safeText(ui.referenceImages)}</p><h2>${safeText(ui.conceptGallery)}</h2><p>${safeText(locale === "fa" ? "این تصاویر برای نمایش ترکیب‌بندی هستند؛ هیچ‌کدام عکس واقعی هتل دامون نیستند." : locale === "ar" ? "هذه التصاميم لتوضيح التكوين؛ ولا تمثل صوراً حقيقية لفندق دامون." : "These images illustrate layout and are not actual photographs of Damoon Hotel.")}</p><a class="text-link" href="${routeHref("/virtual-tour")}">${safeText(ui.virtualTour)} ↗</a></div><div class="gallery-grid">${gallery.map((image, index) => `<button class="gallery-tile" type="button" data-gallery-index="${index}" aria-label="${safeText(`${ui.zoomConceptImage} ${index + 1}`)}"><img src="${safeText(image.src)}" alt="${safeText(image.alt)}" loading="lazy"><span>${safeText(ui.conceptImage)}</span></button>`).join("")}</div></section>`;
 }
 
+function virtualTourPage(page, path) {
+  const selection = roomForLocale(new URLSearchParams(window.location.search).get("room"), locale);
+  const contact = selection ? `/contact?room=${encodeURIComponent(selection.slug)}` : "/contact";
+  const back = selection
+    ? [`/rooms/${selection.slug}`, `${locale === "fa" ? "بازگشت به" : locale === "ar" ? "العودة إلى" : "Back to"} ${selection.title}`]
+    : page.actions[0];
+  return `${hero({ ...page, actions: [[contact, ui.contactHotel], back] }, path)}${virtualTourSection()}`;
+}
+
 function virtualTourSection() {
   const tours = publishedDamoonTours();
   if (tours.length) return `<section class="content-section"><div class="section-heading"><p class="eyebrow">${safeText(ui.virtualTour)}</p><h2>${safeText(ui.virtualTour)}</h2><p>${safeText(locale === "fa" ? "پیش‌نمایش مفهومی؛ تصاویر این تور به‌عنوان عکاسی تأییدشده از هتل دامون ارائه نمی‌شوند." : locale === "ar" ? "معاينة تصورية؛ لا تُعرض صور هذه الجولة على أنها صور فوتوغرافية موثقة لفندق دامون." : "Conceptual preview; this tour is not presented as verified photography of Damoon Hotel.")}</p></div>${tours.map((tour) => tourViewerMarkup(tour, `${ui.virtualTour} · ${tour.id}`, undefined, locale)).join("")}</section>`;
-  return `<section class="content-section"><div class="section-heading"><p class="eyebrow">${safeText(ui.virtualTour)}</p><h2>${safeText(ui.virtualTour)}</h2></div><p>${safeText(locale === "fa" ? "نمایش آنلاین تور مجازی در حال آماده‌سازی است. برای هماهنگی با پذیرش تماس بگیرید." : locale === "ar" ? "عرض Tour الافتراضي قيد الإعداد." : "Online virtual tour display is being prepared.")}</p><div class="page-hero__actions">${link("/contact", ui.contactHotel, "button button--primary")}</div></section>`;
+  return `<section class="content-section"><div class="section-heading"><p class="eyebrow">${safeText(ui.virtualTour)}</p><h2>${safeText(ui.virtualTour)}</h2></div><p>${safeText(locale === "fa" ? "نمایش آنلاین تور مجازی در حال آماده‌سازی است. برای هماهنگی با پذیرش تماس بگیرید." : locale === "ar" ? "عرض الجولة الافتراضية قيد الإعداد." : "Online virtual tour display is being prepared.")}</p></section>`;
 }
 function render() {
   locale = localeForPath(window.location.pathname);
@@ -181,7 +186,7 @@ function render() {
   else if (path === '/') body = `<div class="home-top">${hero(page, path)}<div data-booking-slot></div></div>${homeContent()}`;
   else if (path === "/attractions") body = renderDamoonAttractionsPage(locale);
   else if (path.startsWith("/attractions/")) body = renderDamoonAttractionDetailPage(locale, path.slice("/attractions/".length));
-  else if (path === "/virtual-tour") body = `${hero(page, path)}${virtualTourSection()}`; else body = renderHospitality({ path, page, locale, site, routeHref, escapeHtml: safeText }) || `${hero(page, path)}${cards(page.sections)}`;
+  else if (path === "/virtual-tour") body = virtualTourPage(page, path); else body = renderHospitality({ path, page, locale, site, routeHref, escapeHtml: safeText }) || `${hero(page, path)}${cards(page.sections)}`;
   root.innerHTML = `${header(page?.path || path)}<main id="main" class="site-main${path === "/" ? " home-main" : ""}">${body}</main>${footer()}<div id="gallery-dialog-root"></div>`;
   const gallerySlot = root.querySelector('[data-hospitality-gallery-slot]');
   if (gallerySlot) gallerySlot.innerHTML = galleryGrid();
@@ -301,6 +306,48 @@ function wireInteractions() {
       edit.textContent = locale === 'fa' ? 'ویرایش برنامهٔ اقامت' : locale === 'ar' ? 'تعديل خطة الإقامة' : 'Edit stay plans';
       summary.append(edit);
       root.querySelector('.hospitality-contact-details')?.after(summary);
+
+      if (validateStayRange(range, todayLocalISO()) === 'OK' && parsedAges.ok) {
+        const labels = locale === 'fa'
+          ? {title:'درخواست اقامت', name:'نام و نام خانوادگی', phone:'شماره تماس', send:'ارسال درخواست', note:'این درخواست رزرو قطعی نیست و قیمت و موجودی هنوز تأیید نشده است.', reference:'کد پیگیری', fail:'ارسال ناموفق بود. بعداً دوباره تلاش کنید.', track:'پیگیری درخواست', check:'بررسی وضعیت'}
+          : locale === 'ar'
+            ? {title:'طلب إقامة', name:'الاسم الكامل', phone:'رقم الهاتف', send:'إرسال الطلب', note:'هذا الطلب ليس حجزاً مؤكداً ولم يتم تأكيد السعر أو التوفر.', reference:'رمز المتابعة', fail:'تعذر إرسال الطلب. حاول لاحقاً.', track:'متابعة الطلب', check:'التحقق من الحالة'}
+            : {title:'Request accommodation', name:'Full name', phone:'Phone number', send:'Send request', note:'This is not a confirmed booking; price and availability have not been confirmed.', reference:'Tracking reference', fail:'The request could not be submitted. Please try again.', track:'Track a request', check:'Check status'};
+        const panel = document.createElement('section');
+        panel.className = 'hospitality-stay-context';
+        panel.innerHTML = `<h2>${safeText(labels.title)}</h2><p>${safeText(labels.note)}</p><form data-coordination-request><label>${safeText(labels.name)} <input name="fullName" required minlength="2" maxlength="120" autocomplete="name"></label><label>${safeText(labels.phone)} <input name="phone" type="tel" required minlength="8" maxlength="24" autocomplete="tel"></label><button type="submit">${safeText(labels.send)}</button></form><p role="status" aria-live="polite" data-request-result></p><form data-coordination-track><label>${safeText(labels.track)} <input name="reference" required minlength="40" autocomplete="off"></label><button type="submit">${safeText(labels.check)}</button></form><p role="status" aria-live="polite" data-track-result></p>`;
+        summary.after(panel);
+        let attempt;
+        panel.querySelector('[data-coordination-request]').addEventListener('submit', async (event) => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const button = form.querySelector('button');
+          const output = panel.querySelector('[data-request-result]');
+          const preferredCategory = ['vip-suite', 'standard-room', 'studio-suite'].includes(selectedRoom?.slug) ? selectedRoom.slug : undefined;
+          const payload = { kind: 'coordination', property: 'damoon-hotel', checkIn: range.checkIn, checkOut: range.checkOut, occupancy: { adults: guests, children, childAges: parsedAges.ages }, contact: { fullName: form.elements.fullName.value.trim(), phone: form.elements.phone.value.trim() }, ...(preferredCategory ? { preferredCategory } : {}) };
+          const fingerprint = JSON.stringify(payload);
+          try {
+            if (!attempt || attempt.fingerprint !== fingerprint) attempt = { fingerprint, key: createIdempotencyKey() };
+            button.disabled = true;
+            const response = await fetch('/api/hotel/v1/requests', { method: 'POST', headers: { 'content-type': 'application/json', 'Idempotency-Key': attempt.key }, body: fingerprint });
+            const result = await response.json();
+            if (!response.ok || typeof result.reference !== 'string') throw new Error('request failed');
+            output.textContent = `${labels.reference}: ${result.reference}`;
+            panel.querySelector('[data-coordination-track] input').value = result.reference;
+          } catch { output.textContent = labels.fail; } finally { button.disabled = false; }
+        });
+        panel.querySelector('[data-coordination-track]').addEventListener('submit', async (event) => {
+          event.preventDefault();
+          const output = panel.querySelector('[data-track-result]');
+          try {
+            const response = await fetch('/api/hotel/v1/requests/status', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ reference: event.currentTarget.elements.reference.value.trim() }) });
+            const result = await response.json();
+            if (!response.ok || !['RECEIVED', 'IN_REVIEW', 'DECLINED', 'CLOSED'].includes(result.status)) throw new Error('tracking failed');
+            const statuses = locale === 'fa' ? { RECEIVED: 'دریافت‌شده', IN_REVIEW: 'در حال بررسی', DECLINED: 'پذیرفته نشد', CLOSED: 'بسته‌شده' } : locale === 'ar' ? { RECEIVED: 'تم الاستلام', IN_REVIEW: 'قيد المراجعة', DECLINED: 'مرفوض', CLOSED: 'مغلق' } : { RECEIVED: 'Received', IN_REVIEW: 'Under review', DECLINED: 'Declined', CLOSED: 'Closed' };
+            output.textContent = statuses[result.status];
+          } catch { output.textContent = labels.fail; }
+        });
+      }
 
       // Guest portal link: fetch tenant mapping and append "Continue in guest portal" link
       const continueLabel = locale === 'fa' ? 'ادامه در دروازه مهمان' : locale === 'ar' ? 'متابعة في بوابة الضيف' : 'Continue in guest portal';

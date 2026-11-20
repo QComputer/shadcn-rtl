@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DAMOON_VTOUR_ALLOWED_ORIGINS, DAMOON_VTOUR_CATALOG, allowedVirtualTourUrl, publishedDamoonTours, tourViewerMarkup } from "../virtual-tour.js";
+import { DAMOON_VTOUR_ALLOWED_ORIGINS, allowedVirtualTourUrl, publishedDamoonTours, tourViewerMarkup } from "../virtual-tour.js";
 
 test("virtual tour accepts only HTTPS URLs from the exact configured origin allowlist", () => {
   const allowlist = ["https://tour.example.test"];
@@ -37,12 +37,38 @@ test("owner-supplied Damoon tour preserves its initial scene and is labeled as c
   assert.equal(tour.id, "test-damoon-hotel");
   assert.equal(tour.url, "https://andarama.bazarbaaz.ir/t/test-damoon-hotel#s=n2ohIYwAprMY3uMSoejp3&y=-76.6&p=3.1&f=111.3");
   assert.deepEqual(tour.roomSlugs, [], "no room scene has been individually verified");
-  assert.equal(DAMOON_VTOUR_CATALOG[0].representation, "CONCEPTUAL_PREVIEW");
-  const markup = tourViewerMarkup(DAMOON_VTOUR_CATALOG[0], "تور مجازی · test-damoon-hotel", undefined, "fa");
+  assert.equal(tour.representation, "CONCEPTUAL_PREVIEW");
+  const markup = tourViewerMarkup(tour, "تور مجازی · test-damoon-hotel", undefined, "fa");
   assert.match(markup, /data-tour-representation="conceptual"/);
   assert.match(markup, /src="https:\/\/andarama\.bazarbaaz\.ir\/t\/test-damoon-hotel#s=n2ohIYwAprMY3uMSoejp3&amp;y=-76\.6&amp;p=3\.1&amp;f=111\.3"/);
   assert.match(markup, /allowfullscreen/);
   assert.match(markup, /بازکردن مستقیم تور/);
+});
+
+test("room pages resolve only explicitly associated and approved tenant scenes", () => {
+  const origins = ["https://tour.example.test"];
+  const catalog = [
+    { id: "vip-preview", tenantId: "damoon", url: "https://tour.example.test/t/hotel#s=vip-scene", roomSlugs: ["vip-suite", "vip"], approved: true, representation: "CONCEPTUAL_PREVIEW" },
+    { id: "standard-room", tenantId: "damoon", url: "https://tour.example.test/t/hotel#s=standard-scene", roomSlugs: ["standard-room", "single-room", "single"], approved: true },
+    { id: "studio-suite", tenantId: "damoon", url: "https://tour.example.test/t/hotel#s=studio-scene", roomSlugs: ["studio-suite", "fourth-floor-suite", "suite-3-bed", "bogus"], approved: true },
+    { id: "pending", tenantId: "damoon", url: "https://tour.example.test/t/hotel#s=pending-scene", roomSlugs: ["vip-suite"], approved: false },
+    { id: "different-hotel", tenantId: "other", url: "https://tour.example.test/t/other#s=other-scene", roomSlugs: ["vip-suite"], approved: true },
+    { id: "untrusted", tenantId: "damoon", url: "https://evil.test/t/hotel#s=vip-scene", roomSlugs: ["vip-suite"], approved: true },
+  ];
+  const tours = publishedDamoonTours(catalog, origins);
+  const idsFor = (slug) => tours.filter((tour) => tour.roomSlugs.includes(slug)).map(({ id }) => id);
+  assert.deepEqual(idsFor("vip-suite"), ["vip-preview"]);
+  assert.deepEqual(idsFor("standard-room"), ["standard-room"]);
+  assert.deepEqual(idsFor("studio-suite"), ["studio-suite"]);
+  assert.deepEqual(idsFor("vip"), ["vip-preview"]);
+  assert.deepEqual(idsFor("single-room"), ["standard-room"]);
+  assert.deepEqual(idsFor("single"), ["standard-room"]);
+  assert.deepEqual(idsFor("fourth-floor-suite"), ["studio-suite"]);
+  assert.deepEqual(idsFor("suite-3-bed"), ["studio-suite"]);
+  assert.deepEqual(idsFor("bogus"), []);
+  const [vip] = tours;
+  assert.equal(vip.url, "https://tour.example.test/t/hotel#s=vip-scene");
+  assert.equal(vip.representation, "CONCEPTUAL_PREVIEW");
 });
 
 test("homepage and concept gallery link visitors to the tour without calling concept imagery real", async () => {

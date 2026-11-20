@@ -28,11 +28,30 @@ export const site = {
   ],
 };
 
+export const accommodationCategories = [
+  { slug: "vip-suite", title: "سوئیت دو اتاقه VIP", description: "هتل ۷ سوئیت VIP دارد که هر کدام دو اتاق دارند.", image: "/damoon-front/assets/room-concept-2.webp" },
+  { slug: "standard-room", title: "اتاق استاندارد", description: "هتل ۱۷ واحد استاندارد تک‌اتاقه دارد.", image: "/damoon-front/assets/room-concept-1.webp" },
+  { slug: "studio-suite", title: "سوئیت استودیو", description: "هتل ۷ سوئیت استودیو با فضای یکپارچه دارد. این سوئیت‌ها اتاق خواب جداگانه ندارند.", image: "/damoon-front/assets/room-concept-3.webp" },
+];
+
 export const rooms = [
+  ...accommodationCategories,
   { slug: "single", title: "اتاق یک‌نفره", description: "گروه اتاق یک‌نفره؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-1.webp" },
   { slug: "double", title: "اتاق دونفره", description: "گروه اتاق دونفره؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-2.webp" },
   { slug: "suite", title: "سوئیت", description: "گروه سوئیت؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-3.webp" },
 ];
+
+const accommodationAliases = {
+  vip: "vip-suite",
+  "single-room": "standard-room",
+  "fourth-floor-suite": "studio-suite",
+  "suite-3-bed": "suite",
+  "suite-4-5-bed": "suite",
+};
+
+export const legacyAccommodationPaths = Object.fromEntries(
+  Object.entries(accommodationAliases).map(([alias, slug]) => [`/rooms/${alias}`, `/rooms/${slug}`]),
+);
 
 export const gallery = [
   { src: "/damoon-front/assets/architecture-concept.webp", alt: "تصویرسازی مفهومی معماری برای چیدمان صفحه" },
@@ -47,7 +66,7 @@ export const pages = {
   "/": {
     title: "اقامت و مهمان‌نوازی در شهرکرد",
     intro: "به هتل دامون خوش آمدید",
-    text: "هتل دامون در شهرکرد با ۳۱ واحد اقامتی، شامل ۲۰ اتاق و ۱۱ سوئیت، پذیرای مهمانان است. گروه‌های اقامتی را ببینید و برای برنامه‌ریزی سفر با پذیرش هماهنگ کنید.",
+    text: "هتل دامون در شهرکرد با ۳۱ واحد اقامتی پذیرای مهمانان است. گروه‌های اقامتی را ببینید و برای برنامه‌ریزی سفر با پذیرش هماهنگ کنید.",
     image: "/damoon-front/assets/architecture-concept.webp",
     actions: [["/rooms", "دیدن اتاق‌ها"], ["/contact", "تماس و هماهنگی"]],
     sections: [
@@ -60,8 +79,8 @@ export const pages = {
   "/rooms": {
     title: "اتاق‌ها و سوئیت‌ها",
     intro: "فضاهای اقامت",
-    text: "هتل دامون ۳۱ واحد اقامتی دارد: ۲۰ اتاق و ۱۱ سوئیت. نام گروه‌های اقامتی در این صفحه آمده است؛ ظرفیت دقیق، امکانات اختصاصی، نرخ و موجودی هر گروه نمایش داده نمی‌شوند.",
-    sections: rooms.map((room) => ({ heading: room.title, text: room.description, link: `/rooms/${room.slug}`, label: "جزئیات", image: room.image, note: "تصویر مفهومی؛ عکس واقعی اتاق نیست." })),
+    sections: accommodationSections("fa"),
+    text: "هتل دامون ۳۱ واحد اقامتی دارد. نام گروه‌های اقامتی در این صفحه آمده است؛ ظرفیت دقیق، امکانات اختصاصی، نرخ و موجودی هر گروه نمایش داده نمی‌شوند.",
   },
   "/attractions": {
     title: damoonAttractionsData.labels.fa.headline,
@@ -106,11 +125,11 @@ export const pages = {
   "/about": {
     title: "دربارهٔ هتل دامون",
     intro: "دربارهٔ هتل",
-    text: "هتل دامون در شهرکرد، با ۲۰ اتاق و ۱۱ سوئیت، در مجموع ۳۱ واحد اقامتی دارد. برای هماهنگی اقامت و پرسش دربارهٔ خدمات با پذیرش تماس بگیرید.",
+    text: "هتل دامون در شهرکرد ۳۱ واحد اقامتی دارد. برای هماهنگی اقامت و پرسش دربارهٔ خدمات با پذیرش تماس بگیرید.",
     actions: [["/contact", "تماس با هتل"]],
     sections: [
       { heading: "مهمان‌نوازی دامون", text: "دامون با رویکردی گرم، صمیمی و آرام، می‌خواهد مهمان در طول اقامت احساس آسودگی و خانهٔ دوم داشته باشد." },
-      { heading: "اقامت در دامون", text: "اتاق یک‌تخته، اتاق دوتخته و سوئیت‌های سه، چهار و پنج‌تخته در گروه‌های اقامتی سایت معرفی شده‌اند. برای ظرفیت دقیق، امکانات واحد و نرخ روز با پذیرش هماهنگ کنید.", link: "/rooms", label: "دیدن گروه‌های اقامتی" },
+      { heading: "اقامت در دامون", text: "سوئیت‌های دو اتاقه VIP، اتاق‌های استاندارد و سوئیت‌های استودیو را در بخش اقامت ببینید. برای ظرفیت دقیق، امکانات واحد و نرخ روز با پذیرش هماهنگ کنید.", link: "/rooms", label: "دیدن گروه‌های اقامتی" },
       { heading: "زمان ورود و خروج", text: "زمان ورود ساعت ۱۴:۰۰ و زمان خروج ساعت ۱۲:۰۰ است.", link: "/policies", label: "اطلاعات اقامت" },
     ],
   },
@@ -149,8 +168,7 @@ export function normalizePath(pathname) {
   let path = decodeURIComponent(pathname || "/").replace(/\/+$/, "") || "/";
   const prefix = path.match(/^\/(fa|en|ar)(?=\/|$)/)?.[1];
   if (prefix) path = path.slice(prefix.length + 1) || "/";
-  if (path === "/rooms/suite-3-bed" || path === "/rooms/suite-4-5-bed") path = "/rooms/suite";
-  return path;
+  return legacyAccommodationPaths[path] || path;
 }
 
 export function localeForPath(pathname) {
@@ -166,9 +184,22 @@ export function galleryForLocale(locale = "fa") {
 }
 
 export function roomForLocale(slug, locale = "fa") {
-  const original = rooms.find((item) => item.slug === slug);
+  const canonicalSlug = Object.hasOwn(accommodationAliases, slug) ? accommodationAliases[slug] : slug;
+  const original = rooms.find((item) => item.slug === canonicalSlug);
   if (!original || locale === "fa") return original;
-  return translations[locale]?.rooms?.[slug] ? { ...original, ...translations[locale].rooms[slug] } : original;
+  return translations[locale]?.rooms?.[canonicalSlug] ? { ...original, ...translations[locale].rooms[canonicalSlug] } : original;
+}
+
+export function roomForPath(path, locale = "fa") {
+  const slug = path.match(/^\/rooms\/([a-z0-9-]+)$/)?.[1];
+  return roomForLocale(slug, locale);
+}
+
+function accommodationSections(locale) {
+  return accommodationCategories.map(({ slug }) => {
+    const room = roomForLocale(slug, locale);
+    return { heading: room.title, text: room.description, link: `/rooms/${slug}`, image: room.image };
+  });
 }
 
 export function pageForPath(path, locale = "fa") {
@@ -183,31 +214,30 @@ export function pageForPath(path, locale = "fa") {
   if (source?.[path]) {
     const base = pages[path] || {};
     const localized = { ...base, ...source[path], path };
-    if (base.sections && localized.sections) {
+    if (path === "/rooms") {
+      localized.sections = locale === "fa" ? base.sections : accommodationSections(locale);
+    } else if (base.sections && localized.sections) {
       localized.sections = localized.sections.map((section, index) => ({ ...base.sections[index], ...section }));
     }
     return localized;
   }
-  const roomMatch = path.match(/^\/rooms\/([a-z0-9-]+)$/i);
-  if (roomMatch) {
-    const room = roomForLocale(roomMatch[1], locale);
-    if (room) return {
-      path,
-      title: room.title,
-      intro: room.title,
-      text: locale === "fa"
-        ? `${room.description} ظرفیت دقیق، امکانات اختصاصی، نرخ و موجودی را برای تاریخ سفر از پذیرش بپرسید.`
-        : `${room.description} ${translations[locale].roomDetails.textSuffix}`,
-      image: room.image,
-      imageNote: locale === "fa" ? "تصویر مفهومی؛ عکس واقعی اتاق نیست." : translations[locale].roomDetails.imageNote,
-      actions: [locale === "fa" ? ["/contact", "تماس برای هماهنگی"] : translations[locale].roomDetails.action],
-      sections: locale === "fa" ? [
-        { heading: "پیش از انتخاب", text: "عنوان این گروه به‌تنهایی جزئیات چیدمان، تخت‌ها یا امکانات داخل واحد را مشخص نمی‌کند. هنگام تماس، تعداد مهمانان و نیازهای خود را بگویید تا پذیرش گزینهٔ مناسب را بررسی کند.", link: "/contact", label: "گفت‌وگو با پذیرش" },
-        { heading: "زمان‌بندی اقامت", text: "ورود ساعت ۱۴:۰۰ و خروج ساعت ۱۲:۰۰ ظهر است. ظرفیت دقیق، نرخ و موجودی را برای تاریخ دلخواه از هتل بپرسید.", link: "/policies", label: "اطلاعات زمان ورود و خروج" },
-        { heading: "امکانات هتل", text: "برای اطلاع از امکانات در دسترس در این واحد، خدمات و ساعت فعالیت آن‌ها، از پذیرش سؤال کنید.", link: "/facilities", label: "مشاهدهٔ امکانات" },
-      ] : translations[locale].roomDetails.shared,
-    };
-  }
+  const room = roomForPath(path, locale);
+  if (room) return {
+    path,
+    title: room.title,
+    intro: room.title,
+    text: [room.description, locale === "fa"
+      ? "ظرفیت دقیق، امکانات اختصاصی، نرخ و موجودی را برای تاریخ سفر از پذیرش بپرسید."
+      : translations[locale].roomDetails.textSuffix].filter(Boolean).join(" "),
+    image: room.image,
+    imageNote: locale === "fa" ? "تصویر مفهومی؛ عکس واقعی اتاق نیست." : translations[locale].roomDetails.imageNote,
+    actions: [locale === "fa" ? ["/contact", "تماس برای هماهنگی"] : translations[locale].roomDetails.action],
+    sections: locale === "fa" ? [
+      { heading: "پیش از انتخاب", text: "عنوان این گروه به‌تنهایی جزئیات چیدمان، تخت‌ها یا امکانات داخل واحد را مشخص نمی‌کند. هنگام تماس، تعداد مهمانان و نیازهای خود را بگویید تا پذیرش گزینهٔ مناسب را بررسی کند.", link: "/contact", label: "گفت‌وگو با پذیرش" },
+      { heading: "زمان‌بندی اقامت", text: "ورود ساعت ۱۴:۰۰ و خروج ساعت ۱۲:۰۰ ظهر است. ظرفیت دقیق، نرخ و موجودی را برای تاریخ دلخواه از هتل بپرسید.", link: "/policies", label: "اطلاعات زمان ورود و خروج" },
+      { heading: "امکانات هتل", text: "برای اطلاع از امکانات در دسترس در این واحد، خدمات و ساعت فعالیت آن‌ها، از پذیرش سؤال کنید.", link: "/facilities", label: "مشاهدهٔ امکانات" },
+    ] : translations[locale].roomDetails.shared,
+  };
   return null;
 }
 

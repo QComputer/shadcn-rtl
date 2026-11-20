@@ -25,6 +25,7 @@ const PENDING_MIGRATIONS = [
   "20261114170000_hotel_offline_payment_audit",
   "20261120160000_hotel_reservation_occupancy",
 ] as const;
+const LATER_MIGRATIONS = ["20261121130000_hotel_guest_request_preferred_category"] as const;
 
 function assertDisposableDatabase(): string {
   const databaseUrl = process.env.DATABASE_URL;
@@ -61,9 +62,9 @@ async function makeTemporaryPreGapSchema(): Promise<{ directory: string; schemaP
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort();
-  assert.deepEqual(migrationNames.slice(-PENDING_MIGRATIONS.length), [...PENDING_MIGRATIONS]);
+  assert.deepEqual(migrationNames.slice(-(PENDING_MIGRATIONS.length + LATER_MIGRATIONS.length)), [...PENDING_MIGRATIONS, ...LATER_MIGRATIONS]);
 
-  for (const name of PENDING_MIGRATIONS) {
+  for (const name of [...PENDING_MIGRATIONS, ...LATER_MIGRATIONS]) {
     assert.ok(migrationNames.includes(name), `Expected pending migration ${name} is missing from source`);
     await rm(path.join(migrationsPath, name), { recursive: true, force: true });
   }
@@ -191,7 +192,7 @@ async function main(): Promise<void> {
     const beforeGapCount = await db.$queryRawUnsafe<Array<{ count: number }>>(
       `SELECT count(DISTINCT migration_name)::int AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL`,
     );
-    assert.equal(beforeGapCount[0]?.count, temporary.migrationNames.length - PENDING_MIGRATIONS.length);
+    assert.equal(beforeGapCount[0]?.count, temporary.migrationNames.length - PENDING_MIGRATIONS.length - LATER_MIGRATIONS.length);
     await seedExistingPropertyRows(db);
     await db.$disconnect();
     db = undefined;

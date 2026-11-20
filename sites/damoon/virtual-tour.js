@@ -1,5 +1,10 @@
 export const DAMOON_VTOUR_TENANT = "damoon";
 export const DAMOON_VTOUR_ALLOWED_ORIGINS = Object.freeze(["https://andarama.bazarbaaz.ir"]);
+const DAMOON_VTOUR_ROOM_SLUGS = new Set([
+  "vip-suite", "standard-room", "studio-suite",
+  "vip", "single-room", "fourth-floor-suite",
+  "single", "double", "suite", "suite-3-bed", "suite-4-5-bed",
+]);
 export const DAMOON_VTOUR_CATALOG = Object.freeze([
   {
     id: "test-damoon-hotel",
@@ -28,8 +33,10 @@ export function publishedDamoonTours(catalog = DAMOON_VTOUR_CATALOG, allowedOrig
     if (!tour || tour.tenantId !== DAMOON_VTOUR_TENANT || tour.approved !== true || typeof tour.id !== "string" || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(tour.id)) return [];
     const url = allowedVirtualTourUrl(tour.url, allowedOrigins);
     if (!url) return [];
-    const roomSlugs = Array.isArray(tour.roomSlugs) ? tour.roomSlugs.filter((slug) => ["single", "double", "suite"].includes(slug)) : [];
-    return [{ id: tour.id, url, roomSlugs }];
+    const roomSlugs = Array.isArray(tour.roomSlugs) ? tour.roomSlugs.filter((slug) => DAMOON_VTOUR_ROOM_SLUGS.has(slug)) : [];
+    const publishedTour = { id: tour.id, url, roomSlugs };
+    if (tour.representation === "CONCEPTUAL_PREVIEW") publishedTour.representation = tour.representation;
+    return [publishedTour];
   });
 }
 

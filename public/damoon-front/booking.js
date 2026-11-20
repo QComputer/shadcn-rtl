@@ -7,7 +7,7 @@ import {
   todayLocalISO,
   validateStayRange,
 } from "./calendar.js";
-import { localeForPath, normalizePath } from "./content.js";
+import { accommodationCategories, localeForPath, normalizePath, roomForPath } from "./content.js";
 import translations from "./translations.js";
 import {
   availableOptions,
@@ -94,7 +94,6 @@ export function readStaySelection() {
   return { range: { ...selection.range }, adults, children, childAges: Array.isArray(selection.childAges) ? [...selection.childAges] : null, guests: adults };
 }
 
-function routeRoomDetail() { return /^\/rooms\/(single|double|suite)$/.test(normalizePath(window.location.pathname)); }
 function shortStayDate(iso, locale) { return new Intl.DateTimeFormat(`${locale}-u-ca-persian`, { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "UTC" }).format(new Date(`${iso}T12:00:00Z`)); }
 function rangeSummary(range, locale) { const separator = locale === "fa" ? " تا " : locale === "ar" ? " إلى " : " – "; return `${jalaliAccessibleDay(range.checkIn, locale)}${separator}${jalaliAccessibleDay(range.checkOut, locale)}`; }
 
@@ -120,6 +119,12 @@ function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (cha
 
 export function mountBooking(slot, { routeHref = (path) => path, locale = localeForPath(window.location.pathname), coordinationOnly = true, requestOnly = false, reservationEntry = false } = {}) {
   if (!(slot instanceof Element)) return () => {};
+  const selectedRoom = roomForPath(normalizePath(window.location.pathname))?.slug;
+  const provisionalCategory = accommodationCategories.some(({ slug }) => slug === selectedRoom);
+  if (provisionalCategory) {
+    coordinationOnly = true;
+    requestOnly = false;
+  }
   const ui = { ...faUi, ...(translations[locale]?.ui || {}) };
   if (requestOnly) {
     ui.datePlanningOnly = locale === "fa" ? "این بخش فقط گزینه‌های فعلی را برای ارسال درخواست نشان می‌دهد؛ ثبت درخواست رزرو یا تثبیت قیمت نیست." : locale === "ar" ? "تعرض هذه الصفحة الخيارات الحالية لإرسال طلب فقط؛ إرسال الطلب لا يؤكد الحجز أو السعر." : "Current options are shown for a request only; submitting does not confirm a booking or price.";
@@ -155,13 +160,12 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   };
   const bookingIsValid = () => validateStayRange(range, today) === "OK";
 
-  if (!coordinationOnly && routeRoomDetail() && bookingIsValid()) {
+  if (selectedRoom && (!coordinationOnly || provisionalCategory) && bookingIsValid()) {
     const contactUrl = new URL(routeHref("/contact"), window.location.href);
     contactUrl.searchParams.set("checkIn", range.checkIn); contactUrl.searchParams.set("checkOut", range.checkOut);
     contactUrl.searchParams.set("adults", String(adults)); contactUrl.searchParams.set("children", String(children));
     if (childAges.length === children && children) contactUrl.searchParams.set("childAges", childAges.join(","));
-    const selectedRoom = normalizePath(window.location.pathname).match(/^\/rooms\/(single|double|suite)$/)?.[1];
-    if (selectedRoom) contactUrl.searchParams.set("room", selectedRoom);
+    contactUrl.searchParams.set("room", selectedRoom);
     slot.innerHTML = `<section class="booking-summary" aria-labelledby="booking-summary-title"><div class="booking-summary__details"><p class="booking-kicker">${escapeHtml(ui.bookingSummary)}</p><h2 id="booking-summary-title">${escapeHtml(rangeSummary(range, locale))}</h2><p>${escapeHtml(adultsCountLabel(adults, locale, ui))} · ${escapeHtml(ui.datePlanningOnly)}</p></div><a class="booking-submit" href="${escapeHtml(contactUrl.href)}">${escapeHtml(ui.contactForStay)}</a></section>`;
     persist();
     return () => {};
@@ -579,8 +583,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     persist();
     if (coordinationOnly) {
       const target = withStaySelection(new URL(routeHref("/contact"), window.location.href), { range, adults, children, childAges: validatedAges });
-      const room = normalizePath(window.location.pathname).match(/^\/rooms\/(single|double|suite)$/)?.[1];
-      if (room) target.searchParams.set("room", room);
+      if (selectedRoom) target.searchParams.set("room", selectedRoom);
       window.location.assign(target.href);
       return;
     }

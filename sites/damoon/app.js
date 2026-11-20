@@ -9,7 +9,7 @@ import translations from "./translations.js";
 import { palettes, readPalette, applyPalette } from "./themes.js";
 import { mountBooking, readStaySelection } from "./booking.js";
 import { parseChildAges, withStaySelection, guestPortalHref } from "./booking-flow.js";
-import { allowedVirtualTourUrl } from "./virtual-tour.js";
+import { publishedDamoonTours, tourViewerMarkup } from "./virtual-tour.js";
 
 const root = document.querySelector("#app");
 if (!root) throw new Error("Damoon app mount #app was not found");
@@ -148,22 +148,9 @@ function galleryGrid() {
   return `<section class="content-section"><div class="section-heading"><p class="eyebrow">${safeText(ui.referenceImages)}</p><h2>${safeText(ui.conceptGallery)}</h2><p>${safeText(locale === "fa" ? "این تصاویر برای نمایش ترکیب‌بندی هستند؛ هیچ‌کدام عکس واقعی هتل دامون نیستند." : locale === "ar" ? "هذه التصاميم لتوضيح التكوين؛ ولا تمثل صوراً حقيقية لفندق دامون." : "These images illustrate layout and are not actual photographs of Damoon Hotel.")}</p></div><div class="gallery-grid">${gallery.map((image, index) => `<button class="gallery-tile" type="button" data-gallery-index="${index}" aria-label="${safeText(`${ui.zoomConceptImage} ${index + 1}`)}"><img src="${safeText(image.src)}" alt="${safeText(image.alt)}" loading="lazy"><span>${safeText(ui.conceptImage)}</span></button>`).join("")}</div></section>`;
 }
 
-function virtualTourUrl() {
-  try {
-    const fromQuery = new URLSearchParams(location.search).get("tour");
-    const allowedQuery = allowedVirtualTourUrl(fromQuery);
-    if (allowedQuery) return allowedQuery;
-    const stored = localStorage.getItem("damoon-vtour-url");
-    const allowedStored = allowedVirtualTourUrl(stored);
-    if (allowedStored) return allowedStored;
-  } catch { /* ignore */ }
-  return allowedVirtualTourUrl(window.DAMOON_VTOUR_URL);
-}
 function virtualTourSection() {
-  const url = virtualTourUrl();
-  if (url) {
-    return `<section class="content-section"><div class="section-heading"><p class="eyebrow">${safeText(ui.virtualTour)}</p><h2>${safeText(ui.virtualTour)}</h2></div><div style="position:relative;padding-top:56.25%;background:#000;border-radius:12px;overflow:hidden"><iframe src="${safeText(url)}" title="${safeText(ui.virtualTour)}" loading="lazy" allow="fullscreen; xr-spatial-tracking" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:0"></iframe></div><p><a class="text-link" href="${safeText(url)}" target="_blank" rel="noopener noreferrer">${safeText(locale === "fa" ? "مشاهدهٔ مستقیم تور" : locale === "ar" ? "عرض Tour مباشرة" : "Open tour directly")} ↗</a></p></section>`;
-  }
+  const tours = publishedDamoonTours();
+  if (tours.length) return `<section class="content-section"><div class="section-heading"><p class="eyebrow">${safeText(ui.virtualTour)}</p><h2>${safeText(ui.virtualTour)}</h2></div>${tours.map((tour) => tourViewerMarkup(tour, `${ui.virtualTour} · ${tour.id}`)).join("")}</section>`;
   return `<section class="content-section"><div class="section-heading"><p class="eyebrow">${safeText(ui.virtualTour)}</p><h2>${safeText(ui.virtualTour)}</h2></div><p>${safeText(locale === "fa" ? "نمایش آنلاین تور مجازی در حال آماده‌سازی است. برای هماهنگی با پذیرش تماس بگیرید." : locale === "ar" ? "عرض Tour الافتراضي قيد الإعداد." : "Online virtual tour display is being prepared.")}</p><div class="page-hero__actions">${link("/contact", ui.contactHotel, "button button--primary")}</div></section>`;
 }
 function render() {

@@ -25,7 +25,12 @@ const PENDING_MIGRATIONS = [
   "20261114170000_hotel_offline_payment_audit",
   "20261120160000_hotel_reservation_occupancy",
 ] as const;
-const LATER_MIGRATIONS = ["20261121130000_hotel_guest_request_preferred_category"] as const;
+// Later migrations are excluded from the historical checkpoint but applied by
+// the final deployment, so their ordering and compatibility are rehearsed too.
+const LATER_MIGRATIONS = [
+  "20261121120000_hotel_draft_accommodations",
+  "20261121130000_hotel_guest_request_preferred_category",
+] as const;
 
 function assertDisposableDatabase(): string {
   const databaseUrl = process.env.DATABASE_URL;

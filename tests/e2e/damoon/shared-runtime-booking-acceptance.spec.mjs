@@ -181,7 +181,7 @@ test('shared accommodation tour preserves category and stay across locales and v
         await page.route('https://andarama.bazarbaaz.ir/**', route => route.fulfill({status:200, contentType:'text/html', body:'<title>Conceptual tour fixture</title>'}));
         const query = new URLSearchParams({checkIn,checkOut,adults:'2',guests:'2',children:'0'});
         await page.goto(new URL(`${locale}/rooms/studio-suite?${query}`, sharedUrl).href, {waitUntil:'domcontentloaded'});
-        await page.locator('.accommodation-coordination a[href*="/virtual-tour"]').click();
+        await page.locator('.accommodation-gallery a[href*="/virtual-tour"]').click();
         await page.waitForURL('**/virtual-tour?**');
         assert.equal(new URL(page.url()).searchParams.get('room'), 'studio-suite');
         assert.equal(new URL(page.url()).searchParams.get('checkIn'), checkIn);
@@ -190,6 +190,8 @@ test('shared accommodation tour preserves category and stay across locales and v
         await page.locator('a[href*="/rooms/studio-suite"]').first().click();
         await page.waitForURL('**/rooms/studio-suite?**');
         assert.equal(new URL(page.url()).searchParams.get('checkIn'), checkIn);
+        await page.goto(new URL(`${locale}/contact?room=studio-suite&${query}`, sharedUrl).href, {waitUntil:'domcontentloaded'});
+        await expect(page.locator('[data-coordination-request]')).toBeVisible();
         await page.close();
       }
     }

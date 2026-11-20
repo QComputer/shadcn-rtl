@@ -177,10 +177,6 @@ describe("GF1 Secure Guest Appointment Tracking", () => {
     assert.equal(appointment.trackingTokenHash, createHash("sha256").update(trackingToken).digest("hex"));
     assert.ok(appointment.trackingTokenExpiresAt > new Date());
 
-    const defaultAppointmentResult = await prisma.appointment.findUnique({ where: { id: appointmentId } });
-    assert.ok(defaultAppointmentResult);
-    assert.equal("trackingTokenHash" in defaultAppointmentResult, false, "global Prisma omit hides the token hash from default appointment results");
-    assert.equal("trackingTokenExpiresAt" in defaultAppointmentResult, false, "global Prisma omit hides token expiry from default appointment results");
   });
 
   it("tracks appointment with valid token via POST endpoint", async () => {

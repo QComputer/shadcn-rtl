@@ -129,7 +129,7 @@ const hotelGuestRequestFields = z.object({
 
 export const hotelGuestBookingRequestSchema = z.union([
   hotelGuestRequestFields.extend({
-    kind: z.never().optional(),
+    kind: z.undefined().optional(),
     roomType: roomTypeSlugSchema,
     ratePlan: z.string().min(1).max(64),
   }),

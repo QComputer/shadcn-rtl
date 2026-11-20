@@ -429,6 +429,8 @@
     "minutes": "دقائق",
     "hour": "ساعة",
     "bookingConfirmed": "تم تأكيد الحجز",
+    "trackingCredentialTitle": "بيانات التتبع الآمنة",
+    "trackingCredentialSave": "احفظ هذه البيانات الآن؛ ستظهر مرة واحدة فقط.",
     "bookingDetails": "تفاصيل الحجز",
     "appointmentNumber": "رقم الموعد",
     "thankYou": "شكراً لحجزك",

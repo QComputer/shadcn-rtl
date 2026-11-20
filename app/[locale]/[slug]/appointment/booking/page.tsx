@@ -127,6 +127,7 @@ export default function BookingPage({
   
   // Booking result
   const [bookingSuccess, setBookingSuccess] = useState(false)
+  const [trackingCredential, setTrackingCredential] = useState<string | null>(null)
   const [bookingError, setBookingError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -228,6 +229,8 @@ export default function BookingPage({
         throw new Error(errorData.error || "Failed to book appointment")
       }
 
+      const result = await response.json()
+      setTrackingCredential(typeof result.trackingToken === "string" ? result.trackingToken : null)
       setBookingSuccess(true)
     } catch (err) {
       setBookingError(err instanceof Error ? err.message : "Booking failed")
@@ -285,6 +288,14 @@ export default function BookingPage({
               </div>
               <h1 className="text-2xl font-bold mb-2">{t("appointment.bookingConfirmed")}</h1>
               <p className="text-muted-foreground mb-6">{t("appointment.thankYou")}</p>
+
+              {trackingCredential && (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-left mb-6">
+                  <p className="font-medium mb-2">{t("appointment.trackingCredentialTitle")}</p>
+                  <p className="text-sm text-muted-foreground mb-3">{t("appointment.trackingCredentialSave")}</p>
+                  <code className="block break-all rounded bg-background p-3 font-mono text-sm" dir="ltr">{trackingCredential}</code>
+                </div>
+              )}
               
               <div className="bg-muted rounded-lg p-4 text-right mb-6">
                 <p className="font-medium">سرویس: {selectedService?.name}</p>

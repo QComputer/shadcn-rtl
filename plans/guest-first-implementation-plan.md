@@ -127,23 +127,25 @@ Remove unauthorized private-data disclosure in public appointment lookup. Requir
 #### Modified Lookup Endpoint
 ```typescript
 // POST /api/public/appointments/lookup
-// Body: { bookingReference?, phone? }
-// Returns: { trackingToken }  // ALWAYS opaque token, never full details
+// Body: { bookingReference?, phone?, otpCode?, organizationSlug }
+// Returns: Generic message — NEVER returns appointment details or tokens
 
-// If bookingReference provided + valid → return token for that appointment
-// If phone provided → return token ONLY if phone matches appointment
-//    AND rate-limited, audit-logged, anti-enumeration
-// NEVER return appointment details in lookup response
+// Phone-only → generic anti-enumeration response: "If an appointment exists for this phone number, tracking information has been sent."
+// Booking reference only → prompts for OTP: "To access appointment details, please verify your phone number with the OTP sent to you."
+// Booking reference + phone + OTP → verifies ownership, then sends tracking info via secure channel (SMS/email)
+// NEVER returns appointment details, tokens, or PII in lookup response
 ```
 
 #### New Tracking Endpoint
 ```typescript
-// GET /api/public/appointments/track/[token]
+// POST /api/public/appointments/track
+// Body: { token }
 // Returns: { appointmentDetails }  // ONLY with valid tracking token
 
-// Tracking token issued at booking (guest) or via verified lookup
-// Token: cryptographically random, 32+ bytes, single-use per appointment
-// Rate-limited, audit-logged
+// Tracking token issued at appointment creation (guest booking)
+// Token: cryptographically random, 32+ bytes (256-bit), SHA-256 hashed for storage
+// 90-day expiry, audit-logged
+// Security headers: Cache-Control: no-store, Referrer-Policy: no-referrer
 ```
 
 #### Verified Ownership for Mutations
@@ -156,22 +158,27 @@ Remove unauthorized private-data disclosure in public appointment lookup. Requir
 #### Negative Tests (Mandatory)
 | Test | Expected Result |
 |------|-----------------|
-| Phone-only lookup for non-existent phone | Generic "if exists, token sent" response (anti-enumeration) |
-| Phone-only lookup enumerating many phones | Rate-limited, audit-logged, no data leakage |
-| Booking reference guessing (sequential) | 404/429, no information disclosure |
-| Cross-tenant appointment access via token | 403, audit-logged |
-| PII in lookup response (name, service, time) | Never present — only opaque token |
+| Phone-only lookup for non-existent phone | Generic "if exists, tracking sent" response (anti-enumeration) |
+| Phone-only lookup enumerating many phones | Rate-limited (10/min/IP), audit-logged, no data leakage |
+| Booking reference guessing (sequential) | Generic prompt for OTP, no information disclosure |
+| Cross-tenant appointment access via token | 404 (not found), audit-logged |
+| PII in lookup response (name, service, time) | Never present — only generic messages |
+| Valid token via POST /track returns details | Appointment details with security headers |
+| Expired/revoked/malformed token | 404/410, no information disclosure |
+| Unauthorized cancel/reschedule | 403/401, requires ownership proof |
 
 ### Acceptance Criteria
 | ID | Criterion | Evidence |
 |----|-----------|----------|
-| GF1-1 | Phone-only lookup returns only opaque token | `IMPLEMENTED_IN_SOURCE` + `TESTED_LOCALLY` |
-| GF1-2 | Full details require valid tracking token | `TESTED_LOCALLY` |
-| GF1-3 | Booking reference + phone OTP enables cancel/reschedule | `TESTED_LOCALLY` |
+| GF1-1 | Phone-only lookup returns generic message (no PII) | `IMPLEMENTED_IN_SOURCE` + `TESTED_LOCALLY` |
+| GF1-2 | Full details require valid tracking token via POST /track | `TESTED_LOCALLY` |
+| GF1-3 | Booking reference + phone OTP enables secure tracking | `TESTED_LOCALLY` |
 | GF1-4 | Negative tests pass (enumeration, guessing, cross-tenant, PII) | `TESTED_LOCALLY` |
 | GF1-5 | Rate limiting and audit logging on lookup | `IMPLEMENTED_IN_SOURCE` |
 | GF1-6 | Existing guest booking flow unchanged | `TESTED_LOCALLY` (regression) |
 | GF1-7 | Tenant isolation verified | `TESTED_LOCALLY` (negative test) |
+| GF1-8 | Tracking token issued at creation, 256-bit, SHA-256 hashed | `IMPLEMENTED_IN_SOURCE` |
+| GF1-9 | Security headers on tracking endpoint | `IMPLEMENTED_IN_SOURCE` |
 
 ### Feature Flags
 - `SECURE_APPOINTMENT_LOOKUP_ENABLED` (default: `false`) — controls GF1 rollout

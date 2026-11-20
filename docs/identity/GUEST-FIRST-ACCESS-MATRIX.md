@@ -54,7 +54,7 @@
 |--------|---------|-------------------|---------------------|-----------------|--------------|----------------|--------|-----|----------|----------|
 | Add to cart (SHOP) | ❌ | ✅ Session-based `GuestCart` | ✅ User cart | Session cookie | Per SHOP org | `lib/services/cart.service.ts` (auth only), `lib/services/guest-cart.service.ts` (planned) | Guest cart via session | Cart requires auth | P0 | `PLANNED` (see `plans/shop-implementation-roadmap.md` Phase 3) |
 | Cart persistence across pages | ❌ | ✅ 7-day session expiry | ✅ Persistent | Session cookie / User ID | Per SHOP org | Planned | Guest cart survives navigation | Missing | P0 | `PLANNED` |
-| Guest checkout (SHOP) | ❌ | ✅ `GuestCustomer` + order | ✅ User + order | Phone + order token | Per SHOP org | `lib/services/order.service.ts` (auth only), guest checkout planned | Guest checkout creates `GuestCustomer` | Requires auth | P0 | `PLANNED` (see `plans/shop-implementation-roadmap.md` Phase 4) |
+| Guest checkout (SHOP) | ❌ | ✅ `GuestCustomer` + order | ✅ User + order | Phone + order token | Per SHOP org | `lib/services/order.service.ts` → `createForGuest()` | Guest checkout creates `GuestCustomer` + order | Cart merge, UX, payment flow | P0 | `IMPLEMENTED_IN_SOURCE` (core), `PLANNED` (merge/UX/payment) |
 | Cart merge on login | ❌ | N/A | ✅ Merge guest→user | Authenticated session | Per SHOP org | Planned in `guest-cart.service.ts` | Automatic merge | Missing | P1 | `PLANNED` |
 
 ### 5. Order Status and Order Changes

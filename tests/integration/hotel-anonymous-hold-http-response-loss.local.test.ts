@@ -5,6 +5,11 @@ import { prisma } from "@/lib/db-runtime";
 import { resourceRevision, approveHotelPublication } from "@/lib/hotel/services/hotel-publication.service";
 import { searchPublishedHotelAvailability } from "@/lib/hotel/services/public-availability.service";
 import { POST } from "@/app/api/hotel/v1/holds/route";
+import { POST as createReservation } from "@/app/api/hotel/v1/reservations/route";
+import { POST as reservationStatus } from "@/app/api/hotel/v1/reservations/status/route";
+import { POST as cancelReservation } from "@/app/api/hotel/v1/reservations/cancel/route";
+import { POST as initiateSandboxPayment } from "@/app/api/hotel/v1/sandbox-payments/route";
+import { POST as verifySandboxPayment } from "@/app/api/hotel/v1/sandbox-payments/verify/route";
 
 const EXPECTED_DB = "bazarbaaz_h3d3p1_tx_verify";
 const host = "h3d3p1-http.local";
@@ -17,13 +22,16 @@ let ratePlanId = "";
 let policyId = "";
 let adminId = "";
 const key = `http-response-loss-${Date.now()}`;
-const payload = { property: "approved-hotel", roomType: "standard", ratePlan: "flex", checkIn, checkOut, occupancy: { adults: 2, children: 0 }, guests: [{ fullName: "Synthetic Guest", isPrimary: true }], contact: { fullName: "Synthetic Guest", phone: "09120000000" }, acceptedCancellationPolicyKey: "flex" };
+const payload = { property: "approved-hotel", roomType: "standard", ratePlan: "flex", checkIn, checkOut, occupancy: { adults: 2, children: 0 }, guests: [{ fullName: "Synthetic Guest", isPrimary: true }], contact: { fullName: "Synthetic Guest", phone: "09120000000" }, acceptedCancellationPolicyKey: "flex", acceptedCancellationPolicyVersion: 1, acceptedTotalRate: "260000", acceptedCurrency: "TOMAN" };
 const request = () => new NextRequest(`https://${host}/api/hotel/v1/holds`, { method: "POST", headers: { host, "content-type": "application/json", "idempotency-key": key }, body: JSON.stringify(payload) });
 
 before(async () => {
   process.env.AI_MEDIA_APPLICATION_STORAGE_ADAPTER = "local-test";
   process.env.HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED = "1";
-  const identity = await prisma.$queryRaw<Array<{ db: string }>>`SELECT current_database() AS db`;
+  process.env.HOTEL_ANONYMOUS_RESERVATION_OPERATIONAL_ENABLED = "1";
+  process.env.HOTEL_PAYMENT_SIMULATOR_ENABLED = "1";
+  process.env.HOTEL_SANDBOX_PAYMENT_SECRET = "disposable-damoon-sandbox-payment-secret-32";
+  const identity = await prisma.$queryRaw<Array<{ db: string }>>`SELECT current_database()::text AS db`;
   assert.equal(identity[0]?.db, EXPECTED_DB);
   const organization = await prisma.organization.create({ data: { name: `H3D3P1 HTTP ${Date.now()}`, slug: `h3d3p1-http-${Date.now()}`, type: "SHOP", vertical: "HOTEL" } }); organizationId = organization.id;
   const admin = await prisma.user.create({ data: { name: `h3d3p1-http-admin-${Date.now()}`, password: "synthetic", role: "ADMIN" } }); adminId = admin.id;
@@ -44,16 +52,17 @@ before(async () => {
 after(async () => {
   if (!organizationId) return;
   await prisma.$executeRaw`DELETE FROM "HotelBookingHoldIdempotency" WHERE "organizationId"=${organizationId}`;
-  await prisma.hotelBookingHold.deleteMany({ where: { organizationId } }); await prisma.hotelInventory.deleteMany({ where: { organizationId } }); await prisma.hotelNightlyRate.deleteMany({ where: { organizationId } }); await prisma.hotelRatePlan.deleteMany({ where: { organizationId } }); await prisma.hotelCancellationPolicy.deleteMany({ where: { organizationId } }); await prisma.hotelRoomType.deleteMany({ where: { organizationId } }); await prisma.hotelProperty.deleteMany({ where: { organizationId } }); await prisma.organizationDomain.deleteMany({ where: { organizationId } }); await prisma.organizationCapability.deleteMany({ where: { organizationId } }); await prisma.organizationMember.deleteMany({ where: { organizationId } }); await prisma.user.deleteMany({ where: { id: adminId } }); await prisma.organization.delete({ where: { id: organizationId } }); delete process.env.HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED; await prisma.$disconnect();
+  await prisma.hotelPaymentAllocation.deleteMany({ where: { organizationId } }); await prisma.paymentRequest.deleteMany({ where: { organizationId } }); await prisma.hotelReservation.deleteMany({ where: { organizationId } }); await prisma.customerIdentity.deleteMany({ where: { organizationId } });
+  await prisma.hotelBookingHold.deleteMany({ where: { organizationId } }); await prisma.hotelInventory.deleteMany({ where: { organizationId } }); await prisma.hotelNightlyRate.deleteMany({ where: { organizationId } }); await prisma.hotelRatePlan.deleteMany({ where: { organizationId } }); await prisma.hotelCancellationPolicy.deleteMany({ where: { organizationId } }); await prisma.hotelRoomType.deleteMany({ where: { organizationId } }); await prisma.hotelProperty.deleteMany({ where: { organizationId } }); await prisma.organizationDomain.deleteMany({ where: { organizationId } }); await prisma.organizationCapability.deleteMany({ where: { organizationId } }); await prisma.organizationMember.deleteMany({ where: { organizationId } }); await prisma.user.deleteMany({ where: { id: adminId } }); await prisma.organization.delete({ where: { id: organizationId } }); delete process.env.HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED; delete process.env.HOTEL_ANONYMOUS_RESERVATION_OPERATIONAL_ENABLED; delete process.env.HOTEL_PAYMENT_SIMULATOR_ENABLED; delete process.env.HOTEL_SANDBOX_PAYMENT_SECRET; await prisma.$disconnect();
 });
 
-test("recovers a committed hold through the real HTTP handler after response loss", async () => {
+test("completes account-less booking through server-verified sandbox payment on disposable PostgreSQL", async () => {
   const first = await POST(request());
   if (first.status !== 201) {
     const diagnostic = await searchPublishedHotelAvailability(host, { property: "approved-hotel", checkIn, checkOut, occupancy: { adults: 2, children: 0 }, roomTypes: ["standard"], ratePlan: "flex" }, undefined, prisma);
     throw new Error(`first HTTP hold failed: ${await first.text()} property=${diagnostic?.property.id ?? "none"} options=${diagnostic?.options.length ?? -1} rejected=${JSON.stringify(diagnostic?.rejected ?? [])}`);
   }
-  const firstBody = await first.json() as { holdId: string; reference: string; expiresAt: string; totalRate: string };
+  const firstBody = await first.json() as { holdId: string; idempotencyKey: string; reference: string; expiresAt: string; totalRate: string };
   const second = await POST(request());
   assert.equal(second.status, 200);
   const secondBody = await second.json() as typeof firstBody;
@@ -62,5 +71,31 @@ test("recovers a committed hold through the real HTTP handler after response los
   assert.equal(await prisma.$queryRaw<Array<{ count: bigint }>>`SELECT COUNT(*)::bigint AS count FROM "HotelBookingHoldIdempotency" WHERE "organizationId"=${organizationId} AND "operationScope"='ANONYMOUS_HOLD' AND "idempotencyKey"=${key} AND "status"='COMPLETED'`.then((rows) => Number(rows[0].count)), 1);
   const inventory = await prisma.hotelInventory.findMany({ where: { organizationId, propertyId, roomTypeId }, orderBy: { date: "asc" } });
   assert.deepEqual(inventory.map((row) => row.held), [1, 1]);
-  assert.equal(await prisma.hotelReservation.count({ where: { organizationId } }), 0);
+  const reservationResponse = await createReservation(new NextRequest(`https://${host}/api/hotel/v1/reservations`, { method: "POST", headers: { host, "content-type": "application/json" }, body: JSON.stringify({ ...payload, idempotencyKey: key, holdId: firstBody.holdId, holdIdempotencyKey: key }) }));
+  assert.equal(reservationResponse.status, 201, await reservationResponse.clone().text());
+  const reservation = await reservationResponse.json() as { reference: string; status: string; paymentStatus: string; totalAmount: string };
+  assert.equal(reservation.status, "PENDING_PAYMENT");
+  assert.equal(reservation.paymentStatus, "UNPAID");
+  assert.equal(reservation.totalAmount, "260000");
+  const started = await initiateSandboxPayment(new NextRequest(`https://${host}/api/hotel/v1/sandbox-payments`, { method: "POST", headers: { host, "content-type": "application/json" }, body: JSON.stringify({ reference: reservation.reference, contactPhone: payload.contact.phone, idempotencyKey: `sandbox-${key}` }) }));
+  assert.equal(started.status, 201, await started.clone().text());
+  const ticket = (await started.json() as { ticket: string }).ticket;
+  const verified = await verifySandboxPayment(new NextRequest(`https://${host}/api/hotel/v1/sandbox-payments/verify`, { method: "POST", headers: { host, "content-type": "application/json" }, body: JSON.stringify({ ticket }) }));
+  assert.equal(verified.status, 200, await verified.clone().text());
+  assert.deepEqual(await verified.json(), { paymentStatus: "PAID", reservationStatus: "PENDING_PAYMENT", receptionConfirmationRequired: true, simulated: true, idempotentReplay: false });
+  const replay = await verifySandboxPayment(new NextRequest(`https://${host}/api/hotel/v1/sandbox-payments/verify`, { method: "POST", headers: { host, "content-type": "application/json" }, body: JSON.stringify({ ticket }) }));
+  assert.equal(replay.status, 200, await replay.clone().text());
+  assert.equal((await replay.json() as { idempotentReplay: boolean }).idempotentReplay, true);
+  const saved = await prisma.hotelReservation.findFirstOrThrow({ where: { organizationId, reference: reservation.reference } });
+  assert.equal(saved.status, "PENDING_PAYMENT", "sandbox payment must not bypass reception confirmation");
+  assert.equal(saved.adults, 2);
+  assert.equal(saved.children, 0);
+  assert.deepEqual(saved.childAges, []);
+  assert.equal(saved.paidAmount, BigInt(260000));
+  assert.equal(await prisma.hotelPaymentAllocation.count({ where: { organizationId, hotelReservationId: saved.id } }), 1);
+  const status = await reservationStatus(new NextRequest(`https://${host}/api/hotel/v1/reservations/status`, { method: "POST", headers: { host, "content-type": "application/json" }, body: JSON.stringify({ reference: reservation.reference, contactPhone: payload.contact.phone }) }));
+  assert.equal(status.status, 200);
+  assert.equal((await status.json() as { paymentStatus: string }).paymentStatus, "PAID");
+  const cancelled = await cancelReservation(new NextRequest(`https://${host}/api/hotel/v1/reservations/cancel`, { method: "POST", headers: { host, "content-type": "application/json" }, body: JSON.stringify({ reference: reservation.reference, contactPhone: payload.contact.phone }) }));
+  assert.equal(cancelled.status, 409, "paid reservations must stay in the reception cancellation workflow");
 });

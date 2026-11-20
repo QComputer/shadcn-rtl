@@ -5754,6 +5754,9 @@ model HotelReservation {
   checkIn        DateTime @db.Date
   /// EXCLUSIVE: the checkout day is not an occupied night.
   checkOut       DateTime @db.Date
+  adults         Int?
+  children       Int?
+  childAges      Int[]    @default([])
   currency       String   @default("TOMAN")
   totalAmount    BigInt
   paidAmount     BigInt   @default(0)

@@ -16,6 +16,7 @@ const MIGRATIONS = [
   "20261114150000_hotel_reservation_payment_policy",
   "20261114160000_hotel_pending_payment_deadline",
   "20261114170000_hotel_offline_payment_audit",
+  "20261120160000_hotel_reservation_occupancy",
 ] as const;
 
 function loopbackDatabaseUrl(): URL {
@@ -155,10 +156,10 @@ async function main(): Promise<void> {
     await writeFile(path.join(baselineDirectory, "migration.sql"), "-- Test-only marker for the pre-gap Production table-shape fixture.\n");
     const actualMigrationDirectories = (await readdir(migrationsDir, { withFileTypes: true }))
       .filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
-    assert.deepEqual(actualMigrationDirectories, [BASELINE_MIGRATION, ...MIGRATIONS], "Only the test-only baseline marker and five reviewed migrations may run in this shape rehearsal");
+      assert.deepEqual(actualMigrationDirectories, [BASELINE_MIGRATION, ...MIGRATIONS], "Only the test-only baseline marker and six reviewed migrations may run in this shape rehearsal");
 
     const temporarySchemaPath = path.join(prismaDir, "schema.prisma");
-    console.log("Marking the populated disposable Production-shape schema at the pre-gap checkpoint, then applying exactly the five pending Hotel migrations.");
+    console.log("Marking the populated disposable Production-shape schema at the pre-gap checkpoint, then applying exactly the six pending Hotel migrations.");
     runPrisma(temporarySchemaPath, url, ["migrate", "resolve", "--applied", BASELINE_MIGRATION]);
     runPrisma(temporarySchemaPath, url, ["migrate", "deploy"]);
 

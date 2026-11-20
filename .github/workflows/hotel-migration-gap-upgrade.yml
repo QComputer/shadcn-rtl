@@ -65,7 +65,7 @@ jobs:
           pnpm exec prisma generate
       - name: Validate the non-bookable 31-unit draft reconciliation manifest
         run: node scripts/hotel/validate-damoon-room-reconciliation.mjs --plan
-      - name: Rehearse the five pending migrations and tenant-scoped property update
+      - name: Rehearse the six pending migrations and tenant-scoped property update
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs scripts/db/validate-hotel-migration-gap-upgrade.ts
-      - name: Rehearse five migrations against the sanitized current Production Hotel table shape
+      - name: Rehearse six migrations against the sanitized current Production Hotel table shape
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs scripts/db/validate-hotel-production-shape-migrations.ts

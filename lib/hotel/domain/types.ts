@@ -280,6 +280,8 @@ export type ReservationGuest = {
   readonly isPrimary: boolean
   readonly isChild?: boolean
   readonly age?: number
+  /** Tenant-scoped SHA-256; raw contact details are never copied to the reservation guest row. */
+  readonly phoneHash?: string
 }
 
 export type ReservationStatus =

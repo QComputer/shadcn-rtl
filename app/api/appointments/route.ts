@@ -95,8 +95,8 @@ export async function POST(request: NextRequest) {
     const data = createAppointmentSchema.parse(body);
 
     if (session?.user?.id) {
-      const appointment = await appointmentService.create(session.user.id, data);
-      return NextResponse.json(appointment, { status: 201 });
+      const result = await appointmentService.create(session.user.id, data);
+      return NextResponse.json(result.appointment, { status: 201 });
     }
 
     if (!data.customerName || !data.customerPhone) {

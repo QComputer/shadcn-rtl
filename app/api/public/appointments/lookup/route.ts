@@ -50,22 +50,8 @@ export async function POST(request: NextRequest) {
 
     // Case 2: Booking reference + OTP verification
     if (bookingReference && otpCode && phone) {
-      // Verify OTP for the phone number
-      try {
-        await customerPhoneAuthService.consume({
-          otp: otpCode,
-          phone,
-          organizationId: organization.id,
-          origin: request.headers.get("origin") || request.headers.get("referer") || "",
-        });
-      } catch {
-        return NextResponse.json(
-          { error: "Invalid or expired verification code" },
-          { status: 400 }
-        );
-      }
-
-      // Find appointment by booking reference and verify it belongs to this organization
+      // First, find appointment by booking reference and verify it belongs to this organization
+      // Also check that the provided phone matches the appointment's contact info
       const appointment = await prisma.appointment.findFirst({
         where: {
           bookingReference,
@@ -78,10 +64,59 @@ export async function POST(request: NextRequest) {
           id: true,
           trackingTokenHash: true,
           trackingTokenExpiresAt: true,
+          customerPhoneAtBooking: true,
+          customer: {
+            select: { phone: true },
+          },
+          guestCustomer: {
+            select: { phone: true },
+          },
         },
       });
 
-      if (!appointment || !appointment.trackingTokenHash || !appointment.trackingTokenExpiresAt) {
+      if (!appointment) {
+        // Generic response - don't reveal if appointment exists
+        return NextResponse.json({
+          message: "If the booking reference is valid and verified, tracking information has been sent."
+        });
+      }
+
+      // Verify the provided phone matches the appointment's contact info
+      const normalizedPhone = phone.replace(/^\+?98|^00?98/, "0");
+      const appointmentPhones = [
+        appointment.customerPhoneAtBooking,
+        appointment.customer?.phone,
+        appointment.guestCustomer?.phone,
+      ].filter(Boolean).map(p => p!.replace(/^\+?98|^00?98/, "0"));
+
+      const phoneMatches = appointmentPhones.some(p => p === normalizedPhone);
+
+      if (!phoneMatches) {
+        // Phone doesn't match appointment - generic response to prevent enumeration
+        return NextResponse.json({
+          message: "If the booking reference is valid and verified, tracking information has been sent."
+        });
+      }
+
+      // Phone matches - verify OTP for ownership confirmation
+      // Note: customerPhoneAuthService.consume() may create user accounts/memberships.
+      // This is a known limitation; for production use, a dedicated appointment-ownership
+      // verification flow without side effects should be implemented (GF2+).
+      try {
+        await customerPhoneAuthService.consume({
+          otp: otpCode,
+          phone: normalizedPhone,
+          organizationId: organization.id,
+          origin: request.headers.get("origin") || request.headers.get("referer") || "",
+        });
+      } catch {
+        return NextResponse.json(
+          { error: "Invalid or expired verification code" },
+          { status: 400 }
+        );
+      }
+
+      if (!appointment.trackingTokenHash || !appointment.trackingTokenExpiresAt) {
         // Generic response - don't reveal if appointment exists
         return NextResponse.json({
           message: "If the booking reference is valid and verified, tracking information has been sent."

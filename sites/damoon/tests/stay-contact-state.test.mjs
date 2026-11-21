@@ -152,7 +152,7 @@ test("standalone and shared Damoon bundles preserve localized contact party deta
         await freshPage.goto(contactUrl.href, { waitUntil: "networkidle" });
         assert.equal(await freshPage.evaluate(() => sessionStorage.length), 0);
         assert.equal(await freshPage.locator("html").getAttribute("lang"), expected.locale);
-        const summary = freshPage.locator(".hospitality-stay-context");
+        const summary = freshPage.locator(".hospitality-stay-context").first();
         await summary.waitFor({ state: "visible" });
         const text = await summary.innerText();
         assert.match(text, new RegExp(expected.adults), `${runtime.name} ${expected.locale} adults summary`);

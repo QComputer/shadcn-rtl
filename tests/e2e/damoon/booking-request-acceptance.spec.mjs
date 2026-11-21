@@ -743,6 +743,13 @@ test('inventory-free request reaches reception and tracks without creating a boo
     await manager.page.getByRole('button', {name:'بحث', exact:true}).click();
     expect((await phoneSearch).status()).toBe(200);
     await expect(card).toBeVisible();
+    await manager.page.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (value) => { window.__damoonCopiedPhone = value; } } }); });
+    await card.getByRole('button', {name:'نسخ الرقم'}).click();
+    await expect(card.getByRole('status')).toContainText('تم نسخ الرقم');
+    expect(await manager.page.evaluate(() => window.__damoonCopiedPhone)).toBe('+989121234567');
+    await manager.page.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('denied'); } } }); });
+    await card.getByRole('button', {name:'نسخ الرقم'}).click();
+    await expect(card.getByRole('status')).toContainText('تعذر النسخ');
     await card.locator('textarea').fill('Internal test note');
     const updated = manager.page.waitForResponse(res => res.url().endsWith(`/booking-requests/${entry.id}`) && res.request().method() === 'PATCH');
     await card.locator('select').selectOption('IN_REVIEW');

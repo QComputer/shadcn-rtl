@@ -152,6 +152,14 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
     }).format(parsed);
   };
   const shown = requests;
+  const needsAction = (status: RequestStatus) => status === "RECEIVED" || status === "IN_REVIEW";
+  const newCount = shown.filter((request) => request.status === "RECEIVED").length;
+  const actionCount = shown.filter((request) => needsAction(request.status)).length;
+  const indicators = language === "fa"
+    ? { scope: "درخواست‌های بارگذاری‌شده", fresh: "جدید و بررسی‌نشده", action: "نیازمند اقدام پذیرش" }
+    : language === "ar"
+      ? { scope: "الطلبات المحمّلة", fresh: "جديد ولم يُراجع", action: "يتطلب إجراء الاستقبال" }
+      : { scope: "Loaded requests", fresh: "New and unreviewed", action: "Reception action needed" };
   const applySearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextSearch = searchInput.trim();
@@ -191,6 +199,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
       {appliedSearch && <button type="button" className="rounded-md border px-3 py-2 text-sm" onClick={clearSearch} disabled={loading}>{text.clearSearch}</button>}
     </form>
     <p className="text-xs text-muted-foreground">{text.autoRefresh}</p>
+    <div className="flex flex-wrap gap-2 text-sm" aria-live="polite"><span>{indicators.scope}:</span><span>{indicators.fresh}: {newCount}</span><span>{indicators.action}: {actionCount}</span></div>
     {error && <p className="rounded-md border border-destructive/40 p-3 text-sm text-destructive" role="alert">{error} <button className="underline" onClick={() => void load()}>{text.retry}</button></p>}
     {loading && <p className="text-sm text-muted-foreground" role="status">{text.loading}</p>}
     {!loading && !shown.length && !error && <p className="rounded-lg border p-4 text-sm text-muted-foreground">{filter === "ALL" ? text.empty : text.emptyFiltered}</p>}
@@ -205,10 +214,10 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
         };
         const category = request.preferredCategory ? categoryLabels[request.preferredCategory]?.[language] ?? request.preferredCategory : null;
         const availabilityText = request.availabilityHint === "AVAILABLE" ? text.available : request.availabilityHint === "UNAVAILABLE" ? text.noAvailability : text.unknown;
-        return <article key={request.id} className="space-y-3 rounded-lg border p-4">
+        return <article key={request.id} className={`space-y-3 rounded-lg border p-4 ${needsAction(request.status) ? "border-amber-500 bg-amber-50/40 dark:bg-amber-950/20" : ""}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div><h3 className="font-semibold">{request.guestName}</h3><a className="text-sm underline" href={`tel:${encodeURIComponent(request.guestPhone)}`} dir="ltr">{request.guestPhone}</a>{request.guestEmail && <p className="text-sm" dir="ltr">{request.guestEmail}</p>}<p className="mt-1 text-xs text-muted-foreground"><span>{text.receivedAt}: </span><time dateTime={request.createdAt}>{receivedAt(request.createdAt)}</time></p></div>
-            <span className="rounded-full border px-3 py-1 text-sm">{text[statusLabelKey[request.status]]}</span>
+            <div className="flex flex-wrap gap-2"><span className="rounded-full border px-3 py-1 text-sm">{text[statusLabelKey[request.status]]}</span>{needsAction(request.status) && <span className="rounded-full border border-amber-600 px-3 py-1 text-sm font-medium">{request.status === "RECEIVED" ? indicators.fresh : indicators.action}</span>}</div>
           </div>
           <dl className="grid gap-2 text-sm sm:grid-cols-2">
             <div><dt className="font-medium">{text.dates}</dt><dd>{date(request.checkIn)} – {date(request.checkOut)}</dd></div>

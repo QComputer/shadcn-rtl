@@ -3,8 +3,11 @@ import { after, before, describe, it } from "node:test";
 import { prisma } from "@/lib/db-runtime";
 import { PrismaHotelRepositories } from "@/lib/hotel/persistence/prisma-hotel-repositories";
 import { HotelIdempotencyConflictError } from "@/lib/hotel/persistence/prisma-hotel-repositories";
+import { priceHotelStay } from "@/lib/hotel/services/booking-quote";
 
-const EXPECTED_DB = "bazarbaaz_h3c1_verify";
+const ciUrl = process.env.CI === "true" ? new URL(process.env.DATABASE_URL ?? "postgresql://invalid") : null;
+const EXPECTED_DB = ciUrl?.hostname === "127.0.0.1" && ciUrl.port === "55439" && ciUrl.pathname === "/retail_hero_test"
+  ? "retail_hero_test" : "bazarbaaz_h3c1_verify";
 let organizationId = "";
 let propertyId = "";
 let roomTypeId = "";
@@ -15,7 +18,7 @@ const dateOnly = (value: Date) => value.toISOString().slice(0, 10);
 
 describe("H3-C1 PostgreSQL booking engine", () => {
   before(async () => {
-    const rows = await prisma.$queryRaw<{ db: string }[]>`SELECT current_database() AS db`;
+    const rows = await prisma.$queryRaw<{ db: string }[]>`SELECT current_database()::text AS db`;
     assert.equal(rows[0]?.db, EXPECTED_DB, `must run against ${EXPECTED_DB}`);
     const org = await prisma.organization.create({ data: { name: "H3-C1 synthetic", slug: `h3c1-${Date.now()}`, type: "SHOP" } });
     organizationId = org.id;
@@ -30,6 +33,8 @@ describe("H3-C1 PostgreSQL booking engine", () => {
     if (!organizationId) return;
     await prisma.hotelBookingHold.deleteMany({ where: { organizationId } });
     await prisma.hotelInventory.deleteMany({ where: { organizationId } });
+    await prisma.hotelRoom.deleteMany({ where: { organizationId } });
+    await prisma.hotelRatePlan.deleteMany({ where: { organizationId } });
     await prisma.hotelRoomType.deleteMany({ where: { organizationId } });
     await prisma.hotelProperty.deleteMany({ where: { organizationId } });
     await prisma.organization.delete({ where: { id: organizationId } });
@@ -54,6 +59,60 @@ describe("H3-C1 PostgreSQL booking engine", () => {
     const results = await Promise.all([repoA.claimInventoryAndCreateHold(input("a")), repoB.claimInventoryAndCreateHold(input("b"))]);
     assert.equal(results.filter((result) => result.isClaimed).length, 1);
   });
+
+  const capacityCases = [
+    { slug: "archived", totalAllotment: 1, room: { deletedAt: new Date("2027-01-01") }, remaining: 0 },
+    { slug: "inactive", totalAllotment: 1, room: { isActive: false }, remaining: 0 },
+    { slug: "out-of-service", totalAllotment: 1, room: { isOutOfService: true }, remaining: 0 },
+    { slug: "unconfigured", totalAllotment: 0, room: null, remaining: 0 },
+    { slug: "legacy-aggregate", totalAllotment: 1, room: null, remaining: 1 },
+  ];
+
+  for (const { slug, totalAllotment, room, remaining } of capacityCases) {
+    it(`reports and claims only sellable capacity for ${slug}`, async () => {
+      const roomType = await prisma.hotelRoomType.create({
+        data: {
+          organizationId, propertyId, slug, name: slug, totalAllotment,
+          maxAdults: 2, maxOccupancy: 2, beds: [{ kind: "queen", count: 1 }],
+        },
+      });
+      const scope = { organizationId, propertyId, roomTypeId: roomType.id };
+      const checkIn = "2027-03-10";
+      const checkOut = "2027-03-11";
+      const now = new Date("2027-03-01T00:00:00Z");
+      const reference = `h3c1-capacity-${slug}`;
+      if (room) await prisma.hotelRoom.create({ data: { ...scope, code: slug, ...room } });
+      const inventory = await prisma.hotelInventory.create({
+        data: { ...scope, date: new Date(`${checkIn}T00:00:00Z`), allotment: 1 },
+      });
+      const ratePlan = await prisma.hotelRatePlan.create({
+        data: { ...scope, code: slug, name: slug, baseNightlyRate: BigInt(100) },
+      });
+      const property = await prisma.hotelProperty.findUniqueOrThrow({ where: { id: propertyId } });
+      const search = await prisma.$transaction((tx) =>
+        priceHotelStay(tx, property, "synthetic-guest", {
+          action: "search", roomTypeId: roomType.id, ratePlanId: ratePlan.id,
+          checkIn, checkOut, adults: 1, childAges: [],
+        }, now),
+      );
+      assert.deepEqual(search, { available: remaining > 0, remaining });
+
+      const repo = new PrismaHotelRepositories(prisma);
+      const result = await repo.claimInventoryAndCreateHold({
+        scope: { organizationId }, propertyId, roomTypeId: roomType.id,
+        nights: [checkIn], quantity: 1, now,
+        hold: {
+          ...scope, id: reference, reference, checkIn, checkOut, nights: [checkIn], quantity: 1,
+          expiresAt: new Date("2027-03-01T00:15:00Z"), status: "ACTIVE", createdAt: now,
+        },
+      });
+      assert.equal(result.isClaimed, remaining > 0);
+      if (!remaining) assert.equal(result.reason, "NO_INVENTORY");
+      assert.equal(await prisma.hotelBookingHold.count({ where: { organizationId, reference } }), remaining);
+      const persisted = await prisma.hotelInventory.findUniqueOrThrow({ where: { id: inventory.id } });
+      assert.equal(persisted.held, remaining);
+    });
+  }
 
   it("releases a hold exactly once and makes capacity available", async () => {
     const repo = new PrismaHotelRepositories(prisma);

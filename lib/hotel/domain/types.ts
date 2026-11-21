@@ -117,6 +117,8 @@ export type RoomType = {
   readonly amenities: readonly RoomFeature[]
   readonly sizeSqm?: number
   readonly maxOccupancy: number
+  /** Explicit inventory-only allotment; absent or zero is not sellable without physical rooms. */
+  readonly totalAllotment?: number
   readonly isActive: boolean
 }
 

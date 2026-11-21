@@ -137,7 +137,8 @@ export class HotelManagementService {
       inventory: inventory.map((night) => {
         const physical = physicalCapacities.find((capacity) => capacity.roomTypeId === night.roomTypeId);
         const stockRemaining = night.allotment - night.booked - night.held - night.outOfService;
-        const roomRemaining = physical ? physical.availableRooms - night.booked - night.held : Number.POSITIVE_INFINITY;
+        const roomType = roomTypes.find((type) => type.id === night.roomTypeId);
+        const roomRemaining = physical ? physical.availableRooms - night.booked - night.held : (roomType?.totalAllotment ?? 0) > 0 ? Number.POSITIVE_INFINITY : 0;
         return { ...night, date: night.date.toISOString().slice(0, 10), available: Math.max(0, Math.min(stockRemaining, roomRemaining)) };
       }),
       cancellationPolicies: cancellationPolicies.map((policy) => ({ ...policy, fullCancellationRetention: policy.fullCancellationRetention / 10000 })),
@@ -297,6 +298,13 @@ export class HotelManagementService {
       }
       const current = await tx.hotelRoom.findFirst({ where: { id: roomId, organizationId: scope.organizationId, propertyId: room.propertyId } });
       if (!current) throw new HotelManagementAuthorizationError("Room is outside the organization scope");
+      // A concurrent move changes the source type whose commitments must be protected.
+      // Reject the stale operation; a retry will lock the correct types in order.
+      if (current.roomTypeId !== room.roomTypeId) throw new HotelManagementValidationError("Room changed concurrently; reload and retry");
+      if (patch.roomTypeId && patch.roomTypeId !== current.roomTypeId) {
+        const target = await tx.hotelRoomType.findFirst({ where: { id: patch.roomTypeId, propertyId: room.propertyId, organizationId: scope.organizationId, isActive: true, deletedAt: null }, select: { id: true } });
+        if (!target) throw new HotelManagementAuthorizationError("Target room type is outside the active property scope");
+      }
       const updated = await tx.hotelRoom.update({ where: { id: roomId }, data: { ...patch, code: patch.code?.trim() } as never });
       const today = new Date(); today.setUTCHours(0, 0, 0, 0);
       for (const typeId of affectedTypes) {

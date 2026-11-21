@@ -22,12 +22,26 @@ let capabilityActive: boolean;
 let updateConflict: boolean;
 let drafts: Draft[];
 let writes: number;
+let auditRows: Record<string, unknown>[];
+let failAudit: boolean;
 
 function matches(record: Record<string, unknown>, where: Record<string, unknown>) {
   return Object.entries(where).every(([key, value]) => record[key] === value);
 }
 
 const db = {
+  $transaction: async <T>(work: (tx: typeof db) => Promise<T>): Promise<T> => {
+    const draftSnapshot = structuredClone(drafts);
+    const auditSnapshot = [...auditRows];
+    const writeSnapshot = writes;
+    try { return await work(db); }
+    catch (error) { drafts = draftSnapshot; auditRows = auditSnapshot; writes = writeSnapshot; throw error; }
+  },
+  auditLog: { create: async ({ data }: { data: Record<string, unknown> }) => {
+    if (failAudit) throw new Error("audit insert failed");
+    auditRows.push(data);
+    return data;
+  } },
   user: { findFirst: async () => session?.user ?? null },
   organizationMember: {
     findFirst: async ({ where }: { where: unknown }) => {
@@ -110,6 +124,8 @@ beforeEach(() => {
   updateConflict = false;
   drafts = [];
   writes = 0;
+  auditRows = [];
+  failAudit = false;
 });
 
 const origin = "https://hotel.example.test";
@@ -222,4 +238,39 @@ test("archive increments the version and hides the draft using only management a
   assert.equal((await routes.item.PATCH(request("PATCH", { version: 2, description: "archived" }), context())).status, 404);
   assert.equal((await routes.archive.POST(request("POST", { version: 2 }), context())).status, 404);
   assert.equal(writes, 2);
+});
+
+test("create, update and archive write actor and tenant-scoped audit entries", async () => {
+  const created = await routes.list.POST(request("POST", input), context());
+  assert.equal(created.status, 201);
+  assert.deepEqual(auditRows[0], {
+    action: "CREATE", entityType: "HotelDraftAccommodation", entityId: params.draftId,
+    userId: admin.user.id, organizationId: scope.organizationId,
+    description: "Created draft hotel accommodation",
+    newValue: { propertyId: params.propertyId, temporaryCode: input.temporaryCode, category: input.category, version: 1 },
+  });
+  const updated = await routes.item.PATCH(request("PATCH", { version: 1, description: "updated" }), context());
+  assert.equal(updated.status, 200);
+  assert.deepEqual(auditRows[1].previousValue, { propertyId: params.propertyId, version: 1 });
+  assert.deepEqual(auditRows[1].newValue, { propertyId: params.propertyId, version: 2, changedFields: ["description"] });
+  assert.equal(auditRows[1].userId, admin.user.id);
+  const archived = await routes.archive.POST(request("POST", { version: 2 }), context());
+  assert.equal(archived.status, 200);
+  assert.deepEqual(auditRows[2].newValue, { propertyId: params.propertyId, version: 3, archived: true });
+  assert.equal(auditRows.length, 3);
+});
+
+test("conflicting mutations and failed audit insertion leave no committed audit or draft mutation", async () => {
+  failAudit = true;
+  assert.equal((await routes.list.POST(request("POST", input), context())).status, 500);
+  assert.equal(drafts.length, 0);
+  assert.equal(auditRows.length, 0);
+  failAudit = false;
+  assert.equal((await routes.list.POST(request("POST", input), context())).status, 201);
+  assert.equal(auditRows.length, 1);
+  updateConflict = true;
+  assert.equal((await routes.item.PATCH(request("PATCH", { version: 1, description: "raced" }), context())).status, 409);
+  assert.equal(auditRows.length, 1);
+  assert.equal((await routes.archive.POST(request("POST", { version: 2 }), context())).status, 409);
+  assert.equal(auditRows.length, 1);
 });

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { HotelGuestBookingRequests } from "@/components/hotel-operations/hotel-guest-booking-requests";
 import { HotelRequestReception } from "@/components/hotel-operations/hotel-request-reception";
+import { HotelDraftAccommodations } from "@/components/hotel-operations/hotel-draft-accommodations";
 import { HotelOperationsWorkspace } from "@/components/hotel-operations/hotel-operations-workspace";
 import { auth } from "@/lib/auth";
 import { getHotelOperationsOrganization } from "@/lib/hotel/management/hotel-operations-dashboard-context.server";
@@ -30,6 +31,12 @@ export default async function HotelOperationsPropertyPage({
     </Link>
     <HotelGuestBookingRequests organizationId={organization.id} propertyId={property.id} locale={locale} />
     <HotelRequestReception organizationId={organization.id} propertyId={property.id} locale={locale} canConfigure={organization.role === "ADMIN" || organization.role === "SUPER_ADMIN"} showGuestPortal={false} />
+    <HotelDraftAccommodations
+      key={`drafts:${organization.id}:${property.id}`}
+      organizationId={organization.id}
+      propertyId={property.id}
+      locale={locale}
+    />
     <HotelOperationsWorkspace
       key={`${organization.id}:${property.id}`}
       organizationId={organization.id}

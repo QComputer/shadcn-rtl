@@ -200,9 +200,9 @@ const statusLabels = {
 };
 
 const copy = {
-  fa: { submit: "ارسال درخواست اقامت", received: "درخواست اقامت ثبت شد", reference: "کد پیگیری امن", keepReference: "این کد را برای پیگیری نزد خود نگه دارید", status: "وضعیت درخواست", check: "بررسی وضعیت", checking: "در حال بررسی وضعیت...", trackLabel: "پیگیری با کد امن", trackButton: "نمایش وضعیت", trackError: "درخواستی با این کد پیدا نشد یا کد معتبر نیست.", notBooking: "این درخواست رزرو قطعی نیست؛ قیمت و موجودی باید توسط پذیرش دوباره بررسی شوند." },
-  en: { submit: "Send stay request", received: "Stay request submitted", reference: "Secure tracking reference", keepReference: "Keep this reference to check your request later.", status: "Request status", check: "Check status", checking: "Checking status...", trackLabel: "Track with secure reference", trackButton: "Show status", trackError: "No request was found for this reference.", notBooking: "This request is not a confirmed booking. Reception must recheck the rate and availability." },
-  ar: { submit: "إرسال طلب الإقامة", received: "تم إرسال طلب الإقامة", reference: "رمز متابعة آمن", keepReference: "احتفظ بهذا الرمز لمتابعة طلبك لاحقاً.", status: "حالة الطلب", check: "تحقق من الحالة", checking: "جارٍ التحقق من الحالة...", trackLabel: "المتابعة باستخدام الرمز الآمن", trackButton: "عرض الحالة", trackError: "لم يتم العثور على طلب بهذا الرمز.", notBooking: "هذا الطلب ليس حجزاً مؤكداً. يجب على الاستقبال إعادة التحقق من السعر والتوفر." },
+  fa: { submit: "ارسال درخواست هماهنگی اقامت", received: "درخواست هماهنگی برای پذیرش ارسال شد", reference: "کد پیگیری امن", keepReference: "این کد را برای پیگیری نزد خود نگه دارید", status: "وضعیت درخواست", check: "بررسی وضعیت", checking: "در حال بررسی وضعیت...", trackLabel: "پیگیری با کد امن", trackButton: "نمایش وضعیت", trackError: "درخواستی با این کد پیدا نشد یا کد معتبر نیست.", notBooking: "این فرم فقط درخواست هماهنگی برای پذیرش می‌فرستد؛ اتاق نگه‌داری یا رزرو نمی‌شود و پرداخت آنلاین ندارد." },
+  en: { submit: "Send a stay coordination request", received: "Coordination request sent to reception", reference: "Secure tracking reference", keepReference: "Keep this reference to check your request later.", status: "Request status", check: "Check status", checking: "Checking status...", trackLabel: "Track with secure reference", trackButton: "Show status", trackError: "No request was found for this reference.", notBooking: "This form sends a coordination request to reception only. It does not select or hold a room, confirm a booking, or take payment." },
+  ar: { submit: "إرسال طلب تنسيق الإقامة", received: "تم إرسال طلب التنسيق إلى الاستقبال", reference: "رمز متابعة آمن", keepReference: "احتفظ بهذا الرمز لمتابعة طلبك لاحقاً.", status: "حالة الطلب", check: "تحقق من الحالة", checking: "جارٍ التحقق من الحالة...", trackLabel: "المتابعة باستخدام الرمز الآمن", trackButton: "عرض الحالة", trackError: "لم يتم العثور على طلب بهذا الرمز.", notBooking: "يرسل هذا النموذج طلب تنسيق إلى الاستقبال فقط. لا يختار غرفة ولا يحجزها ولا يؤكد الحجز أو يستلم دفعة." },
 };
 
 test.describe("PR64 Damoon Booking Request Acceptance", () => {
@@ -224,7 +224,7 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await managerContext?.close().catch(() => {});
   });
 
-  test("Mobile guest can select stay dates and search availability with ordinary controls", async () => {
+  test("Mobile guest selects dates and guest counts without an availability lookup", async () => {
     const checkIn = tomorrowISO();
     const checkOut = dayAfterISO(checkIn);
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
@@ -234,11 +234,11 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await expect(page.locator("[data-booking-slot]")).toBeVisible();
     await chooseStayDates(page, checkIn, checkOut);
     await page.locator("[data-adult-count]").selectOption("2");
-    const searchResponsePromise = page.waitForResponse((response) => response.url().includes("/api/hotel/v1/availability/search") && response.request().method() === "POST");
+    const availabilityRequests = [];
+    page.on("request", request => { if (request.url().includes("/api/hotel/v1/availability/search")) availabilityRequests.push(request.url()); });
     await page.locator(".booking-form .booking-submit[type=submit]").click();
-    const searchResponse = await searchResponsePromise;
-    expect(searchResponse.status()).toBe(200);
-    await expect(page.locator("[data-booking-flow] .booking-options")).toBeVisible();
+    await expect(page.locator("[data-coordination-name]")).toBeVisible();
+    expect(availabilityRequests).toEqual([]);
   });
 
   test("FA: Guest submits stay request via Damoon standalone and tracks status", async () => {
@@ -262,20 +262,17 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await page.locator('[data-child-age="0"]').fill("8");
 
     await page.locator(".booking-form .booking-submit[type=submit]").click();
-    await expect(page.locator("[data-booking-flow] .booking-options")).toBeVisible();
-    await page.locator(".booking-option__select").first().click();
-    await expect(page.locator("[data-booking-flow] .booking-step")).toBeVisible();
-    await expect(page.locator('[data-booking-flow] [data-child-age="0"]')).toHaveValue("8");
+    await expect(page.locator("[data-booking-flow] .booking-step--coordination")).toBeVisible();
 
     await expect(page.locator("[data-booking-flow] .booking-step")).toContainText(copy.fa.notBooking);
 
-    await page.locator("[data-guest-name]").fill(payload.contact.fullName);
-    await page.locator("[data-guest-phone]").fill(payload.contact.phone);
-    await page.locator("[data-guest-email]").fill(payload.contact.email);
-    await page.locator("[data-special-request]").fill(payload.specialRequests);
+    await page.locator("[data-coordination-name]").fill(payload.contact.fullName);
+    await page.locator("[data-coordination-phone]").fill(payload.contact.phone);
+    await page.locator("[data-coordination-email]").fill(payload.contact.email);
+    await page.locator("[data-coordination-note]").fill(payload.specialRequests);
 
     const responsePromise = page.waitForResponse((r) => r.url().endsWith("/api/hotel/v1/requests") && r.request().method() === "POST", { timeout: 10_000 }).catch(() => null);
-    await page.locator('[data-create-request]').click();
+    await page.locator('[data-create-coordination-request]').click();
     const response = await responsePromise;
     expect(response, `Request was not sent; form message: ${await page.locator(".booking-message").textContent()}`).toBeTruthy();
     expect(response.status(), await response.text()).toBe(201);
@@ -286,6 +283,9 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     const reference = body.reference;
     expect(typeof reference).toBe("string");
     expect(reference.length).toBeGreaterThanOrEqual(40);
+    expect(replayPayload.kind).toBe("coordination");
+    expect(replayPayload.occupancy).toEqual({ adults: 2, children: 1, childAges: [8] });
+    for (const unapprovedField of ["roomType", "ratePlan", "price", "totalRate", "payment"]) expect(unapprovedField in replayPayload).toBe(false);
 
     await expect(page.locator("[data-booking-flow] .booking-step--confirmed")).toBeVisible();
     await expect(page.locator("[data-booking-flow] .booking-step--confirmed")).toContainText(copy.fa.received);
@@ -360,7 +360,7 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await expect(page.locator("[data-track-result]")).toContainText(statusLabels.ar.RECEIVED);
   });
 
-  test("Manager reviews inbox, updates status, rechecks availability, and guest sees refreshed status", async () => {
+  test("Manager reviews a coordination request and guest sees its updated status", async () => {
     const checkIn = tomorrowISO();
     const checkOut = dayAfterISO(checkIn);
     const payload = faPayload(checkIn, checkOut);
@@ -377,15 +377,13 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await guestPage.locator("[data-child-count]").selectOption("1");
     await guestPage.locator('[data-child-age="0"]').fill("8");
     await guestPage.locator(".booking-form .booking-submit[type=submit]").click();
-    await expect(guestPage.locator("[data-booking-flow] .booking-options")).toBeVisible();
-    await guestPage.locator(".booking-option__select").first().click();
-    await expect(guestPage.locator('[data-booking-flow] [data-child-age="0"]')).toHaveValue("8");
-    await guestPage.locator("[data-guest-name]").fill(payload.contact.fullName);
-    await guestPage.locator("[data-guest-phone]").fill(payload.contact.phone);
-    await guestPage.locator("[data-guest-email]").fill(payload.contact.email);
+    await expect(guestPage.locator("[data-booking-flow] .booking-step--coordination")).toBeVisible();
+    await guestPage.locator("[data-coordination-name]").fill(payload.contact.fullName);
+    await guestPage.locator("[data-coordination-phone]").fill(payload.contact.phone);
+    await guestPage.locator("[data-coordination-email]").fill(payload.contact.email);
 
     const submitResponsePromise = guestPage.waitForResponse((r) => r.url().endsWith("/api/hotel/v1/requests") && r.request().method() === "POST", { timeout: 10_000 }).catch(() => null);
-    await guestPage.locator('[data-create-request]').click();
+    await guestPage.locator('[data-create-coordination-request]').click();
     const submitResponse = await submitResponsePromise;
     expect(submitResponse, `Request was not sent; form message: ${await guestPage.locator(".booking-message").textContent()}`).toBeTruthy();
     expect(submitResponse.status(), await submitResponse.text()).toBe(201);
@@ -397,8 +395,8 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     expect(inboxRequest.status).toBe("RECEIVED");
     expect(inboxRequest.guestName).toBe(payload.contact.fullName);
     expect(inboxRequest.guestPhone).toBe(payload.contact.phone);
-    expect(inboxRequest.roomTypeSlug).toBe(roomTypeSlug);
-    expect(inboxRequest.ratePlanCode).toBe(ratePlanCode);
+    expect(inboxRequest.roomTypeSlug).toBeNull();
+    expect(inboxRequest.ratePlanCode).toBeNull();
 
     const crossOriginPatch = await managerPage.request.patch(`${appOrigin}${requestsApi}/${encodeURIComponent(requestId)}`, {
       headers: { Origin: "https://attacker.invalid", "Content-Type": "application/json" },
@@ -414,18 +412,7 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     await requestCard.locator(`#request-status-${requestId}`).selectOption("IN_REVIEW");
     await expect(requestCard.locator(".rounded-full")).toContainText("در حال بررسی");
 
-    const recheckPromise = managerPage.waitForResponse((response) => response.url().endsWith(`${requestsApi}/${encodeURIComponent(requestId)}/availability`) && response.request().method() === "POST");
-    await requestCard.getByRole("button", { name: "بررسی دوباره موجودی" }).click();
-    const recheckResponse = await recheckPromise;
-    expect(recheckResponse.status()).toBe(200);
-    const recheckBody = await recheckResponse.json();
-    expect(recheckBody.availabilityHint).toBe("AVAILABLE");
-    expect(typeof recheckBody.version).toBe("number");
     await expect(requestCard.locator(`#request-status-${requestId}`)).toBeEnabled();
-
-    await requestCard.locator(`textarea[maxlength="500"]`).fill("اتاق در تاریخ‌های درخواستی موجود است. لطفاً برای نهایی‌سازی تماس بگیرید.");
-    await requestCard.locator(`#request-status-${requestId}`).selectOption("OPTION_OFFERED");
-    await expect(requestCard.locator(".rounded-full")).toContainText("پیشنهاد برای بررسی");
 
     await guestPage.locator('[data-track-request] [data-track-reference]').fill(reference);
     const trackResponsePromise = guestPage.waitForResponse((r) => r.url().endsWith("/api/hotel/v1/requests/status") && r.request().method() === "POST");
@@ -433,9 +420,8 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     const trackResponse = await trackResponsePromise;
     expect(trackResponse.status()).toBe(200);
     const trackBody = await trackResponse.json();
-    expect(trackBody.status).toBe("OPTION_OFFERED");
-    expect(trackBody.managerMessage).toContain("موجود است");
-    await expect(guestPage.locator("[data-track-result]")).toContainText(statusLabels.fa.OPTION_OFFERED);
+    expect(trackBody.status).toBe("IN_REVIEW");
+    await expect(guestPage.locator("[data-track-result]")).toContainText(statusLabels.fa.IN_REVIEW);
   });
 
   test("A status update finishing after a filter change refreshes the selected filter", async () => {

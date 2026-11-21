@@ -60,7 +60,7 @@ function newContext(browser) {
 async function loginManager(browser) {
   const context = await newContext(browser);
   const page = await context.newPage();
-  const callbackPath = `/fa/dashboard/hotel-website/${organizationId}/${propertyId}/requests`;
+  const callbackPath = `/fa/dashboard/hotel-operations/${organizationId}/${propertyId}`;
   const callbackUrl = `${appOrigin}${callbackPath}`;
   await page.goto(`${appOrigin}/fa/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
   await page.locator("#username").fill(managerUsername);
@@ -734,8 +734,19 @@ test('inventory-free request reaches reception and tracks without creating a boo
     expect(inbox.status()).toBe(200);
     const entry = (await inbox.json()).requests.find(r => r.guestName === guestName);
     expect(entry?.preferredCategory).toBe('studio-suite');
-    const updated = await patchRequestStatus(manager.page, entry.id, 'IN_REVIEW', entry.version);
-    expect(updated.status()).toBe(200);
+    for (const [locale, category] of [['fa', 'سوئیت استودیو'], ['en', 'Studio Suite'], ['ar', 'جناح استوديو']]) {
+      await manager.page.goto(`${appOrigin}/${locale}/dashboard/hotel-operations/${organizationId}/${propertyId}`);
+      const card = manager.page.locator('section[aria-labelledby="hotel-stay-requests-title"] article').filter({ hasText: guestName });
+      await expect(card).toBeVisible();
+      await expect(card).toContainText(category);
+      await expect(card.locator('button')).toHaveCount(0);
+      await expect(card.locator(`select option[value="OPTION_OFFERED"]`)).toHaveCount(0);
+      await expect(card.locator(`select option[value="UNAVAILABLE"]`)).toHaveCount(0);
+    }
+    const card = manager.page.locator('section[aria-labelledby="hotel-stay-requests-title"] article').filter({ hasText: guestName });
+    const updated = manager.page.waitForResponse(res => res.url().endsWith(`/booking-requests/${entry.id}`) && res.request().method() === 'PATCH');
+    await card.locator('select').selectOption('IN_REVIEW');
+    expect((await updated).status()).toBe(200);
     const tracked = await postStatus(page, received.reference);
     expect(tracked.status()).toBe(200);
     expect((await tracked.json()).status).toBe('IN_REVIEW');

@@ -34,9 +34,9 @@ const dateIcon = '<svg class="booking-field__symbol" viewBox="0 0 32 32" aria-hi
 const guestIcon = '<svg class="booking-field__symbol" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="14" cy="9" r="6"/><path d="M3 29v-5c0-5 4-8 11-8s11 3 11 8v5H3Zm21-25c6 2 6 10 0 12m3 3c3 2 4 5 3 10"/></svg>';
 const submitArrow = '<svg class="booking-submit__arrow" viewBox="0 0 32 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 12h27M21 4l8 8-8 8"/></svg>';
 const requestCopy = {
-  fa: { submit: "ارسال درخواست اقامت", notBooking: "این درخواست رزرو قطعی نیست؛ قیمت و موجودی باید توسط پذیرش دوباره بررسی شوند.", unavailable: "سامانه ثبت درخواست اقامت هنوز فعال نیست.", received: "درخواست اقامت ثبت شد", reference: "کد پیگیری امن", keepReference: "این کد را برای پیگیری نزد خود نگه دارید.", status: "وضعیت درخواست", check: "بررسی وضعیت", checking: "در حال بررسی وضعیت...", trackLabel: "پیگیری با کد امن", trackButton: "نمایش وضعیت", trackError: "درخواستی با این کد پیدا نشد یا کد معتبر نیست.", statuses: { RECEIVED: "دریافت‌شده", IN_REVIEW: "در حال بررسی", OPTION_OFFERED: "پیشنهاد برای بررسی شما آماده است", UNAVAILABLE: "در این زمان در دسترس نیست", DECLINED: "پذیرفته نشد", CLOSED: "بسته‌شده" } },
-  en: { submit: "Send stay request", notBooking: "This request is not a confirmed booking. Reception must recheck the rate and availability.", unavailable: "Stay requests are not enabled yet.", received: "Stay request submitted", reference: "Secure tracking reference", keepReference: "Keep this reference to check your request later.", status: "Request status", check: "Check status", checking: "Checking status...", trackLabel: "Track with secure reference", trackButton: "Show status", trackError: "No request was found for this reference.", statuses: { RECEIVED: "Received", IN_REVIEW: "Under review", OPTION_OFFERED: "An option is ready for your review", UNAVAILABLE: "Unavailable for these dates", DECLINED: "Declined", CLOSED: "Closed" } },
-  ar: { submit: "إرسال طلب الإقامة", notBooking: "هذا الطلب ليس حجزاً مؤكداً. يجب على الاستقبال إعادة التحقق من السعر والتوفر.", unavailable: "طلبات الإقامة غير مفعلة بعد.", received: "تم إرسال طلب الإقامة", reference: "رمز متابعة آمن", keepReference: "احتفظ بهذا الرمز لمتابعة طلبك لاحقاً.", status: "حالة الطلب", check: "تحقق من الحالة", checking: "جارٍ التحقق من الحالة...", trackLabel: "المتابعة باستخدام الرمز الآمن", trackButton: "عرض الحالة", trackError: "لم يتم العثور على طلب بهذا الرمز.", statuses: { RECEIVED: "تم الاستلام", IN_REVIEW: "قيد المراجعة", OPTION_OFFERED: "الخيار جاهز لمراجعتك", UNAVAILABLE: "غير متاح في هذه التواريخ", DECLINED: "مرفوض", CLOSED: "مغلق" } },
+  fa: { submit: "ارسال درخواست هماهنگی اقامت", notBooking: "این فرم فقط درخواست هماهنگی برای پذیرش می‌فرستد؛ اتاق نگه‌داری یا رزرو نمی‌شود و پرداخت آنلاین ندارد.", unavailable: "ثبت درخواست هماهنگی در حال حاضر فعال نیست.", received: "درخواست هماهنگی برای پذیرش ارسال شد", reference: "کد پیگیری امن", keepReference: "این کد را برای پیگیری نزد خود نگه دارید.", status: "وضعیت درخواست", check: "بررسی وضعیت", checking: "در حال بررسی وضعیت...", trackLabel: "پیگیری با کد امن", trackButton: "نمایش وضعیت", trackError: "درخواستی با این کد پیدا نشد یا کد معتبر نیست.", statuses: { RECEIVED: "دریافت‌شده", IN_REVIEW: "در حال بررسی", OPTION_OFFERED: "پیشنهاد برای بررسی شما آماده است", UNAVAILABLE: "در این زمان در دسترس نیست", DECLINED: "پذیرفته نشد", CLOSED: "بسته‌شده" } },
+  en: { submit: "Send a stay coordination request", notBooking: "This form sends a coordination request to reception only. It does not select or hold a room, confirm a booking, or take payment.", unavailable: "Stay coordination requests are not enabled yet.", received: "Coordination request sent to reception", reference: "Secure tracking reference", keepReference: "Keep this reference to check your request later.", status: "Request status", check: "Check status", checking: "Checking status...", trackLabel: "Track with secure reference", trackButton: "Show status", trackError: "No request was found for this reference.", statuses: { RECEIVED: "Received", IN_REVIEW: "Under review", OPTION_OFFERED: "An option is ready for your review", UNAVAILABLE: "Unavailable for these dates", DECLINED: "Declined", CLOSED: "Closed" } },
+  ar: { submit: "إرسال طلب تنسيق الإقامة", notBooking: "يرسل هذا النموذج طلب تنسيق إلى الاستقبال فقط. لا يختار غرفة ولا يحجزها ولا يؤكد الحجز أو يستلم دفعة.", unavailable: "طلبات تنسيق الإقامة غير مفعلة حالياً.", received: "تم إرسال طلب التنسيق إلى الاستقبال", reference: "رمز متابعة آمن", keepReference: "احتفظ بهذا الرمز لمتابعة طلبك لاحقاً.", status: "حالة الطلب", check: "تحقق من الحالة", checking: "جارٍ التحقق من الحالة...", trackLabel: "المتابعة باستخدام الرمز الآمن", trackButton: "عرض الحالة", trackError: "لم يتم العثور على طلب بهذا الرمز.", statuses: { RECEIVED: "تم الاستلام", IN_REVIEW: "قيد المراجعة", OPTION_OFFERED: "الخيار جاهز لمراجعتك", UNAVAILABLE: "غير متاح في هذه التواريخ", DECLINED: "مرفوض", CLOSED: "مغلق" } },
 };
 
 function validArrival(value, minISO) {
@@ -127,9 +127,8 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   }
   const ui = { ...faUi, ...(translations[locale]?.ui || {}) };
   if (requestOnly) {
-    ui.datePlanningOnly = locale === "fa" ? "این بخش فقط گزینه‌های فعلی را برای ارسال درخواست نشان می‌دهد؛ ثبت درخواست رزرو یا تثبیت قیمت نیست." : locale === "ar" ? "تعرض هذه الصفحة الخيارات الحالية لإرسال طلب فقط؛ إرسال الطلب لا يؤكد الحجز أو السعر." : "Current options are shown for a request only; submitting does not confirm a booking or price.";
-    ui.bookingSubmit = locale === "fa" ? "بررسی گزینه‌های فعلی" : locale === "ar" ? "عرض الخيارات الحالية" : "View current options";
-    ui.totalPrice = locale === "fa" ? "مبلغ تخمینی" : locale === "ar" ? "السعر التقديري" : "Indicative total";
+    ui.datePlanningOnly = locale === "fa" ? "تاریخ و تعداد مهمانان را برای درخواست هماهنگی با پذیرش انتخاب کنید؛ این فرم نرخ یا موجودی نشان نمی‌دهد." : locale === "ar" ? "اختر التواريخ وعدد الضيوف لإرسال طلب تنسيق إلى الاستقبال؛ لا يعرض هذا النموذج الأسعار أو التوفر." : "Choose dates and guest counts for reception coordination; this form does not show rates or availability.";
+    ui.bookingSubmit = locale === "fa" ? "ادامه برای ثبت درخواست هماهنگی" : locale === "ar" ? "المتابعة لإرسال طلب التنسيق" : "Continue to coordination request";
   }
   if (coordinationOnly) {
     ui.datePlanningOnly = locale === "fa" ? "تاریخ و مهمانان را برای هماهنگی با پذیرش انتخاب کنید؛ این انتخاب تأیید اتاق، نرخ یا موجودی نیست." : locale === "ar" ? "اختر التواريخ والضيوف للتنسيق مع الاستقبال؛ هذا الاختيار لا يؤكد الغرفة أو السعر أو التوفر." : "Choose dates and guests to coordinate with reception; this does not confirm a room, rate or availability.";
@@ -151,6 +150,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   let focusISO = "";
   let flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: "", error: false, draftContact: { fullName: "", phone: "", email: "" }, policyAccepted: false };
   let holdAttempt = { key: "", fingerprint: "", payload: null };
+  let coordinationAttempt = null;
   function clearHoldAttempt() { holdAttempt = { key: "", fingerprint: "", payload: null }; }
 
   const persist = () => {
@@ -282,6 +282,19 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       <div class="booking-step__actions"><button type="button" class="booking-submit" data-create-${requestOnly ? "request" : "hold"} ${flow.busy || (!requestOnly && !policy?.key) ? "disabled" : ""}>${escapeHtml(requestOnly ? (requestCopy[locale]?.submit || requestCopy.en.submit) : (ui.holdRoom || "Reserve"))}</button></div>
     </section>`;
   }
+  function coordinationRequestPanel() {
+    const copy = requestCopy[locale] || requestCopy.en;
+    const draft = flow.draftContact || { fullName: "", phone: "", email: "" };
+    return `<section class="booking-step booking-step--coordination"><div class="booking-step__head"><h4>${escapeHtml(copy.submit)}</h4><button type="button" class="booking-link" data-coordination-back>${escapeHtml(ui.backToOptions || "Back")}</button></div>
+      <p class="booking-policy__text">${escapeHtml(copy.notBooking)}</p>
+      <div class="booking-guest-form"><p class="booking-step__label">${escapeHtml(ui.guestDetails || "Guest details")}</p>
+        <label class="booking-field booking-field--text"><span>${escapeHtml(ui.fullName || "Full name")}</span><input data-coordination-name type="text" autocomplete="name" required minlength="2" maxlength="120" value="${escapeHtml(draft.fullName || "")}" /></label>
+        <label class="booking-field booking-field--text"><span>${escapeHtml(ui.phone || "Phone")}</span><input data-coordination-phone type="tel" autocomplete="tel" required minlength="8" maxlength="24" dir="ltr" value="${escapeHtml(draft.phone || "")}" /></label>
+        <label class="booking-field booking-field--text"><span>${escapeHtml(ui.email || "Email")}</span><input data-coordination-email type="email" autocomplete="email" maxlength="200" dir="ltr" value="${escapeHtml(draft.email || "")}" /></label>
+        <label class="booking-field booking-field--text"><span>${escapeHtml(locale === "fa" ? "درخواست ویژه (اختیاری)" : locale === "ar" ? "طلب خاص (اختياري)" : "Special request (optional)")}</span><textarea data-coordination-note maxlength="500">${escapeHtml(flow.draftSpecialRequests || "")}</textarea></label>
+      </div><div class="booking-step__actions"><button type="button" class="booking-submit" data-create-coordination-request ${flow.busy ? "disabled" : ""}>${escapeHtml(copy.submit)}</button></div>
+    </section>`;
+  }
   function confirmationPanel() {
     if (requestOnly && flow.request) {
       const request = flow.request;
@@ -300,6 +313,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     if (message) message.textContent = flow.message || ""; else message.textContent = "";
     message.classList.toggle("is-error", Boolean(flow.error));
     if (flow.step === "confirmed") { flowNode.innerHTML = confirmationPanel(); bindFlow(); return; }
+    if (flow.step === "coordination-details") { flowNode.innerHTML = coordinationRequestPanel(); bindFlow(); return; }
     if (flow.step === "details" || flow.selected) { flowNode.innerHTML = selectedOptionPanel(); bindFlow(); return; }
     if (flow.step === "options") {
       const items = availableOptions({ options: flow.options });
@@ -339,7 +353,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     if (status === 404) return locale === "fa" ? "این اقامتگاه یا انتشار آن در دسترس نیست." : locale === "ar" ? "هذا العقار أو نشره غير متاح." : "This property or its publication is unavailable.";
     if (status === 409) return locale === "fa" ? "وضعیت موجودی یا شرایط تغییر کرده است. دوباره بررسی کنید." : locale === "ar" ? "تغيرت حالة التوفر أو الشروط. تحقق مرة أخرى." : "Availability or terms changed. Review again.";
     if (status === 429) return locale === "fa" ? "درخواست‌های زیادی ارسال شد. کمی بعد دوباره تلاش کنید." : locale === "ar" ? "تم إرسال طلبات كثيرة. حاول مرة أخرى بعد قليل." : "Too many requests. Try again shortly.";
-    if (status === 503) return ui.holdUnavailable || (locale === "fa" ? "سرویس موقتاً در دسترس نیست." : locale === "ar" ? "الخدمة غير متاحة مؤقتاً." : "Service temporarily unavailable.");
+    if (status === 503) return requestOnly ? (requestCopy[locale]?.unavailable || requestCopy.en.unavailable) : (ui.holdUnavailable || (locale === "fa" ? "سرویس موقتاً در دسترس نیست." : locale === "ar" ? "الخدمة غير متاحة مؤقتاً." : "Service temporarily unavailable."));
     if (status >= 500) return locale === "fa" ? "خطای موقت سرور. کمی بعد دوباره تلاش کنید." : locale === "ar" ? "خطأ مؤقت في الخادم. حاول مرة أخرى لاحقاً." : "Temporary server error. Try again later.";
     return fallback || (locale === "fa" ? "خطایی رخ داد." : locale === "ar" ? "حدث خطأ." : "An error occurred.");
   }
@@ -351,6 +365,60 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     return parseChildAges(inputs.map((i) => i.value), children);
   }
   function bindFlow() {
+    slot.querySelector("[data-coordination-back]")?.addEventListener("click", () => {
+      coordinationAttempt = null;
+      flow = { ...flow, step: "search", message: "", error: false };
+      renderFlow();
+    });
+    slot.querySelector("[data-create-coordination-request]")?.addEventListener("click", async () => {
+      if (flow.busy) return;
+      const contact = validateContact({
+        fullName: slot.querySelector("[data-coordination-name]")?.value || "",
+        phone: slot.querySelector("[data-coordination-phone]")?.value || "",
+        email: slot.querySelector("[data-coordination-email]")?.value || "",
+      });
+      if (!contact.ok) {
+        setMessage(ui.invalidContact || "Invalid contact details.", true);
+        slot.querySelector("[data-coordination-name]")?.focus();
+        return;
+      }
+      const specialRequests = slot.querySelector("[data-coordination-note]")?.value.trim() || "";
+      flow.draftContact = contact.value;
+      flow.draftSpecialRequests = specialRequests;
+      const payload = {
+        kind: "coordination",
+        property: DAMOON_PROPERTY_SLUG,
+        checkIn: range.checkIn,
+        checkOut: range.checkOut,
+        occupancy: { adults, children, ...(children ? { childAges } : {}) },
+        contact: contact.value,
+        ...(specialRequests ? { specialRequests } : {}),
+      };
+      const body = JSON.stringify(payload);
+      if (!coordinationAttempt || coordinationAttempt.body !== body) {
+        coordinationAttempt = { body, key: createIdempotencyKey() };
+      }
+      flow.busy = true;
+      renderFlow();
+      try {
+        const result = await postJson("/api/hotel/v1/requests", payload, { "Idempotency-Key": coordinationAttempt.key });
+        if (!result.ok || typeof result.data?.reference !== "string") {
+          const errorText = typeof result.data?.error === "string" ? result.data.error : "";
+          if (result.status === 409 && /idempotency-key was used with a different request/i.test(errorText)) coordinationAttempt = null;
+          flow.busy = false;
+          renderFlow();
+          setMessage(result.status === 503 ? (requestCopy[locale]?.unavailable || requestCopy.en.unavailable) : apiErrorMessage(result.status, result.data, errorText), true);
+          return;
+        }
+        coordinationAttempt = null;
+        flow = { ...flow, step: "confirmed", request: result.data, requestStatus: result.data.status, busy: false, message: "", error: false };
+        renderFlow();
+      } catch {
+        flow.busy = false;
+        renderFlow();
+        setMessage(locale === "fa" ? "پاسخی دریافت نشد؛ همان فرم را دوباره ارسال کنید." : locale === "ar" ? "لم يصل رد؛ أعد إرسال النموذج نفسه." : "No response received. Retry the same form.", true);
+      }
+    });
     slot.querySelector("[data-check-reservation]")?.addEventListener("click", async () => {
       const reservation = flow.hold?.reservation;
       if (!reservation?.reference || flow.busy) return;
@@ -585,6 +653,13 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       const target = withStaySelection(new URL(routeHref("/contact"), window.location.href), { range, adults, children, childAges: validatedAges });
       if (selectedRoom) target.searchParams.set("room", selectedRoom);
       window.location.assign(target.href);
+      return;
+    }
+    if (requestOnly) {
+      coordinationAttempt = null;
+      flow = { step: "coordination-details", options: [], selected: null, hold: null, busy: false, message: "", error: false, draftContact: { fullName: "", phone: "", email: "" }, draftSpecialRequests: "" };
+      renderFlow();
+      slot.querySelector("[data-coordination-name]")?.focus();
       return;
     }
     clearHoldAttempt();

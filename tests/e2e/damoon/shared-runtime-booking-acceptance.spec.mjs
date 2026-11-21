@@ -108,19 +108,17 @@ test("shared public Damoon bundle submits and tracks a persisted request through
     await page.locator("[data-adult-count]").selectOption("2");
     await page.locator("[data-child-count]").selectOption("0");
 
-    const searchResponsePromise = page.waitForResponse(response => response.url().endsWith("/api/hotel/v1/availability/search") && response.request().method() === "POST", { timeout: 15000 });
+    const availabilityRequests = [];
+    page.on("request", request => { if (request.url().endsWith("/api/hotel/v1/availability/search")) availabilityRequests.push(request.url()); });
     await page.locator(".booking-form .booking-submit[type=submit]").click();
-    const searchResponse = await searchResponsePromise;
-    assert.equal(searchResponse.status(), 200, await searchResponse.text());
-    await expect(page.locator("[data-booking-flow] .booking-options")).toBeVisible();
-    await page.locator(".booking-option__select").first().click();
-    await page.locator("[data-guest-name]").fill("Shared Runtime Test Guest");
-    await page.locator("[data-guest-phone]").fill("+989123456789");
-    await page.locator("[data-guest-email]").fill(email);
-    await page.locator("[data-special-request]").fill("Automated disposable acceptance");
+    await expect(page.locator("[data-coordination-name]")).toBeVisible();
+    await page.locator("[data-coordination-name]").fill("Shared Runtime Test Guest");
+    await page.locator("[data-coordination-phone]").fill("+989123456789");
+    await page.locator("[data-coordination-email]").fill(email);
+    await page.locator("[data-coordination-note]").fill("Automated disposable acceptance");
 
     const requestResponsePromise = page.waitForResponse(response => response.url().endsWith("/api/hotel/v1/requests") && response.request().method() === "POST", { timeout: 15000 });
-    await page.locator("[data-create-request]").click();
+    await page.locator("[data-create-coordination-request]").click();
     const requestResponse = await requestResponsePromise;
     assert.equal(requestResponse.status(), 201, await requestResponse.text());
     const result = await requestResponse.json();
@@ -128,7 +126,12 @@ test("shared public Damoon bundle submits and tracks a persisted request through
     assert.equal(result.inventoryReserved, false);
     assert.equal(result.bookingConfirmed, false);
     assert.ok(typeof result.reference === "string" && result.reference.length >= 40);
-    await expect(page.locator("[data-booking-flow] .booking-step--confirmed")).toContainText("درخواست اقامت ثبت شد");
+    const submittedPayload = requestResponse.request().postDataJSON();
+    assert.equal(submittedPayload.kind, "coordination");
+    assert.equal(submittedPayload.property, process.env.DAMOON_PROPERTY_SLUG);
+    for (const unapprovedField of ["roomType", "ratePlan", "price", "totalRate", "payment"]) assert.equal(unapprovedField in submittedPayload, false);
+    assert.deepEqual(availabilityRequests, [], "coordination requests do not query or reveal inventory");
+    await expect(page.locator("[data-booking-flow] .booking-step--confirmed")).toContainText("درخواست هماهنگی برای پذیرش ارسال شد");
 
     const statusResponsePromise = page.waitForResponse(response => response.url().endsWith("/api/hotel/v1/requests/status") && response.request().method() === "POST", { timeout: 15000 });
     await page.locator("[data-track-reference]").fill(result.reference);
@@ -137,7 +140,7 @@ test("shared public Damoon bundle submits and tracks a persisted request through
     assert.equal(statusResponse.status(), 200, await statusResponse.text());
     const status = await statusResponse.json();
     assert.equal(status.status, "RECEIVED");
-    assert.equal(status.availabilityHint, "AVAILABLE");
+    assert.equal("availabilityHint" in status, false);
     for (const privateField of ["guestName", "guestPhone", "guestEmail", "checkIn", "checkOut", "organizationId"]) assert.equal(privateField in status, false);
     await expect(page.locator("[data-track-result]")).toContainText("دریافت‌شده");
 
@@ -148,9 +151,9 @@ test("shared public Damoon bundle submits and tracks a persisted request through
     assert.equal(persisted.length, 1, "one row is durably persisted for the unique synthetic email");
     assert.deepEqual(persisted[0], {
       status: "RECEIVED",
-      availabilityHint: "AVAILABLE",
-      roomTypeSlug: process.env.DAMOON_ROOM_TYPE_SLUG,
-      ratePlanCode: process.env.DAMOON_RATE_PLAN_CODE,
+      availabilityHint: "UNKNOWN",
+      roomTypeSlug: null,
+      ratePlanCode: null,
       checkIn: new Date(`${checkIn}T00:00:00.000Z`),
       checkOut: new Date(`${checkOut}T00:00:00.000Z`),
       adults: 2,

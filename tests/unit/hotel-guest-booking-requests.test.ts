@@ -106,3 +106,23 @@ test("guest request search rejects too-short or oversized terms before querying"
   await assert.rejects(() => service.listGuestBookingRequests(principal, { organizationId }, propertyId, { search: "x".repeat(81) }), HotelManagementValidationError);
   assert.equal(queried, false);
 });
+
+
+test("needs action search and pagination remain scoped to the property", async () => {
+  const queries: Array<Record<string, unknown>> = [];
+  const db = {
+    organizationMember: { findFirst: async () => ({ id: "member" }) },
+    organizationCapability: { findFirst: async () => ({ id: "capability" }) },
+    hotelProperty: { findFirst: async () => ({ id: propertyId }) },
+    hotelGuestBookingRequest: { findMany: async (query: Record<string, unknown>) => { queries.push(query); return []; } },
+  } as unknown as PrismaClient;
+  const service = new HotelManagementService(db);
+  await service.listGuestBookingRequests(principal, { organizationId }, propertyId, { status: "NEEDS_ACTION", search: "Ali" });
+  await service.listGuestBookingRequests(principal, { organizationId }, propertyId, { status: "NEEDS_ACTION", search: "Ali", cursor: "page-1" });
+  for (const query of queries) {
+    assert.deepEqual(query.where, { organizationId, propertyId, status: { in: ["RECEIVED", "IN_REVIEW"] }, OR: [{ guestName: { contains: "Ali", mode: "insensitive" } }, { guestPhone: { contains: "Ali" } }] });
+    assert.equal(query.take, 50);
+  }
+  assert.deepEqual(queries[1]?.cursor, { id: "page-1" });
+  assert.equal(queries[1]?.skip, 1);
+});

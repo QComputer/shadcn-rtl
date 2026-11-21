@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type RequestStatus = "RECEIVED" | "IN_REVIEW" | "OPTION_OFFERED" | "UNAVAILABLE" | "DECLINED" | "CLOSED";
+type RequestFilter = RequestStatus | "ALL" | "NEEDS_ACTION";
 type GuestRequest = {
   id: string;
   status: RequestStatus;
@@ -55,20 +56,21 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
   const base = useMemo(() => `/api/organizations/${encodeURIComponent(organizationId)}/hotels/${encodeURIComponent(propertyId)}/booking-requests`, [organizationId, propertyId]);
   const [requests, setRequests] = useState<GuestRequest[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
-  const [filter, setFilter] = useState<RequestStatus | "ALL">("ALL");
+  const [filter, setFilter] = useState<RequestFilter>("ALL");
   const [searchInput, setSearchInput] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [copyFeedback, setCopyFeedback] = useState<{ id: string; ok: boolean } | null>(null);
   const [messages, setMessages] = useState<Record<string, string>>({});
   const latestLoadId = useRef(0);
-  const selectedFilter = useRef<RequestStatus | "ALL">("ALL");
+  const selectedFilter = useRef<RequestFilter>("ALL");
   const selectedSearch = useRef("");
   const loadInFlight = useRef(false);
   const loadedOlderPages = useRef(false);
 
-  const load = useCallback(async (nextCursor?: string | null, append = false, statusFilter: RequestStatus | "ALL" = filter, searchFilter = selectedSearch.current) => {
+  const load = useCallback(async (nextCursor?: string | null, append = false, statusFilter: RequestFilter = filter, searchFilter = selectedSearch.current) => {
     loadInFlight.current = true;
     if (!append) loadedOlderPages.current = false;
     const loadId = ++latestLoadId.current;
@@ -117,7 +119,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
       if (!response.ok) throw new Error(text.saveError);
       const updated = await response.json() as Pick<GuestRequest, "id" | "status" | "managerMessage" | "version">;
       const activeFilter = selectedFilter.current;
-      if (activeFilter !== filterAtStart || (activeFilter !== "ALL" && updated.status !== activeFilter)) {
+      if (activeFilter !== filterAtStart || (activeFilter !== "ALL" && (activeFilter === "NEEDS_ACTION" ? !["RECEIVED", "IN_REVIEW"].includes(updated.status) : updated.status !== activeFilter))) {
         setRequests((current) => current.filter((item) => item.id !== updated.id));
         setCursor(null);
         void load(null, false, activeFilter);
@@ -160,6 +162,16 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
     : language === "ar"
       ? { scope: "الطلبات المحمّلة", fresh: "جديد ولم يُراجع", action: "يتطلب إجراء الاستقبال" }
       : { scope: "Loaded requests", fresh: "New and unreviewed", action: "Reception action needed" };
+  const changeFilter = (nextFilter: RequestFilter) => {
+    if (nextFilter === selectedFilter.current) return;
+    selectedFilter.current = nextFilter; loadedOlderPages.current = false; latestLoadId.current += 1;
+    setCursor(null); setRequests([]); setFilter(nextFilter);
+  };
+  const copyPhone = async (request: GuestRequest) => {
+    try { await navigator.clipboard.writeText(request.guestPhone); setCopyFeedback({ id: request.id, ok: true }); }
+    catch { setCopyFeedback({ id: request.id, ok: false }); }
+  };
+  const copyLabels = language === "fa" ? { copy: "کپی شماره", copied: "شماره کپی شد", failed: "کپی انجام نشد؛ شماره را دستی انتخاب کنید" } : language === "ar" ? { copy: "نسخ الرقم", copied: "تم نسخ الرقم", failed: "تعذر النسخ؛ حدد الرقم يدوياً" } : { copy: "Copy number", copied: "Number copied", failed: "Could not copy; select the number manually" };
   const applySearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextSearch = searchInput.trim();
@@ -185,13 +197,15 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
       <h2 id="hotel-stay-requests-title" className="text-xl font-semibold">{text.title}</h2>
       <div className="flex flex-wrap gap-2">
         <label className="sr-only" htmlFor="hotel-request-status-filter">{text.status}</label>
-        <select id="hotel-request-status-filter" className="rounded-md border bg-background px-3 py-2 text-sm" value={filter} onChange={(event) => { const nextFilter = event.target.value as RequestStatus | "ALL"; selectedFilter.current = nextFilter; loadedOlderPages.current = false; latestLoadId.current += 1; setCursor(null); setRequests([]); setFilter(nextFilter); }}>
+        <select id="hotel-request-status-filter" className="rounded-md border bg-background px-3 py-2 text-sm" value={filter} onChange={(event) => changeFilter(event.target.value as RequestFilter)}>
           <option value="ALL">{text.all}</option>
+          <option value="NEEDS_ACTION">{indicators.action}</option>
           {statuses.map((status) => <option key={status} value={status}>{text[statusLabelKey[status]]}</option>)}
         </select>
         <button type="button" className="rounded-md border px-3 py-2 text-sm" onClick={() => void load()} disabled={loading}>{text.refresh}</button>
       </div>
     </header>
+    <button type="button" className="rounded-md border border-amber-600 px-4 py-2 font-medium" aria-pressed={filter === "NEEDS_ACTION"} onClick={() => changeFilter(filter === "NEEDS_ACTION" ? "ALL" : "NEEDS_ACTION")}>{indicators.action}</button>
     <form className="flex flex-wrap gap-2" onSubmit={applySearch}>
       <label className="sr-only" htmlFor="hotel-request-search">{text.searchLabel}</label>
       <input id="hotel-request-search" className="min-w-56 flex-1 rounded-md border bg-background px-3 py-2 text-sm" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder={text.searchPlaceholder} minLength={2} maxLength={80} />
@@ -216,7 +230,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
         const availabilityText = request.availabilityHint === "AVAILABLE" ? text.available : request.availabilityHint === "UNAVAILABLE" ? text.noAvailability : text.unknown;
         return <article key={request.id} className={`space-y-3 rounded-lg border p-4 ${needsAction(request.status) ? "border-amber-500 bg-amber-50/40 dark:bg-amber-950/20" : ""}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div><h3 className="font-semibold">{request.guestName}</h3><a className="text-sm underline" href={`tel:${encodeURIComponent(request.guestPhone)}`} dir="ltr">{request.guestPhone}</a>{request.guestEmail && <p className="text-sm" dir="ltr">{request.guestEmail}</p>}<p className="mt-1 text-xs text-muted-foreground"><span>{text.receivedAt}: </span><time dateTime={request.createdAt}>{receivedAt(request.createdAt)}</time></p></div>
+            <div><h3 className="font-semibold">{request.guestName}</h3><a className="text-sm underline" href={`tel:${encodeURIComponent(request.guestPhone)}`} dir="ltr">{request.guestPhone}</a> <button type="button" className="min-h-11 rounded-md border px-3 text-sm" onClick={() => void copyPhone(request)}>{copyLabels.copy}</button>{copyFeedback?.id === request.id && <span className="ms-2 text-sm" role="status">{copyFeedback.ok ? copyLabels.copied : copyLabels.failed}</span>}{request.guestEmail && <p className="text-sm" dir="ltr">{request.guestEmail}</p>}<p className="mt-1 text-xs text-muted-foreground"><span>{text.receivedAt}: </span><time dateTime={request.createdAt}>{receivedAt(request.createdAt)}</time></p></div>
             <div className="flex flex-wrap gap-2"><span className="rounded-full border px-3 py-1 text-sm">{text[statusLabelKey[request.status]]}</span>{needsAction(request.status) && <span className="rounded-full border border-amber-600 px-3 py-1 text-sm font-medium">{request.status === "RECEIVED" ? indicators.fresh : indicators.action}</span>}</div>
           </div>
           <dl className="grid gap-2 text-sm sm:grid-cols-2">

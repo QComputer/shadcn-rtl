@@ -26,13 +26,13 @@ type GuestRequest = {
 
 const labels = {
   fa: {
-    title: "درخواست‌های اقامت", refresh: "به‌روزرسانی", autoRefresh: "درخواست‌های تازه هر ۶۰ ثانیه، تا وقتی این صفحه باز است، بررسی می‌شوند.", all: "همه وضعیت‌ها", loading: "در حال دریافت درخواست‌ها…", empty: "درخواستی ثبت نشده است.", emptyFiltered: "درخواستی با این وضعیت پیدا نشد.", error: "دریافت درخواست‌ها ناموفق بود.", saveError: "تغییر وضعیت ذخیره نشد. فهرست را تازه کنید.", retry: "تلاش دوباره", guest: "مهمان", dates: "ورود / خروج", party: "مهمانان", room: "ترجیح اتاق", note: "درخواست مهمان", availability: "بررسی هنگام ثبت", status: "وضعیت", update: "تغییر وضعیت", more: "درخواست‌های قدیمی‌تر", received: "دریافت‌شده", review: "در حال بررسی", offered: "پیشنهاد برای بررسی", unavailable: "ناموجود", declined: "ردشده", closed: "بسته‌شده", checkAvailability: "بررسی دوباره موجودی", checking: "در حال بررسی…", available: "موجود در بررسی ثبت درخواست", noAvailability: "ناموجود در بررسی ثبت درخواست", unknown: "بررسی نشده", refreshAvailabilityError: "بررسی موجودی انجام نشد. دوباره تلاش کنید.",
+    title: "درخواست‌های اقامت", refresh: "به‌روزرسانی", autoRefresh: "درخواست‌های تازه هر ۶۰ ثانیه، تا وقتی این صفحه باز است، بررسی می‌شوند.", all: "همه وضعیت‌ها", searchLabel: "نام یا شماره تماس مهمان", searchPlaceholder: "جست‌وجوی نام یا شماره تماس", searchButton: "جست‌وجو", clearSearch: "پاک‌کردن جست‌وجو", loading: "در حال دریافت درخواست‌ها…", empty: "درخواستی ثبت نشده است.", emptyFiltered: "درخواستی با این وضعیت پیدا نشد.", error: "دریافت درخواست‌ها ناموفق بود.", saveError: "تغییر وضعیت ذخیره نشد. فهرست را تازه کنید.", retry: "تلاش دوباره", guest: "مهمان", dates: "ورود / خروج", party: "مهمانان", room: "ترجیح اتاق", note: "درخواست مهمان", availability: "بررسی هنگام ثبت", status: "وضعیت", update: "تغییر وضعیت", more: "درخواست‌های قدیمی‌تر", received: "دریافت‌شده", review: "در حال بررسی", offered: "پیشنهاد برای بررسی", unavailable: "ناموجود", declined: "ردشده", closed: "بسته‌شده", checkAvailability: "بررسی دوباره موجودی", checking: "در حال بررسی…", available: "موجود در بررسی ثبت درخواست", noAvailability: "ناموجود در بررسی ثبت درخواست", unknown: "بررسی نشده", refreshAvailabilityError: "بررسی موجودی انجام نشد. دوباره تلاش کنید.",
   },
   en: {
-    title: "Stay requests", refresh: "Refresh", autoRefresh: "New requests are checked every 60 seconds while this page is open.", all: "All statuses", loading: "Loading requests…", empty: "No stay requests yet.", emptyFiltered: "No requests match this status.", error: "Could not load stay requests.", saveError: "Status was not saved. Refresh and retry.", retry: "Retry", guest: "Guest", dates: "Check-in / check-out", party: "Guests", room: "Room preference", note: "Guest request", availability: "At submission", status: "Status", update: "Change status", more: "Load older requests", received: "Received", review: "Under review", offered: "Option offered", unavailable: "Unavailable", declined: "Declined", closed: "Closed", checkAvailability: "Recheck availability", checking: "Checking…", available: "Available when request was submitted", noAvailability: "Unavailable when request was submitted", unknown: "Not checked", refreshAvailabilityError: "Availability could not be checked. Try again.",
+    title: "Stay requests", refresh: "Refresh", autoRefresh: "New requests are checked every 60 seconds while this page is open.", all: "All statuses", searchLabel: "Guest name or phone number", searchPlaceholder: "Search name or phone number", searchButton: "Search", clearSearch: "Clear search", loading: "Loading requests…", empty: "No stay requests yet.", emptyFiltered: "No requests match this status.", error: "Could not load stay requests.", saveError: "Status was not saved. Refresh and retry.", retry: "Retry", guest: "Guest", dates: "Check-in / check-out", party: "Guests", room: "Room preference", note: "Guest request", availability: "At submission", status: "Status", update: "Change status", more: "Load older requests", received: "Received", review: "Under review", offered: "Option offered", unavailable: "Unavailable", declined: "Declined", closed: "Closed", checkAvailability: "Recheck availability", checking: "Checking…", available: "Available when request was submitted", noAvailability: "Unavailable when request was submitted", unknown: "Not checked", refreshAvailabilityError: "Availability could not be checked. Try again.",
   },
   ar: {
-    title: "طلبات الإقامة", refresh: "تحديث", autoRefresh: "يتم التحقق من الطلبات الجديدة كل ٦٠ ثانية ما دامت الصفحة مفتوحة.", all: "كل الحالات", loading: "جارٍ تحميل الطلبات…", empty: "لا توجد طلبات إقامة بعد.", emptyFiltered: "لا توجد طلبات بهذه الحالة.", error: "تعذر تحميل الطلبات.", saveError: "لم تُحفظ الحالة. حدّث القائمة ثم أعد المحاولة.", retry: "إعادة المحاولة", guest: "الضيف", dates: "الوصول / المغادرة", party: "الضيوف", room: "تفضيل الغرفة", note: "طلب الضيف", availability: "عند الإرسال", status: "الحالة", update: "تغيير الحالة", more: "تحميل الطلبات الأقدم", received: "تم الاستلام", review: "قيد المراجعة", offered: "تم تقديم خيار", unavailable: "غير متاح", declined: "مرفوض", closed: "مغلق", checkAvailability: "إعادة التحقق من التوفر", checking: "جارٍ التحقق…", available: "كان متاحاً عند إرسال الطلب", noAvailability: "لم يكن متاحاً عند إرسال الطلب", unknown: "لم يتم التحقق", refreshAvailabilityError: "تعذر التحقق من التوفر. حاول مرة أخرى.",
+    title: "طلبات الإقامة", refresh: "تحديث", autoRefresh: "يتم التحقق من الطلبات الجديدة كل ٦٠ ثانية ما دامت الصفحة مفتوحة.", all: "كل الحالات", searchLabel: "اسم الضيف أو رقم الهاتف", searchPlaceholder: "ابحث بالاسم أو رقم الهاتف", searchButton: "بحث", clearSearch: "مسح البحث", loading: "جارٍ تحميل الطلبات…", empty: "لا توجد طلبات إقامة بعد.", emptyFiltered: "لا توجد طلبات بهذه الحالة.", error: "تعذر تحميل الطلبات.", saveError: "لم تُحفظ الحالة. حدّث القائمة ثم أعد المحاولة.", retry: "إعادة المحاولة", guest: "الضيف", dates: "الوصول / المغادرة", party: "الضيوف", room: "تفضيل الغرفة", note: "طلب الضيف", availability: "عند الإرسال", status: "الحالة", update: "تغيير الحالة", more: "تحميل الطلبات الأقدم", received: "تم الاستلام", review: "قيد المراجعة", offered: "تم تقديم خيار", unavailable: "غير متاح", declined: "مرفوض", closed: "مغلق", checkAvailability: "إعادة التحقق من التوفر", checking: "جارٍ التحقق…", available: "كان متاحاً عند إرسال الطلب", noAvailability: "لم يكن متاحاً عند إرسال الطلب", unknown: "لم يتم التحقق", refreshAvailabilityError: "تعذر التحقق من التوفر. حاول مرة أخرى.",
   },
 } as const;
 
@@ -56,16 +56,19 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
   const [requests, setRequests] = useState<GuestRequest[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [filter, setFilter] = useState<RequestStatus | "ALL">("ALL");
+  const [searchInput, setSearchInput] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [messages, setMessages] = useState<Record<string, string>>({});
   const latestLoadId = useRef(0);
   const selectedFilter = useRef<RequestStatus | "ALL">("ALL");
+  const selectedSearch = useRef("");
   const loadInFlight = useRef(false);
   const loadedOlderPages = useRef(false);
 
-  const load = useCallback(async (nextCursor?: string | null, append = false, statusFilter: RequestStatus | "ALL" = filter) => {
+  const load = useCallback(async (nextCursor?: string | null, append = false, statusFilter: RequestStatus | "ALL" = filter, searchFilter = selectedSearch.current) => {
     loadInFlight.current = true;
     if (!append) loadedOlderPages.current = false;
     const loadId = ++latestLoadId.current;
@@ -74,6 +77,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
       const url = new URL(base, window.location.origin);
       if (nextCursor) url.searchParams.set("cursor", nextCursor);
       if (statusFilter !== "ALL") url.searchParams.set("status", statusFilter);
+      if (searchFilter) url.searchParams.set("search", searchFilter);
       const response = await fetch(url, { credentials: "same-origin", cache: "no-store" });
       const data = await response.json().catch(() => null) as { requests?: GuestRequest[]; nextCursor?: string | null } | null;
       if (!response.ok || !Array.isArray(data?.requests)) throw new Error(text.error);
@@ -141,6 +145,25 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
     return Number.isNaN(parsed.getTime()) ? value : new Intl.DateTimeFormat(language === "fa" ? "fa-IR" : language === "ar" ? "ar" : "en", { dateStyle: "medium", timeZone: "UTC" }).format(parsed);
   };
   const shown = requests;
+  const applySearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const nextSearch = searchInput.trim();
+    selectedSearch.current = nextSearch;
+    setAppliedSearch(nextSearch);
+    loadedOlderPages.current = false;
+    latestLoadId.current += 1;
+    setCursor(null);
+    void load(null, false, selectedFilter.current, nextSearch);
+  };
+  const clearSearch = () => {
+    setSearchInput("");
+    selectedSearch.current = "";
+    setAppliedSearch("");
+    loadedOlderPages.current = false;
+    latestLoadId.current += 1;
+    setCursor(null);
+    void load(null, false, selectedFilter.current, "");
+  };
 
   return <section className="mt-8 space-y-4 rounded-xl border bg-card p-4 sm:p-6" dir={language === "fa" || language === "ar" ? "rtl" : "ltr"} aria-labelledby="hotel-stay-requests-title">
     <header className="flex flex-wrap items-center justify-between gap-3">
@@ -154,6 +177,12 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
         <button type="button" className="rounded-md border px-3 py-2 text-sm" onClick={() => void load()} disabled={loading}>{text.refresh}</button>
       </div>
     </header>
+    <form className="flex flex-wrap gap-2" onSubmit={applySearch}>
+      <label className="sr-only" htmlFor="hotel-request-search">{text.searchLabel}</label>
+      <input id="hotel-request-search" className="min-w-56 flex-1 rounded-md border bg-background px-3 py-2 text-sm" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder={text.searchPlaceholder} minLength={2} maxLength={80} />
+      <button type="submit" className="rounded-md border px-3 py-2 text-sm" disabled={loading}>{text.searchButton}</button>
+      {appliedSearch && <button type="button" className="rounded-md border px-3 py-2 text-sm" onClick={clearSearch} disabled={loading}>{text.clearSearch}</button>}
+    </form>
     <p className="text-xs text-muted-foreground">{text.autoRefresh}</p>
     {error && <p className="rounded-md border border-destructive/40 p-3 text-sm text-destructive" role="alert">{error} <button className="underline" onClick={() => void load()}>{text.retry}</button></p>}
     {loading && <p className="text-sm text-muted-foreground" role="status">{text.loading}</p>}

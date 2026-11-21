@@ -9,7 +9,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   const searchParams = new URL(request.url).searchParams;
   const cursor = searchParams.get("cursor") || undefined;
   const status = searchParams.get("status") || undefined;
+  const search = searchParams.get("search") || undefined;
   return managementAction(request, organizationId, (principal) =>
-    service.listGuestBookingRequests(principal, { organizationId }, propertyId, { cursor, status }),
+    service.listGuestBookingRequests(principal, { organizationId }, propertyId, { cursor, status, search }),
   );
 }

@@ -66,3 +66,43 @@ test("guest request list rejects unknown status filters", async () => {
   );
   assert.equal(queried, false);
 });
+
+test("guest request search matches name or phone within the property and status filters", async () => {
+  let query: Record<string, unknown> | undefined;
+  const db = {
+    organizationMember: { findFirst: async () => ({ id: "membership-test" }) },
+    organizationCapability: { findFirst: async () => ({ id: "capability-test" }) },
+    hotelProperty: { findFirst: async () => ({ id: propertyId }) },
+    hotelGuestBookingRequest: { findMany: async (value: Record<string, unknown>) => { query = value; return []; } },
+  } as unknown as PrismaClient;
+
+  await new HotelManagementService(db).listGuestBookingRequests(principal, { organizationId }, propertyId, {
+    status: "RECEIVED",
+    search: "  Ali  ",
+  });
+
+  assert.deepEqual(query?.where, {
+    organizationId,
+    propertyId,
+    status: "RECEIVED",
+    OR: [
+      { guestName: { contains: "Ali", mode: "insensitive" } },
+      { guestPhone: { contains: "Ali" } },
+    ],
+  });
+});
+
+test("guest request search rejects too-short or oversized terms before querying", async () => {
+  let queried = false;
+  const db = {
+    organizationMember: { findFirst: async () => ({ id: "membership-test" }) },
+    organizationCapability: { findFirst: async () => ({ id: "capability-test" }) },
+    hotelProperty: { findFirst: async () => ({ id: propertyId }) },
+    hotelGuestBookingRequest: { findMany: async () => { queried = true; return []; } },
+  } as unknown as PrismaClient;
+  const service = new HotelManagementService(db);
+
+  await assert.rejects(() => service.listGuestBookingRequests(principal, { organizationId }, propertyId, { search: "x" }), HotelManagementValidationError);
+  await assert.rejects(() => service.listGuestBookingRequests(principal, { organizationId }, propertyId, { search: "x".repeat(81) }), HotelManagementValidationError);
+  assert.equal(queried, false);
+});

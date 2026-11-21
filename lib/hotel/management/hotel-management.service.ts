@@ -324,15 +324,27 @@ export class HotelManagementService {
 
   async archivePhysicalRoom(principal: HotelManagementPrincipal, scope: HotelManagementScope, roomId: string) { await this.authorize(principal, scope); const room = await this.db.hotelRoom.findFirst({ where: { id: roomId, organizationId: scope.organizationId } }); if (!room) throw new HotelManagementAuthorizationError("Room is outside the organization scope"); await this.updatePhysicalRoom(principal, scope, roomId, { isActive: false }); return this.db.hotelRoom.updateMany({ where: { id: roomId, organizationId: scope.organizationId }, data: { deletedAt: new Date() } }); }
 
-  async listGuestBookingRequests(principal: HotelManagementPrincipal, scope: HotelManagementScope, propertyId: string, options: { cursor?: string; status?: string } = {}) {
+  async listGuestBookingRequests(principal: HotelManagementPrincipal, scope: HotelManagementScope, propertyId: string, options: { cursor?: string; status?: string; search?: string } = {}) {
     await this.authorize(principal, scope);
     await this.assertProperty(scope, propertyId);
     const status = options.status?.trim() || undefined;
     if (status && !(HOTEL_GUEST_REQUEST_STATUSES as readonly string[]).includes(status)) {
       throw new HotelManagementValidationError("Invalid booking request status filter");
     }
+    const search = options.search?.trim() || undefined;
+    if (search && (search.length < 2 || search.length > 80)) {
+      throw new HotelManagementValidationError("Booking request search must contain between 2 and 80 characters");
+    }
     const rows = await this.db.hotelGuestBookingRequest.findMany({
-      where: { organizationId: scope.organizationId, propertyId, ...(status ? { status } : {}) },
+      where: {
+        organizationId: scope.organizationId,
+        propertyId,
+        ...(status ? { status } : {}),
+        ...(search ? { OR: [
+          { guestName: { contains: search, mode: "insensitive" } },
+          { guestPhone: { contains: search } },
+        ] } : {}),
+      },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
       take: 50,

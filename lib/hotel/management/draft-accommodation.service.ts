@@ -49,8 +49,20 @@ export class DraftAccommodationService extends HotelManagementService {
     await this.authorizeDraftProperty(principal, scope);
     assertDraftAccommodationOccupancy(input);
     const { beds, ...fields } = input;
-    return this.draftsDb.hotelDraftAccommodation.create({
-      data: { ...scope, ...fields, beds: beds ?? Prisma.DbNull },
+    return this.draftsDb.$transaction(async (tx) => {
+      const draft = await tx.hotelDraftAccommodation.create({
+        data: { ...scope, ...fields, beds: beds ?? Prisma.DbNull },
+      });
+      await tx.auditLog.create({ data: {
+        action: "CREATE",
+        entityType: "HotelDraftAccommodation",
+        entityId: draft.id,
+        userId: principal.userId,
+        organizationId: scope.organizationId,
+        description: "Created draft hotel accommodation",
+        newValue: { propertyId: scope.propertyId, temporaryCode: draft.temporaryCode, category: draft.category, version: draft.version },
+      } });
+      return draft;
     });
   }
 
@@ -59,16 +71,53 @@ export class DraftAccommodationService extends HotelManagementService {
     const { version, beds, ...fields } = input;
     const draft = await this.getActiveDraft(scope, draftId, version);
     assertDraftAccommodationOccupancy({ ...draft, ...fields });
-    return this.updateAtVersion(scope, draftId, version, {
-      ...fields,
-      beds: beds === null ? Prisma.DbNull : beds,
+    const data = { ...fields, beds: beds === null ? Prisma.DbNull : beds };
+    return this.draftsDb.$transaction(async (tx) => {
+      const changed = await tx.hotelDraftAccommodation.update({
+        where: { ...scope, id: draftId, version, archivedAt: null },
+        data: { ...data, version: { increment: 1 } },
+      }).catch((error: unknown) => this.rethrowVersionConflict(error));
+      await tx.auditLog.create({ data: {
+        action: "UPDATE",
+        entityType: "HotelDraftAccommodation",
+        entityId: draftId,
+        userId: principal.userId,
+        organizationId: scope.organizationId,
+        description: "Updated draft hotel accommodation",
+        previousValue: { propertyId: scope.propertyId, version },
+        newValue: { propertyId: scope.propertyId, version: changed.version, changedFields: Object.keys(fields).concat(beds !== undefined ? ["beds"] : []) },
+      } });
+      return changed;
     });
   }
 
   async archive(principal: HotelManagementPrincipal, scope: DraftScope, draftId: string, version: number) {
     await this.authorizeDraftProperty(principal, scope);
     await this.getActiveDraft(scope, draftId, version);
-    return this.updateAtVersion(scope, draftId, version, { archivedAt: new Date() });
+    return this.draftsDb.$transaction(async (tx) => {
+      const archived = await tx.hotelDraftAccommodation.update({
+        where: { ...scope, id: draftId, version, archivedAt: null },
+        data: { archivedAt: new Date(), version: { increment: 1 } },
+      }).catch((error: unknown) => this.rethrowVersionConflict(error));
+      await tx.auditLog.create({ data: {
+        action: "UPDATE",
+        entityType: "HotelDraftAccommodation",
+        entityId: draftId,
+        userId: principal.userId,
+        organizationId: scope.organizationId,
+        description: "Archived draft hotel accommodation",
+        previousValue: { propertyId: scope.propertyId, version },
+        newValue: { propertyId: scope.propertyId, version: archived.version, archived: true },
+      } });
+      return archived;
+    });
+  }
+
+  private rethrowVersionConflict(error: unknown): never {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      throw new HotelManagementConflictError("Draft version changed");
+    }
+    throw error;
   }
 
   private async updateAtVersion(
@@ -77,16 +126,9 @@ export class DraftAccommodationService extends HotelManagementService {
     version: number,
     data: Prisma.HotelDraftAccommodationUpdateInput,
   ) {
-    try {
-      return await this.draftsDb.hotelDraftAccommodation.update({
-        where: { ...scope, id: draftId, version, archivedAt: null },
-        data: { ...data, version: { increment: 1 } },
-      });
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-        throw new HotelManagementConflictError("Draft version changed");
-      }
-      throw error;
-    }
+    return this.draftsDb.hotelDraftAccommodation.update({
+      where: { ...scope, id: draftId, version, archivedAt: null },
+      data: { ...data, version: { increment: 1 } },
+    }).catch((error: unknown) => this.rethrowVersionConflict(error));
   }
 }

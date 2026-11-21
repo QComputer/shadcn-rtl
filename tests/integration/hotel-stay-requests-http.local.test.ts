@@ -1,4 +1,4 @@
-﻿import assert from "node:assert/strict";
+import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -480,12 +480,12 @@ test("request-only Hotel stay coordination works through authenticated browser a
     }
     assert.equal(browserRequestIds.length, 3);
 
-    resultStage = "damoon-public-contact-to-guest-portal-link";
+    resultStage = "damoon-public-coordination-contact";
     const damoonContactPath = "/en/contact?checkIn=2027-12-10&checkOut=2027-12-12&adults=1&children=0";
     const damoonHttp = await request(damoonContactPath, "damoon-hotel.ir", undefined);
     assert.equal(damoonHttp.status, 200, "Damoon public contact page must be reachable over tenant-bound HTTP");
     const damoonHttpBody = await damoonHttp.text();
-    assert.ok(damoonHttpBody.includes("/damoon-front/app.js"), "Damoon public contact page should serve the guest portal shell");
+    assert.ok(damoonHttpBody.includes("/damoon-front/app.js"), "Damoon public contact page should serve the public shell");
 
     damoonPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     damoonPage.setDefaultNavigationTimeout(120_000);
@@ -510,17 +510,9 @@ test("request-only Hotel stay coordination works through authenticated browser a
       await route.fulfill({ status: resp.status, headers: responseHeaders, body });
     });
     await damoonPage.goto(`http://damoon-hotel.ir:3036${damoonContactPath}`, { waitUntil: "domcontentloaded" });
-    const guestPortalLink = damoonPage.getByRole("link", { name: "Continue in guest portal" });
-    await guestPortalLink.waitFor({ state: "visible", timeout: 30_000 });
-    const damoonGuestPortalHref = await guestPortalLink.getAttribute("href");
-    assert.ok(damoonGuestPortalHref);
-    const damoonGuestPortalUrl = new URL(damoonGuestPortalHref, "http://damoon-hotel.ir:3036");
-    assert.equal(damoonGuestPortalUrl.origin, "http://damoon-hotel.ir:3036");
-    assert.equal(damoonGuestPortalUrl.pathname, `/en/hotel/${orgA.id}/${propertyA.id}`);
-    assert.equal(damoonGuestPortalUrl.searchParams.get("checkIn"), "2027-12-10");
-    assert.equal(damoonGuestPortalUrl.searchParams.get("checkOut"), "2027-12-12");
-    assert.equal(damoonGuestPortalUrl.searchParams.get("adults"), "1");
-    assert.equal(damoonGuestPortalUrl.searchParams.get("children"), "0");
+    await damoonPage.locator("[data-coordination-request]").waitFor({ state: "visible", timeout: 30_000 });
+    await damoonPage.locator("[data-coordination-track]").waitFor({ state: "visible" });
+    assert.equal(await damoonPage.locator('a[href*="/hotel/"]').count(), 0, "Damoon public contact must not link to the retired guest portal");
 
     resultStage = "customer-review-denial-and-guest-history";
     const requestForReview = browserRequestIds[0]!;

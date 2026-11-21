@@ -270,16 +270,19 @@ export class HotelManagementService {
     const roomType = await this.db.hotelRoomType.findFirst({ where: { id: input.roomTypeId, propertyId: input.propertyId, organizationId: scope.organizationId } });
     if (!roomType) throw new HotelManagementAuthorizationError("Room type does not belong to this property");
     assertText(input.code, "Room code", 64);
-    return this.db.$transaction(async (tx) => {
-      const locked = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${input.roomTypeId} AND "organizationId"=${scope.organizationId} AND "propertyId"=${input.propertyId} AND "isActive"=true AND "deletedAt" IS NULL FOR UPDATE`);
-      if (!locked.length) throw new HotelManagementAuthorizationError("Room type is outside the active property scope");
-      const created = await tx.hotelRoom.create({ data: { organizationId: scope.organizationId, propertyId: input.propertyId, roomTypeId: input.roomTypeId, code: input.code.trim(), floor: input.floor, description: input.description, isOutOfService: input.isOutOfService ?? false } });
-      const counts = await tx.$queryRaw<Array<{ configuredRooms: number; availableRooms: number }>>(Prisma.sql`SELECT COUNT(*)::int AS "configuredRooms", COUNT(*) FILTER (WHERE "isActive"=true AND "deletedAt" IS NULL AND "isOutOfService"=false)::int AS "availableRooms" FROM "HotelRoom" WHERE "organizationId"=${scope.organizationId} AND "propertyId"=${input.propertyId} AND "roomTypeId"=${input.roomTypeId}`);
-      const today = new Date(); today.setUTCHours(0, 0, 0, 0);
-      const commitments = await tx.$queryRaw<Array<{ maxCommitted: number | null }>>(Prisma.sql`SELECT MAX("booked" + "held")::int AS "maxCommitted" FROM "HotelInventory" WHERE "organizationId"=${scope.organizationId} AND "propertyId"=${input.propertyId} AND "roomTypeId"=${input.roomTypeId} AND "date">=${today}`);
-      if ((commitments[0]?.maxCommitted ?? 0) > (counts[0]?.availableRooms ?? 0)) throw new HotelManagementValidationError("Physical room configuration would be below existing bookings and holds");
-      return created;
-    }, { maxWait: 5000, timeout: 10000 });
+    return this.db.$transaction((tx) => this.createPhysicalRoomInTransaction(tx, scope, input), { maxWait: 5000, timeout: 10000 });
+  }
+
+  /** Creates a room using the caller's transaction, for atomic workflows that also mutate related records. */
+  private async createPhysicalRoomInTransaction(tx: Prisma.TransactionClient, scope: HotelManagementScope, input: { propertyId: string; roomTypeId: string; code: string; floor?: string; description?: string; isOutOfService?: boolean }) {
+    const locked = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${input.roomTypeId} AND "organizationId"=${scope.organizationId} AND "propertyId"=${input.propertyId} AND "isActive"=true AND "deletedAt" IS NULL FOR UPDATE`);
+    if (!locked.length) throw new HotelManagementAuthorizationError("Room type is outside the active property scope");
+    const created = await tx.hotelRoom.create({ data: { organizationId: scope.organizationId, propertyId: input.propertyId, roomTypeId: input.roomTypeId, code: input.code.trim(), floor: input.floor, description: input.description, isOutOfService: input.isOutOfService ?? false } });
+    const counts = await tx.$queryRaw<Array<{ configuredRooms: number; availableRooms: number }>>(Prisma.sql`SELECT COUNT(*)::int AS "configuredRooms", COUNT(*) FILTER (WHERE "isActive"=true AND "deletedAt" IS NULL AND "isOutOfService"=false)::int AS "availableRooms" FROM "HotelRoom" WHERE "organizationId"=${scope.organizationId} AND "propertyId"=${input.propertyId} AND "roomTypeId"=${input.roomTypeId}`);
+    const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+    const commitments = await tx.$queryRaw<Array<{ maxCommitted: number | null }>>(Prisma.sql`SELECT MAX("booked" + "held")::int AS "maxCommitted" FROM "HotelInventory" WHERE "organizationId"=${scope.organizationId} AND "propertyId"=${input.propertyId} AND "roomTypeId"=${input.roomTypeId} AND "date">=${today}`);
+    if ((commitments[0]?.maxCommitted ?? 0) > (counts[0]?.availableRooms ?? 0)) throw new HotelManagementValidationError("Physical room configuration would be below existing bookings and holds");
+    return created;
   }
 
   async updatePhysicalRoom(principal: HotelManagementPrincipal, scope: HotelManagementScope, roomId: string, patch: { code?: string; roomTypeId?: string; floor?: string | null; description?: string | null; isOutOfService?: boolean; isActive?: boolean }) {

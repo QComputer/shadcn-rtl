@@ -8,6 +8,7 @@ import {
 } from "./draft-accommodation-contracts";
 import {
   HotelManagementConflictError,
+  HotelManagementValidationError,
   type HotelManagementPrincipal,
   HotelManagementService,
 } from "./hotel-management.service";
@@ -111,6 +112,64 @@ export class DraftAccommodationService extends HotelManagementService {
       } });
       return archived;
     });
+  }
+
+  async promote(
+    principal: HotelManagementPrincipal,
+    scope: DraftScope,
+    input: { draftId: string; expectedVersion: number; roomTypeId: string; physicalRoomCode: string; confirmPhysicalRoomCode: boolean },
+  ) {
+    await this.authorizeDraftProperty(principal, scope);
+    if (!input.draftId || !input.roomTypeId) throw new HotelManagementValidationError("Draft and room type are required");
+    if (!Number.isSafeInteger(input.expectedVersion) || input.expectedVersion < 1) throw new HotelManagementValidationError("Expected draft version must be a positive safe integer");
+    if (input.confirmPhysicalRoomCode !== true) throw new HotelManagementValidationError("Confirm the real physical room code before promotion");
+
+    return this.draftsDb.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<Array<{
+        id: string;
+        version: number;
+        archivedAt: Date | null;
+        promotedRoomId: string | null;
+        temporaryCode: string;
+        category: string;
+      }>>(Prisma.sql`SELECT "id","version","archivedAt","promotedRoomId","temporaryCode","category" FROM "HotelDraftAccommodation" WHERE "id"=${input.draftId} AND "organizationId"=${scope.organizationId} AND "propertyId"=${scope.propertyId} FOR UPDATE`);
+      const draft = locked[0];
+      if (!draft) throw new ApiError(404, "Draft accommodation not found");
+      if (draft.archivedAt) throw new HotelManagementConflictError("Archived drafts cannot be promoted");
+      if (draft.promotedRoomId) throw new HotelManagementConflictError("Draft accommodation has already been promoted");
+      if (draft.version !== input.expectedVersion) throw new HotelManagementConflictError("Draft version changed");
+      if (!draft.temporaryCode.trim() || !draft.category.trim()) throw new HotelManagementValidationError("Draft accommodation is incomplete");
+
+      // Only the explicitly confirmed operational code and selected active room type cross
+      // the draft boundary. Provisional beds, occupancy, floor and descriptions are not copied.
+      const room = await this.createPhysicalRoomInTransaction(tx, scope, {
+        propertyId: scope.propertyId,
+        roomTypeId: input.roomTypeId,
+        code: input.physicalRoomCode,
+        isOutOfService: true,
+      });
+      const promotedAt = new Date();
+      const marked = await tx.hotelDraftAccommodation.updateMany({
+        where: { id: draft.id, organizationId: scope.organizationId, propertyId: scope.propertyId, version: input.expectedVersion, archivedAt: null, promotedRoomId: null },
+        data: { promotedRoomId: room.id, promotedAt, version: { increment: 1 } },
+      });
+      if (marked.count !== 1) throw new HotelManagementConflictError("Draft version changed or was already promoted");
+      const promotedDraft = await tx.hotelDraftAccommodation.findFirst({
+        where: { id: draft.id, organizationId: scope.organizationId, propertyId: scope.propertyId },
+      });
+      if (!promotedDraft) throw new HotelManagementConflictError("Draft accommodation changed during promotion");
+      await tx.auditLog.create({ data: {
+        action: "UPDATE",
+        entityType: "HotelDraftAccommodation",
+        entityId: draft.id,
+        userId: principal.userId,
+        organizationId: scope.organizationId,
+        description: "Promoted draft accommodation to a physical room",
+        previousValue: { propertyId: scope.propertyId, version: draft.version, promotedRoomId: null },
+        newValue: { propertyId: scope.propertyId, version: promotedDraft.version, promotedRoomId: room.id, promotedAt: promotedAt.toISOString(), roomTypeId: input.roomTypeId, physicalRoomCode: room.code },
+      } });
+      return { draft: promotedDraft, room };
+    }, { maxWait: 5000, timeout: 10000 });
   }
 
   private rethrowVersionConflict(error: unknown): never {

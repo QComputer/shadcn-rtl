@@ -5255,6 +5255,8 @@ model HotelDraftAccommodation {
   maxChildren        Int?
   maxOccupancy       Int?
   beds               Json?
+  promotedRoomId     String?   @unique(map: "HotelDraftAccommodation_promoted_room_key")
+  promotedAt         DateTime?
   version            Int       @default(1)
   archivedAt         DateTime?
   createdAt          DateTime  @default(now())

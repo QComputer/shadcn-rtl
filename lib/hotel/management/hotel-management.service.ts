@@ -14,6 +14,7 @@ export type HotelManagementPrincipal = {
 };
 
 export type HotelManagementScope = { readonly organizationId: string };
+export type PhysicalRoomCreationInput = { propertyId: string; roomTypeId: string; code: string; floor?: string; description?: string; isOutOfService?: boolean };
 type Db = PrismaClient;
 export type HotelInventoryInitializationResult = {
   from: string; to: string; requestedNights: number; createdNights: string[];
@@ -265,7 +266,7 @@ export class HotelManagementService {
     }, { maxWait: 5000, timeout: 10000 });
   }
 
-  async createPhysicalRoom(principal: HotelManagementPrincipal, scope: HotelManagementScope, input: { propertyId: string; roomTypeId: string; code: string; floor?: string; description?: string; isOutOfService?: boolean }) {
+  async createPhysicalRoom(principal: HotelManagementPrincipal, scope: HotelManagementScope, input: PhysicalRoomCreationInput) {
     await this.authorize(principal, scope);
     const roomType = await this.db.hotelRoomType.findFirst({ where: { id: input.roomTypeId, propertyId: input.propertyId, organizationId: scope.organizationId } });
     if (!roomType) throw new HotelManagementAuthorizationError("Room type does not belong to this property");
@@ -274,7 +275,8 @@ export class HotelManagementService {
   }
 
   /** Creates a room using the caller's transaction, for atomic workflows that also mutate related records. */
-  private async createPhysicalRoomInTransaction(tx: Prisma.TransactionClient, scope: HotelManagementScope, input: { propertyId: string; roomTypeId: string; code: string; floor?: string; description?: string; isOutOfService?: boolean }) {
+  protected async createPhysicalRoomInTransaction(tx: Prisma.TransactionClient, scope: HotelManagementScope, input: PhysicalRoomCreationInput) {
+    assertText(input.code, "Room code", 64);
     const locked = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${input.roomTypeId} AND "organizationId"=${scope.organizationId} AND "propertyId"=${input.propertyId} AND "isActive"=true AND "deletedAt" IS NULL FOR UPDATE`);
     if (!locked.length) throw new HotelManagementAuthorizationError("Room type is outside the active property scope");
     const created = await tx.hotelRoom.create({ data: { organizationId: scope.organizationId, propertyId: input.propertyId, roomTypeId: input.roomTypeId, code: input.code.trim(), floor: input.floor, description: input.description, isOutOfService: input.isOutOfService ?? false } });

@@ -1,9 +1,20 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DraftPromotionForm,
+  DraftPromotionStatus,
+  completeDraftPromotion,
+  draftActionsEnabled,
+  promotionLabels,
+  promotionMessageForStatus,
+  promotionPayload,
+  requestDraftPromotion,
+  type PromotionRoomType,
+} from "./draft-accommodation-promotion-ui";
 
 const labels = {
   en: {
@@ -50,6 +61,10 @@ const labels = {
   },
 } as const;
 
+export function hotelDraftLabels(locale: string) {
+  return { ...(locale === "en" || locale === "ar" ? labels[locale] : labels.fa), ...promotionLabels(locale) };
+}
+
 const occupancyFields = ["estimatedMinGuests", "estimatedMaxGuests", "maxAdults", "maxChildren", "maxOccupancy"] as const;
 type OccupancyField = typeof occupancyFields[number];
 type Draft = Record<OccupancyField, number | null> & {
@@ -61,6 +76,8 @@ type Draft = Record<OccupancyField, number | null> & {
   layout: string | null;
   description: string | null;
   beds: Array<{ type: string; count: number }> | null;
+  promotedRoomId: string | null;
+  promotedAt: string | null;
 };
 
 type Form = Record<OccupancyField, string> & {
@@ -110,13 +127,22 @@ export function HotelDraftAccommodations({ organizationId, propertyId, locale }:
   propertyId: string;
   locale: string;
 }) {
-  const text = locale === "en" || locale === "ar" ? labels[locale] : labels.fa;
+  const text = useMemo(() => hotelDraftLabels(locale), [locale]);
   const endpoint = `/api/organizations/${encodeURIComponent(organizationId)}/hotels/${encodeURIComponent(propertyId)}/draft-accommodations`;
+  const operationsEndpoint = `/api/organizations/${encodeURIComponent(organizationId)}/hotels/${encodeURIComponent(propertyId)}/operations`;
   const [drafts, setDrafts] = useState<Draft[] | null>(null);
   const [loadError, setLoadError] = useState("");
   const [reload, setReload] = useState(0);
   const [editor, setEditor] = useState<{ draft: Draft | null; form: Form } | null>(null);
   const [archive, setArchive] = useState<Draft | null>(null);
+  const [promotionDraft, setPromotionDraft] = useState<Draft | null>(null);
+  const [promotionRoomTypes, setPromotionRoomTypes] = useState<PromotionRoomType[] | null>(null);
+  const [promotionLoading, setPromotionLoading] = useState(false);
+  const [promotionError, setPromotionError] = useState(false);
+  const [promotedRoomCodes, setPromotedRoomCodes] = useState<Record<string, string>>({});
+  const [promotionRoomTypeId, setPromotionRoomTypeId] = useState("");
+  const [physicalRoomCode, setPhysicalRoomCode] = useState("");
+  const [confirmPhysicalRoomCode, setConfirmPhysicalRoomCode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; error?: boolean; conflict?: boolean } | null>(null);
 
@@ -141,6 +167,36 @@ export function HotelDraftAccommodations({ organizationId, propertyId, locale }:
     return () => controller.abort();
   }, [endpoint, reload, text]);
 
+  useEffect(() => {
+    if (!promotionDraft) return;
+    const controller = new AbortController();
+    async function loadRoomTypes() {
+      setPromotionLoading(true);
+      setPromotionError(false);
+      setPromotionRoomTypes(null);
+      const from = new Date();
+      from.setUTCHours(0, 0, 0, 0);
+      const to = new Date(from);
+      to.setUTCDate(to.getUTCDate() + 1);
+      const query = new URLSearchParams({ from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) });
+      try {
+        const response = await fetch(`${operationsEndpoint}?${query}`, { cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error("room type request failed");
+        const result: { roomTypes: PromotionRoomType[] } = await response.json();
+        if (!controller.signal.aborted) {
+          setPromotionRoomTypes(result.roomTypes);
+          setPromotionRoomTypeId("");
+        }
+      } catch {
+        if (!controller.signal.aborted) setPromotionError(true);
+      } finally {
+        if (!controller.signal.aborted) setPromotionLoading(false);
+      }
+    }
+    void loadRoomTypes();
+    return () => controller.abort();
+  }, [operationsEndpoint, promotionDraft, text]);
+
   function openEditor(draft?: Draft) {
     setArchive(null);
     setMessage(null);
@@ -154,36 +210,51 @@ export function HotelDraftAccommodations({ organizationId, propertyId, locale }:
   function reloadDrafts() {
     setEditor(null);
     setArchive(null);
+    setPromotionDraft(null);
     setMessage(null);
     setDrafts(null);
     setLoadError("");
     setReload((current) => current + 1);
   }
 
-  async function mutate(url: string, method: "POST" | "PATCH", data: unknown, archiving = false) {
+  async function mutate(url: string, method: "POST" | "PATCH", data: unknown, mode: "draft" | "archive" | "promotion" = "draft") {
     setBusy(true);
     setMessage(null);
     try {
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        const conflict = response.status === 409 || response.status === 404;
-        const message = conflict ? text.conflict : response.status === 400 ? text.invalid
-          : response.status === 401 || response.status === 403 ? text.forbidden : text.failed;
-        setMessage({ text: message, error: true, conflict });
+      const response = mode === "promotion"
+        ? await requestDraftPromotion(url, data as ReturnType<typeof promotionPayload>)
+        : await (async () => {
+          const raw = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+          return { ok: raw.ok, status: raw.status, body: raw.ok ? await raw.json() as { draft: Draft } : null };
+        })();
+      if (!response.ok || !response.body) {
+        setMessage(promotionMessageForStatus(response.status, text));
         return;
       }
-      const { draft }: { draft: Draft } = await response.json();
+      if (mode === "promotion") {
+        completeDraftPromotion(response.body as { draft: Draft; room: { id: string; code: string } }, text, {
+          rememberRoomCode: (draftId, roomCode) => setPromotedRoomCodes((current) => ({ ...current, [draftId]: roomCode })),
+          refreshDrafts: () => {
+            setPromotionDraft(null);
+            setPromotionRoomTypes(null);
+            setEditor(null);
+            setArchive(null);
+            setDrafts(null);
+            setLoadError("");
+            setReload((current) => current + 1);
+          },
+          notify: (message) => setMessage({ text: message }),
+        });
+        return;
+      }
+      const { draft } = response.body as { draft: Draft };
       setDrafts((current) => {
         const remaining = (current ?? []).filter((item) => item.id !== draft.id);
-        return archiving ? remaining : [...remaining, draft].sort((a, b) => a.temporaryCode.localeCompare(b.temporaryCode, locale));
+        return mode === "archive" ? remaining : [...remaining, draft].sort((a, b) => a.temporaryCode.localeCompare(b.temporaryCode, locale));
       });
       setEditor(null);
       setArchive(null);
-      setMessage({ text: archiving ? text.archived : text.saved });
+      setMessage({ text: mode === "archive" ? text.archived : text.saved });
     } catch {
       setMessage({ text: text.failed, error: true });
     } finally {
@@ -207,12 +278,33 @@ export function HotelDraftAccommodations({ organizationId, propertyId, locale }:
       : mutate(endpoint, "POST", data));
   }
 
+  function openPromotion(draft: Draft) {
+    setEditor(null);
+    setArchive(null);
+    setMessage(null);
+    setPromotionDraft(draft);
+    setPromotionRoomTypeId("");
+    setPhysicalRoomCode("");
+    setConfirmPhysicalRoomCode(false);
+  }
+
+  function promote(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!promotionDraft || busy) return;
+    const payload = promotionPayload(promotionDraft.version, promotionRoomTypeId, physicalRoomCode, confirmPhysicalRoomCode);
+    if (!payload) {
+      setMessage({ text: text.roomCodeRequired, error: true });
+      return;
+    }
+    void mutate(`${endpoint}/${encodeURIComponent(promotionDraft.id)}/promote`, "POST", payload, "promotion");
+  }
+
   const form = editor?.form;
   return (
-    <section className="space-y-4 rounded-xl border bg-card p-4" aria-labelledby="hotel-draft-accommodations">
+    <section dir={locale === "en" ? "ltr" : "rtl"} className="space-y-4 rounded-xl border bg-card p-4" aria-labelledby="hotel-draft-accommodations">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="hotel-draft-accommodations" className="text-lg font-semibold">{text.title}</h2>
-        {drafts && !editor && !archive && <Button type="button" onClick={() => openEditor()}>{text.create}</Button>}
+        {drafts && !editor && !archive && !promotionDraft && <Button type="button" onClick={() => openEditor()}>{text.create}</Button>}
       </div>
       <p className="rounded-md bg-muted p-3 text-sm">{text.warning}</p>
       {loadError && <div className="space-y-2"><p role="alert" className="text-sm text-destructive">{loadError}</p>
@@ -260,20 +352,26 @@ export function HotelDraftAccommodations({ organizationId, propertyId, locale }:
           </div>
         </fieldset>
       </form>}
+      {promotionDraft && <DraftPromotionForm text={text} cancelLabel={text.cancel} temporaryCode={promotionDraft.temporaryCode} roomTypes={promotionRoomTypes}
+        loading={promotionLoading} loadError={promotionError} roomTypeId={promotionRoomTypeId} physicalRoomCode={physicalRoomCode}
+        confirmed={confirmPhysicalRoomCode} busy={busy} onRoomType={setPromotionRoomTypeId} onCode={setPhysicalRoomCode}
+        onConfirmation={setConfirmPhysicalRoomCode} onSubmit={promote} onCancel={() => { setPromotionDraft(null); setPromotionRoomTypes(null); setMessage(null); }} />}
       {!!drafts?.length && <ul className="divide-y rounded-md border">
         {drafts.map((draft) => <li key={draft.id} className="space-y-2 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="min-w-0 break-words"><bdi className="font-medium">{draft.temporaryCode}</bdi> · {draft.category}</div>
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" disabled={busy || !!editor || !!archive} onClick={() => openEditor(draft)}>{text.edit}</Button>
-              <Button type="button" variant="ghost" size="sm" disabled={busy || !!editor || !!archive} onClick={() => { setArchive(draft); setMessage(null); }}>{text.archive}</Button>
-            </div>
+            <DraftPromotionStatus text={text} promotedRoomId={draft.promotedRoomId} promotedAt={draft.promotedAt} roomCode={promotedRoomCodes[draft.id]} />
+            {draftActionsEnabled(draft.promotedRoomId) && <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" size="sm" disabled={busy || !!editor || !!archive || !!promotionDraft} onClick={() => openEditor(draft)}>{text.edit}</Button>
+              <Button type="button" variant="ghost" size="sm" disabled={busy || !!editor || !!archive || !!promotionDraft} onClick={() => { setArchive(draft); setMessage(null); }}>{text.archive}</Button>
+              <Button type="button" variant="outline" size="sm" disabled={busy || !!editor || !!archive || !!promotionDraft} onClick={() => openPromotion(draft)}>{text.promote}</Button>
+            </div>}
           </div>
           {draft.description && <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{draft.description}</p>}
           {archive?.id === draft.id && <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-medium">{text.confirmArchive}</p>
             <Button type="button" variant="destructive" size="sm" disabled={busy} onClick={() => {
-              void mutate(`${endpoint}/${encodeURIComponent(draft.id)}/archive`, "POST", { version: draft.version }, true);
+              void mutate(`${endpoint}/${encodeURIComponent(draft.id)}/archive`, "POST", { version: draft.version }, "archive");
             }}>{text.archive}</Button>
             <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => { setArchive(null); setMessage(null); }}>{text.cancel}</Button>
           </div>}

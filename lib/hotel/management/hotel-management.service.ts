@@ -328,7 +328,7 @@ export class HotelManagementService {
     await this.authorize(principal, scope);
     await this.assertProperty(scope, propertyId);
     const status = options.status?.trim() || undefined;
-    if (status && !(HOTEL_GUEST_REQUEST_STATUSES as readonly string[]).includes(status)) {
+    if (status && status !== "NEEDS_ACTION" && !(HOTEL_GUEST_REQUEST_STATUSES as readonly string[]).includes(status)) {
       throw new HotelManagementValidationError("Invalid booking request status filter");
     }
     const search = options.search?.trim() || undefined;
@@ -339,7 +339,7 @@ export class HotelManagementService {
       where: {
         organizationId: scope.organizationId,
         propertyId,
-        ...(status ? { status } : {}),
+        ...(status ? { status: status === "NEEDS_ACTION" ? { in: ["RECEIVED", "IN_REVIEW"] } : status } : {}),
         ...(search ? { OR: [
           { guestName: { contains: search, mode: "insensitive" } },
           { guestPhone: { contains: search } },

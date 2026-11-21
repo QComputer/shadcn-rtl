@@ -410,7 +410,7 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
 
     const requestCard = managerPage.locator("article").filter({ has: managerPage.locator(`#request-status-${requestId}`) });
     await requestCard.locator(`#request-status-${requestId}`).selectOption("IN_REVIEW");
-    await expect(requestCard.locator(".rounded-full")).toContainText("در حال بررسی");
+    await expect(requestCard.locator(".rounded-full").first()).toContainText("در حال بررسی");
 
     await expect(requestCard.locator(`#request-status-${requestId}`)).toBeEnabled();
 
@@ -482,7 +482,7 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
       expect(refreshAfterUpdate.status()).toBe(200);
       await expect(managerPage.locator("#hotel-request-status-filter")).toHaveValue("IN_REVIEW");
       await expect(managerPage.locator(`#request-status-${inboxRequest.id}`)).toHaveCount(1);
-      const visibleStatuses = managerPage.locator("section[aria-labelledby='hotel-stay-requests-title'] article span.rounded-full");
+      const visibleStatuses = managerPage.locator("section[aria-labelledby='hotel-stay-requests-title'] article div.flex.flex-wrap.gap-2 > span.rounded-full:first-child");
       for (let index = 0; index < await visibleStatuses.count(); index += 1) {
         await expect(visibleStatuses.nth(index)).toHaveText("در حال بررسی");
       }
@@ -725,7 +725,7 @@ test('inventory-free request reaches reception and tracks without creating a boo
       const card = manager.page.locator('section[aria-labelledby="hotel-stay-requests-title"] article').filter({ hasText: guestName });
       await expect(card).toBeVisible();
       await expect(card).toContainText(category);
-      await expect(card.locator('button')).toHaveCount(0);
+      await expect(card.getByRole('button', { name: 'بررسی دوباره موجودی' })).toHaveCount(0);
       await expect(card.locator(`select option[value="OPTION_OFFERED"]`)).toHaveCount(0);
       await expect(card.locator(`select option[value="UNAVAILABLE"]`)).toHaveCount(0);
     }

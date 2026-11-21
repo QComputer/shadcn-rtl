@@ -5,7 +5,7 @@ const textExtensions = new Set([".css", ".html", ".js", ".json", ".svg", ".txt"]
 
 // These signatures match common UTF-8-as-legacy-code-page corruption seen in
 // Persian/Arabic strings, replacement characters, and damaged punctuation.
-export const DAMOON_MOJIBAKE_PATTERN = /(?:╪[^\s]|┘[^\s]|Γ(?:Ç|ù|î|å)|┬(?:╖|⌐)|├ù|█[░▒▓│]|Ã[^\s]|Â[^\s]|�)/u;
+export const DAMOON_MOJIBAKE_PATTERN = /(?:╪[^\s]|┘[^\s]|Γ(?:Ç|ÿ|ù|î|å)|┬(?:╖|⌐)|├ù|█[░▒▓│]|Ã[^\s]|Â[^\s]|�)/u;
 
 export function assertCleanDamoonText(text, label = "Damoon text") {
   const match = DAMOON_MOJIBAKE_PATTERN.exec(text);

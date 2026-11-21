@@ -208,7 +208,7 @@ test("Damoon Phase 1 pages, language switching, responsive layout and date-to-co
     try {
       const partialContactPage = await partialContactContext.newPage();
       await partialContactPage.goto(partialContactUrl.href, { waitUntil: "networkidle" });
-      const partialSummary = partialContactPage.locator(".hospitality-stay-context");
+      const partialSummary = partialContactPage.locator('section.hospitality-stay-context:has([data-copy-stay])');
       await partialSummary.waitFor({ state: "visible" });
       const partialSummaryText = await partialSummary.innerText();
       assert.match(partialSummaryText, /غير محدد/, `${runtime.name}: contact summary identifies the unknown age`);
@@ -304,7 +304,7 @@ test("Damoon Phase 1 pages, language switching, responsive layout and date-to-co
       const freshPage = await freshContext.newPage();
       await freshPage.goto(contactUrl.href, { waitUntil: "networkidle" });
       assert.equal(await freshPage.evaluate(() => sessionStorage.length), 0, "fresh contact context has no carried session state");
-      const summary = freshPage.locator(".hospitality-stay-context");
+      const summary = freshPage.locator('section.hospitality-stay-context:has([data-copy-stay])');
       await summary.waitFor({ state: "visible" });
       const summaryText = await summary.innerText();
       assert.match(summaryText, /3 adults/i);
@@ -338,6 +338,40 @@ test("Damoon Phase 1 pages, language switching, responsive layout and date-to-co
         const localizedApiRequests = [];
         localizedPage.on("request", request => { if (/\/api\/hotel\//.test(request.url())) localizedApiRequests.push(request.url()); });
         await localizedPage.goto(`${runtime.base}${localizedPath(locale, "/rooms")}`, { waitUntil: "networkidle" });
+        const themeToggle = localizedPage.locator("[data-theme-toggle]");
+        const switchToDark = locale === "fa" ? "رفتن به تم تیره" : locale === "ar" ? "التبديل إلى المظهر الداكن" : "Switch to dark theme";
+        const switchToLight = locale === "fa" ? "رفتن به تم روشن" : locale === "ar" ? "التبديل إلى المظهر الفاتح" : "Switch to light theme";
+        assert.equal(await themeToggle.getAttribute("aria-label"), switchToDark);
+        assert.equal(await themeToggle.getAttribute("aria-pressed"), "false");
+        if (viewport.width > 760) {
+          for (const palette of ["hermes", "forest", "wood"]) {
+            const paletteButton = localizedPage.locator(`button[data-palette="${palette}"]`);
+            await paletteButton.click();
+            assert.equal(await localizedPage.locator("html").getAttribute("data-palette"), palette);
+            await themeToggle.click();
+            assert.equal(await localizedPage.locator("html").getAttribute("data-theme"), "dark");
+            assert.equal(await themeToggle.getAttribute("aria-pressed"), "true");
+            assert.equal(await themeToggle.getAttribute("aria-label"), switchToLight);
+            assert.equal(await themeToggle.locator("svg").count(), 1);
+            await localizedPage.goto(`${runtime.base}${localizedPath(locale, "/contact")}`, { waitUntil: "networkidle" });
+            assert.equal(await localizedPage.locator("html").getAttribute("data-palette"), palette, `${locale} ${palette} persists across navigation`);
+            assert.equal(await localizedPage.locator("html").getAttribute("data-theme"), "dark", `${locale} dark mode persists across navigation`);
+            await localizedPage.reload({ waitUntil: "networkidle" });
+            assert.equal(await localizedPage.locator("html").getAttribute("data-palette"), palette, `${locale} ${palette} persists across reload`);
+            assert.equal(await localizedPage.locator("html").getAttribute("data-theme"), "dark", `${locale} dark mode persists across reload`);
+            await localizedPage.locator("[data-theme-toggle]").click();
+            assert.equal(await localizedPage.locator("html").getAttribute("data-theme"), "light");
+            assert.equal(await localizedPage.locator("[data-theme-toggle]").getAttribute("aria-pressed"), "false");
+            assert.equal(await localizedPage.locator("[data-theme-toggle]").getAttribute("aria-label"), switchToDark);
+            await localizedPage.goto(`${runtime.base}${localizedPath(locale, "/rooms")}`, { waitUntil: "networkidle" });
+          }
+        } else {
+          await themeToggle.click();
+          assert.equal(await localizedPage.locator("html").getAttribute("data-theme"), "dark", `${locale} mobile theme toggles on`);
+          assert.equal(await themeToggle.getAttribute("aria-pressed"), "true");
+          await themeToggle.click();
+          assert.equal(await localizedPage.locator("html").getAttribute("data-theme"), "light", `${locale} mobile theme toggles off`);
+        }
         const localizedRoomLink = localizedPage.locator('.accommodation-page a[href*="/rooms/"]').first();
         await localizedRoomLink.waitFor({ state: "visible" });
         const localizedRoomUrl = new URL(await localizedRoomLink.getAttribute("href"), runtime.base);
@@ -376,6 +410,8 @@ test("Damoon Phase 1 pages, language switching, responsive layout and date-to-co
         // coordination link to verify this public planning path without
         // invoking the booking API or changing its business behavior.
         const coordinationLink = localizedPage.locator('.accommodation-coordination__actions a[href*="/contact"]').last();
+        assert.match(await coordinationLink.innerText(), /Request accommodation|درخواست اقامت|طلب إقامة/);
+        assert.equal(await localizedPage.locator('a[href*="/hotel/"]').count(), 0, `${locale} Damoon pages do not link to the retired guest portal`);
         await coordinationLink.click();
         const expectedContactPath = localizedPath(locale, "/contact");
         await localizedPage.waitForURL(url => url.pathname === expectedContactPath && url.searchParams.has("room"));
@@ -388,8 +424,9 @@ test("Damoon Phase 1 pages, language switching, responsive layout and date-to-co
         assert.equal(localizedContact.searchParams.get("room"), localizedRoomUrl.pathname.split("/").at(-1));
         assert.equal(await localizedPage.locator("html").getAttribute("lang"), locale);
         assert.equal(await localizedPage.locator("html").getAttribute("dir"), locales.find(item => item.code === locale).dir);
-        await localizedPage.locator(".hospitality-stay-context").waitFor({ state: "visible" });
-        const localizedSummary = await localizedPage.locator(".hospitality-stay-context").innerText();
+        await localizedPage.locator('section.hospitality-stay-context:has([data-copy-stay])').waitFor({ state: "visible" });
+        await localizedPage.locator("[data-coordination-request]").waitFor({ state: "visible" });
+        const localizedSummary = await localizedPage.locator('section.hospitality-stay-context:has([data-copy-stay])').innerText();
         assert.ok(localizedSummary.length > 20, `${locale} contact summary is visible and localized`);
         const noConfirmation = locale === "fa" ? "رزرو قطعی نیست" : locale === "ar" ? "ليس حجزاً مؤكداً" : "not a confirmed reservation";
         assert.ok(localizedSummary.includes(noConfirmation), `${locale} does not claim a confirmed booking`);
@@ -445,7 +482,7 @@ test("Damoon stay summary copy supports three languages and clipboard fallback i
       page.on("pageerror", error => errors.push(error.message));
       const target = `${origin}${localizedPath(code, "/contact")}?checkIn=${checkIn}&checkOut=${checkOut}&adults=3&guests=3&children=2&childAges=7,&room=double&ref=copy#stay`;
       await page.goto(target);
-      const summary = page.locator(".hospitality-stay-context");
+      const summary = page.locator('section.hospitality-stay-context:has([data-copy-stay])');
       await summary.locator("[data-copy-stay]").click();
       await page.waitForFunction(() => document.querySelector("[data-copy-status]")?.textContent);
       const copied = (await page.evaluate(() => navigator.clipboard.readText())).replaceAll("\r\n", "\n");

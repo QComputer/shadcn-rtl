@@ -4,13 +4,13 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { HotelStayRequests } from "./hotel-stay-requests";
 
-export function HotelRequestReception({ organizationId, propertyId, locale, canConfigure }: { organizationId: string; propertyId: string; locale: string; canConfigure: boolean }) {
+export function HotelRequestReception({ organizationId, propertyId, locale, canConfigure, showGuestPortal = true }: { organizationId: string; propertyId: string; locale: string; canConfigure: boolean; showGuestPortal?: boolean }) {
   const [version, setVersion] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const t = locale === "en" ? { title: "Guest coordination portal", open: "Open guest portal", enable: "Enable coordination requests", disable: "Disable coordination requests", error: "Configuration failed." }
-    : locale === "ar" ? { title: "╪¿┘ê╪º╪¿╪⌐ ╪¬┘å╪│┘è┘é ╪º┘ä╪Ñ┘é╪º┘à╪⌐", open: "┘ü╪¬╪¡ ╪¿┘ê╪º╪¿╪⌐ ╪º┘ä╪╢┘è┘ê┘ü", enable: "╪¬┘ü╪╣┘è┘ä ╪╖┘ä╪¿╪º╪¬ ╪º┘ä╪¬┘å╪│┘è┘é", disable: "╪Ñ┘è┘é╪º┘ü ╪╖┘ä╪¿╪º╪¬ ╪º┘ä╪¬┘å╪│┘è┘é", error: "┘ü╪┤┘ä ╪¬╪¡╪»┘è╪½ ╪º┘ä╪Ñ╪╣╪»╪º╪»╪º╪¬." }
-    : { title: "┘╛┘ê╪▒╪¬╪º┘ä ┘ç┘à╪º┘ç┘å┌»█î ╪º┘é╪º┘à╪¬", open: "╪¿╪º╪▓┌⌐╪▒╪»┘å ┘╛┘ê╪▒╪¬╪º┘ä ┘à┘ç┘à╪º┘å", enable: "┘ü╪╣╪º┘äΓÇî┌⌐╪▒╪»┘å ╪»╪▒╪«┘ê╪º╪│╪¬ ┘ç┘à╪º┘ç┘å┌»█î", disable: "╪║█î╪▒┘ü╪╣╪º┘äΓÇî┌⌐╪▒╪»┘å ╪»╪▒╪«┘ê╪º╪│╪¬ ┘ç┘à╪º┘ç┘å┌»█î", error: "╪¬┘å╪╕█î┘à╪º╪¬ ╪░╪«█î╪▒┘ç ┘å╪┤╪»." };
+  const t = locale === "en" ? { title: "Guest request settings", open: "Open guest request page", enable: "Enable coordination requests", disable: "Disable coordination requests", error: "Configuration failed." }
+    : locale === "ar" ? { title: "إعدادات طلبات الإقامة", open: "فتح صفحة طلب الضيف", enable: "تفعيل طلبات التنسيق", disable: "إيقاف طلبات التنسيق", error: "تعذر تحديث الإعدادات." }
+    : { title: "تنظیم درخواست اقامت", open: "مشاهده صفحه درخواست مهمان", enable: "فعال‌سازی درخواست اقامت", disable: "غیرفعال‌سازی درخواست اقامت", error: "به‌روزرسانی تنظیمات ناموفق بود." };
   async function configure(mode: "DISABLED" | "REQUEST_ONLY") {
     setBusy(true); setError("");
     try {
@@ -24,6 +24,6 @@ export function HotelRequestReception({ organizationId, propertyId, locale, canC
     <Link className="underline" href={`/${locale}/hotel/${encodeURIComponent(organizationId)}/${encodeURIComponent(propertyId)}`}>{t.open}</Link>
     {canConfigure ? <div className="flex flex-wrap gap-2"><Button disabled={busy} onClick={() => void configure("REQUEST_ONLY")}>{t.enable}</Button><Button disabled={busy} variant="outline" onClick={() => void configure("DISABLED")}>{t.disable}</Button></div> : null}
     {error ? <p role="alert">{error}</p> : null}
-    <HotelStayRequests key={`${organizationId}:${propertyId}:${version}`} organizationId={organizationId} propertyId={propertyId} locale={locale} initialStay={{ checkIn: "", checkOut: "", adults: 1, childAges: [] }} />
+    {showGuestPortal ? <HotelStayRequests key={`${organizationId}:${propertyId}:${version}`} organizationId={organizationId} propertyId={propertyId} locale={locale} initialStay={{ checkIn: "", checkOut: "", adults: 1, childAges: [] }} /> : null}
   </section>;
 }

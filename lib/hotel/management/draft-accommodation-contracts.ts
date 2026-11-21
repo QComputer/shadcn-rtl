@@ -25,6 +25,13 @@ const archiveSchema = z.strictObject({
   version: z.number().int().min(1).max(2147483646),
 });
 
+const promoteSchema = z.strictObject({
+  expectedVersion: z.number().int().min(1).max(2147483646),
+  roomTypeId: z.string().trim().min(1).max(100),
+  physicalRoomCode: z.string().trim().min(1).max(64),
+  confirmPhysicalRoomCode: z.literal(true),
+});
+
 const updateSchema = createSchema.partial()
   .extend(archiveSchema.shape)
   .refine(({ version: _version, ...patch }) => Object.keys(patch).length > 0);
@@ -42,9 +49,11 @@ function managementSchema<T>(schema: z.ZodType<T>) {
 export const createDraftAccommodationSchema = managementSchema(createSchema);
 export const updateDraftAccommodationSchema = managementSchema(updateSchema);
 export const archiveDraftAccommodationSchema = managementSchema(archiveSchema);
+export const promoteDraftAccommodationSchema = managementSchema(promoteSchema);
 
 export type DraftAccommodationInput = z.infer<typeof createSchema>;
 export type DraftAccommodationPatch = z.infer<typeof updateSchema>;
+export type DraftAccommodationPromotionInput = z.infer<typeof promoteSchema>;
 
 export function assertDraftAccommodationOccupancy(
   input: Pick<DraftAccommodationInput, "estimatedMinGuests" | "estimatedMaxGuests" | "maxAdults" | "maxChildren" | "maxOccupancy">,

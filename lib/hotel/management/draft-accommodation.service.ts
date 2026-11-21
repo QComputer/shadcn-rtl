@@ -5,6 +5,7 @@ import {
   assertDraftAccommodationOccupancy,
   type DraftAccommodationInput,
   type DraftAccommodationPatch,
+  type DraftAccommodationPromotionInput,
 } from "./draft-accommodation-contracts";
 import {
   HotelManagementConflictError,
@@ -34,6 +35,7 @@ export class DraftAccommodationService extends HotelManagementService {
       where: { ...scope, id: draftId, archivedAt: null },
     });
     if (!draft) throw new ApiError(404, "Draft accommodation not found");
+    if (draft.promotedRoomId) throw new HotelManagementConflictError("Promoted drafts cannot be modified or archived");
     if (draft.version !== version) throw new HotelManagementConflictError("Draft version changed");
     return draft;
   }
@@ -75,7 +77,7 @@ export class DraftAccommodationService extends HotelManagementService {
     const data = { ...fields, beds: beds === null ? Prisma.DbNull : beds };
     return this.draftsDb.$transaction(async (tx) => {
       const changed = await tx.hotelDraftAccommodation.update({
-        where: { ...scope, id: draftId, version, archivedAt: null },
+        where: { ...scope, id: draftId, version, archivedAt: null, promotedRoomId: null },
         data: { ...data, version: { increment: 1 } },
       }).catch((error: unknown) => this.rethrowVersionConflict(error));
       await tx.auditLog.create({ data: {
@@ -97,7 +99,7 @@ export class DraftAccommodationService extends HotelManagementService {
     await this.getActiveDraft(scope, draftId, version);
     return this.draftsDb.$transaction(async (tx) => {
       const archived = await tx.hotelDraftAccommodation.update({
-        where: { ...scope, id: draftId, version, archivedAt: null },
+        where: { ...scope, id: draftId, version, archivedAt: null, promotedRoomId: null },
         data: { archivedAt: new Date(), version: { increment: 1 } },
       }).catch((error: unknown) => this.rethrowVersionConflict(error));
       await tx.auditLog.create({ data: {
@@ -117,7 +119,7 @@ export class DraftAccommodationService extends HotelManagementService {
   async promote(
     principal: HotelManagementPrincipal,
     scope: DraftScope,
-    input: { draftId: string; expectedVersion: number; roomTypeId: string; physicalRoomCode: string; confirmPhysicalRoomCode: boolean },
+    input: Omit<DraftAccommodationPromotionInput, "confirmPhysicalRoomCode"> & { draftId: string; confirmPhysicalRoomCode: boolean },
   ) {
     await this.authorizeDraftProperty(principal, scope);
     if (!input.draftId || !input.roomTypeId) throw new HotelManagementValidationError("Draft and room type are required");
@@ -186,7 +188,7 @@ export class DraftAccommodationService extends HotelManagementService {
     data: Prisma.HotelDraftAccommodationUpdateInput,
   ) {
     return this.draftsDb.hotelDraftAccommodation.update({
-      where: { ...scope, id: draftId, version, archivedAt: null },
+      where: { ...scope, id: draftId, version, archivedAt: null, promotedRoomId: null },
       data: { ...data, version: { increment: 1 } },
     }).catch((error: unknown) => this.rethrowVersionConflict(error));
   }

@@ -24,6 +24,8 @@ let drafts: Draft[];
 let writes: number;
 let auditRows: Record<string, unknown>[];
 let failAudit: boolean;
+let physicalRooms: Record<string, unknown>[];
+let transactionQueryIndex = 0;
 
 function matches(record: Record<string, unknown>, where: Record<string, unknown>) {
   return Object.entries(where).every(([key, value]) => record[key] === value);
@@ -33,9 +35,18 @@ const db = {
   $transaction: async <T>(work: (tx: typeof db) => Promise<T>): Promise<T> => {
     const draftSnapshot = structuredClone(drafts);
     const auditSnapshot = [...auditRows];
+    const roomSnapshot = [...physicalRooms];
     const writeSnapshot = writes;
+    transactionQueryIndex = 0;
     try { return await work(db); }
-    catch (error) { drafts = draftSnapshot; auditRows = auditSnapshot; writes = writeSnapshot; throw error; }
+    catch (error) { drafts = draftSnapshot; auditRows = auditSnapshot; physicalRooms = roomSnapshot; writes = writeSnapshot; throw error; }
+  },
+  $queryRaw: async () => {
+    transactionQueryIndex++;
+    if (transactionQueryIndex === 1) return drafts.filter((draft) => draft.id === params.draftId && draft.organizationId === scope.organizationId && draft.propertyId === scope.propertyId);
+    if (transactionQueryIndex === 2) return [{ id: "room-type-a" }];
+    if (transactionQueryIndex === 3) return [{ configuredRooms: physicalRooms.length, availableRooms: physicalRooms.filter((room) => room.isOutOfService !== true).length }];
+    return [{ maxCommitted: 0 }];
   },
   auditLog: { create: async ({ data }: { data: Record<string, unknown> }) => {
     if (failAudit) throw new Error("audit insert failed");
@@ -70,6 +81,7 @@ const db = {
       if (drafts.some((draft) => matches(draft, key))) throw prismaError("P2002");
       const row = {
         ...data, ...key, id: drafts.length === 0 ? params.draftId : `draft-${drafts.length + 1}`, version: 1, archivedAt: null,
+        promotedRoomId: null, promotedAt: null,
         estimatedMinGuests: data.estimatedMinGuests ?? null,
         estimatedMaxGuests: data.estimatedMaxGuests ?? null,
         maxAdults: data.maxAdults ?? null,
@@ -84,7 +96,7 @@ const db = {
     update: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
       const row = drafts.find((draft) => matches(draft, where));
       if (!row || updateConflict) throw prismaError("P2025");
-      assert.deepEqual(where, { ...scope, id: params.draftId, version: row.version, archivedAt: null });
+      assert.deepEqual(where, { ...scope, id: params.draftId, version: row.version, archivedAt: null, promotedRoomId: null });
       assert.deepEqual(data.version, { increment: 1 });
       for (const [key, value] of Object.entries(data)) {
         if (key !== "version" && value !== undefined) row[key] = value === Prisma.DbNull ? null : value;
@@ -93,7 +105,24 @@ const db = {
       writes++;
       return row;
     },
+    updateMany: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+      const row = drafts.find((draft) => matches(draft, where));
+      if (!row || updateConflict) return { count: 0 };
+      for (const [key, value] of Object.entries(data)) {
+        if (key === "version") row.version++;
+        else row[key] = value;
+      }
+      writes++;
+      return { count: 1 };
+    },
   },
+  hotelRoom: { create: async ({ data }: { data: Record<string, unknown> }) => {
+    if (physicalRooms.some((room) => room.propertyId === data.propertyId && room.code === data.code)) throw prismaError("P2002");
+    const room = { ...data, id: `physical-${physicalRooms.length + 1}` };
+    physicalRooms.push(room);
+    writes++;
+    return room;
+  } },
 };
 
 function prismaError(code: string) {
@@ -108,6 +137,7 @@ let routes: {
   list: typeof import("../../app/api/organizations/[id]/hotels/[propertyId]/draft-accommodations/route");
   item: typeof import("../../app/api/organizations/[id]/hotels/[propertyId]/draft-accommodations/[draftId]/route");
   archive: typeof import("../../app/api/organizations/[id]/hotels/[propertyId]/draft-accommodations/[draftId]/archive/route");
+  promote: typeof import("../../app/api/organizations/[id]/hotels/[propertyId]/draft-accommodations/[draftId]/promote/route");
 };
 
 before(async () => {
@@ -115,6 +145,7 @@ before(async () => {
     list: await import("../../app/api/organizations/[id]/hotels/[propertyId]/draft-accommodations/route"),
     item: await import("../../app/api/organizations/[id]/hotels/[propertyId]/draft-accommodations/[draftId]/route"),
     archive: await import("../../app/api/organizations/[id]/hotels/[propertyId]/draft-accommodations/[draftId]/archive/route"),
+    promote: await import("../../app/api/organizations/[id]/hotels/[propertyId]/draft-accommodations/[draftId]/promote/route"),
   };
 });
 
@@ -126,6 +157,8 @@ beforeEach(() => {
   writes = 0;
   auditRows = [];
   failAudit = false;
+  physicalRooms = [];
+  transactionQueryIndex = 0;
 });
 
 const origin = "https://hotel.example.test";
@@ -273,4 +306,54 @@ test("conflicting mutations and failed audit insertion leave no committed audit 
   assert.equal(auditRows.length, 1);
   assert.equal((await routes.archive.POST(request("POST", { version: 2 }), context())).status, 409);
   assert.equal(auditRows.length, 1);
+});
+
+test("promotion API validates strictly, enforces scoped authorization and returns the promoted draft and room", async () => {
+  const created = await routes.list.POST(request("POST", input), context());
+  assert.equal(created.status, 201);
+  const promoteInput = { expectedVersion: 1, roomTypeId: "room-type-a", physicalRoomCode: "101", confirmPhysicalRoomCode: true };
+
+  assert.equal((await routes.promote.POST(request("POST", { ...promoteInput, organizationId: "org-b" }), context())).status, 422);
+  assert.equal((await routes.promote.POST(request("POST", { ...promoteInput, confirmPhysicalRoomCode: false }), context())).status, 422);
+  assert.equal((await routes.promote.POST(request("POST", { ...promoteInput, physicalRoomCode: " " }), context())).status, 422);
+  assert.equal((await routes.promote.POST(request("POST", { ...promoteInput, expectedVersion: 1.5 }), context())).status, 422);
+  assert.equal((await routes.promote.POST(request("POST", promoteInput), context({ id: "org-b" }))).status, 403);
+  session = { user: { ...admin.user, role: "STAFF" } };
+  assert.equal((await routes.promote.POST(request("POST", promoteInput), context())).status, 403);
+  session = admin;
+  memberActive = false;
+  assert.equal((await routes.promote.POST(request("POST", promoteInput), context())).status, 403);
+  memberActive = true;
+  capabilityActive = false;
+  assert.equal((await routes.promote.POST(request("POST", promoteInput), context())).status, 403);
+  capabilityActive = true;
+  assert.equal((await routes.promote.POST(request("POST", promoteInput), context({ propertyId: "property-inactive" }))).status, 404);
+  assert.equal(writes, 1);
+
+  const response = await routes.promote.POST(request("POST", promoteInput), context());
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.draft.id, params.draftId);
+  assert.equal(result.draft.promotedRoomId, result.room.id);
+  assert.equal(result.room.code, "101");
+  assert.equal(result.room.isOutOfService, true);
+  assert.equal(result.room.floor, undefined);
+  assert.equal(auditRows.at(-1)?.organizationId, scope.organizationId);
+  assert.equal(auditRows.at(-1)?.userId, admin.user.id);
+
+  assert.equal((await routes.promote.POST(request("POST", promoteInput), context())).status, 409);
+  assert.equal((await routes.promote.POST(request("POST", { ...promoteInput, expectedVersion: 2 }), context())).status, 409);
+});
+
+test("promoted drafts cannot be patched or archived through ordinary draft routes", async () => {
+  drafts = [{
+    ...scope, id: params.draftId, version: 2, archivedAt: null,
+    promotedRoomId: "physical-1", promotedAt: new Date(),
+  }];
+  const beforeWrites = writes;
+  assert.equal((await routes.item.PATCH(request("PATCH", { version: 2, description: "must not change" }), context())).status, 409);
+  assert.equal((await routes.archive.POST(request("POST", { version: 2 }), context())).status, 409);
+  assert.equal(writes, beforeWrites);
+  assert.equal(drafts[0].archivedAt, null);
+  assert.equal(drafts[0].version, 2);
 });

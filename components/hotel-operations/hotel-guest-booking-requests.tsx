@@ -11,6 +11,7 @@ type GuestRequest = {
   adults: number;
   children: number;
   childAges: number[];
+  preferredCategory: string | null;
   roomTypeSlug: string | null;
   ratePlanCode: string | null;
   availabilityHint: "AVAILABLE" | "UNAVAILABLE" | "UNKNOWN";
@@ -141,7 +142,14 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
     {!loading && !shown.length && !error && <p className="rounded-lg border p-4 text-sm text-muted-foreground">{filter === "ALL" ? text.empty : text.emptyFiltered}</p>}
     <div className="grid gap-3">
       {shown.map((request) => {
-        const nextStatuses = transitions[request.status];
+        const coordination = request.roomTypeSlug === null && request.ratePlanCode === null;
+        const nextStatuses = transitions[request.status].filter((status) => !coordination || (status !== "OPTION_OFFERED" && status !== "UNAVAILABLE"));
+        const categoryLabels: Record<string, Record<string, string>> = {
+          "vip-suite": { fa: "سوئیت VIP دو اتاقه", en: "VIP Two-Room Suite", ar: "جناح VIP بغرفتين" },
+          "standard-room": { fa: "اتاق استاندارد", en: "Standard Room", ar: "غرفة قياسية" },
+          "studio-suite": { fa: "سوئیت استودیو", en: "Studio Suite", ar: "جناح استوديو" },
+        };
+        const category = request.preferredCategory ? categoryLabels[request.preferredCategory]?.[language] ?? request.preferredCategory : null;
         const availabilityText = request.availabilityHint === "AVAILABLE" ? text.available : request.availabilityHint === "UNAVAILABLE" ? text.noAvailability : text.unknown;
         return <article key={request.id} className="space-y-3 rounded-lg border p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -151,11 +159,11 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
           <dl className="grid gap-2 text-sm sm:grid-cols-2">
             <div><dt className="font-medium">{text.dates}</dt><dd>{date(request.checkIn)} – {date(request.checkOut)}</dd></div>
             <div><dt className="font-medium">{text.party}</dt><dd>{request.adults} + {request.children}{request.childAges.length ? ` (${request.childAges.join(", ")})` : ""}</dd></div>
-            <div><dt className="font-medium">{text.room}</dt><dd>{[request.roomTypeSlug, request.ratePlanCode].filter(Boolean).join(" · ") || "—"}</dd></div>
-            <div><dt className="font-medium">{text.availability}</dt><dd>{availabilityText} <button type="button" className="ms-2 underline" disabled={busyId === request.id} onClick={() => void recheckAvailability(request)}>{busyId === request.id ? text.checking : text.checkAvailability}</button></dd></div>
+            <div><dt className="font-medium">{text.room}</dt><dd>{coordination ? category || "—" : [request.roomTypeSlug, request.ratePlanCode].filter(Boolean).join(" · ") || "—"}</dd></div>
+            {!coordination && <div><dt className="font-medium">{text.availability}</dt><dd>{availabilityText} <button type="button" className="ms-2 underline" disabled={busyId === request.id} onClick={() => void recheckAvailability(request)}>{busyId === request.id ? text.checking : text.checkAvailability}</button></dd></div>}
           </dl>
           {request.guestNote && <p className="rounded-md bg-muted p-3 text-sm"><strong>{text.note}: </strong>{request.guestNote}</p>}
-          <label className="grid gap-1 text-sm"><span className="font-medium">{language === "fa" ? "پیام پذیرش برای مهمان" : language === "ar" ? "رسالة الاستقبال إلى الضيف" : "Reception message to guest"}</span><textarea className="min-h-20 rounded-md border bg-background p-3" maxLength={500} value={messages[request.id] ?? request.managerMessage ?? ""} onChange={(event) => setMessages((current) => ({ ...current, [request.id]: event.target.value }))} /></label>
+          <label className="grid gap-1 text-sm"><span className="font-medium">{coordination ? (language === "fa" ? "یادداشت داخلی پذیرش (برای مهمان نمایش داده نمی‌شود)" : language === "ar" ? "ملاحظة داخلية للاستقبال (لا تظهر للضيف)" : "Internal reception note (not shown to guest)") : (language === "fa" ? "پیام پذیرش برای مهمان" : language === "ar" ? "رسالة الاستقبال إلى الضيف" : "Reception message to guest")}</span><textarea className="min-h-20 rounded-md border bg-background p-3" maxLength={500} value={messages[request.id] ?? request.managerMessage ?? ""} onChange={(event) => setMessages((current) => ({ ...current, [request.id]: event.target.value }))} /></label>
           {nextStatuses.length > 0 && <div className="flex flex-wrap items-center gap-2">
             <label className="sr-only" htmlFor={`request-status-${request.id}`}>{text.update}</label>
             <select id={`request-status-${request.id}`} className="rounded-md border bg-background px-3 py-2 text-sm" value="" disabled={busyId === request.id} onChange={(event) => { const value = event.target.value as RequestStatus; if (value) void update(request, value); }}>

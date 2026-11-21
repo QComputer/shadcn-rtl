@@ -8,7 +8,7 @@ import { validateStayRange, todayLocalISO, jalaliAccessibleDay } from "./calenda
 import translations from "./translations.js";
 import { palettes, readPalette, applyPalette } from "./themes.js";
 import { mountBooking, readStaySelection } from "./booking.js";
-import { parseChildAges, withStaySelection, guestPortalHref, createIdempotencyKey } from "./booking-flow.js";
+import { parseChildAges, withStaySelection, createIdempotencyKey } from "./booking-flow.js";
 import { publishedDamoonTours, tourViewerMarkup } from "./virtual-tour.js";
 
 const root = document.querySelector("#app");
@@ -53,7 +53,9 @@ function setTheme(theme) {
   if (button) {
     button.setAttribute("aria-label", theme === "dark" ? ui.switchToLight : ui.switchToDark);
     button.setAttribute("aria-pressed", String(theme === "dark"));
-    button.innerHTML = theme === "dark" ? "<span aria-hidden=\"true\">Γÿ╝</span>" : "<span aria-hidden=\"true\">◐</span>";
+    button.innerHTML = theme === "dark"
+      ? '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>'
+      : '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.2 15.3A8.6 8.6 0 0 1 8.7 3.8 8.7 8.7 0 1 0 20.2 15.3Z"/></svg>';
   }
 }
 
@@ -349,32 +351,8 @@ function wireInteractions() {
         });
       }
 
-      // Guest portal link: fetch tenant mapping and append "Continue in guest portal" link
-      const continueLabel = locale === 'fa' ? 'ادامه در دروازه مهمان' : locale === 'ar' ? 'متابعة في بوابة الضيف' : 'Continue in guest portal';
-      (async () => {
-        try {
-          const portalResponse = await fetch('/api/hotel/v1/guest-portal', {
-            method: 'GET',
-            credentials: 'same-origin',
-            cache: 'no-store',
-            headers: { 'Accept': 'application/json' },
-          });
-          if (portalResponse.ok) {
-            const mapping = await portalResponse.json();
-            const selection = { range, guests, children, childAges };
-            const portalPath = guestPortalHref(window.location.href, locale, mapping, selection);
-            if (portalPath) {
-              const portalLink = document.createElement('a');
-              portalLink.className = 'hospitality-text-link';
-              portalLink.href = portalPath;
-              portalLink.textContent = continueLabel;
-              summary.append(portalLink);
-            }
-          }
-        } catch {
-          // Guest portal unavailable; stay summary remains functional without the link.
-        }
-      })();
+      // The inventory-free coordination form is already available on this page.
+      // Keep Damoon guests out of the retired, disabled tenant guest portal.
     }
   }
   document.querySelector("[data-theme-toggle]")?.addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));

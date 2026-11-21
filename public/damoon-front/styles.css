@@ -61,6 +61,7 @@ button { color: inherit; }
 .site-nav__link.is-active::after { position: absolute; inset-inline: 0; inset-block-end: 0; height: 2px; background: var(--accent); content: ""; }
 .site-header__actions { display: flex; align-items: center; gap: 10px; }
 .theme-toggle, .menu-toggle { display: grid; place-items: center; width: 42px; height: 42px; padding: 0; color: var(--ink); background: transparent; border: 1px solid var(--line); cursor: pointer; font-size: 20px; }
+.theme-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
 .menu-toggle { display: none; align-content: center; gap: 5px; }
 .menu-toggle span { width: 19px; height: 1px; background: currentColor; }
 .mobile-menu { display: none; }
@@ -583,6 +584,7 @@ html[lang="fa"] .home-top h1 { font-family: DamoonTitle, Vazirmatn, serif; font-
  .site-header:has(+ .home-main) .menu-toggle { right: 0; width: 32px; }
  .site-header:has(+ .home-main) .theme-controls { right: 38px; }
  .site-header:has(+ .home-main) .theme-toggle { width: 31px; height: 31px; font-size: 19px; }
+  .site-header:has(+ .home-main) .theme-toggle svg { width: 17px; height: 17px; }
  .home-top .page-hero--home .page-hero__visual::before { mask-image: none; }
  .home-top .page-hero__copy { padding: 6px 22px 8px; }
  html[lang="fa"] .home-top h1 { font-size: 56px; line-height: 1.25; }
@@ -667,6 +669,7 @@ html[lang="fa"] .home-top h1 { font-weight: 400; font-size: clamp(58px, 4.51vw, 
  .site-header:not(:has(+ .home-main)) .menu-toggle { right: 0; width: 32px; }
  .site-header:not(:has(+ .home-main)) .theme-controls { right: 38px; }
  .site-header:not(:has(+ .home-main)) .theme-toggle { width: 31px; height: 31px; font-size: 19px; }
+  .site-header:not(:has(+ .home-main)) .theme-toggle svg { width: 17px; height: 17px; }
 }
 
 /* Landing page desktop composition: independent hero image, text wordmark, and natural booking flow. */

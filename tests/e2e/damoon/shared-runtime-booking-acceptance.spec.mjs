@@ -151,7 +151,7 @@ test("shared public Damoon bundle submits and tracks a persisted request through
     assert.equal(persisted.length, 1, "one row is durably persisted for the unique synthetic email");
     assert.deepEqual(persisted[0], {
       status: "RECEIVED",
-      availabilityHint: null,
+      availabilityHint: "UNKNOWN",
       roomTypeSlug: null,
       ratePlanCode: null,
       checkIn: new Date(`${checkIn}T00:00:00.000Z`),

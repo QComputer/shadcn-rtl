@@ -1,0 +1,29 @@
+name: Next security compilation
+on:
+  pull_request:
+    paths:
+      - package.json
+      - pnpm-lock.yaml
+      - .github/workflows/next-security-compilation.yml
+permissions:
+  contents: read
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DATABASE_URL: postgresql://fixture:fixture@127.0.0.1:5432/fixture
+      DIRECT_URL: postgresql://fixture:fixture@127.0.0.1:5432/fixture
+      NEXTAUTH_SECRET: local-ci-compilation-only-secret-not-for-production
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build

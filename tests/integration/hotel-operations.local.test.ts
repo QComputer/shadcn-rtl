@@ -131,10 +131,6 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
     await assert.rejects(() => initialize(initialRange, 9, initialKey), HotelManagementConflictError, "same key with a changed payload conflicts");
     assert.equal(await db.hotelInventoryAdjustment.count({ where: { organizationId: organizationA.id, roomTypeId: roomType.id } }), 3, "replay/conflict must not duplicate audit rows");
 
-    await db.hotelInventory.createMany({ data: ["2027-08-08", "2027-08-09", "2027-08-10", "2027-08-11"].map((value) => ({
-      organizationId: organizationA.id, propertyId: property.id, roomTypeId: roomType.id, date: date(value), allotment: 4,
-    })) });
-
     const committedDate = date("2027-08-02");
     await db.hotelInventory.update({ where: { roomTypeId_date: { roomTypeId: roomType.id, date: committedDate } }, data: {
       booked: 1, held: 2, outOfService: 1, closedToArrival: true, closedToDeparture: true,
@@ -156,6 +152,10 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
     const concurrentRows = await db.hotelInventory.findMany({ where: { organizationId: organizationA.id, roomTypeId: roomType.id, date: { gte: date("2027-08-10"), lt: date("2027-08-14") } } });
     assert.equal(concurrentRows.length, 4);
     assert.equal(await db.hotelInventoryAdjustment.count({ where: { organizationId: organizationA.id, roomTypeId: roomType.id, date: { gte: date("2027-08-10"), lt: date("2027-08-14") } } }), 4, "only created rows receive initialization audit entries");
+
+    await db.hotelInventory.createMany({ data: ["2027-08-08", "2027-08-09"].map((value) => ({
+      organizationId: organizationA.id, propertyId: property.id, roomTypeId: roomType.id, date: date(value), allotment: 4,
+    })) });
 
     await db.hotelReservation.create({ data: {
       organizationId: organizationA.id, propertyId: property.id, roomTypeId: roomType.id, ratePlanId: ratePlan.id,

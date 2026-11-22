@@ -80,7 +80,7 @@ const locales = [
 ];
 const paths = [
   "/", "/rooms", "/restaurant", "/cafe", "/facilities", "/gallery", "/about", "/contact", "/policies",
-  "/rooms/single", "/rooms/double", "/rooms/suite", "/rooms/suite-3-bed", "/rooms/suite-4-5-bed",
+  "/rooms/single", "/rooms/double", "/rooms/suite", "/rooms/suite-3-bed", "/rooms/suite-4-5-bed", "/hotel-reservations/start",
 ];
 function localizedPath(locale, path) {
   return locale === "fa" ? path : `/${locale}${path === "/" ? "/" : path}`;
@@ -130,7 +130,8 @@ test("Damoon Phase 1 pages, language switching, responsive layout and date-to-co
       width: image.clientWidth,
       height: image.clientHeight,
     }));
-    assert.equal(mobileHero.currentSrc, "/assets/hero-reference-v2-640.webp", `${runtime.name}: mobile selects the compact hero image`);
+    const heroAssetPrefix = runtime.name === "shared public bundle" ? "/damoon-front" : "";
+    assert.equal(mobileHero.currentSrc, `${heroAssetPrefix}/assets/hero-reference-v2-640.webp`, `${runtime.name}: mobile selects the compact hero image`);
     assert.equal(mobileHero.complete, true, `${runtime.name}: mobile hero image is ready`);
     assert.ok(mobileHero.width > 0 && mobileHero.height > 0, `${runtime.name}: mobile hero has dimensions`);
 
@@ -174,7 +175,7 @@ test("Damoon Phase 1 pages, language switching, responsive layout and date-to-co
             currentSrc: new URL(image.currentSrc).pathname,
             complete: image.complete,
           }));
-          assert.equal(desktopHero.currentSrc, "/assets/hero-reference-v2-1280.webp", `${runtime.name}: desktop selects the right-sized hero image`);
+          assert.equal(desktopHero.currentSrc, `${heroAssetPrefix}/assets/hero-reference-v2-1280.webp`, `${runtime.name}: desktop selects the right-sized hero image`);
           assert.equal(desktopHero.complete, true, `${runtime.name}: desktop hero image is ready`);
         }
         assert.equal(await page.locator("html").getAttribute("lang"), locale.code, `${url} desktop language`);

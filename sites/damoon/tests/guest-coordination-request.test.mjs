@@ -106,3 +106,65 @@ test("guest coordination sends only requested stay details and keeps the feature
     child.kill();
   }
 });
+
+test("direct localized reservation URLs stay request-only and never call booking operations", { timeout: 60000 }, async t => {
+  const executablePath = process.env.CHROME_PATH || (process.platform === "win32" ? "C:/Program Files/Google/Chrome/Application/chrome.exe" : undefined);
+  if (executablePath && !existsSync(executablePath)) {
+    t.skip("Installed Chrome is unavailable; this regression requires the existing browser runtime.");
+    return;
+  }
+
+  const port = await freePort();
+  const base = `http://127.0.0.1:${port}`;
+  const child = spawn(process.execPath, [join(siteRoot, "server.mjs")], {
+    cwd: siteRoot,
+    env: { ...process.env, PORT: String(port) },
+    windowsHide: true,
+    stdio: "ignore",
+  });
+  let browser;
+  try {
+    for (let attempt = 0; attempt < 40; attempt++) {
+      if (child.exitCode !== null) throw new Error(`Damoon server exited early (${child.exitCode}).`);
+      try { if ((await fetch(`${base}/healthz`)).ok) break; } catch { /* wait for startup */ }
+      await new Promise(resolve => setTimeout(resolve, 100));
+      if (attempt === 39) throw new Error("Damoon local server did not become ready.");
+    }
+    const executable = executablePath && existsSync(executablePath) ? executablePath : undefined;
+    browser = await chromium.launch({ headless: true, ...(executable ? { executablePath: executable } : {}), args: ["--disable-features=HttpsFirstBalancedModeAutoEnable,HttpsUpgrades"] });
+    const checkIn = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10);
+    const checkOut = new Date(Date.now() + 12 * 86400000).toISOString().slice(0, 10);
+    const forbiddenOperations = [];
+
+    for (const [routeLocale, locale] of [["", "fa"], ["fa", "fa"], ["en", "en"], ["ar", "ar"]]) {
+      const page = await browser.newPage();
+      const route = `${routeLocale ? `/${routeLocale}` : ""}/hotel-reservations/start?checkIn=${checkIn}&checkOut=${checkOut}&adults=2&children=0`;
+      await page.route("**/api/hotel/v1/**", async intercepted => {
+        const pathname = new URL(intercepted.request().url()).pathname;
+        if (pathname !== "/api/hotel/v1/requests") forbiddenOperations.push(`${locale} ${pathname}`);
+        await intercepted.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ reference: "D".repeat(43), status: "RECEIVED", inventoryReserved: false, bookingConfirmed: false }) });
+      });
+      await page.goto(`${base}${route}`, { waitUntil: "networkidle" });
+      assert.equal(await page.locator("html").getAttribute("lang"), locale, `${locale}: direct route keeps its language`);
+      assert.equal(await page.locator("html").getAttribute("dir"), locale === "en" ? "ltr" : "rtl", `${locale}: direct route keeps its direction`);
+      assert.match(await page.locator('meta[name="robots"]').getAttribute("content"), /noindex/);
+      assert.doesNotMatch(await page.locator("main").innerText(), /live hotel availability and pricing|التحقق من التوفر والسعر|موجودی و قیمت را از سامانه/i, `${locale}: direct route does not promise price or availability lookup`);
+      assert.equal(await page.locator("[data-reservation-entry]").count(), 0, `${locale}: unapproved reservation-preview navigation is absent`);
+      await page.locator(".booking-form .booking-submit[type=submit]").click();
+      await page.locator("[data-coordination-name]").fill("Guest Test");
+      await page.locator("[data-coordination-phone]").fill("09123456789");
+      const coordinationText = await page.locator(".booking-step--coordination").innerText();
+      assert.match(coordinationText, locale === "fa" ? /هماهنگی.*پذیرش/ : locale === "ar" ? /طلب تنسيق.*الاستقبال/ : /coordination request to reception only/i, `${locale}: direct route explains its request-only behavior`);
+      const response = page.waitForResponse(r => r.url().endsWith("/api/hotel/v1/requests") && r.request().method() === "POST");
+      await page.locator("[data-create-coordination-request]").click();
+      await response;
+      await page.locator(".booking-step--confirmed").waitFor({ state: "visible" });
+      await page.close();
+    }
+
+    assert.deepEqual(forbiddenOperations, [], "direct reservation URLs never call availability, holds, reservations, cancellation, or payment operations");
+  } finally {
+    await browser?.close();
+    child.kill();
+  }
+});

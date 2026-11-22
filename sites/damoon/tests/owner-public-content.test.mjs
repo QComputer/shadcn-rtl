@@ -139,8 +139,14 @@ test("Damoon public content uses owner-confirmed hospitality facts in fa/en/ar",
   const publicContent = await readFile(resolve(publicRoot, "content.js"), "utf8");
   const publicTranslations = await readFile(resolve(publicRoot, "translations.js"), "utf8");
   const publicApp = await readFile(resolve(publicRoot, "app.js"), "utf8");
+  const publicBooking = await readFile(resolve(publicRoot, "booking.js"), "utf8");
+  const publicBookingActivation = await readFile(resolve(publicRoot, "booking-activation.js"), "utf8");
   const publicHospitality = await readFile(resolve(publicRoot, "hospitality.js"), "utf8");
   const publicManifest = JSON.parse(await readFile(resolve(publicRoot, "release-manifest.json"), "utf8"));
+  assert.match(publicBooking, /booking-activation\.js/);
+  assert.match(publicBookingActivation, /enabled: false/);
+  assert.ok(publicManifest.files["booking-activation.js"], "release manifest includes the disabled public booking activation gate");
+  assert.match(publicApp, /Request stay coordination/);
   assert.match(publicApp, /<source type="image\/webp" srcset="\/damoon-front\/assets\/hero-reference-v2-640\.webp 640w, \/damoon-front\/assets\/hero-reference-v2-1280\.webp 1280w, \/damoon-front\/assets\/hero-reference-v2-1920\.webp 1920w"/);
   for (const width of [640, 1280, 1920]) assert.ok(publicManifest.files[`assets/hero-reference-v2-${width}.webp`], `release manifest includes ${width}px responsive hero asset`);
   for (const asset of ["content.js", "translations.js", "hospitality.js", "hospitality.css"]) {
@@ -164,7 +170,7 @@ test("Damoon public content uses owner-confirmed hospitality facts in fa/en/ar",
   assert.match(publicTranslations, /جاهزة للاستخدام/);
   assert.doesNotMatch(publicTranslations, /restaurant is ready|مطعم الفندق جاهز|مقهى فاخر/i);
   assert.doesNotMatch(publicApp, /تالار و رستوران|Restaurant & Cafe|المطعم والمقهى/);
-  for (const route of ["restaurant", "cafe", "policies", "rooms"]) {
+  for (const route of ["restaurant", "cafe", "policies", "rooms", "hotel-reservations/start"]) {
     for (const locale of ["fa", "en", "ar"]) {
       const alias = locale === "fa" ? locale : locale;
       const path = resolve(publicRoot, alias, route, "index.html");

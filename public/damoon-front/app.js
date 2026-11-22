@@ -171,7 +171,7 @@ function render() {
   ui = translations[locale]?.ui || faUI;
   const path = normalizePath(window.location.pathname);
   const reservationStart = path === "/hotel-reservations/start";
-  const page = pageForPath(path, locale) || (reservationStart ? { path, title: locale === "fa" ? "ثبت رزرو" : locale === "ar" ? "حجز الإقامة" : "Book your stay", text: locale === "fa" ? "تاریخ و ترکیب مهمانان را انتخاب کنید و موجودی و قیمت را از سامانه هتل بگیرید." : locale === "ar" ? "اختر التواريخ والضيوف للتحقق من التوفر والسعر لدى الفندق." : "Select dates and guests to check live hotel availability and pricing." } : null);
+  const page = pageForPath(path, locale) || (reservationStart ? { path, title: locale === "fa" ? "درخواست هماهنگی اقامت" : locale === "ar" ? "طلب تنسيق الإقامة" : "Request stay coordination", text: locale === "fa" ? "تاریخ و ترکیب مهمانان را برای ارسال درخواست هماهنگی به پذیرش انتخاب کنید؛ این مسیر موجودی یا قیمت را بررسی و رزرو یا پرداخت انجام نمی‌دهد." : locale === "ar" ? "اختر التواريخ والضيوف لإرسال طلب تنسيق إلى الاستقبال؛ لا يتحقق هذا المسار من التوفر أو الأسعار ولا ينشئ حجزاً أو دفعة." : "Choose dates and guests to send a coordination request to reception. This route does not check availability, confirm a rate, hold a room, or take payment." } : null);
   document.documentElement.lang = locale;
   document.documentElement.dir = translations[locale]?.direction || "rtl";
   const noScript = document.querySelector("noscript");

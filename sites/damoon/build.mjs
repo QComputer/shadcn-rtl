@@ -14,7 +14,7 @@ const publicDir = join(root, '..', '..', 'public', 'damoon-front');
 const output = directPublic ? publicDir : join(root, 'dist');
 const assetPrefix = process.argv.includes('--shared-runtime') ? '/damoon-front' : '';
 await mkdir(output, { recursive: true });
-const files = ['index.html','styles.css','booking.css','accommodation.css','hospitality.css','damoon-attractions.css','accommodation.js','hospitality.js','damoon-attractions-data.js','damoon-attractions-view.js','damoon-attractions-detail-view.js','damoon-leaflet-maps.js','app.js','content.js','translations.js','themes.js','booking.js','booking-flow.js','calendar.js','virtual-tour.js','robots.txt'];
+const files = ['index.html','styles.css','booking.css','accommodation.css','hospitality.css','damoon-attractions.css','accommodation.js','hospitality.js','damoon-attractions-data.js','damoon-attractions-view.js','damoon-attractions-detail-view.js','damoon-leaflet-maps.js','app.js','content.js','translations.js','themes.js','booking.js','booking-flow.js','booking-activation.js','calendar.js','virtual-tour.js','robots.txt'];
 for (const f of files) {
   let text = (await readFile(join(root,f),'utf8')).replaceAll('\r\n','\n');
   if (assetPrefix) {

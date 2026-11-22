@@ -23,6 +23,7 @@ import {
   validateContact,
   withStaySelection,
 } from "./booking-flow.js";
+import { isDamoonPublicBookingActivated } from "./booking-activation.js";
 
 const STORAGE_KEY = "damoon-stay-selection-v2";
 const LEGACY_STORAGE_KEY = "damoon-stay-selection-v1";
@@ -125,6 +126,10 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     coordinationOnly = true;
     requestOnly = false;
   }
+  // Public booking stays disabled until the checked-in activation record contains
+  // explicit property-owner approval. This central gate prevents a public route
+  // from opting into availability, holds, reservations, or payment on its own.
+  if (!isDamoonPublicBookingActivated()) requestOnly = true;
   const ui = { ...faUi, ...(translations[locale]?.ui || {}) };
   if (requestOnly) {
     ui.datePlanningOnly = locale === "fa" ? "تاریخ و تعداد مهمانان را برای درخواست هماهنگی با پذیرش انتخاب کنید؛ این فرم نرخ یا موجودی نشان نمی‌دهد." : locale === "ar" ? "اختر التواريخ وعدد الضيوف لإرسال طلب تنسيق إلى الاستقبال؛ لا يعرض هذا النموذج الأسعار أو التوفر." : "Choose dates and guest counts for reception coordination; this form does not show rates or availability.";
@@ -135,7 +140,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     ui.bookingSubmit = locale === "fa" ? "ادامه برای هماهنگی اقامت" : locale === "ar" ? "المتابعة لتنسيق الإقامة" : "Continue to stay coordination";
   }
   if (reservationEntry) {
-    ui.datePlanningOnly = locale === "fa" ? "این پیش‌نمایش نمونه است؛ موجودی، نرخ و قوانین باید پیش از استفاده واقعی توسط هتل تأیید شوند." : locale === "ar" ? "هذه معاينة تجريبية؛ يجب أن يؤكد الفندق التوفر والأسعار والسياسات قبل الاستخدام الفعلي." : "This is a preview; the hotel must confirm inventory, rates, and policies before real use.";
+    ui.datePlanningOnly = locale === "fa" ? "این مسیر فقط درخواست هماهنگی به پذیرش می‌فرستد؛ موجودی و قیمت را بررسی نمی‌کند، اتاق نگه نمی‌دارد و پرداخت انجام نمی‌دهد." : locale === "ar" ? "يرسل هذا المسار طلب تنسيق إلى الاستقبال فقط؛ ولا يتحقق من التوفر أو الأسعار، ولا يحجز غرفة أو ينفذ دفعة." : "This route sends a coordination request to reception only. It does not check availability, confirm rates, hold a room, or take payment.";
   }
   const weekdays = weekdayLabels(locale);
   const today = todayLocalISO();
@@ -181,7 +186,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
         <label class="booking-field booking-field--children"><span>${escapeHtml(ui.children)}</span><select data-child-count aria-label="${escapeHtml(ui.children)}">${CHILD_OPTIONS.map((c) => `<option value="${c}">${escapeHtml(formattedCount(c, locale))}</option>`).join("")}</select><span class="booking-field__icon" aria-hidden="true">⌄</span></label>
         <button class="booking-submit" type="submit">${escapeHtml(ui.bookingSubmit)}${submitArrow}</button>
       </div>
-      ${reservationEntry ? `<button class="booking-link" type="button" data-reservation-entry>${escapeHtml(locale === "fa" ? "ادامه برای رزرو و مشاهده جزئیات نمونه" : locale === "ar" ? "المتابعة إلى الحجز وعرض التفاصيل التجريبية" : "Continue to reservation preview")}</button>` : ""}
+      ${reservationEntry && isDamoonPublicBookingActivated() ? `<button class="booking-link" type="button" data-reservation-entry>${escapeHtml(locale === "fa" ? "ادامه برای مشاهده گزینه‌های رزرو" : locale === "ar" ? "المتابعة لعرض خيارات الحجز" : "Continue to reservation options")}</button>` : ""}
       <div class="booking-child-ages-search" data-child-ages-root aria-live="polite"></div>
       <div class="booking-flow" data-booking-flow aria-live="polite"></div>
       <p class="booking-message" role="status" aria-live="polite"></p>

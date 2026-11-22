@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "generated": "2026-11-23",
+  "baseMainSha": "89e80a6e55b69c1e938674a344d60f46ed327913",
+  "applyMode": "additive files; four historical doc banners optional script only",
+  "fileCountExcludingThisManifest": 14,
+  "files": [
+    {
+      "path": "DAMOON-OVERLAY-README.md",
+      "bytes": 5922,
+      "sha256": "bbe2cd57799b92dd868e1cedf46046af04475f400188c7cf1af862247615d712"
+    },
+    {
+      "path": "docs/hotel/damoon/AGENT-DELIVERY-AUDIT-2026-11-23.md",
+      "bytes": 7443,
+      "sha256": "ad1b0411b9b2522f18c65bb1f67a89e0fbdfe16076e1b4ead38c5f219d565978"
+    },
+    {
+      "path": "docs/hotel/damoon/ARCHITECTURE-AND-CONTRACTS-2026-11-23.md",
+      "bytes": 6388,
+      "sha256": "10fe4357745fba4e82a45a8559a5676abf8a0863d54484fcab1e8c3e866cc8aa"
+    },
+    {
+      "path": "docs/hotel/damoon/CONTENT-MEDIA-AND-SEO-GATES-2026-11-23.md",
+      "bytes": 6092,
+      "sha256": "58582e76453efe078ee6b9d1a2acc6ec4f2192b916409ba42e67b40399020384"
+    },
+    {
+      "path": "docs/hotel/damoon/CURRENT-STATE-2026-11-23.md",
+      "bytes": 10499,
+      "sha256": "aada54b73a531aae354bffc7d92c0cf27956b0a60c5cba631df3daca3c85963f"
+    },
+    {
+      "path": "docs/hotel/damoon/EXECUTION-ROADMAP-2026-11-23.md",
+      "bytes": 8696,
+      "sha256": "6fe0bce68d08314d4589205b96a56687a45ad8b4bf8a29043d81182c70c51558"
+    },
+    {
+      "path": "docs/hotel/damoon/NEXT-AGENT-HANDOFF-2026-11-23.md",
+      "bytes": 4217,
+      "sha256": "bcbf7bf893069b50fe659e7c677a5e14673fc3b214c635da0f3a69e85655031a"
+    },
+    {
+      "path": "docs/hotel/damoon/OWNER-DECISION-DELTA-2026-11-23.md",
+      "bytes": 7761,
+      "sha256": "bd4f8e6d1753b93d066be109df17ab0d001a56abb79816ee46923593c3e1adcb"
+    },
+    {
+      "path": "docs/hotel/damoon/PRODUCTION-BOOKING-AND-DB-GATES-2026-11-23.md",
+      "bytes": 5182,
+      "sha256": "ef17cb45c401cdb9a06b032be5924d63ca8e413b34e6af4665b5a75b32611a2e"
+    },
+    {
+      "path": "docs/hotel/damoon/REQUEST-TO-RECEPTION-ACCEPTANCE-2026-11-23.md",
+      "bytes": 6587,
+      "sha256": "930e543445664c7d9b8c1283357dac06bb06028af6ecaba334c36904f771dcaf"
+    },
+    {
+      "path": "docs/hotel/damoon/RUNFLARE-RELEASE-AND-EVIDENCE-2026-11-23.md",
+      "bytes": 5884,
+      "sha256": "f0c455ff5b8e23ce043a1c4dd35cf8b991577aeeadbe1c672f00491932955cc5"
+    },
+    {
+      "path": "docs/hotel/damoon/evidence/DOC-AUDIT-INDEX-2026-11-23.json",
+      "bytes": 5278,
+      "sha256": "fe39c6a1bf87d501e48a901904ed7de4e175002b0be522ccb3c813dff24af583"
+    },
+    {
+      "path": "docs/hotel/damoon/evidence/RELEASE-REGISTER-2026-11-23.json",
+      "bytes": 2823,
+      "sha256": "23cab7e541defaed7d205407dce4938c4f5edde8a43bbf621fa33411d33c86ae"
+    },
+    {
+      "path": "scripts/docs/apply-damoon-overlay-20261123.py",
+      "bytes": 4129,
+      "sha256": "0f2e4983c70ecb57e65a817b7122d1be7e9e8a6abec1ddade4629ad090da6c98"
+    }
+  ]
+}

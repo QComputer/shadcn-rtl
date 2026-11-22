@@ -181,7 +181,7 @@ export class HotelManagementService {
     if (idempotencyKey.length < 8 || idempotencyKey.length > 200) throw new HotelManagementValidationError("A valid idempotency key is required");
     const fingerprint = createHash("sha256").update(JSON.stringify([principal.userId, input.propertyId, input.roomId, input.from, input.to, reason])).digest("hex");
     return this.db.$transaction(async (tx) => {
-      await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify([scope.organizationId, "HOTEL_ROOM_MAINTENANCE", idempotencyKey])},0))`);
+      await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify([scope.organizationId, "HOTEL_ROOM_MAINTENANCE", idempotencyKey])},0))`);
       const replay = await tx.hotelRoomMaintenanceBlock.findFirst({ where: { organizationId: scope.organizationId, idempotencyKey } });
       if (replay) {
         if (replay.requestFingerprint !== fingerprint) throw new HotelManagementConflictError("Idempotency key was reused with different maintenance details");

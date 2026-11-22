@@ -142,6 +142,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
 
   const update = async (request: GuestRequest, status: RequestStatus) => {
     if ([...dirtyMessages.current].some((id) => id !== request.id)) { setDraftWarning(true); return; }
+    latestLoadId.current += 1; setLoading(false);
     const filterAtStart = selectedFilter.current;
     setBusyId(request.id); setError("");
     try {
@@ -166,6 +167,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
   };
 
   const saveNote = async (request: GuestRequest) => {
+    latestLoadId.current += 1; setLoading(false);
     const submitted = messages[request.id] ?? request.managerMessage ?? "";
     setBusyId(request.id);
     setNoteFeedback((current) => { const next = { ...current }; delete next[request.id]; return next; });
@@ -186,6 +188,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
 
   const recheckAvailability = async (request: GuestRequest) => {
     if (!guardNavigation()) return;
+    latestLoadId.current += 1; setLoading(false);
     setBusyId(request.id); setError("");
     try {
       const response = await fetch(`${base}/${encodeURIComponent(request.id)}/availability`, { method: "POST", credentials: "same-origin" });

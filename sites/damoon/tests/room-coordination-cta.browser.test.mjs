@@ -30,32 +30,54 @@ test("room cards offer accessible request-only coordination and preserve stay de
     assert.equal(ready, true, "standalone Damoon server becomes ready");
     browser = await chromium.launch({ headless: true, args: ["--disable-extensions"] });
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-    await context.route(url => url.pathname.startsWith("/api/hotel/"), route => {
-      apiRequests.push(route.request().url());
+    await context.route(url => url.pathname.startsWith("/api/hotel/"), async (route) => {
+      apiRequests.push(`${route.request().method()} ${route.request().url()}`);
+      const url = new URL(route.request().url());
+      if (url.pathname === "/api/hotel/v1/website/properties/damoon") {
+        const locale = url.searchParams.get("locale");
+        const categories = ["single", "double", "suite-3-person", "suite-4-person", "suite-5-person"].map((slug, index) => ({
+          slug, kind: index < 2 ? "ROOM" : "SUITE", order: index, count: [3, 17, 6, 3, 2][index],
+          title: `Published ${slug} ${locale}`, description: `Published description ${locale}`,
+        }));
+        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ mode: "PUBLISHED", locale, propertySlug: "damoon", content: { accommodationCatalog: { totalRooms: 20, totalSuites: 11, categories } } }) });
+      }
       return route.abort();
     });
     const page = await context.newPage();
     const query = new URLSearchParams({ checkIn: "2027-05-10", checkOut: "2027-05-13", adults: "2", guests: "2", children: "1", childAges: "7" });
 
-    for (const [locale, category] of [["fa", "vip-suite"], ["en", "standard-room"], ["ar", "studio-suite"]]) {
+    const categories = ["single", "double", "suite-3-person", "suite-4-person", "suite-5-person"];
+    for (const locale of ["fa", "en", "ar"]) {
       await page.goto(`${base}/${locale}/rooms?${query}`, { waitUntil: "domcontentloaded" });
-      const cta = page.locator(`.accommodation-card__coordinate[href*="room=${category}"]`);
-      assert.equal(await cta.count(), 1, `${locale} renders a category-specific coordination link`);
-      assert.ok(await cta.getAttribute("aria-label"), `${locale} link has an accessible name`);
-      assert.ok((await cta.boundingBox())?.height >= 44, `${locale} link meets the 44px touch target`);
-      const requestUrl = new URL(await cta.getAttribute("href"), base);
-      assert.equal(requestUrl.pathname, `/${locale}/contact`, `${locale} link stays in locale`);
-      assert.equal(requestUrl.searchParams.get("room"), category, `${locale} selection is retained`);
-      for (const [key, value] of Object.entries({ checkIn: "2027-05-10", checkOut: "2027-05-13", adults: "2", guests: "2", children: "1", childAges: "7" })) {
-        assert.equal(requestUrl.searchParams.get(key), value, `${locale} retains ${key}`);
+      const cards = page.locator(".accommodation-card");
+      assert.equal(await cards.count(), 5, `${locale} shows the five selected categories`);
+      await page.waitForFunction((activeLocale) => document.querySelector('[data-accommodation-category="single"] [data-accommodation-title]')?.textContent === `Published single ${activeLocale}`, locale);
+      for (let index = 0; index < categories.length; index += 1) {
+        const category = categories[index];
+        const card = cards.nth(index);
+        const cta = card.locator(`.accommodation-card__coordinate[href*="room=${category}"]`);
+        assert.equal(await cta.count(), 1, `${locale} renders a coordination link for ${category}`);
+        assert.ok(await cta.getAttribute("aria-label"), `${locale} ${category} link has an accessible name`);
+        assert.ok((await cta.boundingBox())?.height >= 44, `${locale} ${category} link meets the 44px touch target`);
+        assert.ok(await card.locator(".accommodation-card__count").innerText(), `${locale} displays the owner-selected category count`);
+        const requestUrl = new URL(await cta.getAttribute("href"), base);
+        assert.equal(requestUrl.pathname, `/${locale}/contact`, `${locale} link stays in locale`);
+        assert.equal(requestUrl.searchParams.get("room"), category, `${locale} selection is retained`);
+        for (const [key, value] of Object.entries({ checkIn: "2027-05-10", checkOut: "2027-05-13", adults: "2", guests: "2", children: "1", childAges: "7" })) {
+          assert.equal(requestUrl.searchParams.get(key), value, `${locale} ${category} retains ${key}`);
+        }
+        assert.match(await card.locator(".accommodation-card__actions p").innerText(), /request|رزرو|طلب|تأیید|تأكيد/iu, `${locale} discloses request-only status`);
       }
-      assert.match(await cta.locator("xpath=..").locator("p").innerText(), /request|رزرو|طلب|تأیید|تأكيد/iu, `${locale} discloses request-only status`);
       const languageLinks = page.locator(".language-switcher__options a");
       assert.equal(await languageLinks.count(), 3, `${locale} offers FA, EN and AR navigation`);
       const englishHref = new URL(await languageLinks.filter({ hasText: "English" }).getAttribute("href"), base);
       assert.equal(englishHref.searchParams.get("checkIn"), "2027-05-10", `${locale} language switch preserves stay context`);
+      await page.goto(`${base}/${locale}/rooms/suite-3-person?${query}`, { waitUntil: "domcontentloaded" });
+      await page.waitForFunction((activeLocale) => document.querySelector('[data-accommodation-category="suite-3-person"] [data-accommodation-title]')?.textContent === `Published suite-3-person ${activeLocale}`, locale);
+      assert.match(await page.locator("[data-accommodation-count]").innerText(), /6/);
     }
-    assert.deepEqual(apiRequests, [], "room discovery does not call booking or inventory APIs");
+    assert.ok(apiRequests.every((request) => /^GET http:\/\/127\.0\.0\.1:\d+\/api\/hotel\/v1\/website\/properties\/damoon\?locale=(fa|en|ar)$/.test(request)), "room discovery reads only the published public website content endpoint");
+    assert.equal(apiRequests.some((request) => /availability|quote|hold|reservation|payment|requests/i.test(request)), false, "room discovery never calls booking, availability, or payment operations");
     await context.close();
   } finally {
     await browser?.close();

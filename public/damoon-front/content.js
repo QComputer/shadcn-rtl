@@ -29,16 +29,19 @@ export const site = {
 };
 
 export const accommodationCategories = [
-  { slug: "vip-suite", title: "سوئیت VIP", description: "گروه VIP برای هماهنگی درخواست است؛ جزئیات واحد و ظرفیت را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-2.webp" },
-  { slug: "standard-room", title: "اتاق استاندارد", description: "گروه اتاق استاندارد برای هماهنگی درخواست است؛ جزئیات واحد و ظرفیت را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-1.webp" },
-  { slug: "studio-suite", title: "سوئیت استودیو", description: "گروه سوئیت استودیو برای هماهنگی درخواست است؛ جزئیات واحد و ظرفیت را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-3.webp" },
+  { slug: "single", title: "اتاق یک‌نفره", count: 3, description: "گروه اتاق یک‌نفره برای هماهنگی درخواست؛ عنوان گروه به‌تنهایی ظرفیت یا چیدمان واحد را تأیید نمی‌کند.", image: "/damoon-front/assets/room-concept-1.webp" },
+  { slug: "double", title: "اتاق دونفره", count: 17, description: "گروه اتاق دونفره برای هماهنگی درخواست؛ عنوان گروه به‌تنهایی ظرفیت یا چیدمان واحد را تأیید نمی‌کند.", image: "/damoon-front/assets/room-concept-2.webp" },
+  { slug: "suite-3-person", title: "سوئیت سه‌نفره", count: 6, description: "گروه سوئیت سه‌نفره برای هماهنگی درخواست؛ ظرفیت و جزئیات واقعی را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-3.webp" },
+  { slug: "suite-4-person", title: "سوئیت چهارنفره", count: 3, description: "گروه سوئیت چهارنفره برای هماهنگی درخواست؛ ظرفیت و جزئیات واقعی را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-2.webp" },
+  { slug: "suite-5-person", title: "سوئیت پنج‌نفره", count: 2, description: "گروه سوئیت پنج‌نفره برای هماهنگی درخواست؛ ظرفیت و جزئیات واقعی را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-3.webp" },
 ];
 
 export const rooms = [
   ...accommodationCategories,
-  { slug: "single", title: "اتاق یک‌نفره", description: "گروه اتاق یک‌نفره؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-1.webp" },
-  { slug: "double", title: "اتاق دونفره", description: "گروه اتاق دونفره؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-2.webp" },
-  { slug: "suite", title: "سوئیت", description: "گروه سوئیت؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-3.webp" },
+  { slug: "vip-suite", title: "گروه سوئیت VIP", description: "پیوند قدیمی گروه VIP برای هماهنگی درخواست؛ جزئیات واحد و ظرفیت را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-2.webp" },
+  { slug: "standard-room", title: "گروه اتاق استاندارد", description: "پیوند قدیمی گروه اتاق استاندارد برای هماهنگی درخواست؛ جزئیات واحد و ظرفیت را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-1.webp" },
+  { slug: "studio-suite", title: "گروه سوئیت استودیو", description: "پیوند قدیمی گروه سوئیت استودیو برای هماهنگی درخواست؛ جزئیات واحد و ظرفیت را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-3.webp" },
+  { slug: "suite", title: "گروه سوئیت", description: "پیوند قدیمی گروه سوئیت برای هماهنگی درخواست؛ جزئیات واحد و ظرفیت را از پذیرش بپرسید.", image: "/damoon-front/assets/room-concept-3.webp" },
 ];
 
 const accommodationAliases = {
@@ -80,7 +83,7 @@ export const pages = {
     title: "اتاق‌ها و سوئیت‌ها",
     intro: "فضاهای اقامت",
     sections: accommodationSections("fa"),
-    text: "هتل دامون ۳۱ واحد اقامتی دارد: ۲۰ اتاق و ۱۱ سوئیت. نام‌های این صفحه فقط گروه‌های هماهنگی درخواست هستند؛ تعداد هر گروه و چیدمان واحدها تأیید نشده‌اند. برای جزئیات با پذیرش هماهنگ کنید؛ نرخ و موجودی نمایش داده نمی‌شود.",
+    text: "هتل دامون ۳۱ واحد اقامتی دارد: ۲۰ اتاق و ۱۱ سوئیت. تعداد گروه‌های اقامتی در این صفحه مبنای انتخاب‌شده برای ارائهٔ عمومی است؛ موجودی شبانه، ظرفیت دقیق، تخت‌ها و امکانات واحدها را پذیرش تأیید می‌کند. نرخ نمایش داده نمی‌شود و این صفحه رزرو انجام نمی‌دهد.",
   },
   "/attractions": {
     title: damoonAttractionsData.labels.fa.headline,
@@ -196,9 +199,9 @@ export function roomForPath(path, locale = "fa") {
 }
 
 function accommodationSections(locale) {
-  return accommodationCategories.map(({ slug }) => {
+  return accommodationCategories.map(({ slug, count }) => {
     const room = roomForLocale(slug, locale);
-    return { heading: room.title, text: room.description, link: `/rooms/${slug}`, image: room.image };
+    return { heading: room.title, text: room.description, count, link: `/rooms/${slug}`, image: room.image };
   });
 }
 

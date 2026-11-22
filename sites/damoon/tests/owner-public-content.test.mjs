@@ -4,7 +4,7 @@ import { readFile, stat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { normalizePath, pageForPath, siteForLocale } from "../content.js";
+import { accommodationCategories, normalizePath, pageForPath, roomForLocale, siteForLocale } from "../content.js";
 import { renderHospitality } from "../hospitality.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -85,7 +85,12 @@ test("Damoon public content uses owner-confirmed hospitality facts in fa/en/ar",
     assert.ok(rooms.includes(expected.unitCount), `${locale} accommodation page has confirmed aggregate totals`);
     assert.ok(rooms.includes(expected.unitBreakdown), `${locale} accommodation page exposes the owner-confirmed room/suite aggregate`);
     assert.ok(!/one-bed|two-bed|three-bed|four- and five-bed|سرير واحد|سريرين|ثلاثة أسرّة|خمسة أسرّة/i.test(rooms), `${locale} room summary avoids unverified bed layouts`);
-    assert.doesNotMatch(`${rooms} ${roomGroups}`, /\b(?:7|17)\s+(?:VIP|standard|studio)|\b(?:7|17)\s+(?:VIP|standard)\s+(?:suite|unit|room)|(?:٧|١٧)\s+(?:أجنحة|وحدة|جناح)|(?:۷|۱۷)\s+(?:سوئیت|واحد|اتاق)|two[- ]room|open[- ]plan|without a separate bedroom|غرفتين|غرفة واحدة|تصميم مفتوح|دون غرفة نوم منفصلة|دو اتاق|تک‌اتاقه|فضای یکپارچه|اتاق خواب جداگانه/i, `${locale} room groups avoid the unverified 7/17/7 breakdown and room layouts`);
+    assert.doesNotMatch(`${rooms} ${roomGroups}`, /\b(?:7|17)\s+(?:VIP|standard|studio)|\b(?:7|17)\s+(?:VIP|standard)\s+(?:suite|unit|room)|(?:٧|١٧)\s+(?:أجنحة|وحدة|جناح)|(?:۷|۱۷)\s+(?:سوئیت|واحد|اتاق)|two[- ]room|open[- ]plan|without a separate bedroom|غرفتين|تصميم مفتوح|دون غرفة نوم منفصلة|فضای یکپارچه|اتاق خواب جداگانه/i, `${locale} room groups avoid superseded public group claims and unverified room layouts`);
+    assert.deepEqual(accommodationCategories.map(({ count }) => count), [3, 17, 6, 3, 2]);
+    assert.equal(accommodationCategories.slice(0, 2).reduce((sum, item) => sum + item.count, 0), 20);
+    assert.equal(accommodationCategories.slice(2).reduce((sum, item) => sum + item.count, 0), 11);
+    assert.equal(accommodationCategories.reduce((sum, item) => sum + item.count, 0), 31);
+    for (const category of accommodationCategories) assert.ok(roomForLocale(category.slug, locale)?.title, `${locale} translates ${category.slug}`);
     assert.ok(facilities.toLowerCase().includes(expected.parkingLimited.toLowerCase()), `${locale} states parking is limited`);
     const receptionCopy = facilityPage.sections[0].text;
     assert.ok(receptionCopy.includes(expected.receptionStart) && receptionCopy.includes(expected.receptionEnd), `${locale} states reception hours 06:00–01:00`);

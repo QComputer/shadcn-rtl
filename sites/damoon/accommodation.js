@@ -4,6 +4,7 @@ import { publishedDamoonTours, tourViewerMarkup } from "./virtual-tour.js";
 const copy = {
   fa: {
     listingLead: "گروه‌های اقامتی هتل دامون را ببینید و برای انتخاب مناسب برنامه‌تان با پذیرش هماهنگ کنید.",
+    categoryCount: (count) => `تعداد گروهی انتخاب‌شده: ${count} · موجودی شبانه نیست`,
     concept: "تصویر مفهومی؛ عکس واقعی اتاق نیست", detail: "مشاهدهٔ جزئیات", coordinateCategory: "درخواست هماهنگی این گروه", requestOnly: "این درخواست، رزرو یا تأیید اتاق و نرخ نیست.", allRooms: "همهٔ گروه‌های اقامتی",
     lobbyLabel: "فضای عمومی هتل · تصویر مفهومی لابی",
     generalTour: "دیدن پیش‌نمایش مفهومی تور عمومی هتل",
@@ -15,6 +16,7 @@ const copy = {
   },
   en: {
     listingLead: "Explore Damoon Hotel’s accommodation categories and contact reception to find an option for your plans.",
+    categoryCount: (count) => `Owner-selected category count: ${count} · Not nightly availability`,
     concept: "Concept image; not an actual room photo", detail: "Explore this category", coordinateCategory: "Ask about this category", requestOnly: "This request does not confirm a room or rate.", allRooms: "All accommodation",
     lobbyLabel: "Shared hotel space · concept lobby illustration",
     generalTour: "Open the hotel’s general conceptual tour",
@@ -26,6 +28,7 @@ const copy = {
   },
   ar: {
     listingLead: "تعرّف على فئات الإقامة في فندق دامون وتواصل مع الاستقبال لاختيار ما يناسب خطتك.",
+    categoryCount: (count) => `العدد المختار للفئة: ${count} · ليس توافراً ليلياً`,
     concept: "تصميم تصوري؛ ليست صورة فعلية للغرفة", detail: "استكشف هذه الفئة", coordinateCategory: "استفسر عن هذه الفئة", requestOnly: "هذا الطلب لا يؤكد الغرفة أو السعر.", allRooms: "جميع فئات الإقامة",
     lobbyLabel: "مساحة مشتركة في الفندق · تصميم تصوري للردهة",
     generalTour: "شاهد المعاينة التصورية للجولة العامة في الفندق",
@@ -58,14 +61,15 @@ export function renderAccommodation({ path, page, locale = "fa", site, routeHref
       <div class="accommodation-grid">${localizedRooms.map((room, index) => {
         const href = stayHref(`/rooms/${room.slug}`);
         const coordinateHref = stayHref(`/contact?room=${encodeURIComponent(room.slug)}`);
-        return `<article class="accommodation-card">
+        return `<article class="accommodation-card" data-accommodation-category="${escapeHtml(room.slug)}">
           <figure class="accommodation-card__image">
             <img src="${escapeHtml(room.image)}" alt="" loading="${index ? "lazy" : "eager"}">
             <figcaption>${escapeHtml(ui.concept)}</figcaption>
           </figure>
           <div class="accommodation-card__body">
-            <h2>${escapeHtml(room.title)}</h2>
-            <p>${escapeHtml(room.description)}</p>
+            <h2 data-accommodation-title>${escapeHtml(room.title)}</h2>
+            <p data-accommodation-description>${escapeHtml(room.description)}</p>
+            <p class="accommodation-card__count" data-accommodation-count>${escapeHtml(ui.categoryCount(room.count))}</p>
             <div class="accommodation-card__actions"><a class="accommodation-link" href="${escapeHtml(href)}" aria-label="${escapeHtml(`${ui.detail}: ${room.title}`)}">${escapeHtml(ui.detail)} <span aria-hidden="true">↗</span></a><a class="button button--primary accommodation-card__coordinate" href="${escapeHtml(coordinateHref)}" aria-label="${escapeHtml(`${ui.coordinateCategory}: ${room.title}`)}">${escapeHtml(ui.coordinateCategory)}</a><p>${escapeHtml(ui.requestOnly)}</p></div>
           </div>
         </article>`;
@@ -77,11 +81,12 @@ export function renderAccommodation({ path, page, locale = "fa", site, routeHref
   const room = roomForPath(path, locale);
   if (!room) return "";
   const { slug, image: heroImage } = room;
+  const category = accommodationCategories.find((item) => item.slug === slug);
   const roomTours = publishedDamoonTours().filter((tour) =>
     tour.representation !== "CONCEPTUAL_PREVIEW" && tour.roomSlugs.includes(slug));
   const generalAmenities = ui.generalText;
-  return `<div class="accommodation-page accommodation-detail" lang="${escapeHtml(locale)}" dir="${locale === "en" ? "ltr" : "rtl"}">
-    <header class="accommodation-detail__heading">${breadcrumb(room.title, locale, routeHref, escapeHtml, true)}<h1>${escapeHtml(room.title)}</h1><p>${escapeHtml(room.description)}</p></header>
+  return `<div class="accommodation-page accommodation-detail" ${category ? `data-accommodation-category="${escapeHtml(category.slug)}"` : ""} lang="${escapeHtml(locale)}" dir="${locale === "en" ? "ltr" : "rtl"}">
+    <header class="accommodation-detail__heading">${breadcrumb(room.title, locale, routeHref, escapeHtml, true)}<h1 data-accommodation-title>${escapeHtml(room.title)}</h1><p data-accommodation-description>${escapeHtml(room.description)}</p>${category ? `<p class="accommodation-card__count" data-accommodation-count>${escapeHtml(ui.categoryCount(category.count))}</p><p data-accommodation-amenities hidden></p><p data-accommodation-capacity hidden></p>` : ""}</header>
     <section class="accommodation-detail__layout" aria-label="${escapeHtml(room.title)}">
       <div class="accommodation-gallery" data-accommodation-gallery>
         <button class="accommodation-gallery__main" type="button" data-accommodation-image="0" aria-label="${escapeHtml(`${ui.imageOpen}: ${room.title}`)}"><img src="${escapeHtml(heroImage)}" alt=""><span>${escapeHtml(ui.concept)}</span></button>
@@ -94,6 +99,37 @@ export function renderAccommodation({ path, page, locale = "fa", site, routeHref
     <section class="accommodation-related"><h2>${escapeHtml(ui.related)}</h2><div>${localizedRooms.filter((other) => other.slug !== slug).map((other) => { const href = stayHref(`/rooms/${other.slug}`); return `<a href="${escapeHtml(href)}">${escapeHtml(other.title)} <span aria-hidden="true">↗</span></a>`; }).join("")}</div><a class="accommodation-back" href="${escapeHtml(stayHref("/rooms"))}">← ${escapeHtml(ui.allRooms)}</a></section>
     <dialog class="accommodation-lightbox" data-accommodation-dialog aria-label="${escapeHtml(ui.concept)}"><button type="button" class="accommodation-lightbox__close" data-accommodation-close>${escapeHtml(ui.close)}</button><img data-accommodation-dialog-image src="${escapeHtml(heroImage)}" alt=""><p data-accommodation-dialog-caption>${escapeHtml(ui.concept)}</p></dialog>
   </div>`;
+}
+
+/** Apply only published locale-specific labels and counts to stable local cards. */
+export function applyPublishedAccommodationCatalog(root, catalog, locale = "fa") {
+  if (!root || !Array.isArray(catalog?.categories)) return false;
+  const categories = new Map();
+  for (const category of catalog.categories) {
+    if (!category || typeof category.slug !== "string" || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(category.slug)) continue;
+    if (typeof category.title !== "string" || !category.title.trim() || !Number.isSafeInteger(category.count) || category.count < 0) continue;
+    categories.set(category.slug, category);
+  }
+  const cards = [
+    ...(root.matches?.("[data-accommodation-category]") ? [root] : []),
+    ...root.querySelectorAll("[data-accommodation-category]"),
+  ];
+  for (const card of cards) {
+    const category = categories.get(card.dataset.accommodationCategory);
+    if (!category) { card.hidden = true; continue; }
+    const title = card.querySelector("[data-accommodation-title]");
+    const description = card.querySelector("[data-accommodation-description]");
+    const count = card.querySelector("[data-accommodation-count]");
+    if (title) title.textContent = category.title;
+    if (description && typeof category.description === "string") description.textContent = category.description;
+    if (count) count.textContent = t(locale).categoryCount(category.count);
+    const amenities = card.querySelector("[data-accommodation-amenities]");
+    if (amenities) { amenities.textContent = Array.isArray(category.amenities) ? category.amenities.filter((item) => typeof item === "string" && item.trim()).join(" · ") : ""; amenities.hidden = !amenities.textContent; }
+    const capacity = card.querySelector("[data-accommodation-capacity]");
+    if (capacity) { capacity.textContent = typeof category.capacitySpecification === "string" ? category.capacitySpecification : ""; capacity.hidden = !capacity.textContent; }
+    card.hidden = false;
+  }
+  return true;
 }
 
 export function wireAccommodation(root) {

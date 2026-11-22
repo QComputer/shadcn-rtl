@@ -12,6 +12,10 @@ const localizedRequired = hotelWebsiteLocalizedTextSchema.refine(
   (value) => Object.values(value).some((text) => typeof text === "string" && text.length > 0),
   "Provide text in at least one supported locale",
 );
+const localizedComplete = hotelWebsiteLocalizedTextSchema.refine(
+  (value) => [value.fa, value.en, value.ar].every((text) => typeof text === "string" && text.length > 0),
+  "Provide accommodation titles in fa, en, and ar",
+);
 
 const sectionBase = {
   key: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
@@ -24,6 +28,40 @@ const editorialSectionSchema = z.discriminatedUnion("kind", [
   z.object({ ...sectionBase, kind: z.literal("FEATURE_LIST"), heading: localizedRequired, items: z.array(z.object({ key: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/), label: localizedRequired, description: hotelWebsiteLocalizedTextSchema.optional() }).strict()).max(30) }).strict(),
   z.object({ ...sectionBase, kind: z.literal("FAQ"), heading: hotelWebsiteLocalizedTextSchema, items: z.array(z.object({ question: localizedRequired, answer: localizedRequired }).strict()).max(30) }).strict(),
 ]);
+
+export const hotelWebsiteAccommodationCategorySchema = z.object({
+  slug: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
+  kind: z.enum(["ROOM", "SUITE"]),
+  order: z.number().int().safe().min(0).max(1000),
+  visible: z.boolean(),
+  count: z.number().int().safe().min(0).max(1000),
+  title: localizedComplete,
+  description: hotelWebsiteLocalizedTextSchema.optional(),
+  amenities: z.array(localizedRequired).max(30).optional(),
+  capacitySpecification: hotelWebsiteLocalizedTextSchema.optional(),
+}).strict();
+
+export const hotelWebsiteAccommodationCatalogSchema = z.object({
+  totalRooms: z.number().int().safe().min(0).max(1000),
+  totalSuites: z.number().int().safe().min(0).max(1000),
+  categories: z.array(hotelWebsiteAccommodationCategorySchema).max(30),
+}).strict().superRefine(({ totalRooms, totalSuites, categories }, context) => {
+  const slugs = new Set<string>();
+  const orders = new Set<number>();
+  let rooms = 0;
+  let suites = 0;
+  for (const category of categories) {
+    if (slugs.has(category.slug)) context.addIssue({ code: "custom", path: ["categories"], message: "Accommodation category slugs must be unique" });
+    if (orders.has(category.order)) context.addIssue({ code: "custom", path: ["categories"], message: "Accommodation category order must be unique" });
+    slugs.add(category.slug);
+    orders.add(category.order);
+    if (category.kind === "ROOM") rooms += category.count;
+    else suites += category.count;
+  }
+  if (rooms !== totalRooms) context.addIssue({ code: "custom", path: ["totalRooms"], message: "Room category quantities must match the room total" });
+  if (suites !== totalSuites) context.addIssue({ code: "custom", path: ["totalSuites"], message: "Suite category quantities must match the suite total" });
+  if (rooms + suites > 1000 || totalRooms + totalSuites > 1000) context.addIssue({ code: "custom", path: ["categories"], message: "Accommodation catalog total exceeds the supported limit" });
+});
 
 export const hotelWebsiteContentSchema = z.object({
   title: localizedRequired,
@@ -51,6 +89,7 @@ export const hotelWebsiteContentSchema = z.object({
     email: z.string().trim().email().max(254).optional(),
     address: hotelWebsiteLocalizedTextSchema.optional(),
   }).strict(),
+  accommodationCatalog: hotelWebsiteAccommodationCatalogSchema.optional(),
 }).strict();
 
 export const hotelWebsiteMediaAssociationInputSchema = z.object({

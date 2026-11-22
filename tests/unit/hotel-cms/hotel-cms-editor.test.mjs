@@ -1,11 +1,38 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { addTextSection, blankDraft, checkDraftMinimum, localized, setLocalized } from '../../../lib/hotel-cms/hotel-cms-editor.ts';
+import { addTextSection, blankDraft, checkDraftMinimum, damoonSelectedAccommodationCatalog, isDamoonWebsiteScope, localized, setLocalized, withSiteDefaults } from '../../../lib/hotel-cms/hotel-cms-editor.ts';
 
 test('blank draft is explicitly empty and cannot be submitted accidentally', () => {
   const draft = blankDraft();
   assert.deepEqual(draft.media, []);
   assert.match(checkDraftMinimum(draft), /عنوان صفحه/);
+});
+test('Damoon drafts seed the fixed owner-selected accommodation baseline without changing other tenants', () => {
+  const site = { organizationSlug: 'damoon-hotel', propertySlug: 'damoon' };
+  const catalog = blankDraft(site).content.accommodationCatalog;
+  assert.deepEqual(catalog.categories.map(({ slug, kind, count }) => [slug, kind, count]), [
+    ['single', 'ROOM', 3], ['double', 'ROOM', 17], ['suite-3-person', 'SUITE', 6],
+    ['suite-4-person', 'SUITE', 3], ['suite-5-person', 'SUITE', 2],
+  ]);
+  assert.equal(catalog.categories.filter(({ kind }) => kind === 'ROOM').reduce((sum, item) => sum + item.count, 0), 20);
+  assert.equal(catalog.categories.filter(({ kind }) => kind === 'SUITE').reduce((sum, item) => sum + item.count, 0), 11);
+  assert.equal(blankDraft({ organizationSlug: 'another-hotel', propertySlug: 'main' }).content.accommodationCatalog, undefined);
+  assert.equal(isDamoonWebsiteScope({ organizationSlug: 'damoon-hotel', propertySlug: 'other' }), false);
+  assert.equal(isDamoonWebsiteScope({ organizationSlug: 'another-hotel', propertySlug: 'damoon' }), false);
+  assert.deepEqual(withSiteDefaults({ ...blankDraft().content, title: { fa: 'Old revision' } }, site).accommodationCatalog, catalog);
+});
+test('Damoon accommodation edits require complete localized titles and consistent room/suite totals', () => {
+  const draft = blankDraft({ organizationSlug: 'damoon', propertySlug: 'damoon' });
+  draft.content.title = { fa: 'نام' }; draft.content.hero.heading = { fa: 'عنوان' }; draft.content.introduction.body = { fa: 'متن' };
+  assert.equal(checkDraftMinimum(draft), null);
+  draft.content.accommodationCatalog.categories[0].title = { fa: 'اتاق' };
+  assert.match(checkDraftMinimum(draft), /فارسی، انگلیسی و عربی/);
+  draft.content.accommodationCatalog.categories[0].title = { fa: 'اتاق', en: 'Single room', ar: 'غرفة مفردة' };
+  draft.content.accommodationCatalog.categories[0].count = 4;
+  assert.match(checkDraftMinimum(draft), /جمع تعداد اتاق‌ها/);
+  draft.content.accommodationCatalog.categories[0].count = 3;
+  assert.equal(checkDraftMinimum(draft), null);
+  assert.equal(damoonSelectedAccommodationCatalog().categories.length, 5);
 });
 test('required fields allow only a draft with explicit supplied text', () => {
   const draft = blankDraft();

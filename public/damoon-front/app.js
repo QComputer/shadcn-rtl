@@ -1,5 +1,5 @@
 import { accommodationCategories, galleryForLocale, localeForPath, normalizePath, pageForPath, siteForLocale, roomForLocale, roomForPath } from "./content.js";
-import { renderAccommodation, wireAccommodation } from "./accommodation.js";
+import { applyPublishedAccommodationCatalog, renderAccommodation, wireAccommodation } from "./accommodation.js";
 import { renderHospitality } from "./hospitality.js";
 import { renderDamoonAttractionsPage, mountDamoonAttractionsPage } from "./damoon-attractions-view.js";
 import { renderDamoonAttractionDetailPage } from "./damoon-attractions-detail-view.js";
@@ -252,9 +252,25 @@ function render() {
   else if (path.startsWith("/attractions/")) body = renderDamoonAttractionDetailPage(locale, path.slice("/attractions/".length));
   else if (path === "/virtual-tour") body = virtualTourPage(page, path); else body = renderHospitality({ path, page, locale, site, routeHref, escapeHtml: safeText }) || `${hero(page, path)}${cards(page.sections)}`;
   root.innerHTML = `${header(page?.path || path)}<main id="main" class="site-main${path === "/" ? " home-main" : ""}">${body}</main>${footer()}<div id="gallery-dialog-root"></div>`;
+  if (path === "/rooms" || path.startsWith("/rooms/")) void refreshPublishedAccommodationCatalog(locale);
   const gallerySlot = root.querySelector('[data-hospitality-gallery-slot]');
   if (gallerySlot) gallerySlot.innerHTML = galleryGrid();
   wireInteractions();
+}
+
+async function refreshPublishedAccommodationCatalog(activeLocale) {
+  try {
+    const response = await fetch(`/api/hotel/v1/website/properties/damoon?locale=${encodeURIComponent(activeLocale)}`, {
+      method: "GET", credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" },
+    });
+    if (!response.ok) return;
+    const payload = await response.json();
+    if (payload?.mode !== "PUBLISHED" || payload.locale !== activeLocale || payload.propertySlug !== "damoon" || !payload.content?.accommodationCatalog) return;
+    const accommodationPage = document.querySelector(".accommodation-listing, .accommodation-detail");
+    if (accommodationPage && locale === activeLocale) applyPublishedAccommodationCatalog(accommodationPage, payload.content.accommodationCatalog, activeLocale);
+  } catch {
+    // Keep the bundled, owner-approved baseline visible when CMS reads are unavailable.
+  }
 }
 
 function wireInteractions() {

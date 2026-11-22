@@ -22,6 +22,17 @@ const media = [
   { imageId: "image-b", scope: "ROOM_CATEGORY" as const, roomTypeId: "room-a", slot: "GALLERY" as const, sortOrder: 0, altText: { en: "Room" } },
 ];
 
+const ownerAccommodationCatalog = {
+  totalRooms: 20, totalSuites: 11,
+  categories: [
+    { slug: "single", kind: "ROOM" as const, order: 0, visible: true, count: 3, title: { fa: "اتاق یک‌نفره", en: "Single room", ar: "غرفة مفردة" } },
+    { slug: "double", kind: "ROOM" as const, order: 1, visible: true, count: 17, title: { fa: "اتاق دونفره", en: "Double room", ar: "غرفة مزدوجة" } },
+    { slug: "suite-3-person", kind: "SUITE" as const, order: 2, visible: true, count: 6, title: { fa: "سوئیت سه‌نفره", en: "Three-person suite", ar: "جناح لثلاثة أشخاص" } },
+    { slug: "suite-4-person", kind: "SUITE" as const, order: 3, visible: true, count: 3, title: { fa: "سوئیت چهارنفره", en: "Four-person suite", ar: "جناح لأربعة أشخاص" } },
+    { slug: "suite-5-person", kind: "SUITE" as const, order: 4, visible: true, count: 2, title: { fa: "سوئیت پنج‌نفره", en: "Five-person suite", ar: "جناح لخمسة أشخاص" } },
+  ],
+};
+
 function harness(options: { capability?: boolean; auditFails?: boolean; organizationId?: string; propertyId?: string; actorUserId?: string } = {}) {
   const organizationId = options.organizationId ?? "org-a";
   const propertyId = options.propertyId ?? "property-a";
@@ -77,6 +88,22 @@ test("strict localized content schema accepts fa/en/ar and rejects markup, unkno
   assert.equal(hotelWebsiteContentSchema.safeParse({ ...content, unexpected: true }).success, false);
   assert.equal(hotelWebsiteContentSchema.safeParse({ ...content, introduction: { body: { en: "<script>alert(1)</script>" } } }).success, false);
   assert.equal(createHotelWebsiteDraftSchema.safeParse({ content, media: [...media, { ...media[0], imageId: "image-c" }] }).success, false);
+});
+
+test("owner-selected accommodation catalog validates and persists as revision JSON", async () => {
+  const valid = { ...content, accommodationCatalog: ownerAccommodationCatalog };
+  assert.equal(hotelWebsiteContentSchema.safeParse(valid).success, true);
+  const mismatched = { ...valid, accommodationCatalog: { ...ownerAccommodationCatalog, totalRooms: 21 } };
+  assert.equal(hotelWebsiteContentSchema.safeParse(mismatched).success, false);
+  const incompleteLocale = structuredClone(ownerAccommodationCatalog);
+  delete incompleteLocale.categories[0].title.ar;
+  assert.equal(hotelWebsiteContentSchema.safeParse({ ...content, accommodationCatalog: incompleteLocale }).success, false);
+
+  const fixture = harness();
+  const created = await createHotelWebsiteDraftRevision(createInput({ content: valid }), fixture.db);
+  assert.equal(created.status, "DRAFT");
+  assert.deepEqual((fixture.state.revisions[0].content as { accommodationCatalog: unknown }).accommodationCatalog, ownerAccommodationCatalog);
+  assert.equal(fixture.state.audit.length, 1);
 });
 
 test("HOTEL_WEBSITE is a distinct opt-in capability, not a booking or legacy public-surface default", () => {

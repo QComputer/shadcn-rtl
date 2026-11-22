@@ -7,14 +7,27 @@ const DAMOON_VTOUR_ROOM_SLUGS = new Set([
 ]);
 
 // Only tours whose URL and scene identity were verified in Andarama are public.
-// VIP-02 and VIP-03 had availability/identity problems; the dining-hall scene
-// remains withheld until its exact hotel purpose is confirmed by the owner.
+// VIP-02 remains unavailable; the dining-hall scene remains withheld until its
+// exact hotel purpose is confirmed by the owner.
 export const DAMOON_VTOUR_CATALOG = Object.freeze([
   {
     id: "vip-01",
     tenantId: "damoon",
     url: "https://andarama.bazarbaaz.ir/t/vip-01",
     title: { fa: "سوئیت VIP · تور ۱", en: "VIP Suite · Tour 01", ar: "جناح VIP · الجولة ٠١" },
+    description: {
+      fa: "نمای تعاملی شناسایی‌شده به‌عنوان سوئیت VIP؛ ظرفیت و امکانات واحد را از پذیرش بپرسید.",
+      en: "Interactive panorama identified as a VIP suite. Ask reception to confirm unit capacity and amenities.",
+      ar: "مشهد بانورامي تفاعلي تم تحديده كجناح VIP. اسألوا الاستقبال عن سعة الوحدة ومرافقها.",
+    },
+    roomSlugs: ["vip-suite", "vip"],
+    approved: true,
+  },
+  {
+    id: "vip-3",
+    tenantId: "damoon",
+    url: "https://andarama.bazarbaaz.ir/t/vip-3",
+    title: { fa: "سوئیت VIP · تور ۳", en: "VIP Suite · Tour 03", ar: "جناح VIP · الجولة ٠٣" },
     description: {
       fa: "نمای تعاملی شناسایی‌شده به‌عنوان سوئیت VIP؛ ظرفیت و امکانات واحد را از پذیرش بپرسید.",
       en: "Interactive panorama identified as a VIP suite. Ask reception to confirm unit capacity and amenities.",

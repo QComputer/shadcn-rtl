@@ -148,15 +148,17 @@ test("Damoon Phase 1 pages, language switching, responsive layout and date-to-co
         assert.ok(mainText.length > 20, `${url} has visible localized main content`);
         if (path === "/virtual-tour") {
           const cards = page.locator("[data-vtour-gallery] .vtour-card");
-          assert.equal(await cards.count(), 3, `${url} publishes only the three identity-verified tours`);
+          assert.equal(await cards.count(), 4, `${url} publishes only the four identity-verified tours`);
           assert.equal(await page.locator("[data-vtour-active-player] iframe").count(), 0, `${url} does not start WebGL viewers before a visitor selects one`);
           assert.deepEqual(await cards.locator(".vtour-card__direct").evaluateAll(links => links.map(link => link.href)), [
             "https://andarama.bazarbaaz.ir/t/vip-01",
+            "https://andarama.bazarbaaz.ir/t/vip-3",
             "https://andarama.bazarbaaz.ir/t/lobby",
             "https://andarama.bazarbaaz.ir/t/303",
           ], `${url} direct links match the verified source URLs`);
           assert.equal(await cards.nth(0).locator(".vtour-card__room").count(), 1, `${url} associates only the verified VIP tour with VIP accommodation`);
-          assert.equal(await cards.nth(2).locator(".vtour-card__room").count(), 0, `${url} does not associate Room 303 with a room category`);
+          assert.equal(await cards.nth(1).locator(".vtour-card__room").count(), 1, `${url} associates the corrected VIP-03 tour with VIP accommodation`);
+          assert.equal(await cards.nth(3).locator(".vtour-card__room").count(), 0, `${url} does not associate Room 303 with a room category`);
           await cards.nth(0).locator("[data-vtour-open]").click();
           const viewer = page.locator("[data-vtour-active-player] .vtour-viewer");
           await viewer.waitFor({ state: "visible" });
@@ -165,7 +167,7 @@ test("Damoon Phase 1 pages, language switching, responsive layout and date-to-co
           assert.match(await viewer.locator("iframe").getAttribute("allow"), /fullscreen/);
           assert.ok(await viewer.locator("[data-vtour-fullscreen]").isVisible(), `${url} exposes a fullscreen control`);
           assert.ok(await viewer.locator(".vtour-viewer__direct").isVisible(), `${url} keeps a direct-open fallback visible`);
-          await cards.nth(1).locator("[data-vtour-open]").click();
+          await cards.nth(2).locator("[data-vtour-open]").click();
           assert.equal(await page.locator("[data-vtour-active-player] iframe").count(), 1, `${url} removes the previous WebGL viewer before opening another`);
           await page.locator("[data-vtour-close]").click();
           assert.equal(await page.locator("[data-vtour-active-player] iframe").count(), 0, `${url} close releases the active viewer`);

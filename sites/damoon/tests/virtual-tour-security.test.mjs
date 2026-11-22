@@ -36,21 +36,23 @@ test("owner-provided URLs are published only when the URL and panorama identity 
   const sourceRecords = [
     { id: "vip-01", url: "https://andarama.bazarbaaz.ir/t/vip-01", status: "verified", identity: "VIP suite panorama" },
     { id: "vip-02", url: "https://andarama.bazarbaaz.ir/t/vip-02", status: "unavailable", identity: "repeated unavailable response" },
-    { id: "vip-03", url: "https://andarama.bazarbaaz.ir/t/vip-03", status: "mismatch", identity: "page title says VIP-02" },
+    { id: "vip-03-old", url: "https://andarama.bazarbaaz.ir/t/vip-03", status: "mismatch", identity: "superseded owner URL; it resolved to a VIP-02 title" },
+    { id: "vip-3", url: "https://andarama.bazarbaaz.ir/t/vip-3", status: "verified", identity: "page title VIP-03; VIP 3 panorama" },
     { id: "lobby", url: "https://andarama.bazarbaaz.ir/t/lobby", status: "verified", identity: "hotel lobby and reception" },
     { id: "303", url: "https://andarama.bazarbaaz.ir/t/303", status: "verified", identity: "Room 303 tour" },
     { id: "restaurant", url: "https://andarama.bazarbaaz.ir/t/restaurant", status: "withheld", identity: "dining panorama; exact hotel use not owner-confirmed" },
   ];
   const published = publishedDamoonTours();
   assert.deepEqual(DAMOON_VTOUR_CATALOG.map(({ id, url }) => ({ id, url })), [
-    sourceRecords[0], sourceRecords[3], sourceRecords[4],
+    sourceRecords[0], sourceRecords[3], sourceRecords[4], sourceRecords[5],
   ].map(({ id, url }) => ({ id, url })));
-  assert.deepEqual(published.map(({ id }) => id), ["vip-01", "lobby", "303"]);
+  assert.deepEqual(published.map(({ id }) => id), ["vip-01", "vip-3", "lobby", "303"]);
   for (const record of sourceRecords) {
     if (record.status === "verified") assert.ok(published.some(tour => tour.url === record.url), `${record.id}: ${record.identity}`);
     else assert.ok(!published.some(tour => tour.url === record.url), `${record.id}: withheld (${record.identity})`);
   }
   assert.deepEqual(published.find(({ id }) => id === "vip-01").roomSlugs, ["vip-suite", "vip"]);
+  assert.deepEqual(published.find(({ id }) => id === "vip-3").roomSlugs, ["vip-suite", "vip"]);
   assert.deepEqual(published.find(({ id }) => id === "303").roomSlugs, [], "Room 303 is not associated with every standard room");
   for (const locale of ["fa", "en", "ar"]) {
     for (const key of ["galleryTitle", "openEmbed", "openDirect", "fullscreen", "close", "failed", "slow"]) {

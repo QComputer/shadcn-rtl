@@ -31,6 +31,8 @@ const PUBLIC_PATHS = new Set([
   "/contact",
   "/policies",
   "/virtual-tour",
+  // Public, request-only entry. The standalone bundle enforces the booking gate.
+  "/hotel-reservations/start",
 ]);
 
 const PUBLIC_STATIC_ASSETS = new Set([

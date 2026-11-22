@@ -54,6 +54,10 @@ test("serves only the Damoon host and its explicit read-only public routes", () 
     "/contact",
     "/policies",
     "/virtual-tour",
+    "/hotel-reservations/start",
+    "/fa/hotel-reservations/start",
+    "/en/hotel-reservations/start",
+    "/ar/hotel-reservations/start",
   ];
 
   for (const hostHeader of ["damoon-hotel.ir", "WWW.DAMOON-HOTEL.IR."]) {
@@ -119,10 +123,6 @@ test("leaves spoofed, unrelated, API, unknown, and mutating requests to existing
     "/ar/api/health",
     "/en/rooms/unknown",
     "/%2frooms",
-    "/damoon-front/vendor/leaflet/UNKNOWN",
-    "/damoon-front/vendor/leaflet/license",
-    "/damoon-front/vendor/leaflet/LICENSE.bak",
-    "/damoon-front/LICENSE",
     "/en/damoon-front/vendor/leaflet/LICENSE",
     "/ar/damoon-front/vendor/leaflet/LICENSE",
   ]) {

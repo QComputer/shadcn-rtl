@@ -39,22 +39,6 @@ function dateAtOffset(offset) {
   return date.toISOString().slice(0, 10);
 }
 
-async function chooseStayDates(page, checkIn, checkOut) {
-  const arrival = page.locator('[data-date-field="checkIn"]');
-  // The landing page uses smooth scrolling and layers its header over the hero.
-  // Move the control instantly below the header, then prove its pointer target
-  // is exposed before using a normal Playwright click.
-
-  await arrival.click();
-  let moves = 0;
-  while (!(await page.locator(`[data-calendar-day="${checkIn}"]`).count()) && moves++ < 3) await page.locator("[data-month-next]").click();
-  await page.locator(`[data-calendar-day="${checkIn}"]`).click();
-  moves = 0;
-  while (!(await page.locator(`[data-calendar-day="${checkOut}"]`).count()) && moves++ < 3) await page.locator("[data-month-next]").click();
-  await page.locator(`[data-calendar-day="${checkOut}"]`).click();
-  await expect(page.locator("#booking-calendar")).not.toBeVisible();
-}
-
 async function inventorySnapshot(prisma, input, roomTypeId, checkIn, checkOut) {
   const rows = await prisma.hotelInventory.findMany({
     where: { organizationId: input.organizationId, propertyId: input.propertyId, roomTypeId, date: { gte: new Date(`${checkIn}T00:00:00.000Z`), lt: new Date(`${checkOut}T00:00:00.000Z`) } },
@@ -100,18 +84,20 @@ test("shared public Damoon bundle submits and tracks a persisted request through
     const page = await browser.newPage();
     const appErrors = [];
     page.on("pageerror", error => appErrors.push(error.message));
-    await page.goto(new URL("fa/", sharedUrl).href, { waitUntil: "networkidle" });
+    const stayQuery = new URLSearchParams({ property: process.env.DAMOON_PROPERTY_SLUG, checkIn, checkOut, adults: "2", children: "0" });
+    await page.goto(new URL(`fa/hotel-reservations/start?${stayQuery}`, sharedUrl).href, { waitUntil: "networkidle" });
+    assert.equal(new URL(page.url()).pathname, "/fa/hotel-reservations/start", "direct anonymous GET must stay on the standalone request-only route");
     await expect(page.locator("html")).toHaveAttribute("lang", "fa");
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
     await expect(page.locator("[data-track-request]")).toBeVisible();
-    await chooseStayDates(page, checkIn, checkOut);
     await page.locator("[data-adult-count]").selectOption("2");
     await page.locator("[data-child-count]").selectOption("0");
 
-    const availabilityRequests = [];
-    page.on("request", request => { if (request.url().endsWith("/api/hotel/v1/availability/search")) availabilityRequests.push(request.url()); });
+    const reservationOperations = [];
+    page.on("request", request => { if (/\/api\/hotel\/v1\/(availability|holds|reservations|payments)(\/|$)/.test(new URL(request.url()).pathname)) reservationOperations.push(new URL(request.url()).pathname); });
     await page.locator(".booking-form .booking-submit[type=submit]").click();
     await expect(page.locator("[data-coordination-name]")).toBeVisible();
+    assert.deepEqual(reservationOperations, [], "request-only stay entry must not query availability or call reservation/payment operations");
     await page.locator("[data-coordination-name]").fill("Shared Runtime Test Guest");
     await page.locator("[data-coordination-phone]").fill("+989123456789");
     await page.locator("[data-coordination-email]").fill(email);
@@ -121,6 +107,7 @@ test("shared public Damoon bundle submits and tracks a persisted request through
     await page.locator("[data-create-coordination-request]").click();
     const requestResponse = await requestResponsePromise;
     assert.equal(requestResponse.status(), 201, await requestResponse.text());
+    assert.deepEqual(reservationOperations, [], "submitting coordination must not call availability, hold, reservation, or payment operations");
     const result = await requestResponse.json();
     assert.equal(result.status, "RECEIVED");
     assert.equal(result.inventoryReserved, false);

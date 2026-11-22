@@ -91,3 +91,42 @@ describe("APP_PATH browser-visible redirects", () => {
     assert.equal(sanitized.get("x-forwarded-host"), null);
   });
 });
+
+describe("Damoon public reservation-start routing", () => {
+  it("rewrites anonymous booking-start GETs for every locale to the standalone request-only shell", async () => {
+    const query = "?checkIn=2026-12-01&checkOut=2026-12-03&adults=2&children=1&childAges=8";
+    const paths = [
+      "/hotel-reservations/start",
+      "/fa/hotel-reservations/start",
+      "/en/hotel-reservations/start",
+      "/ar/hotel-reservations/start",
+    ];
+
+    for (const pathname of paths) {
+      for (const search of ["", query]) {
+        const request = new NextRequest(`https://damoon-hotel.ir${pathname}${search}`, {
+          method: "GET",
+          headers: { host: "damoon-hotel.ir" },
+        });
+        const response = await proxy(request);
+        const rewritten = response.headers.get("x-middleware-rewrite");
+        assert.ok(rewritten, `${pathname}${search} must be handled before the authenticated Server Component`);
+        const target = new URL(rewritten);
+        assert.equal(target.pathname, "/damoon-front/index.html");
+        assert.equal(target.search, search);
+        assert.equal(response.headers.get("location"), null);
+        assert.match(response.headers.get("x-robots-tag") || "", /noindex/);
+      }
+    }
+  });
+
+  it("does not route a different tenant host into Damoon's standalone booking shell", async () => {
+    const request = new NextRequest("https://bazarbaaz.ir/fa/hotel-reservations/start", {
+      method: "GET",
+      headers: { host: "bazarbaaz.ir" },
+    });
+    const response = await proxy(request);
+    const rewritten = response.headers.get("x-middleware-rewrite");
+    assert.equal(rewritten?.includes("/damoon-front/index.html") ?? false, false);
+  });
+});

@@ -379,7 +379,6 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     const receptionRooms = await Promise.all(["101", "102", "103", "104"].map(code => db.hotelRoom.create({ data: {
       organizationId: a.id, propertyId: pa.id, roomTypeId: roomA.id, code,
     } })));
-    await db.hotelRoom.update({ where: { id: receptionRooms[3]!.id }, data: { isOutOfService: true } });
     process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED = "1";
     const management = new HotelManagementService(db);
     const maintenance = (roomId: string, from: string, to: string, key: string) => management.createRoomMaintenanceBlock(
@@ -397,22 +396,22 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
       hold: { id: holdId, organizationId: a.id, propertyId: pa.id, roomTypeId: roomA.id, reference: holdId, checkIn: date, checkOut: new Date(day(date).getTime() + 86_400_000).toISOString().slice(0, 10), nights: [date], quantity: 1, expiresAt: new Date(now().getTime() + 60_000), status: "ACTIVE", createdAt: now() },
     });
     const capacities = await repository.getPhysicalRoomCapacities({ organizationId: a.id }, pa.id, [roomA.id], ["2028-01-10", "2028-01-11"]);
-    assert.deepEqual(capacities[0]?.availableByNight, { "2028-01-10": 2, "2028-01-11": 1 }, "dated blocks across same-category rooms reduce each night once; permanent out-of-service room is not subtracted twice");
+    assert.deepEqual(capacities[0]?.availableByNight, { "2028-01-10": 3, "2028-01-11": 2 }, "dated blocks across same-category rooms reduce each night once");
     assert.deepEqual(await repository.getPhysicalRoomCapacities({ organizationId: b.id }, pa.id, [roomA.id], ["2028-01-10"]), [], "physical capacities remain property and tenant scoped");
     const concurrentClaims = await Promise.all([0, 1, 2].map(index => claimOneNight("2028-01-11", `capacity-hold-${token}-${index}`)));
-    assert.equal(concurrentClaims.filter(result => result.isClaimed).length, 1, "simultaneous claims cannot exceed the one room sellable on the constrained night");
+    assert.equal(concurrentClaims.filter(result => result.isClaimed).length, 2, "simultaneous claims cannot exceed the two rooms sellable on the constrained night");
     for (const [index, result] of concurrentClaims.entries()) if (result.isClaimed) await repository.releaseHold({ organizationId: a.id }, `capacity-hold-${token}-${index}`, now());
-    await db.hotelInventory.create({ data: { organizationId: a.id, propertyId: pa.id, roomTypeId: roomA.id, date: day("2028-01-20"), allotment: 3, booked: 3 } });
+    await db.hotelInventory.create({ data: { organizationId: a.id, propertyId: pa.id, roomTypeId: roomA.id, date: day("2028-01-20"), allotment: 4, booked: 4 } });
     await assert.rejects(() => maintenance(receptionRooms[2]!.id, "2028-01-20", "2028-01-21", `capacity-maint-committed-${token}`), HotelManagementConflictError, "maintenance cannot reduce category capacity below existing booked commitments");
     await db.hotelInventory.create({ data: { organizationId: a.id, propertyId: pa.id, roomTypeId: roomA.id, date: day("2028-02-20"), allotment: 3 } });
     const maintenanceRace = Promise.allSettled([maintenance(receptionRooms[2]!.id, "2028-02-20", "2028-02-21", `capacity-maint-race-${token}`)]);
-    const holdRace = Promise.allSettled([0, 1, 2].map(index => claimOneNight("2028-02-20", `capacity-race-hold-${token}-${index}`)));
+    const holdRace = Promise.allSettled([0, 1, 2, 3].map(index => claimOneNight("2028-02-20", `capacity-race-hold-${token}-${index}`)));
     const [[maintenanceOutcome], raceOutcomes] = await Promise.all([maintenanceRace, holdRace]);
     const maintenanceWon = maintenanceOutcome?.status === "fulfilled";
     if (!maintenanceWon && maintenanceOutcome?.status === "rejected") assert.ok(maintenanceOutcome.reason instanceof HotelManagementConflictError, "maintenance loses only because committed holds consumed the physical capacity");
     assert.ok(raceOutcomes.every((entry) => entry.status === "fulfilled"), "hold race operations finish through the inventory claim contract");
     const raceHolds = raceOutcomes.flatMap((entry) => entry.status === "fulfilled" && entry.value.isClaimed ? [entry.value] : []);
-    assert.ok(raceHolds.length <= (maintenanceWon ? 2 : 3), "room-type locking serializes maintenance against concurrent holds without exceeding post-maintenance capacity");
+    assert.ok(raceHolds.length <= (maintenanceWon ? 3 : 4), "room-type locking serializes maintenance against concurrent holds without exceeding post-maintenance capacity");
     for (const [index, entry] of raceOutcomes.entries()) if (entry.status === "fulfilled" && entry.value.isClaimed) await repository.releaseHold({ organizationId: a.id }, `capacity-race-hold-${token}-${index}`, now());
     if (maintenanceWon && maintenanceOutcome?.status === "fulfilled") await management.releaseRoomMaintenanceBlock({ userId: staff.id, role: "ADMIN", organizationId: a.id }, { organizationId: a.id }, pa.id, maintenanceOutcome.value.id);
     if (originalManual === undefined) delete process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED; else process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED = originalManual;

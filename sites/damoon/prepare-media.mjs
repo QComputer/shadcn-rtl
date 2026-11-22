@@ -3,6 +3,7 @@ import { resolve, dirname, sep, extname, basename } from 'node:path';
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import sharp from 'sharp';
 
 const siteRoot = dirname(fileURLToPath(import.meta.url));
 const catalog = JSON.parse(await readFile(resolve(siteRoot, 'media-slots.json'), 'utf8'));
@@ -26,6 +27,8 @@ export async function prepareMedia({ manifestPath, outputPath }) {
   const repoRoot = resolve(siteRoot, '../..');
   if (actualOutput === repoRoot || inside(repoRoot, actualOutput)) throw new Error('Media review output must be outside the Git repository');
   if (actualOutput === inputRoot || inside(inputRoot, actualOutput)) throw new Error('Output must be separate from original sources');
+  const responsiveReview = catalog.responsiveReview;
+  if (responsiveReview?.format !== 'webp' || !Number.isInteger(responsiveReview.quality) || responsiveReview.quality < 50 || responsiveReview.quality > 95 || !Array.isArray(responsiveReview.widths) || !responsiveReview.widths.length || responsiveReview.widths.some((width) => !Number.isInteger(width) || width < 160 || width > 3840)) throw new Error('Invalid responsive media review profile');
   const seen = new Set(), validated = [];
   for (const asset of manifest.assets) {
     if (!Object.hasOwn(catalog.slots, asset.slot) || seen.has(asset.slot)) throw new Error('Unknown or duplicate media slot');
@@ -48,16 +51,35 @@ export async function prepareMedia({ manifestPath, outputPath }) {
     if (asset.approval.status === 'APPROVED' && (!asset.approval.reference?.trim() || !asset.approval.date?.match(/^\d{4}-\d{2}-\d{2}$/) || asset.rights !== 'PUBLICATION_PERMITTED')) throw new Error('Approved media needs decision reference/date and publication rights');
     if (!asset.subject?.trim()) throw new Error('Depicted space or logo subject required');
     for (const locale of ['fa','en','ar']) if (typeof asset.alt?.[locale] !== 'string' || !asset.alt[locale].trim()) throw new Error('Alternative text is required in fa/en/ar');
-    validated.push({ asset, bytes, sha256, outputName: `${asset.slot}${extension}` });
+    const metadata = await sharp(bytes, { failOn: 'error' }).rotate().metadata();
+    if (!metadata.width || !metadata.height) throw new Error('Media must have readable image dimensions');
+    const targets = responsiveReview.widths.filter((width) => width < metadata.width);
+    if (!targets.length) targets.push(metadata.width);
+    const responsive = [];
+    for (const targetWidth of targets) {
+      const { data, info } = await sharp(bytes, { failOn: 'error' }).rotate()
+        .resize({ width: targetWidth, fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: responsiveReview.quality, effort: 4 })
+        .toBuffer({ resolveWithObject: true });
+      const outputName = `${asset.slot}-${info.width}.webp`;
+      const variant = { file: outputName, width: info.width, height: info.height,
+        bytes: data.length, sha256: createHash('sha256').update(data).digest('hex') };
+      responsive.push({ ...variant, data });
+    }
+    validated.push({ asset, bytes, sha256, outputName: `${asset.slot}${extension}`, slot: catalog.slots[asset.slot], responsive });
   }
   // Exclusive directory creation: a review never overwrites an earlier bundle or originals.
   await mkdir(actualOutput, { mode: 0o700 });
-  for (const item of validated) await writeFile(resolve(actualOutput, item.outputName), item.bytes, { flag: 'wx', mode: 0o600 });
+  for (const item of validated) {
+    await writeFile(resolve(actualOutput, item.outputName), item.bytes, { flag: 'wx', mode: 0o600 });
+    for (const variant of item.responsive) await writeFile(resolve(actualOutput, variant.file), variant.data, { flag: 'wx', mode: 0o600 });
+  }
   const review = { schemaVersion: 1, status: 'PREPARED_NOT_PUBLISHED',
     sourceManifestSha256: createHash('sha256').update(manifestBytes).digest('hex'),
     requiresVisualReview: true, requiresMetadataReview: true,
     metadataHandling: 'Original image metadata is preserved; inspect EXIF/IPTC/XMP before any sharing or publication. This is a local unserved review bundle.', activationPerformed: false,
-    assets: validated.map(({asset,sha256,outputName}) => ({slot:asset.slot,file:outputName,sha256,subject:asset.subject,alt:asset.alt,rights:asset.rights || 'UNCONFIRMED',approval:asset.approval,currentAsset:catalog.slots[asset.slot].currentAsset})) };
+    responsiveProfile: { format: responsiveReview.format, quality: responsiveReview.quality, widths: responsiveReview.widths },
+    assets: validated.map(({asset,sha256,outputName,slot,responsive}) => ({slot:asset.slot,file:outputName,sha256,subject:asset.subject,alt:asset.alt,rights:asset.rights || 'UNCONFIRMED',approval:asset.approval,currentAsset:slot.currentAsset,placement:slot.placement,sizes:slot.sizes,responsive:responsive.map(({file,width,height,bytes,sha256:variantSha256})=>({file,width,height,bytes,sha256:variantSha256}))})) };
   await writeFile(resolve(actualOutput, 'review.json'), JSON.stringify(review,null,2)+'\n', { mode: 0o600 });
   return review;
 }

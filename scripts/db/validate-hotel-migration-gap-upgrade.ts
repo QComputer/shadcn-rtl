@@ -31,6 +31,7 @@ const LATER_MIGRATIONS = [
   "20261121120000_hotel_draft_accommodations",
   "20261121130000_hotel_guest_request_preferred_category",
   "20261121140000_hotel_draft_accommodation_promotion",
+  "20261122110000_hotel_room_maintenance_blocks",
 ] as const;
 
 function assertDisposableDatabase(): string {

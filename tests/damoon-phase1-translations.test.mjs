@@ -27,17 +27,18 @@ test("English and Arabic cover every main Damoon page and room section", () => {
   }
 });
 
-test("Damoon catalog uses corrected unit totals, public layouts, and compatible category aliases", () => {
+test("Damoon catalog uses request-coordination groups and compatible category aliases", () => {
   const categories = [
-    { slug: "vip-suite", alias: "vip", descriptions: { fa: /۷ سوئیت VIP.*دو اتاق/, en: /7 VIP suites.*two rooms/, ar: /٧ أجنحة VIP.*غرفتين/ } },
-    { slug: "standard-room", alias: "single-room", descriptions: { fa: /۱۷ واحد استاندارد تک‌اتاقه/, en: /17 standard units.*one room/, ar: /١٧ وحدة قياسية.*غرفة واحدة/ } },
-    { slug: "studio-suite", alias: "fourth-floor-suite", descriptions: { fa: /۷ سوئیت استودیو.*اتاق خواب جداگانه ندارند/, en: /7 open-plan studio suites without a separate bedroom/, ar: /٧ أجنحة استوديو.*دون غرفة نوم منفصلة/ } },
+    { slug: "vip-suite", alias: "vip", descriptions: { fa: /هماهنگی درخواست/, en: /coordination requests/, ar: /طلبات التنسيق/ } },
+    { slug: "standard-room", alias: "single-room", descriptions: { fa: /هماهنگی درخواست/, en: /coordination requests/, ar: /طلبات التنسيق/ } },
+    { slug: "studio-suite", alias: "fourth-floor-suite", descriptions: { fa: /هماهنگی درخواست/, en: /coordination requests/, ar: /طلبات التنسيق/ } },
   ];
   for (const locale of ["fa", ...locales]) {
     const sections = pageForPath("/rooms", locale).sections;
     assert.deepEqual(sections.map(({ link }) => link), categories.map(({ slug }) => `/rooms/${slug}`));
     for (const [index, { slug, alias, descriptions }] of categories.entries()) {
       assert.match(sections[index].text, descriptions[locale]);
+      assert.doesNotMatch(sections[index].text, /\b(?:7|17)\s+(?:VIP|standard|studio)|\b(?:7|17)\s+(?:VIP|standard)\s+(?:suite|unit|room)|two[- ]room|open[- ]plan|without a separate bedroom|غرفتين|غرفة واحدة|تصميم مفتوح|دون غرفة نوم منفصلة|دو اتاقه|تک‌اتاقه|فضای یکپارچه|اتاق خواب جداگانه/iu);
       assert.doesNotMatch(sections[index].text, /third floor|fourth floor|طبقهٔ|الطابق/iu);
       assert.equal(normalizePath(`/${locale}/rooms/${alias}`), `/rooms/${slug}`);
       assert.equal(roomForLocale(alias, locale).slug, slug);

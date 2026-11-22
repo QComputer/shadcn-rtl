@@ -29,9 +29,9 @@ export const site = {
 };
 
 export const accommodationCategories = [
-  { slug: "vip-suite", title: "سوئیت دو اتاقه VIP", description: "هتل ۷ سوئیت VIP دارد که هر کدام دو اتاق دارند.", image: "/assets/room-concept-2.webp" },
-  { slug: "standard-room", title: "اتاق استاندارد", description: "هتل ۱۷ واحد استاندارد تک‌اتاقه دارد.", image: "/assets/room-concept-1.webp" },
-  { slug: "studio-suite", title: "سوئیت استودیو", description: "هتل ۷ سوئیت استودیو با فضای یکپارچه دارد. این سوئیت‌ها اتاق خواب جداگانه ندارند.", image: "/assets/room-concept-3.webp" },
+  { slug: "vip-suite", title: "سوئیت VIP", description: "گروه VIP برای هماهنگی درخواست است؛ جزئیات واحد و ظرفیت را از پذیرش بپرسید.", image: "/assets/room-concept-2.webp" },
+  { slug: "standard-room", title: "اتاق استاندارد", description: "گروه اتاق استاندارد برای هماهنگی درخواست است؛ جزئیات واحد و ظرفیت را از پذیرش بپرسید.", image: "/assets/room-concept-1.webp" },
+  { slug: "studio-suite", title: "سوئیت استودیو", description: "گروه سوئیت استودیو برای هماهنگی درخواست است؛ جزئیات واحد و ظرفیت را از پذیرش بپرسید.", image: "/assets/room-concept-3.webp" },
 ];
 
 export const rooms = [
@@ -80,7 +80,7 @@ export const pages = {
     title: "اتاق‌ها و سوئیت‌ها",
     intro: "فضاهای اقامت",
     sections: accommodationSections("fa"),
-    text: "هتل دامون ۳۱ واحد اقامتی دارد. نام گروه‌های اقامتی در این صفحه آمده است؛ ظرفیت دقیق، امکانات اختصاصی، نرخ و موجودی هر گروه نمایش داده نمی‌شوند.",
+    text: "هتل دامون ۳۱ واحد اقامتی دارد: ۲۰ اتاق و ۱۱ سوئیت. نام‌های این صفحه فقط گروه‌های هماهنگی درخواست هستند؛ تعداد هر گروه و چیدمان واحدها تأیید نشده‌اند. برای جزئیات با پذیرش هماهنگ کنید؛ نرخ و موجودی نمایش داده نمی‌شود.",
   },
   "/attractions": {
     title: damoonAttractionsData.labels.fa.headline,
@@ -129,7 +129,7 @@ export const pages = {
     actions: [["/contact", "تماس با هتل"]],
     sections: [
       { heading: "مهمان‌نوازی دامون", text: "دامون با رویکردی گرم، صمیمی و آرام، می‌خواهد مهمان در طول اقامت احساس آسودگی و خانهٔ دوم داشته باشد." },
-      { heading: "اقامت در دامون", text: "سوئیت‌های دو اتاقه VIP، اتاق‌های استاندارد و سوئیت‌های استودیو را در بخش اقامت ببینید. برای ظرفیت دقیق، امکانات واحد و نرخ روز با پذیرش هماهنگ کنید.", link: "/rooms", label: "دیدن گروه‌های اقامتی" },
+      { heading: "اقامت در دامون", text: "گروه‌های اقامتی را در صفحهٔ اتاق‌ها ببینید و برای تأیید جزئیات واحد و ظرفیت با پذیرش هماهنگ کنید.", link: "/rooms", label: "دیدن گروه‌های اقامتی" },
       { heading: "زمان ورود و خروج", text: "زمان ورود ساعت ۱۴:۰۰ و زمان خروج ساعت ۱۲:۰۰ است.", link: "/policies", label: "اطلاعات اقامت" },
     ],
   },

@@ -79,7 +79,7 @@ const locales = [
   { code: "ar", dir: "rtl" },
 ];
 const paths = [
-  "/", "/rooms", "/restaurant", "/cafe", "/facilities", "/gallery", "/about", "/contact", "/policies",
+  "/", "/rooms", "/restaurant", "/cafe", "/facilities", "/gallery", "/about", "/contact", "/policies", "/virtual-tour",
   "/rooms/single", "/rooms/double", "/rooms/suite", "/rooms/suite-3-bed", "/rooms/suite-4-5-bed", "/hotel-reservations/start",
 ];
 function localizedPath(locale, path) {
@@ -146,6 +146,30 @@ test("Damoon Phase 1 pages, language switching, responsive layout and date-to-co
         assert.equal(await page.locator("html").getAttribute("dir"), locale.dir, `${url} direction`);
         const mainText = (await page.locator("main#main").innerText()).trim();
         assert.ok(mainText.length > 20, `${url} has visible localized main content`);
+        if (path === "/virtual-tour") {
+          const cards = page.locator("[data-vtour-gallery] .vtour-card");
+          assert.equal(await cards.count(), 3, `${url} publishes only the three identity-verified tours`);
+          assert.equal(await page.locator("[data-vtour-active-player] iframe").count(), 0, `${url} does not start WebGL viewers before a visitor selects one`);
+          assert.deepEqual(await cards.locator(".vtour-card__direct").evaluateAll(links => links.map(link => link.href)), [
+            "https://andarama.bazarbaaz.ir/t/vip-01",
+            "https://andarama.bazarbaaz.ir/t/lobby",
+            "https://andarama.bazarbaaz.ir/t/303",
+          ], `${url} direct links match the verified source URLs`);
+          assert.equal(await cards.nth(0).locator(".vtour-card__room").count(), 1, `${url} associates only the verified VIP tour with VIP accommodation`);
+          assert.equal(await cards.nth(2).locator(".vtour-card__room").count(), 0, `${url} does not associate Room 303 with a room category`);
+          await cards.nth(0).locator("[data-vtour-open]").click();
+          const viewer = page.locator("[data-vtour-active-player] .vtour-viewer");
+          await viewer.waitFor({ state: "visible" });
+          assert.equal(await page.locator("[data-vtour-active-player] iframe").count(), 1, `${url} activates one viewer on demand`);
+          assert.equal(await viewer.locator("iframe").getAttribute("allowfullscreen"), "");
+          assert.match(await viewer.locator("iframe").getAttribute("allow"), /fullscreen/);
+          assert.ok(await viewer.locator("[data-vtour-fullscreen]").isVisible(), `${url} exposes a fullscreen control`);
+          assert.ok(await viewer.locator(".vtour-viewer__direct").isVisible(), `${url} keeps a direct-open fallback visible`);
+          await cards.nth(1).locator("[data-vtour-open]").click();
+          assert.equal(await page.locator("[data-vtour-active-player] iframe").count(), 1, `${url} removes the previous WebGL viewer before opening another`);
+          await page.locator("[data-vtour-close]").click();
+          assert.equal(await page.locator("[data-vtour-active-player] iframe").count(), 0, `${url} close releases the active viewer`);
+        }
         if (path === "/contact") {
           const approvalNotice = page.locator('[data-contact-approval="pending"]');
           await approvalNotice.waitFor({ state: "visible" });

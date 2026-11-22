@@ -5,7 +5,7 @@
     "about/index.html": "db1c21e08daecdb5c09adbc0da8a63763f60f94959f5e69b8da9c71dd2f2fc20",
     "accommodation.css": "7afb7db12eaa10962379ece50af9046a775261d9409f420652416120df4e2d29",
     "accommodation.js": "e1c483b1906d06262e7600c4219be611884fb92acf289ce58fb033f6f8a7b219",
-    "app.js": "be8e6772c9695b7da928d83b69fc46b95670d96ccc735bab02ea8770d23ae894",
+    "app.js": "3d387758db3ea2cfdc76e88626f94bdf60e1a418acb15dbecfd78796e5e51612",
     "ar/about/index.html": "db1c21e08daecdb5c09adbc0da8a63763f60f94959f5e69b8da9c71dd2f2fc20",
     "ar/attractions/atabakan-mosque/index.html": "db1c21e08daecdb5c09adbc0da8a63763f60f94959f5e69b8da9c71dd2f2fc20",
     "ar/attractions/chaleshtar-castle/index.html": "db1c21e08daecdb5c09adbc0da8a63763f60f94959f5e69b8da9c71dd2f2fc20",
@@ -72,7 +72,7 @@
     "cafe/index.html": "db1c21e08daecdb5c09adbc0da8a63763f60f94959f5e69b8da9c71dd2f2fc20",
     "calendar.js": "946026d8514a364c02a9c0d0bcbf5bd86f4646ddf04758feb7483a8255de46d6",
     "contact/index.html": "db1c21e08daecdb5c09adbc0da8a63763f60f94959f5e69b8da9c71dd2f2fc20",
-    "content.js": "5b77afb97253e9523fe7d1a31c99e46f91e986e69c289bdf4df03f11ac9254a8",
+    "content.js": "a9fc9dd0e94806b26a7108cc2a91b301464ffee8f957aadf1d61715ac67441a1",
     "damoon-attractions-data.js": "8deb4c3e3d04a00aac94b313c6dd0991c41d575af66e188db271c81fcb649ca6",
     "damoon-attractions-detail-view.js": "92d414dfb4e67aea9e8e8a898657103ec0c21ce99dee101ea0c0b14469912291",
     "damoon-attractions-view.js": "47bcd0c9d158b3915b713b24901a33935523b37893bdc81d2e40c8a15dccaea6",
@@ -161,10 +161,10 @@
     "rooms/suite-4-5-bed/index.html": "db1c21e08daecdb5c09adbc0da8a63763f60f94959f5e69b8da9c71dd2f2fc20",
     "rooms/vip/index.html": "db1c21e08daecdb5c09adbc0da8a63763f60f94959f5e69b8da9c71dd2f2fc20",
     "rooms/vip-suite/index.html": "db1c21e08daecdb5c09adbc0da8a63763f60f94959f5e69b8da9c71dd2f2fc20",
-    "styles.css": "d8c3d72afdd699924048f911cdbe18388899f6accb0cc52932a1724facbbcf2c",
+    "styles.css": "e172445f77d340a28f86c39aab0d04ac9a762e41868dc282530e4806cec2e9dd",
     "theme-tokens.css": "e45530f56d3674ed13e018a9fa5e92e438f28ef89970751c221e0d588e1fb336",
     "themes.js": "5324a1d7d3676762c109041dd1c8210e8818bd72a01523251ed1bf612fd88f52",
-    "translations.js": "f9fa1cc8b081ca6aeb1dddca0ff94cd1d1dcd5270b83f0bd8cfd1ea297cdf0cc",
+    "translations.js": "f3724228a0e171b4ab6ea92e325abd40dad8bdf32e0eed19b19d81e80b50eed4",
     "vendor/leaflet/images/layers-2x.png": "066daca850d8ffbef007af00b06eac0015728dee279c51f3cb6c716df7c42edf",
     "vendor/leaflet/images/layers.png": "1dbbe9d028e292f36fcba8f8b3a28d5e8932754fc2215b9ac69e4cdecf5107c6",
     "vendor/leaflet/images/marker-icon-2x.png": "00179c4c1ee830d3a108412ae0d294f55776cfeb085c60129a39aa6fc4ae2528",
@@ -174,6 +174,6 @@
     "vendor/leaflet/leaflet.js": "db49d009c841f5ca34a888c96511ae936fd9f5533e90d8b2c4d57596f4e5641a",
     "vendor/leaflet/LICENSE": "bbc959aaef7488b38942e7f05cfd1244351f8bce54261951ea17dd7cf60f894b",
     "virtual-tour/index.html": "db1c21e08daecdb5c09adbc0da8a63763f60f94959f5e69b8da9c71dd2f2fc20",
-    "virtual-tour.js": "e21c1b857aa13ac09c3f58e853268880e5a1c8f65db9416a1ffb27fbf6d4a01a"
+    "virtual-tour.js": "21c5bd47eeb343b086d334dd590002fa99362f932b720e980b02333ca1237ddb"
   }
 }

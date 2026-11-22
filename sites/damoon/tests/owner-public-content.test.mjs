@@ -170,11 +170,12 @@ test("Damoon public content uses owner-confirmed hospitality facts in fa/en/ar",
   assert.match(publicTranslations, /جاهزة للاستخدام/);
   assert.doesNotMatch(publicTranslations, /restaurant is ready|مطعم الفندق جاهز|مقهى فاخر/i);
   assert.doesNotMatch(publicApp, /تالار و رستوران|Restaurant & Cafe|المطعم والمقهى/);
-  for (const route of ["restaurant", "cafe", "policies", "rooms", "hotel-reservations/start"]) {
+  for (const route of ["restaurant", "cafe", "policies", "rooms", "virtual-tour", "hotel-reservations/start"]) {
     for (const locale of ["fa", "en", "ar"]) {
       const alias = locale === "fa" ? locale : locale;
       const path = resolve(publicRoot, alias, route, "index.html");
-      assert.ok((await readFile(path, "utf8")).includes('name="robots"'), `${locale}/${route} generated public entry exists`);
+      const routeHtml = await readFile(path, "utf8");
+      assert.match(routeHtml, /name="robots" content="noindex,nofollow,noarchive"/, `${locale}/${route} remains noindex`);
     }
   }
 });

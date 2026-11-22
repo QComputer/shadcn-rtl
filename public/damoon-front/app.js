@@ -9,7 +9,7 @@ import translations from "./translations.js";
 import { palettes, readPalette, applyPalette } from "./themes.js";
 import { mountBooking, readStaySelection } from "./booking.js";
 import { parseChildAges, withStaySelection, createIdempotencyKey } from "./booking-flow.js";
-import { publishedDamoonTours, tourViewerMarkup } from "./virtual-tour.js";
+import { allowedVirtualTourUrl, DAMOON_VTOUR_COPY, publishedDamoonTours, tourViewerMarkup } from "./virtual-tour.js";
 
 const root = document.querySelector("#app");
 if (!root) throw new Error("Damoon app mount #app was not found");
@@ -120,13 +120,16 @@ function hero(page, path) {
   const isHome = path === "/";
   const src = isHome ? "/damoon-front/assets/hero-reference-v2.png" : page.image || (path.startsWith("/rooms/") ? "/damoon-front/assets/room-concept-1.webp" : "/damoon-front/assets/gallery-concept-1.webp");
   const note = page.imageNote || (path === "/" ? site.imageNote : ui.imageNotActual);
+  const visual = isHome
+    ? `<picture><source type="image/webp" srcset="/damoon-front/assets/hero-reference-v2-640.webp 640w, /damoon-front/assets/hero-reference-v2-1280.webp 1280w, /damoon-front/assets/hero-reference-v2-1920.webp 1920w" sizes="(max-width: 760px) 100vw, (max-width: 1400px) 64vw, 896px"><img src="${safeText(src)}" width="2243" height="701" alt="${safeText(note)}" fetchpriority="high" decoding="async"></picture>`
+    : `<img src="${safeText(src)}" alt="${safeText(note)}" fetchpriority="high" decoding="async">`;
   const actions = (page.actions || []).map(([href, label], index) => link(href, label, `button ${index ? "button--outline" : "button--primary"}`)).join("");
   const homeEyebrow = locale === "fa" ? "اقامتی آرام<br class=\"home-eyebrow-break\">در قلب شهرکرد" : safeText(ui.homeEyebrow);
   const homeSubtitle = safeText(ui.homeSubtitle);
   const homeLead = safeText(ui.homeLead);
   return `<section class="page-hero${isHome ? " page-hero--home" : ""}" aria-labelledby="page-title">
     <div class="page-hero__copy">${breadcrumb(path, page.title)}<p class="eyebrow">${isHome ? homeEyebrow : safeText(site.eyebrow)}</p>${page.badge ? `<p class="status-badge">${safeText(page.badge)}</p>` : ""}<h1 id="page-title">${safeText(isHome ? site.name : page.intro || page.title)}</h1>${isHome ? `<p class="home-subtitle">${homeSubtitle}</p>` : ""}<p class="page-hero__lead">${isHome ? homeLead : safeText(page.text || "")}</p><div class="page-hero__actions">${isHome ? link("/rooms", locale === "fa" ? "برنامه‌ریزی اقامت" : locale === "ar" ? "خطط لإقامتك" : "Plan your stay", "button button--primary") : actions || link("/contact", ui.coordinateWithHotel, "button button--primary")}</div></div>
-    <figure class="page-hero__visual"><img src="${safeText(src)}" alt="${safeText(note)}" fetchpriority="high"><figcaption>${safeText(note)}</figcaption></figure>
+    <figure class="page-hero__visual">${visual}<figcaption>${safeText(note)}</figcaption></figure>
   </section>`;
 }
 
@@ -138,7 +141,7 @@ function cards(sections = []) {
 function homeContent() {
   const roomTiles = accommodationCategories.map(({ slug }) => roomForLocale(slug, locale));
   const slides = gallery.slice(0, 4);
-  return `<section class="home-intro" aria-label="${safeText(ui.homeIntro)}"><div class="home-intro__copy"><p class="eyebrow">${safeText(locale === "fa" ? "درباره هتل دامون" : ui.aboutMore)}</p><h2 id="home-intro-title">${safeText(locale === "fa" ? "جایی متعادل برای سفر و آرامش" : ui.calmStay)}</h2><p>${safeText(ui.homeIntro)}</p><a class="text-link" href="${routeHref("/about")}">${safeText(ui.aboutMore)} ←</a><a class="text-link" href="${routeHref("/virtual-tour")}">${safeText(ui.virtualTour)} ↗</a></div><div class="home-lobby" aria-label="${safeText(ui.gallery)}"><img data-home-slide src="/damoon-front/assets/lobby-concept.webp" alt="${safeText(ui.imageNotActual)}" loading="lazy"><button type="button" data-home-prev aria-label="${safeText(ui.previousImage)}">‹</button><button type="button" data-home-next aria-label="${safeText(ui.nextImage)}">›</button><div class="home-lobby__dots">${slides.map((_, i) => `<button type="button" data-home-dot="${i}" aria-label="${safeText(ui.gallery)} ${i + 1}"${i === 0 ? ' aria-current="true"' : ""}></button>`).join("")}</div></div><div class="home-side"><div class="home-room-list"><h2>${safeText(locale === "fa" ? "اتاق‌ها و سوئیت‌ها" : ui.rooms)}</h2><div class="home-room-list__grid">${roomTiles.map((room, index) => `<a href="${routeHref(`/rooms/${room.slug}`)}" data-room-sprite="${index}"><img src="${room.image}" alt="${safeText(ui.imageNotActual)}" loading="lazy"><strong>${safeText(room.title)}<small>${safeText(ui.viewSpaces)}</small></strong></a>`).join("")}</div></div><div class="home-gallery-list"><h2>${safeText(locale === "fa" ? "تصاویر هتل" : ui.gallery)}</h2><div>${slides.map((image, i) => `<a href="${routeHref("/gallery")}" data-gallery-sprite="${i}"><img src="${safeText(image.src)}" alt="${safeText(image.alt)}" loading="lazy"></a>`).join("")}</div></div></div></section>
+  return `<section class="home-intro" aria-label="${safeText(ui.homeIntro)}"><div class="home-intro__copy"><p class="eyebrow">${safeText(locale === "fa" ? "درباره هتل دامون" : ui.aboutMore)}</p><h2 id="home-intro-title">${safeText(locale === "fa" ? "جایی متعادل برای سفر و آرامش" : ui.calmStay)}</h2><p>${safeText(ui.homeIntro)}</p><a class="text-link" href="${routeHref("/about")}">${safeText(ui.aboutMore)} ←</a><a class="text-link" href="${routeHref("/virtual-tour")}#tour-lobby">${safeText(DAMOON_VTOUR_COPY[locale]?.lobbyLink || DAMOON_VTOUR_COPY.en.lobbyLink)} ↗</a></div><div class="home-lobby" aria-label="${safeText(ui.gallery)}"><img data-home-slide src="/damoon-front/assets/lobby-concept.webp" alt="${safeText(ui.imageNotActual)}" loading="lazy"><button type="button" data-home-prev aria-label="${safeText(ui.previousImage)}">‹</button><button type="button" data-home-next aria-label="${safeText(ui.nextImage)}">›</button><div class="home-lobby__dots">${slides.map((_, i) => `<button type="button" data-home-dot="${i}" aria-label="${safeText(ui.gallery)} ${i + 1}"${i === 0 ? ' aria-current="true"' : ""}></button>`).join("")}</div></div><div class="home-side"><div class="home-room-list"><h2>${safeText(locale === "fa" ? "اتاق‌ها و سوئیت‌ها" : ui.rooms)}</h2><div class="home-room-list__grid">${roomTiles.map((room, index) => `<a href="${routeHref(`/rooms/${room.slug}`)}" data-room-sprite="${index}"><img src="${room.image}" alt="${safeText(ui.imageNotActual)}" loading="lazy"><strong>${safeText(room.title)}<small>${safeText(ui.viewSpaces)}</small></strong></a>`).join("")}</div></div><div class="home-gallery-list"><h2>${safeText(locale === "fa" ? "تصاویر هتل" : ui.gallery)}</h2><div>${slides.map((image, i) => `<a href="${routeHref("/gallery")}" data-gallery-sprite="${i}"><img src="${safeText(image.src)}" alt="${safeText(image.alt)}" loading="lazy"></a>`).join("")}</div></div></div></section>
     <div class="home-features"><span><svg viewBox="0 0 32 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M16 38C11 30 2 20 2 14a14 14 0 1 1 28 0c0 6-9 16-14 24Z"/><circle cx="16" cy="14" r="5"/></svg><strong>${safeText(ui.guestComfort)}</strong><small>${safeText(site.city)}</small></span><span><svg viewBox="0 0 40 36" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 29h34M6 25a14 14 0 0 1 28 0H6Zm14-17V4m-5 0h10M2 33h36"/></svg><strong>${safeText(ui.unitCount)}</strong></span><span><svg viewBox="0 0 32 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 38V2h22v36M1 38h30M12 38V28h8v10M10 8h3m6 0h3M10 14h3m6 0h3M10 20h3m6 0h3"/></svg><strong>${safeText(ui.checkInLabel)} · 14:00</strong><small>${safeText(ui.checkOutLabel)} · 12:00</small></span></div>`;
 }
 
@@ -157,8 +160,67 @@ function virtualTourPage(page, path) {
 
 function virtualTourSection() {
   const tours = publishedDamoonTours();
-  if (tours.length) return `<section class="content-section"><div class="section-heading"><p class="eyebrow">${safeText(ui.virtualTour)}</p><h2>${safeText(ui.virtualTour)}</h2><p>${safeText(locale === "fa" ? "پیش‌نمایش مفهومی؛ تصاویر این تور به‌عنوان عکاسی تأییدشده از هتل دامون ارائه نمی‌شوند." : locale === "ar" ? "معاينة تصورية؛ لا تُعرض صور هذه الجولة على أنها صور فوتوغرافية موثقة لفندق دامون." : "Conceptual preview; this tour is not presented as verified photography of Damoon Hotel.")}</p></div>${tours.map((tour) => tourViewerMarkup(tour, `${ui.virtualTour} · ${tour.id}`, undefined, locale)).join("")}</section>`;
+  const copy = DAMOON_VTOUR_COPY[locale] || DAMOON_VTOUR_COPY.en;
+  if (tours.length) return `<section class="content-section vtour-gallery" data-vtour-gallery><div class="section-heading"><p class="eyebrow">${safeText(ui.virtualTour)}</p><h2>${safeText(copy.galleryTitle)}</h2><p>${safeText(copy.galleryIntro)}</p></div><div class="vtour-gallery__cards">${tours.map((tour) => {
+    const title = tour.title?.[locale] || tour.title?.en || tour.id;
+    const description = tour.description?.[locale] || tour.description?.en || "";
+    const directUrl = allowedVirtualTourUrl(tour.url);
+    const roomLink = tour.roomSlugs.includes("vip-suite") ? `<a class="vtour-card__room" href="${safeText(routeHref("/rooms/vip-suite"))}">${safeText(copy.roomLink)} ↗</a>` : "";
+    return `<article class="vtour-card" id="tour-${safeText(tour.id)}"><span class="vtour-card__mark" aria-hidden="true">360°</span><div class="vtour-card__body"><h3>${safeText(title)}</h3><p>${safeText(description)}</p><div class="vtour-card__actions"><button type="button" class="button button--primary" data-vtour-open="${safeText(tour.id)}">${safeText(copy.openEmbed)}</button><a class="vtour-card__direct" href="${safeText(directUrl)}" target="_blank" rel="noopener noreferrer">${safeText(copy.openDirect)}</a>${roomLink}</div></div></article>`;
+  }).join("")}</div><section class="vtour-active" data-vtour-active hidden aria-labelledby="vtour-active-title"><div class="vtour-active__heading"><div><p class="eyebrow">${safeText(ui.virtualTour)}</p><h3 id="vtour-active-title" tabindex="-1" data-vtour-active-title></h3></div><button type="button" class="button button--outline" data-vtour-close>${safeText(copy.close)}</button></div><div data-vtour-active-player></div></section></section>`;
   return `<section class="content-section"><div class="section-heading"><p class="eyebrow">${safeText(ui.virtualTour)}</p><h2>${safeText(ui.virtualTour)}</h2></div><p>${safeText(locale === "fa" ? "نمایش آنلاین تور مجازی در حال آماده‌سازی است. برای هماهنگی با پذیرش تماس بگیرید." : locale === "ar" ? "عرض الجولة الافتراضية قيد الإعداد." : "Online virtual tour display is being prepared.")}</p></section>`;
+}
+
+function wireVtourViewer(viewer, copy) {
+  if (!viewer || viewer.dataset.vtourWired === "true") return;
+  const iframe = viewer.querySelector("iframe");
+  const status = viewer.querySelector("[data-vtour-status]");
+  if (!iframe || !status) return;
+  viewer.dataset.vtourWired = "true";
+  let settled = false;
+  const timer = window.setTimeout(() => { if (!settled) status.textContent = copy.slow; }, 12000);
+  iframe.addEventListener("load", () => { settled = true; window.clearTimeout(timer); status.textContent = copy.loaded; }, { once: true });
+  iframe.addEventListener("error", () => { settled = true; window.clearTimeout(timer); status.textContent = copy.failed; }, { once: true });
+  viewer.querySelector("[data-vtour-fullscreen]")?.addEventListener("click", async () => {
+    try {
+      if (typeof iframe.requestFullscreen !== "function") throw new Error("Fullscreen unavailable");
+      await iframe.requestFullscreen();
+    } catch {
+      status.textContent = copy.fullscreenFailed;
+    }
+  });
+}
+
+function wireVtourGallery() {
+  const galleryRoot = root.querySelector("[data-vtour-gallery]");
+  if (!galleryRoot || galleryRoot.dataset.vtourWired === "true") return;
+  const copy = DAMOON_VTOUR_COPY[locale] || DAMOON_VTOUR_COPY.en;
+  const tours = publishedDamoonTours();
+  const active = galleryRoot.querySelector("[data-vtour-active]");
+  const activeTitle = galleryRoot.querySelector("[data-vtour-active-title]");
+  const player = galleryRoot.querySelector("[data-vtour-active-player]");
+  if (!active || !activeTitle || !player) return;
+  galleryRoot.dataset.vtourWired = "true";
+  const openTour = (id) => {
+    const tour = tours.find((item) => item.id === id);
+    const url = allowedVirtualTourUrl(tour?.url);
+    if (!tour || !url) return;
+    player.replaceChildren();
+    const title = tour.title?.[locale] || tour.title?.en || tour.id;
+    activeTitle.textContent = title;
+    active.hidden = false;
+    player.innerHTML = tourViewerMarkup(tour, title, undefined, locale);
+    const viewer = player.querySelector(".vtour-viewer");
+    wireVtourViewer(viewer, copy);
+    active.scrollIntoView({ behavior: "smooth", block: "start" });
+    activeTitle.focus({ preventScroll: true });
+  };
+  galleryRoot.querySelectorAll("[data-vtour-open]").forEach((button) => button.addEventListener("click", () => openTour(button.dataset.vtourOpen)));
+  galleryRoot.querySelector("[data-vtour-close]")?.addEventListener("click", () => {
+    player.replaceChildren();
+    active.hidden = true;
+  });
+  if (window.location.hash === "#tour-lobby") openTour("lobby");
 }
 function render() {
   locale = localeForPath(window.location.pathname);
@@ -168,7 +230,7 @@ function render() {
   ui = translations[locale]?.ui || faUI;
   const path = normalizePath(window.location.pathname);
   const reservationStart = path === "/hotel-reservations/start";
-  const page = pageForPath(path, locale) || (reservationStart ? { path, title: locale === "fa" ? "ثبت رزرو" : locale === "ar" ? "حجز الإقامة" : "Book your stay", text: locale === "fa" ? "تاریخ و ترکیب مهمانان را انتخاب کنید و موجودی و قیمت را از سامانه هتل بگیرید." : locale === "ar" ? "اختر التواريخ والضيوف للتحقق من التوفر والسعر لدى الفندق." : "Select dates and guests to check live hotel availability and pricing." } : null);
+  const page = pageForPath(path, locale) || (reservationStart ? { path, title: locale === "fa" ? "درخواست هماهنگی اقامت" : locale === "ar" ? "طلب تنسيق الإقامة" : "Request stay coordination", text: locale === "fa" ? "تاریخ و ترکیب مهمانان را برای ارسال درخواست هماهنگی به پذیرش انتخاب کنید؛ این مسیر موجودی یا قیمت را بررسی و رزرو یا پرداخت انجام نمی‌دهد." : locale === "ar" ? "اختر التواريخ والضيوف لإرسال طلب تنسيق إلى الاستقبال؛ لا يتحقق هذا المسار من التوفر أو الأسعار ولا ينشئ حجزاً أو دفعة." : "Choose dates and guests to send a coordination request to reception. This route does not check availability, confirm a rate, hold a room, or take payment." } : null);
   document.documentElement.lang = locale;
   document.documentElement.dir = translations[locale]?.direction || "rtl";
   const noScript = document.querySelector("noscript");
@@ -197,6 +259,8 @@ function render() {
 
 function wireInteractions() {
   wireAccommodation(root);
+  root.querySelectorAll(".vtour-viewer").forEach((viewer) => wireVtourViewer(viewer, DAMOON_VTOUR_COPY[locale] || DAMOON_VTOUR_COPY.en));
+  wireVtourGallery();
   if (root.querySelector("[data-da-filter]")) mountDamoonAttractionsPage(root);
   const stayLinks = [...root.querySelectorAll('a[href]')].filter(a => a.origin === window.location.origin && !a.closest('.language-switcher') && !a.getAttribute('href').startsWith('#'));
   const syncStayLinks = () => {

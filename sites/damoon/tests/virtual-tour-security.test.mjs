@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DAMOON_VTOUR_ALLOWED_ORIGINS, allowedVirtualTourUrl, publishedDamoonTours, tourViewerMarkup } from "../virtual-tour.js";
+import { DAMOON_VTOUR_ALLOWED_ORIGINS, DAMOON_VTOUR_CATALOG, DAMOON_VTOUR_COPY, allowedVirtualTourUrl, publishedDamoonTours, tourViewerMarkup } from "../virtual-tour.js";
 
 test("virtual tour accepts only HTTPS URLs from the exact configured origin allowlist", () => {
   const allowlist = ["https://tour.example.test"];
@@ -31,17 +31,41 @@ test("catalog publishes only approved tenant tours from trusted HTTPS origins an
   assert.equal(tourViewerMarkup({ url: "https://evil.test/embed" }, "Bad tour", origins), "");
 });
 
-test("owner-supplied Damoon tour preserves its initial scene and is labeled as conceptual", () => {
+test("owner-provided URLs are published only when the URL and panorama identity were verified", () => {
   assert.deepEqual(DAMOON_VTOUR_ALLOWED_ORIGINS, ["https://andarama.bazarbaaz.ir"]);
-  const [tour] = publishedDamoonTours();
-  assert.equal(tour.id, "test-damoon-hotel");
-  assert.equal(tour.url, "https://andarama.bazarbaaz.ir/t/test-damoon-hotel#s=n2ohIYwAprMY3uMSoejp3&y=-76.6&p=3.1&f=111.3");
-  assert.deepEqual(tour.roomSlugs, [], "no room scene has been individually verified");
-  assert.equal(tour.representation, "CONCEPTUAL_PREVIEW");
-  const markup = tourViewerMarkup(tour, "تور مجازی · test-damoon-hotel", undefined, "fa");
-  assert.match(markup, /data-tour-representation="conceptual"/);
-  assert.match(markup, /src="https:\/\/andarama\.bazarbaaz\.ir\/t\/test-damoon-hotel#s=n2ohIYwAprMY3uMSoejp3&amp;y=-76\.6&amp;p=3\.1&amp;f=111\.3"/);
+  const sourceRecords = [
+    { id: "vip-01", url: "https://andarama.bazarbaaz.ir/t/vip-01", status: "verified", identity: "VIP suite panorama" },
+    { id: "vip-02", url: "https://andarama.bazarbaaz.ir/t/vip-02", status: "unavailable", identity: "repeated unavailable response" },
+    { id: "vip-03-old", url: "https://andarama.bazarbaaz.ir/t/vip-03", status: "mismatch", identity: "superseded owner URL; it resolved to a VIP-02 title" },
+    { id: "vip-3", url: "https://andarama.bazarbaaz.ir/t/vip-3", status: "verified", identity: "page title VIP-03; VIP 3 panorama" },
+    { id: "lobby", url: "https://andarama.bazarbaaz.ir/t/lobby", status: "verified", identity: "hotel lobby and reception" },
+    { id: "303", url: "https://andarama.bazarbaaz.ir/t/303", status: "verified", identity: "Room 303 tour" },
+    { id: "restaurant", url: "https://andarama.bazarbaaz.ir/t/restaurant", status: "withheld", identity: "dining panorama; exact hotel use not owner-confirmed" },
+  ];
+  const published = publishedDamoonTours();
+  assert.deepEqual(DAMOON_VTOUR_CATALOG.map(({ id, url }) => ({ id, url })), [
+    sourceRecords[0], sourceRecords[3], sourceRecords[4], sourceRecords[5],
+  ].map(({ id, url }) => ({ id, url })));
+  assert.deepEqual(published.map(({ id }) => id), ["vip-01", "vip-3", "lobby", "303"]);
+  for (const record of sourceRecords) {
+    if (record.status === "verified") assert.ok(published.some(tour => tour.url === record.url), `${record.id}: ${record.identity}`);
+    else assert.ok(!published.some(tour => tour.url === record.url), `${record.id}: withheld (${record.identity})`);
+  }
+  assert.deepEqual(published.find(({ id }) => id === "vip-01").roomSlugs, ["vip-suite", "vip"]);
+  assert.deepEqual(published.find(({ id }) => id === "vip-3").roomSlugs, ["vip-suite", "vip"]);
+  assert.deepEqual(published.find(({ id }) => id === "303").roomSlugs, [], "Room 303 is not associated with every standard room");
+  for (const locale of ["fa", "en", "ar"]) {
+    for (const key of ["galleryTitle", "openEmbed", "openDirect", "fullscreen", "close", "failed", "slow"]) {
+      assert.ok(DAMOON_VTOUR_COPY[locale][key], `${locale} has ${key} copy`);
+    }
+  }
+  const markup = tourViewerMarkup(published.find(({ id }) => id === "vip-01"), "سوئیت VIP", undefined, "fa");
+  assert.match(markup, /data-tour-representation="verified"/);
+  assert.match(markup, /src="https:\/\/andarama\.bazarbaaz\.ir\/t\/vip-01"/);
+  assert.match(markup, /loading="lazy"/);
   assert.match(markup, /allowfullscreen/);
+  assert.match(markup, /data-vtour-fullscreen/);
+  assert.match(markup, /role="status" aria-live="polite"/);
   assert.match(markup, /بازکردن مستقیم تور/);
 });
 
@@ -68,15 +92,23 @@ test("room pages resolve only explicitly associated and approved tenant scenes",
   assert.deepEqual(idsFor("bogus"), []);
   const [vip] = tours;
   assert.equal(vip.url, "https://tour.example.test/t/hotel#s=vip-scene");
-  assert.equal(vip.representation, "CONCEPTUAL_PREVIEW");
+  assert.equal(vip.representation, "CONCEPTUAL_PREVIEW", "the test fixture keeps its explicit conceptual-image label");
 });
 
-test("homepage and concept gallery link visitors to the tour without calling concept imagery real", async () => {
+test("homepage links to the lobby tour while conceptual gallery imagery stays labeled", async () => {
   const fs = await import("node:fs/promises");
   const app = await fs.readFile(new URL("../app.js", import.meta.url), "utf8");
-  assert.match(app, /home-intro__copy[\s\S]*?routeHref\("\/virtual-tour"\)/);
-  assert.match(app, /galleryGrid\(\)[\s\S]*?routeHref\("\/virtual-tour"\)/);
-  assert.match(app, /not presented as verified photography of Damoon Hotel/);
+  assert.match(app, /routeHref\("\/virtual-tour"\)\}#tour-lobby/);
+  assert.match(app, /data-vtour-open/);
+  assert.match(app, /player\.replaceChildren\(\)/, "the previous iframe is removed before opening another tour");
+  assert.match(app, /requestFullscreen/);
+  assert.match(app, /copy\.slow/);
+  assert.match(app, /copy\.failed/);
+  assert.match(app, /window\.location\.hash === "#tour-lobby"/);
+  assert.match(app, /tour\.roomSlugs\.includes\("vip-suite"\)/);
+  assert.doesNotMatch(app, /tour\.roomSlugs\.includes\("standard-room"\)/);
+  assert.match(app, /imageNotActual/);
+  assert.match(app, /imageNotActual/);
 });
 
 test("Damoon page and asset policies allow framing only from the approved Andarama origin", async () => {

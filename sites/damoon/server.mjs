@@ -25,7 +25,7 @@ http.createServer(async (req, res) => {
   const extension = /\.[a-z0-9]+$/i.exec(path)?.[0]?.toLowerCase();
   const asset = Boolean(extension);
   const file = leafletFiles.has(path) ? join(leafletDist, path.replace(/^\/(?:damoon-front\/)?vendor\/leaflet\//, '')) : resolve(root, '.' + (asset ? path : '/index.html'));
-  if ((!leafletFiles.has(path) && !file.startsWith(root + sep)) || (asset && !['/styles.css','/booking.css','/accommodation.css','/hospitality.css','/damoon-attractions.css','/accommodation.js','/hospitality.js','/damoon-attractions-data.js','/damoon-attractions-view.js','/damoon-attractions-detail-view.js','/damoon-leaflet-maps.js','/theme-tokens.css','/app.js','/content.js','/translations.js','/themes.js','/booking.js','/booking-flow.js','/calendar.js','/virtual-tour.js','/robots.txt'].includes(path) && !path.startsWith('/assets/') && !leafletFiles.has(path))) { res.writeHead(404, security); res.end(); return; }
+  if ((!leafletFiles.has(path) && !file.startsWith(root + sep)) || (asset && !['/styles.css','/booking.css','/accommodation.css','/hospitality.css','/damoon-attractions.css','/accommodation.js','/hospitality.js','/damoon-attractions-data.js','/damoon-attractions-view.js','/damoon-attractions-detail-view.js','/damoon-leaflet-maps.js','/theme-tokens.css','/app.js','/content.js','/translations.js','/themes.js','/booking.js','/booking-flow.js','/booking-activation.js','/calendar.js','/virtual-tour.js','/robots.txt'].includes(path) && !path.startsWith('/assets/') && !leafletFiles.has(path))) { res.writeHead(404, security); res.end(); return; }
   try {
     const body = await readFile(file);
     const status = asset || pageForPath(normalizePath(path)) ? 200 : 404;

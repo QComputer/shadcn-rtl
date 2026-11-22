@@ -49,7 +49,7 @@ export const translations = {
           { heading: "Your accommodation", text: "Browse the room and suite categories. Details for each unit will be added after hotel confirmation.", link: "/rooms", label: "Explore the rooms", note: "Concept image; not an actual photo." },
           { heading: "Guest comfort", text: "Contact reception to ask about services available during your stay.", link: "/facilities", label: "Guest services" },
           { heading: "Plan your stay", text: "Check-in is from 14:00 and check-out is by 12:00 noon.", link: "/policies", label: "Stay information" },
-          { heading: "Virtual tour", text: "Get to know Damoon through its virtual-tour service. Online display on this site is being prepared.", link: "/virtual-tour", label: "Damoon virtual tour", note: "Concept image; not a tour view." },
+          { heading: "Interactive tours", text: "Explore owner-provided interactive tours for the lobby, VIP suite, and the unit identified as Room 303.", link: "/virtual-tour", label: "Damoon interactive tours", note: "Concept image; not a tour view." },
         ],
       },
       "/rooms": {
@@ -104,8 +104,8 @@ export const translations = {
         ],
       },
       "/virtual-tour": {
-        title: "Damoon Hotel virtual tour", intro: "Virtual tour", text: "Explore the supplied Andarama tour preview. Its panorama is conceptual imagery and is not verified hotel photography.", badge: "Conceptual preview", actions: [["/rooms", "Browse accommodation"]],
-        sections: [{ heading: "Explore the tour", text: "This conceptual panorama is provided for preview and should not be treated as a verified photograph of Damoon Hotel.", link: "/rooms", label: "Browse accommodation" }],
+        title: "Damoon Hotel virtual tours", intro: "Interactive tours", text: "Explore owner-provided tours for the lobby, VIP suite, and the unit identified as Room 303. Ask reception to confirm room details.", badge: "Andarama tours", actions: [["/rooms", "Browse accommodation"]],
+        sections: [{ heading: "Explore the tours", text: "Tour imagery is not approved hotel photography and does not confirm room capacity or amenities.", link: "/rooms", label: "Browse accommodation" }],
       },
     },
     roomDetails: {
@@ -172,7 +172,7 @@ export const translations = {
           { heading: "أماكن الإقامة", text: "استعرضوا فئات الغرف والأجنحة. ستُضاف تفاصيل كل وحدة بعد تأكيد الفندق.", link: "/rooms", label: "التعرّف على الغرف", note: "صورة تصورية؛ وليست صورة حقيقية." },
           { heading: "راحة الضيوف", text: "تواصلوا مع الاستقبال للاستفسار عن الخدمات المتاحة خلال الإقامة.", link: "/facilities", label: "خدمات الضيوف" },
           { heading: "خططوا لإقامتكم", text: "تسجيل الدخول من الساعة ١٤:٠٠ وتسجيل المغادرة حتى الساعة ١٢:٠٠ ظهراً.", link: "/policies", label: "معلومات الإقامة" },
-          { heading: "الجولة الافتراضية", text: "تعرّفوا على دامون من خلال خدمة الجولة الافتراضية. يجري إعداد عرضها عبر الموقع.", link: "/virtual-tour", label: "جولة دامون الافتراضية", note: "صورة تصورية؛ وليست مشهداً من الجولة." },
+          { heading: "جولات تفاعلية", text: "استكشفوا الجولات التفاعلية المقدمة من المالك للردهة وجناح VIP والوحدة المحددة بالغرفة ٣٠٣.", link: "/virtual-tour", label: "جولات دامون التفاعلية", note: "صورة تصورية؛ وليست مشهداً من الجولة." },
         ],
       },
       "/rooms": {
@@ -227,8 +227,8 @@ export const translations = {
         ],
       },
       "/virtual-tour": {
-        title: "الجولة الافتراضية لفندق دامون", intro: "الجولة الافتراضية", text: "استكشفوا معاينة الجولة المقدمة عبر أندراما. صور البانوراما تصورية وليست صوراً موثقة للفندق.", badge: "معاينة تصورية", actions: [["/rooms", "استعراض أماكن الإقامة"]],
-        sections: [{ heading: "استكشفوا الجولة", text: "هذه البانوراما التصورية للمعاينة فقط، ولا ينبغي اعتبارها صورة موثقة لفندق دامون.", link: "/rooms", label: "استعراض أماكن الإقامة" }],
+        title: "الجولات الافتراضية لفندق دامون", intro: "جولات تفاعلية", text: "استكشفوا الجولات المقدمة من المالك للردهة وجناح VIP والوحدة المحددة بالغرفة ٣٠٣. اسألوا الاستقبال عن تفاصيل الغرف.", badge: "جولات أندراما", actions: [["/rooms", "استعراض أماكن الإقامة"]],
+        sections: [{ heading: "استكشفوا الجولات", text: "صور الجولة ليست صوراً فوتوغرافية معتمدة للفندق ولا تؤكد سعة الغرف أو مرافقها.", link: "/rooms", label: "استعراض أماكن الإقامة" }],
       },
     },
     roomDetails: {

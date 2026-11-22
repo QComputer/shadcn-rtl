@@ -40,6 +40,7 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
   const organizationIds: string[] = [];
   const userIds: string[] = [];
   let service: HotelManagementService;
+  const previousMaintenanceGate = process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED;
 
   try {
     // The guarded loopback port is Docker's published port; PostgreSQL sees its
@@ -165,8 +166,18 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
       nights: { create: { date: date("2027-08-05"), roomTypeId: roomType.id, roomId: null, rate: BigInt(130000) } },
     } });
 
+    process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED = "1";
+    const maintenanceInput = { propertyId: property.id, roomId: physicalRoom.id, from: "2027-08-08", to: "2027-08-10", reason: "Synthetic plumbing inspection", idempotencyKey: `maintenance-${suffix}` };
+    const maintenance = await service.createRoomMaintenanceBlock(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, maintenanceInput);
+    const maintenanceReplay = await service.createRoomMaintenanceBlock(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, maintenanceInput);
+    assert.equal(maintenanceReplay.id, maintenance.id, "replayed maintenance command returns its original block");
+    const assignedNight = await db.hotelReservationRoom.findFirstOrThrow({ where: { organizationId: organizationA.id, roomId: physicalRoom.id, date: date("2027-08-04") } });
+    await assert.rejects(() => db.hotelReservationRoom.update({ where: { id: assignedNight.id }, data: { date: date("2027-08-08") } }), undefined, "database guard prevents later assignment into scheduled maintenance");
+    await assert.rejects(() => service.createRoomMaintenanceBlock(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, { ...maintenanceInput, from: "2027-08-04", to: "2027-08-05", idempotencyKey: `overlap-${suffix}` }), HotelManagementConflictError, "maintenance cannot displace an allocated reservation night");
+    await assert.rejects(() => service.createRoomMaintenanceBlock(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, { ...maintenanceInput, reason: "Changed replay reason" }), HotelManagementConflictError, "an idempotency key cannot be reused for changed input");
+
     const operations = await service.getOperations(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, property.id, days("2027-08-01", "2027-08-15"));
-    assert.deepEqual(Object.keys(operations).sort(), ["cancellationPolicies", "inventory", "property", "range", "ratePlans", "roomBoard", "roomTypes"]);
+    assert.deepEqual(Object.keys(operations).sort(), ["cancellationPolicies", "inventory", "maintenanceBlocks", "manualRoomManagementEnabled", "property", "range", "ratePlans", "roomBoard", "roomTypes"]);
     assert.deepEqual(operations.range, { from: "2027-08-01", to: "2027-08-15", nights: 14 });
     assert.equal(operations.property.timezone, "Asia/Tehran");
     const resultRoomType = operations.roomTypes.find((row) => row.id === roomType.id);
@@ -180,6 +191,9 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
     assert.equal(committedNight?.closedToDeparture, true);
     const boardRoom = operations.roomBoard.rooms.find((room) => room.id === physicalRoom.id);
     assert.deepEqual(boardRoom?.nights.find((night) => night.date === "2027-08-04"), { date: "2027-08-04", status: "RESERVED", reference: `BOARD-${suffix}` });
+    assert.deepEqual(boardRoom?.nights.filter((night) => night.date >= "2027-08-08" && night.date < "2027-08-10").map((night) => night.status), ["MAINTENANCE", "MAINTENANCE"]);
+    assert.equal(operations.maintenanceBlocks.find((block) => block.id === maintenance.id)?.reason, maintenanceInput.reason);
+    assert.equal(operations.manualRoomManagementEnabled, true);
     assert.equal(operations.roomBoard.unassignedReservationNights, 1);
     const serialized = JSON.stringify(operations);
     assert.doesNotMatch(serialized, /email|phone|guest|payment|password|token/i, "read model excludes PII and payment details");
@@ -193,9 +207,15 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
     await assert.rejects(() => service.getOperations(principal(noCapabilityAdmin.id, "ADMIN", noCapabilityOrganization.id), { organizationId: noCapabilityOrganization.id }, property.id, days("2027-08-01", "2027-08-02")), HotelManagementAuthorizationError, "missing capability is denied");
     await assert.rejects(() => service.getOperations(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, property.id, days("2027-08-01", "2027-09-02")), HotelManagementValidationError, "read range is capped at 31 nights");
     await assert.rejects(() => service.getOperations(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, property.id, { from: new Date(Number.NaN), to: date("2027-03-02") }), HotelManagementValidationError, "invalid calendar date is rejected");
+    await service.releaseRoomMaintenanceBlock(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, property.id, maintenance.id);
+    const released = await db.hotelRoomMaintenanceBlock.findFirstOrThrow({ where: { id: maintenance.id, organizationId: organizationA.id } });
+    assert.equal(released.releasedBy, managerA.id, "release records the authorized actor");
   } finally {
+    if (previousMaintenanceGate === undefined) delete process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED;
+    else process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED = previousMaintenanceGate;
     try {
       if (organizationIds.length) {
+        await db.hotelRoomMaintenanceBlock.deleteMany({ where: { organizationId: { in: organizationIds } } });
         await db.hotelReservation.deleteMany({ where: { organizationId: { in: organizationIds } } });
         await db.hotelInventoryIdempotency.deleteMany({ where: { organizationId: { in: organizationIds }, operationScope: "HOTEL_INVENTORY_INITIALIZE" } });
         await db.hotelInventoryAdjustment.deleteMany({ where: { organizationId: { in: organizationIds } } });

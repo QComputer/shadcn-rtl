@@ -5227,6 +5227,7 @@ model HotelProperty {
   inventoryAdjustments HotelInventoryAdjustment[]
   holds                HotelBookingHold[]
   reservations         HotelReservation[]
+  maintenanceBlocks    HotelRoomMaintenanceBlock[]
   guestBookingRequests HotelGuestBookingRequest[]
   stayQuotes           HotelStayQuote[]
   stayRequests         HotelStayRequest[]
@@ -5370,9 +5371,11 @@ model HotelRoom {
   property         HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
   roomType         HotelRoomType @relation(fields: [roomTypeId, propertyId], references: [id, propertyId], onDelete: Restrict)
   reservationRooms HotelReservationRoom[]
+  maintenanceBlocks HotelRoomMaintenanceBlock[]
 
   @@unique([propertyId, code])
   @@unique([id, organizationId])
+  @@unique([id, organizationId, propertyId])
   @@index([organizationId, roomTypeId, isActive])
 }
 
@@ -5396,6 +5399,31 @@ model HotelAmenity {
   @@unique([propertyId, key])
   @@unique([id, organizationId])
   @@index([organizationId, propertyId, isActive])
+}
+
+/// Dated, auditable closure of a physical room. Date range is half-open [from, to).
+model HotelRoomMaintenanceBlock {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  propertyId         String
+  roomId             String
+  from               DateTime @db.Date
+  to                 DateTime @db.Date
+  reason             String   @db.VarChar(500)
+  idempotencyKey     String
+  requestFingerprint String
+  createdBy          String
+  createdAt          DateTime @default(now())
+  releasedBy         String?
+  releasedAt         DateTime?
+
+  property HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  room     HotelRoom     @relation(fields: [roomId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Restrict)
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, propertyId, from, to])
+  @@index([organizationId, roomId, from, to, releasedAt])
 }
 
 /// Join: which amenities a room type offers.

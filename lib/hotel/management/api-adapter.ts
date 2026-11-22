@@ -23,7 +23,7 @@ export function managementError(error: unknown) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   if (error instanceof HotelManagementConflictError) {
-    return NextResponse.json({ error: "Request conflict" }, { status: 409 });
+    return NextResponse.json({ error: error.message === "ROOM_MAINTENANCE_CONFLICT" ? "ROOM_MAINTENANCE_CONFLICT" : "Request conflict" }, { status: 409 });
   }
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2002") return NextResponse.json({ error: "Resource conflict" }, { status: 409 });

@@ -30,6 +30,8 @@
     "db:validate": "prisma validate",
     "db:migrate:local": "node scripts/db/guard-local-prisma-env.mjs -- pnpm exec prisma migrate deploy",
     "test:local-prisma-env-guard": "node --test tests/unit/local-prisma-env-guard.test.mjs",
+    "test:damoon:local:guard": "node --test tests/unit/damoon-local-e2e-db-guard.test.mjs",
+    "test:damoon:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/hotel/run-damoon-booking-acceptance.ps1",
     "demo:damoon:d4": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/hotel/damoon-d4-sandbox-demo.ps1",
     "test:inoti-ussd": "npx tsx --require=./scripts/e2e/register-server-only.cjs --test tests/unit/inoti-ussd-foundation.test.ts",
     "test:inoti-ussd:local": "npx tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/inoti-ussd.local.test.ts",

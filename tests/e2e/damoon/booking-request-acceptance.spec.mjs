@@ -727,6 +727,8 @@ test('inventory-free request reaches reception and tracks without creating a boo
   const context = await newContext(browser);
   const page = await context.newPage();
   const manager = await loginManager(browser);
+  await manager.page.clock.install();
+  await manager.page.reload({ waitUntil: "domcontentloaded" });
   const guestName = `CI coordination ${randomUUID()}`;
   try {
     const checkIn = tomorrowISO();
@@ -788,16 +790,23 @@ test('inventory-free request reaches reception and tracks without creating a boo
     await manager.page.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('denied'); } } }); });
     await card.getByRole('button', {name:'نسخ الرقم'}).click();
     await expect(card.getByRole('status')).toContainText('تعذر النسخ');
-    await card.locator('textarea').fill('Internal test note');
     await manager.page.bringToFront();
-    const refresh = await manager.page.waitForResponse(res => new URL(res.url()).pathname === requestsApi && new URL(res.url()).searchParams.get('search') === '+989121234567' && res.request().method() === 'GET', { timeout: 75_000 });
-    expect(refresh.status()).toBe(200);
+    let autoRefreshCount = 0;
+    manager.page.on('request', request => { if (new URL(request.url()).pathname === requestsApi && request.method() === 'GET') autoRefreshCount += 1; });
+    await card.locator('textarea').fill('Internal test note');
+    await card.locator('textarea').press('Tab');
+    await manager.page.clock.fastForward(60_001);
+    expect(autoRefreshCount).toBe(0);
     await expect(card.locator('textarea')).toHaveValue('Internal test note');
     const updated = manager.page.waitForResponse(res => res.url().endsWith(`/booking-requests/${entry.id}`) && res.request().method() === 'PATCH');
     await card.locator('select').selectOption('IN_REVIEW');
     expect((await updated).status()).toBe(200);
+    await expect(card.locator('select')).toBeEnabled();
     const persisted = await db.hotelGuestBookingRequest.findUniqueOrThrow({ where: { id: entry.id }, select: { managerMessage: true, status: true } });
     expect(persisted).toEqual({ managerMessage: 'Internal test note', status: 'IN_REVIEW' });
+    const refresh = manager.page.waitForResponse(res => new URL(res.url()).pathname === requestsApi && new URL(res.url()).searchParams.get('search') === '+989121234567' && res.request().method() === 'GET');
+    await manager.page.clock.fastForward(60_001);
+    expect((await refresh).status()).toBe(200);
     const tracked = await postStatus(page, received.reference);
     expect(tracked.status()).toBe(200);
     expect((await tracked.json()).status).toBe('IN_REVIEW');

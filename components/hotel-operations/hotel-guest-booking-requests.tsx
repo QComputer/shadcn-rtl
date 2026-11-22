@@ -69,6 +69,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
   const selectedSearch = useRef("");
   const loadInFlight = useRef(false);
   const loadedOlderPages = useRef(false);
+  const dirtyMessages = useRef(new Set<string>());
 
   const load = useCallback(async (nextCursor?: string | null, append = false, statusFilter: RequestFilter = filter, searchFilter = selectedSearch.current) => {
     loadInFlight.current = true;
@@ -102,7 +103,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      if (document.visibilityState !== "visible" || loadInFlight.current || loadedOlderPages.current || busyId) return;
+      if (document.visibilityState !== "visible" || loadInFlight.current || loadedOlderPages.current || busyId || dirtyMessages.current.size > 0 || document.activeElement instanceof HTMLTextAreaElement) return;
       void load(null, false, selectedFilter.current);
     }, 60_000);
     return () => window.clearInterval(timer);
@@ -126,6 +127,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
       } else {
         setRequests((current) => current.map((item) => item.id === updated.id ? { ...item, status: updated.status, managerMessage: updated.managerMessage, version: updated.version } : item));
       }
+      dirtyMessages.current.delete(request.id);
       setMessages((current) => ({ ...current, [request.id]: updated.managerMessage || "" }));
     } catch { setError(text.saveError); }
     finally { setBusyId(null); }
@@ -240,7 +242,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
             {!coordination && <div><dt className="font-medium">{text.availability}</dt><dd>{availabilityText} <button type="button" className="ms-2 underline" disabled={busyId === request.id} onClick={() => void recheckAvailability(request)}>{busyId === request.id ? text.checking : text.checkAvailability}</button></dd></div>}
           </dl>
           {request.guestNote && <p className="rounded-md bg-muted p-3 text-sm"><strong>{text.note}: </strong>{request.guestNote}</p>}
-          <label className="grid gap-1 text-sm"><span className="font-medium">{coordination ? (language === "fa" ? "یادداشت داخلی پذیرش (برای مهمان نمایش داده نمی‌شود)" : language === "ar" ? "ملاحظة داخلية للاستقبال (لا تظهر للضيف)" : "Internal reception note (not shown to guest)") : (language === "fa" ? "پیام پذیرش برای مهمان" : language === "ar" ? "رسالة الاستقبال إلى الضيف" : "Reception message to guest")}</span><textarea className="min-h-20 rounded-md border bg-background p-3" maxLength={500} value={messages[request.id] ?? request.managerMessage ?? ""} onChange={(event) => setMessages((current) => ({ ...current, [request.id]: event.target.value }))} /></label>
+          <label className="grid gap-1 text-sm"><span className="font-medium">{coordination ? (language === "fa" ? "یادداشت داخلی پذیرش (برای مهمان نمایش داده نمی‌شود)" : language === "ar" ? "ملاحظة داخلية للاستقبال (لا تظهر للضيف)" : "Internal reception note (not shown to guest)") : (language === "fa" ? "پیام پذیرش برای مهمان" : language === "ar" ? "رسالة الاستقبال إلى الضيف" : "Reception message to guest")}</span><textarea className="min-h-20 rounded-md border bg-background p-3" maxLength={500} value={messages[request.id] ?? request.managerMessage ?? ""} onChange={(event) => { const value = event.target.value; if (value === (request.managerMessage ?? "")) dirtyMessages.current.delete(request.id); else dirtyMessages.current.add(request.id); setMessages((current) => ({ ...current, [request.id]: value })); }} /></label>
           {nextStatuses.length > 0 && <div className="flex flex-wrap items-center gap-2">
             <label className="sr-only" htmlFor={`request-status-${request.id}`}>{text.update}</label>
             <select id={`request-status-${request.id}`} className="rounded-md border bg-background px-3 py-2 text-sm" value="" disabled={busyId === request.id} onChange={(event) => { const value = event.target.value as RequestStatus; if (value) void update(request, value); }}>

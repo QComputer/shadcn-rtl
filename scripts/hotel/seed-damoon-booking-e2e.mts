@@ -222,7 +222,7 @@ async function main() {
       DAMOON_STANDALONE_URL: "http://damoon-hotel.localhost:8080",
       DAMOON_E2E_PUBLIC_PORT: "8080",
     };
-    for (const key of ["DAMOON_MANAGER_PASSWORD", "DAMOON_FOREIGN_MANAGER_PASSWORD"]) {
+    if (!target.localMode) for (const key of ["DAMOON_MANAGER_PASSWORD", "DAMOON_FOREIGN_MANAGER_PASSWORD"]) {
       console.log(`::add-mask::${values[key]}`);
     }
     const output = Object.entries(values).map(([key, value]) => `${key}=${value}`).join("\n") + "\n";

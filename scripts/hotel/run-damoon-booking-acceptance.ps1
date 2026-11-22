@@ -262,7 +262,7 @@ try {
 }
 catch {
   if ($script:taskExitCode -eq 0) { $script:taskExitCode = 1 }
-  [Console]::Error.WriteLine($_.Exception.Message)
+  [Console]::Error.WriteLine('Damoon acceptance failed; see the preceding test result.')
 }
 finally {
   try {
@@ -279,14 +279,12 @@ finally {
     if (Test-Path -LiteralPath $tempRoot) {
       $resolved = (Resolve-Path -LiteralPath $tempRoot).Path
       $tempBase = (Resolve-Path -LiteralPath $env:TEMP).Path
-      if ($resolved.StartsWith($tempBase, [System.StringComparison]::OrdinalIgnoreCase) -and $resolved -eq (Join-Path $tempBase "damoon-local-e2e-$suffix") -and -not $testFailed) {
+      if ($resolved.StartsWith($tempBase, [System.StringComparison]::OrdinalIgnoreCase) -and $resolved -eq (Join-Path $tempBase "damoon-local-e2e-$suffix")) {
         Remove-Item -LiteralPath $resolved -Recurse -Force
-      } elseif ($resolved -eq (Join-Path $tempBase "damoon-local-e2e-$suffix") -and $testFailed) {
-        Write-Output "Failure diagnostics retained in task temp directory: $resolved"
       }
     }
   } catch { [Console]::Error.WriteLine("Warning: task temp cleanup failed: $($_.Exception.Message)") }
-  if ($testFailed) { Write-Output 'Task-owned cleanup was attempted; inspect task-scoped diagnostics if any resources remain.' }
+  if ($testFailed) { Write-Output 'Task-owned cleanup was attempted.' }
 }
 
 exit $script:taskExitCode

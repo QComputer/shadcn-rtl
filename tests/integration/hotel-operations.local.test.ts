@@ -103,7 +103,9 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
     const physicalRoom = await service.createPhysicalRoom(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, {
       propertyId: property.id, roomTypeId: roomType.id, code: `201-${suffix}`, floor: "2",
     });
-    await Promise.all([202, 203, 204].map((number) => service.createPhysicalRoom(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, { propertyId: property.id, roomTypeId: roomType.id, code: `${number}-${suffix}`, floor: "2" })));
+    const additionalRooms = await Promise.all([202, 203, 204].map((number) => service.createPhysicalRoom(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, { propertyId: property.id, roomTypeId: roomType.id, code: `${number}-${suffix}`, floor: "2" })));
+    const permanentlyOutOfService = await service.createPhysicalRoom(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, { propertyId: property.id, roomTypeId: roomType.id, code: `205-${suffix}`, isOutOfService: true });
+    assert.equal(permanentlyOutOfService.isOutOfService, true);
     const ratePlan = await service.createRatePlan(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, {
       propertyId: property.id, roomTypeId: roomType.id, code: `flex-${suffix}`, name: "Flexible",
       baseNightlyRate: BigInt(125000), minNights: 1, isRefundable: true,
@@ -128,6 +130,10 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
     assert.deepEqual(await initialize(initialRange, 5, initialKey), initial, "same key and payload replays the original result");
     await assert.rejects(() => initialize(initialRange, 9, initialKey), HotelManagementConflictError, "same key with a changed payload conflicts");
     assert.equal(await db.hotelInventoryAdjustment.count({ where: { organizationId: organizationA.id, roomTypeId: roomType.id } }), 3, "replay/conflict must not duplicate audit rows");
+
+    await db.hotelInventory.createMany({ data: ["2027-08-08", "2027-08-09", "2027-08-10", "2027-08-11"].map((value) => ({
+      organizationId: organizationA.id, propertyId: property.id, roomTypeId: roomType.id, date: date(value), allotment: 4,
+    })) });
 
     const committedDate = date("2027-08-02");
     await db.hotelInventory.update({ where: { roomTypeId_date: { roomTypeId: roomType.id, date: committedDate } }, data: {
@@ -171,7 +177,13 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
     const maintenance = await service.createRoomMaintenanceBlock(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, maintenanceInput);
     const maintenanceReplay = await service.createRoomMaintenanceBlock(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, maintenanceInput);
     assert.equal(maintenanceReplay.id, maintenance.id, "replayed maintenance command returns its original block");
+    const adjacentMaintenance = await service.createRoomMaintenanceBlock(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, { ...maintenanceInput, from: "2027-08-10", to: "2027-08-11", roomId: physicalRoom.id, idempotencyKey: `maintenance-adjacent-${suffix}` });
+    const secondRoomMaintenance = await service.createRoomMaintenanceBlock(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, { ...maintenanceInput, from: "2027-08-09", to: "2027-08-10", roomId: additionalRooms[0]!.id, idempotencyKey: `maintenance-second-room-${suffix}` });
     await assert.rejects(() => service.createRoomMaintenanceBlock(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, { ...maintenanceInput, from: "2027-08-09", to: "2027-08-11", idempotencyKey: `maintenance-overlap-${suffix}` }), HotelManagementConflictError, "overlapping dated maintenance blocks for one physical room are rejected");
+    const maintenanceCapacity = await db.hotelInventory.findMany({ where: { organizationId: organizationA.id, roomTypeId: roomType.id, date: { gte: date("2027-08-08"), lt: date("2027-08-12") } }, orderBy: { date: "asc" } });
+    const datedOperations = await service.getOperations(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, property.id, days("2027-08-08", "2027-08-12"));
+    assert.deepEqual(datedOperations.inventory.map((night) => night.available), [3, 2, 3, 4], "maintenance reduces category capacity per half-open night and a permanent out-of-service room is not deducted twice");
+    assert.ok(maintenanceCapacity.length >= 4);
     const assignedNight = await db.hotelReservationRoom.findFirstOrThrow({ where: { organizationId: organizationA.id, roomId: physicalRoom.id, date: date("2027-08-04") } });
     await assert.rejects(() => db.hotelReservationRoom.update({ where: { id: assignedNight.id }, data: { date: date("2027-08-08") } }), undefined, "database guard prevents later assignment into scheduled maintenance");
     await assert.rejects(() => service.createRoomMaintenanceBlock(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, { ...maintenanceInput, from: "2027-08-04", to: "2027-08-05", idempotencyKey: `overlap-${suffix}` }), HotelManagementConflictError, "maintenance cannot displace an allocated reservation night");
@@ -194,6 +206,8 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
     assert.deepEqual(boardRoom?.nights.find((night) => night.date === "2027-08-04"), { date: "2027-08-04", status: "RESERVED", reference: `BOARD-${suffix}` });
     assert.deepEqual(boardRoom?.nights.filter((night) => night.date >= "2027-08-08" && night.date < "2027-08-10").map((night) => night.status), ["MAINTENANCE", "MAINTENANCE"]);
     assert.equal(operations.maintenanceBlocks.find((block) => block.id === maintenance.id)?.reason, maintenanceInput.reason);
+    assert.ok(operations.maintenanceBlocks.some((block) => block.id === adjacentMaintenance.id));
+    assert.ok(operations.maintenanceBlocks.some((block) => block.id === secondRoomMaintenance.id));
     assert.equal(operations.manualRoomManagementEnabled, true);
     assert.equal(operations.roomBoard.unassignedReservationNights, 1);
     const serialized = JSON.stringify(operations);

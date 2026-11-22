@@ -11,6 +11,7 @@ const dates = { checkIn: "2027-11-10", checkOut: "2027-11-12" };
 const scope = { availability: true, quote: true, policies: true };
 const organizations: Record<"a" | "b", { id: string; propertyIds: Record<string, string>; roomIds: Record<string, string>; planIds: Record<string, string>; policyIds: Record<string, string>; domain: string; adminId: string }> = { a: { id: "", propertyIds: {}, roomIds: {}, planIds: {}, policyIds: {}, domain: "r2b-a.local", adminId: "" }, b: { id: "", propertyIds: {}, roomIds: {}, planIds: {}, policyIds: {}, domain: "r2b-b.local", adminId: "" } };
 let inactiveDomainId = "";
+const maintenanceRoomIds: string[] = [];
 
 function body(property: string, roomType = "standard", ratePlan = "flex") {
   return { property, roomType, ratePlan, ...dates, occupancy: { adults: 2, children: 0 }, guests: [{ fullName: "Synthetic Guest", isPrimary: true }], contact: { fullName: "Synthetic Guest", phone: "09120000000" }, acceptedCancellationPolicyKey: "flex", acceptedCancellationPolicyVersion: 1, acceptedTotalRate: "250000" };
@@ -74,6 +75,8 @@ after(async () => {
     await prisma.hotelNightlyRate.deleteMany({ where: { organizationId: id } });
     await prisma.hotelRatePlan.deleteMany({ where: { organizationId: id } });
     await prisma.hotelCancellationPolicy.deleteMany({ where: { organizationId: id } });
+    await prisma.hotelRoomMaintenanceBlock.deleteMany({ where: { organizationId: id } });
+    await prisma.hotelRoom.deleteMany({ where: { id: { in: maintenanceRoomIds } } });
     await prisma.hotelRoomType.deleteMany({ where: { organizationId: id } });
     await prisma.hotelProperty.deleteMany({ where: { organizationId: id } });
     await prisma.organizationDomain.deleteMany({ where: { organizationId: id } });
@@ -174,4 +177,27 @@ test("rejected responses disclose no foreign snapshot or guest data", async () =
   assert.equal(result.parsed?.cancellationPolicy, undefined);
   assert.equal(text.includes("Synthetic Guest"), false);
   assert.equal(text.includes("125000"), false);
+});
+
+test("dated maintenance constrains concurrent public holds for same-category rooms", async () => {
+  const propertyId = organizations.a.propertyIds.a2!;
+  const roomTypeId = organizations.a.roomIds.a2!;
+  const activeHolds = await prisma.hotelBookingHold.findMany({ where: { organizationId: organizations.a.id, propertyId, status: "ACTIVE" }, select: { id: true } });
+  const repository = new PrismaHotelRepositories(prisma);
+  for (const hold of activeHolds) await repository.releaseHold({ organizationId: organizations.a.id }, hold.id, new Date());
+  const [maintainedRoom, availableRoom] = await Promise.all(["maintained", "available"].map((label) => prisma.hotelRoom.create({ data: {
+    organizationId: organizations.a.id, propertyId, roomTypeId, code: `maintenance-${label}-${Date.now()}`,
+  } })));
+  maintenanceRoomIds.push(maintainedRoom.id, availableRoom.id);
+  await prisma.hotelRoomMaintenanceBlock.create({ data: {
+    organizationId: organizations.a.id, propertyId, roomId: maintainedRoom.id,
+    from: new Date(`${dates.checkIn}T00:00:00Z`), to: new Date("2027-11-11T00:00:00Z"), reason: "Synthetic maintenance acceptance",
+    idempotencyKey: `maintenance-public-${Date.now()}`, requestFingerprint: `maintenance-public-${Date.now()}`, createdBy: organizations.a.adminId,
+  } });
+  const results = await Promise.all([
+    send(organizations.a.domain, `maintenance-hold-a-${Date.now()}`, body("a2")),
+    send(organizations.a.domain, `maintenance-hold-b-${Date.now()}`, body("a2")),
+  ]);
+  assert.equal(results.filter((result) => result.response.status === 201).length, 1, "one physical room remains sellable for every night, so concurrent public holds cannot double-claim it");
+  assert.equal(await prisma.hotelInventory.findMany({ where: { organizationId: organizations.a.id, propertyId, roomTypeId, date: { in: [new Date(`${dates.checkIn}T00:00:00Z`), new Date("2027-11-11T00:00:00Z")] } } }).then((rows) => Math.max(...rows.map((row) => row.held))), 1);
 });

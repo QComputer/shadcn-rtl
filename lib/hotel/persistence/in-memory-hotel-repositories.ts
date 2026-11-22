@@ -217,12 +217,13 @@ export class InMemoryHotelRepositories
     return rows;
   }
 
-  async getPhysicalRoomCapacities(scope: TenantScope, propertyId: string, roomTypeIds: readonly string[]) {
+  async getPhysicalRoomCapacities(scope: TenantScope, propertyId: string, roomTypeIds: readonly string[], nights: readonly StayDate[] = []) {
     if (!this.ownsProperty(scope, propertyId)) return [];
     const rooms = this.roomsByProperty.get(propertyId) ?? [];
     return roomTypeIds.flatMap((roomTypeId) => {
       const configured = rooms.filter((room) => room.roomTypeId === roomTypeId);
-      return configured.length ? [{ roomTypeId, totalRooms: configured.length, availableRooms: configured.filter((room) => room.isActive && !room.isOutOfService).length }] : [];
+      const availableRooms = configured.filter((room) => room.isActive && !room.isOutOfService).length;
+      return configured.length ? [{ roomTypeId, totalRooms: configured.length, availableRooms, ...(nights.length ? { availableByNight: Object.fromEntries(nights.map((night) => [night, availableRooms])) } : {}) }] : [];
     });
   }
 

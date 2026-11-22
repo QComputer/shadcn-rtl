@@ -859,7 +859,9 @@ test('inventory-free request reaches reception and tracks without creating a boo
     await manager.page.locator('section[aria-labelledby="hotel-stay-requests-title"] header button').click();
     await listIntercepted;
     await card.locator('textarea').fill('Internal test note');
+    const delayedListResponse = manager.page.waitForResponse(res => new URL(res.url()).pathname === requestsApi && res.request().method() === 'GET');
     releaseList();
+    await delayedListResponse;
     await manager.page.unroute(`**/booking-requests?**`, holdList);
     await expect(card.locator('textarea')).toHaveValue('Internal test note');
     await expect(manager.page.locator('section[aria-labelledby="hotel-stay-requests-title"] header button')).toBeEnabled();

@@ -301,6 +301,10 @@ after(async () => {
     }
     serverStopped = !server || server.exitCode !== null || server.signalCode !== null;
     if (ownedOrgIds.length) {
+      await db.hotelReservation.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
+      await db.hotelBookingHold.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
+      await db.hotelStayQuote.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
+      await db.hotelStayRequest.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelInventoryAdjustment.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelInventory.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelInventoryIdempotency.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
@@ -320,6 +324,8 @@ after(async () => {
       if (staffUserId) await db.user.deleteMany({ where: { id: staffUserId } });
       assert.equal(await db.organization.count({ where: { id: { in: ownedOrgIds } } }), 0);
       assert.equal(await db.hotelInventory.count({ where: { organizationId: { in: ownedOrgIds } } }), 0);
+      assert.equal(await db.hotelReservation.count({ where: { organizationId: { in: ownedOrgIds } } }), 0);
+      assert.equal(await db.hotelBookingHold.count({ where: { organizationId: { in: ownedOrgIds } } }), 0);
       assert.equal(await db.hotelProperty.count({ where: { organizationId: { in: ownedOrgIds } } }), 0);
       if (userId) assert.equal(await db.user.count({ where: { id: userId } }), 0);
       if (platformUserId) assert.equal(await db.user.count({ where: { id: platformUserId } }), 0);

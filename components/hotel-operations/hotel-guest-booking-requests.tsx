@@ -64,6 +64,8 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
   const [error, setError] = useState("");
   const [copyFeedback, setCopyFeedback] = useState<{ id: string; ok: boolean } | null>(null);
   const [messages, setMessages] = useState<Record<string, string>>({});
+  const [noteFeedback, setNoteFeedback] = useState<Record<string, "saved" | "error" | "conflict">>({});
+  const noteText = language === "fa" ? { save: "ذخیره یادداشت", saving: "در حال ذخیره…", saved: "ذخیره شد", unsaved: "تغییرات ذخیره‌نشده", error: "ذخیره ناموفق بود؛ متن حفظ شد.", conflict: "درخواست تغییر کرده است؛ پس از نگهداری متن، فهرست را تازه کنید." } : language === "ar" ? { save: "حفظ الملاحظة", saving: "جارٍ الحفظ…", saved: "تم الحفظ", unsaved: "تغييرات غير محفوظة", error: "تعذر الحفظ؛ تم الاحتفاظ بالنص.", conflict: "تغير الطلب؛ احتفظ بالنص ثم حدّث القائمة." } : { save: "Save note", saving: "Saving…", saved: "Saved", unsaved: "Unsaved changes", error: "Could not save; your text is preserved.", conflict: "This request changed; keep your text and refresh the list." };
   const latestLoadId = useRef(0);
   const selectedFilter = useRef<RequestFilter>("ALL");
   const selectedSearch = useRef("");
@@ -130,6 +132,25 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
       dirtyMessages.current.delete(request.id);
       setMessages((current) => ({ ...current, [request.id]: updated.managerMessage || "" }));
     } catch { setError(text.saveError); }
+    finally { setBusyId(null); }
+  };
+
+  const saveNote = async (request: GuestRequest) => {
+    const submitted = messages[request.id] ?? request.managerMessage ?? "";
+    setBusyId(request.id);
+    setNoteFeedback((current) => { const next = { ...current }; delete next[request.id]; return next; });
+    try {
+      const response = await fetch(`${base}/${encodeURIComponent(request.id)}`, {
+        method: "PATCH", credentials: "same-origin", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ expectedVersion: request.version, managerMessage: submitted }),
+      });
+      if (!response.ok) { setNoteFeedback((current) => ({ ...current, [request.id]: response.status === 409 ? "conflict" : "error" })); return; }
+      const updated = await response.json() as Pick<GuestRequest, "id" | "status" | "managerMessage" | "version">;
+      setRequests((current) => current.map((item) => item.id === updated.id ? { ...item, managerMessage: updated.managerMessage, version: updated.version } : item));
+      setMessages((current) => ({ ...current, [request.id]: updated.managerMessage || "" }));
+      dirtyMessages.current.delete(request.id);
+      setNoteFeedback((current) => ({ ...current, [request.id]: "saved" }));
+    } catch { setNoteFeedback((current) => ({ ...current, [request.id]: "error" })); }
     finally { setBusyId(null); }
   };
 
@@ -242,7 +263,8 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
             {!coordination && <div><dt className="font-medium">{text.availability}</dt><dd>{availabilityText} <button type="button" className="ms-2 underline" disabled={busyId === request.id} onClick={() => void recheckAvailability(request)}>{busyId === request.id ? text.checking : text.checkAvailability}</button></dd></div>}
           </dl>
           {request.guestNote && <p className="rounded-md bg-muted p-3 text-sm"><strong>{text.note}: </strong>{request.guestNote}</p>}
-          <label className="grid gap-1 text-sm"><span className="font-medium">{coordination ? (language === "fa" ? "یادداشت داخلی پذیرش (برای مهمان نمایش داده نمی‌شود)" : language === "ar" ? "ملاحظة داخلية للاستقبال (لا تظهر للضيف)" : "Internal reception note (not shown to guest)") : (language === "fa" ? "پیام پذیرش برای مهمان" : language === "ar" ? "رسالة الاستقبال إلى الضيف" : "Reception message to guest")}</span><textarea className="min-h-20 rounded-md border bg-background p-3" maxLength={500} value={messages[request.id] ?? request.managerMessage ?? ""} onChange={(event) => { const value = event.target.value; if (value === (request.managerMessage ?? "")) dirtyMessages.current.delete(request.id); else dirtyMessages.current.add(request.id); setMessages((current) => ({ ...current, [request.id]: value })); }} /></label>
+          <label className="grid gap-1 text-sm"><span className="font-medium">{coordination ? (language === "fa" ? "یادداشت داخلی پذیرش (برای مهمان نمایش داده نمی‌شود)" : language === "ar" ? "ملاحظة داخلية للاستقبال (لا تظهر للضيف)" : "Internal reception note (not shown to guest)") : (language === "fa" ? "پیام پذیرش برای مهمان" : language === "ar" ? "رسالة الاستقبال إلى الضيف" : "Reception message to guest")}</span><textarea className="min-h-20 rounded-md border bg-background p-3" maxLength={500} disabled={busyId === request.id} value={messages[request.id] ?? request.managerMessage ?? ""} onChange={(event) => { const value = event.target.value; if (value === (request.managerMessage ?? "")) dirtyMessages.current.delete(request.id); else dirtyMessages.current.add(request.id); setMessages((current) => ({ ...current, [request.id]: value })); }} /></label>
+          <div className="flex flex-wrap items-center gap-2"><button type="button" className="min-h-11 rounded-md border px-3 text-sm" disabled={Boolean(busyId) || (messages[request.id] ?? request.managerMessage ?? "") === (request.managerMessage ?? "")} onClick={() => void saveNote(request)}>{busyId === request.id ? noteText.saving : noteText.save}</button>{(noteFeedback[request.id] || (messages[request.id] ?? request.managerMessage ?? "") !== (request.managerMessage ?? "")) && <span role="status" className="text-sm">{noteFeedback[request.id] === "conflict" ? noteText.conflict : noteFeedback[request.id] === "error" ? noteText.error : (messages[request.id] ?? request.managerMessage ?? "") !== (request.managerMessage ?? "") ? noteText.unsaved : noteFeedback[request.id] === "saved" ? noteText.saved : ""}</span>}</div>
           {nextStatuses.length > 0 && <div className="flex flex-wrap items-center gap-2">
             <label className="sr-only" htmlFor={`request-status-${request.id}`}>{text.update}</label>
             <select id={`request-status-${request.id}`} className="rounded-md border bg-background px-3 py-2 text-sm" value="" disabled={busyId === request.id} onChange={(event) => { const value = event.target.value as RequestStatus; if (value) void update(request, value); }}>

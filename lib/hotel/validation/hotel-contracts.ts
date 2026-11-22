@@ -157,10 +157,10 @@ export const hotelGuestBookingRequestStatusSchema = z.object({
 });
 
 export const hotelGuestBookingRequestUpdateSchema = z.object({
-  status: z.enum(["RECEIVED", "IN_REVIEW", "OPTION_OFFERED", "UNAVAILABLE", "DECLINED", "CLOSED"]),
+  status: z.enum(["RECEIVED", "IN_REVIEW", "OPTION_OFFERED", "UNAVAILABLE", "DECLINED", "CLOSED"]).optional(),
   expectedVersion: z.number().int().nonnegative().safe(),
   managerMessage: z.string().trim().max(500).optional(),
-});
+}).refine((value) => value.status !== undefined || value.managerMessage !== undefined, "A status or message is required");
 
 export const guestSchema = z.object({
   fullName: z.string().min(2).max(120),

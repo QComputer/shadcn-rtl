@@ -126,3 +126,31 @@ test("needs action search and pagination remain scoped to the property", async (
   assert.deepEqual(queries[1]?.cursor, { id: "page-1" });
   assert.equal(queries[1]?.skip, 1);
 });
+
+test("note-only update preserves closed status and checks version and tenant scope", async () => {
+  const current = { id: "req", status: "CLOSED", version: 4, managerMessage: "old", roomTypeSlug: null, ratePlanCode: null };
+  let update: { where: unknown; data: { status: string; managerMessage: string | null } } | undefined;
+  let lookup: { where: unknown } | undefined;
+  const tx = {
+    hotelGuestBookingRequest: {
+      findFirst: async (query: { where: unknown }) => { lookup = query; return current; },
+      updateMany: async (query: { where: unknown; data: { status: string; managerMessage: string | null } }) => { update = query; return { count: 1 }; },
+      findFirstOrThrow: async () => ({ id: "req", status: "CLOSED", version: 5, managerMessage: "note" }),
+    },
+    auditLog: { create: async () => ({}) },
+  };
+  const db = {
+    organizationMember: { findFirst: async () => ({ id: "member" }) },
+    organizationCapability: { findFirst: async () => ({ id: "capability" }) },
+    hotelProperty: { findFirst: async () => ({ id: propertyId }) },
+    $transaction: async (callback: (value: typeof tx) => unknown) => callback(tx),
+  } as unknown as PrismaClient;
+  const service = new HotelManagementService(db);
+  const result = await service.updateGuestBookingRequestStatus(principal, { organizationId }, propertyId, "req", { expectedVersion: 4, managerMessage: " note " });
+  assert.equal(result.status, "CLOSED");
+  assert.deepEqual(lookup?.where, { id: "req", organizationId, propertyId });
+  assert.deepEqual(update?.where, { id: "req", organizationId, propertyId, version: 4, status: "CLOSED" });
+  assert.equal(update?.data.status, "CLOSED");
+  assert.equal(update?.data.managerMessage, "note");
+  await assert.rejects(() => service.updateGuestBookingRequestStatus(principal, { organizationId }, propertyId, "req", { expectedVersion: 3, managerMessage: "later" }), /changed/);
+});

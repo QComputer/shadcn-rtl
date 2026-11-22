@@ -650,6 +650,16 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
       expect(new Set(combined.map(row => row.id)).size).toBe(51);
       expect(new Set(combined.map(row => row.status))).toEqual(new Set(["RECEIVED", "IN_REVIEW"]));
       expect(combined.every(row => row.guestName === name)).toBe(true);
+      query.delete("cursor");
+      query.set("sort", "oldest");
+      const oldestPage = await (await managerPage.request.get(`${appOrigin}${requestsApi}?${query}`)).json();
+      expect(oldestPage.requests).toHaveLength(50);
+      query.set("cursor", oldestPage.nextCursor);
+      const lastPage = await (await managerPage.request.get(`${appOrigin}${requestsApi}?${query}`)).json();
+      const oldestRows = [...oldestPage.requests, ...lastPage.requests];
+      expect(oldestRows).toHaveLength(51);
+      expect(new Set(oldestRows.map(row => row.id)).size).toBe(51);
+      expect(oldestRows.map(row => `${row.createdAt}:${row.id}`)).toEqual([...oldestRows.map(row => `${row.createdAt}:${row.id}`)].sort());
     } finally {
       await db.hotelGuestBookingRequest.deleteMany({ where: { organizationId, propertyId, guestName: name } });
       await db.$disconnect();
@@ -769,6 +779,7 @@ test('inventory-free request reaches reception and tracks without creating a boo
       const card = manager.page.locator('section[aria-labelledby="hotel-stay-requests-title"] article').filter({ hasText: guestName });
       await expect(card).toBeVisible();
       await expect(card).toContainText(category);
+      await expect(card).toContainText(({fa:'در انتظار پیگیری — زمان از دریافت',en:'Awaiting attention — time since received',ar:'بانتظار المتابعة — الوقت منذ الاستلام'})[locale]);
       await expect(card.locator('time')).toHaveAttribute('datetime', entry.createdAt);
       await expect(card).toContainText(({fa:'جدید و بررسی‌نشده',en:'New and unreviewed',ar:'جديد ولم يُراجع'})[locale]);
       await expect(card.getByRole('button', { name: 'بررسی دوباره موجودی' })).toHaveCount(0);

@@ -27,6 +27,7 @@ import { isDamoonPublicBookingActivated } from "./booking-activation.js";
 
 const STORAGE_KEY = "damoon-stay-selection-v2";
 const LEGACY_STORAGE_KEY = "damoon-stay-selection-v1";
+const COORDINATION_STORAGE_KEY = "damoon-coordination-request-v1";
 const DAMOON_PROPERTY_SLUG = "damoon-hotel";
 const FA_WEEKDAYS = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
 const ADULT_OPTIONS = Array.from({ length: 8 }, (_, index) => index + 1);
@@ -70,6 +71,31 @@ function readStored(minISO) {
     } catch {}
   }
   return { range: { checkIn: "", checkOut: "" }, adults: 2, children: 0, childAges: [] };
+}
+function readCoordinationDraft() {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(COORDINATION_STORAGE_KEY) || "null");
+    if (!saved || saved.version !== 1 || typeof saved !== "object") return null;
+    const draftContact = {
+      fullName: typeof saved.draftContact?.fullName === "string" ? saved.draftContact.fullName.slice(0, 120) : "",
+      phone: typeof saved.draftContact?.phone === "string" ? saved.draftContact.phone.slice(0, 24) : "",
+      email: typeof saved.draftContact?.email === "string" ? saved.draftContact.email.slice(0, 200) : "",
+    };
+    const draftSpecialRequests = typeof saved.draftSpecialRequests === "string" ? saved.draftSpecialRequests.slice(0, 500) : "";
+    const pending = saved.pendingAttempt && typeof saved.pendingAttempt.body === "string" && saved.pendingAttempt.body.length <= 24000
+      && typeof saved.pendingAttempt.key === "string" && /^damoon-[a-f0-9]{64}$/.test(saved.pendingAttempt.key)
+      ? { body: saved.pendingAttempt.body, key: saved.pendingAttempt.key } : null;
+    const request = saved.request && typeof saved.request.reference === "string" && /^[A-Za-z0-9_-]{32,128}$/.test(saved.request.reference)
+      && typeof saved.request.status === "string"
+      ? { reference: saved.request.reference, status: saved.request.status } : null;
+    return {
+      step: saved.step === "confirmed" && request ? "confirmed" : saved.step === "coordination-details" ? "coordination-details" : "search",
+      draftContact,
+      draftSpecialRequests,
+      pendingAttempt: pending,
+      request,
+    };
+  } catch { return null; }
 }
 function initialSelection(minISO) {
   const params = new URL(window.location.href).searchParams;
@@ -149,14 +175,32 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   let adults = selection.adults;
   let children = selection.children;
   let childAges = Array.isArray(selection.childAges) ? [...selection.childAges] : [];
+  const savedCoordination = requestOnly && validateStayRange(range, today) === "OK" ? readCoordinationDraft() : null;
   let activeSegment = "checkIn";
   let monthCursor = range.checkIn || today;
   let dialogOpener = null;
   let focusISO = "";
-  let flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: "", error: false, draftContact: { fullName: "", phone: "", email: "" }, policyAccepted: false };
+  let flow = { step: savedCoordination?.step || "search", options: [], selected: null, hold: null, busy: false, message: "", error: false, draftContact: savedCoordination?.draftContact || { fullName: "", phone: "", email: "" }, draftSpecialRequests: savedCoordination?.draftSpecialRequests || "", request: savedCoordination?.request || null, requestStatus: savedCoordination?.request?.status || "", policyAccepted: false };
   let holdAttempt = { key: "", fingerprint: "", payload: null };
-  let coordinationAttempt = null;
+  let coordinationAttempt = savedCoordination?.pendingAttempt || null;
   function clearHoldAttempt() { holdAttempt = { key: "", fingerprint: "", payload: null }; }
+  function persistCoordinationDraft() {
+    try {
+      if (!requestOnly) return;
+      sessionStorage.setItem(COORDINATION_STORAGE_KEY, JSON.stringify({
+        version: 1,
+        step: flow.step === "confirmed" && flow.request ? "confirmed" : flow.step === "coordination-details" ? "coordination-details" : "search",
+        draftContact: {
+          fullName: String(flow.draftContact?.fullName || "").slice(0, 120),
+          phone: String(flow.draftContact?.phone || "").slice(0, 24),
+          email: String(flow.draftContact?.email || "").slice(0, 200),
+        },
+        draftSpecialRequests: String(flow.draftSpecialRequests || "").slice(0, 500),
+        pendingAttempt: coordinationAttempt,
+        request: flow.request ? { reference: flow.request.reference, status: flow.requestStatus || flow.request.status } : null,
+      }));
+    } catch {}
+  }
 
   const persist = () => {
     activeSelection = { range: { ...range }, adults, children, childAges: [...childAges] };
@@ -353,6 +397,12 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   });
   function apiErrorMessage(status, data, fallback) {
     const err = typeof data?.error === "string" ? data.error : data?.error?.message || "";
+    if (requestOnly && status === 429) return locale === "fa" ? "درخواست‌های زیادی ثبت شده است. کمی بعد دوباره تلاش کنید." : locale === "ar" ? "تم إرسال طلبات كثيرة. حاول مرة أخرى بعد قليل." : "Too many requests. Try again shortly.";
+    if (requestOnly && status === 400) return locale === "fa" ? "اطلاعات درخواست معتبر نیست. تاریخ و اطلاعات تماس را بررسی کنید." : locale === "ar" ? "بيانات الطلب غير صالحة. تحقق من التواريخ ومعلومات الاتصال." : "The request details are invalid. Check the dates and contact information.";
+    if (requestOnly && status === 404) return locale === "fa" ? "درخواست هماهنگی برای این اقامتگاه در دسترس نیست." : locale === "ar" ? "طلبات التنسيق غير متاحة لهذا العقار." : "Coordination requests are unavailable for this property.";
+    if (requestOnly && status === 409) return locale === "fa" ? "این درخواست با پیگیری قبلی هم‌خوان نیست. اطلاعات را بررسی و دوباره تلاش کنید." : locale === "ar" ? "لا يتطابق الطلب مع المحاولة السابقة. راجع البيانات وحاول مجدداً." : "This request does not match the previous attempt. Review the details and try again.";
+    if (requestOnly && status === 503) return requestCopy[locale]?.unavailable || requestCopy.en.unavailable;
+    if (requestOnly && status >= 500) return locale === "fa" ? "ثبت درخواست موقتاً ناموفق بود. کمی بعد با همان اطلاعات دوباره تلاش کنید." : locale === "ar" ? "تعذر إرسال الطلب مؤقتاً. حاول لاحقاً بالمعلومات نفسها." : "The request could not be sent temporarily. Retry later with the same details.";
     if (err && status < 500) return `${status}: ${err}`;
     if (status === 400) return locale === "fa" ? "درخواست نامعتبر است. تاریخ‌ها و اطلاعات را بررسی کنید." : locale === "ar" ? "طلب غير صالح. تحقق من التواريخ والمعلومات." : "Invalid request. Check dates and details.";
     if (status === 404) return locale === "fa" ? "این اقامتگاه یا انتشار آن در دسترس نیست." : locale === "ar" ? "هذا العقار أو نشره غير متاح." : "This property or its publication is unavailable.";
@@ -370,9 +420,30 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     return parseChildAges(inputs.map((i) => i.value), children);
   }
   function bindFlow() {
+    const contactInputs = [
+      ["[data-coordination-name]", "fullName"],
+      ["[data-coordination-phone]", "phone"],
+      ["[data-coordination-email]", "email"],
+    ];
+    for (const [selector, field] of contactInputs) {
+      const input = slot.querySelector(selector);
+      input?.addEventListener("input", () => {
+        flow.draftContact = { ...(flow.draftContact || {}), [field]: input.value };
+        persistCoordinationDraft();
+      });
+      input?.addEventListener("keydown", event => {
+        if (event.key !== "Enter" || flow.busy) return;
+        event.preventDefault();
+        slot.querySelector("[data-create-coordination-request]")?.click();
+      });
+    }
+    slot.querySelector("[data-coordination-note]")?.addEventListener("input", event => {
+      flow.draftSpecialRequests = event.currentTarget.value;
+      persistCoordinationDraft();
+    });
     slot.querySelector("[data-coordination-back]")?.addEventListener("click", () => {
-      coordinationAttempt = null;
       flow = { ...flow, step: "search", message: "", error: false };
+      persistCoordinationDraft();
       renderFlow();
     });
     slot.querySelector("[data-create-coordination-request]")?.addEventListener("click", async () => {
@@ -403,13 +474,17 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       if (!coordinationAttempt || coordinationAttempt.body !== body) {
         coordinationAttempt = { body, key: createIdempotencyKey() };
       }
+      persistCoordinationDraft();
       flow.busy = true;
       renderFlow();
       try {
         const result = await postJson("/api/hotel/v1/requests", payload, { "Idempotency-Key": coordinationAttempt.key });
         if (!result.ok || typeof result.data?.reference !== "string") {
           const errorText = typeof result.data?.error === "string" ? result.data.error : "";
-          if (result.status === 409 && /idempotency-key was used with a different request/i.test(errorText)) coordinationAttempt = null;
+          if (result.status === 409 && /idempotency-key was used with a different request/i.test(errorText)) {
+            coordinationAttempt = null;
+            persistCoordinationDraft();
+          }
           flow.busy = false;
           renderFlow();
           setMessage(result.status === 503 ? (requestCopy[locale]?.unavailable || requestCopy.en.unavailable) : apiErrorMessage(result.status, result.data, errorText), true);
@@ -417,6 +492,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
         }
         coordinationAttempt = null;
         flow = { ...flow, step: "confirmed", request: result.data, requestStatus: result.data.status, busy: false, message: "", error: false };
+        persistCoordinationDraft();
         renderFlow();
       } catch {
         flow.busy = false;
@@ -472,7 +548,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       renderFlow();
     }));
     slot.querySelector("[data-flow-back]")?.addEventListener("click", () => { clearHoldAttempt(); flow = { ...flow, step: "options", selected: null, hold: null, message: "", error: false }; renderFlow(); });
-    slot.querySelector("[data-flow-reset]")?.addEventListener("click", () => { clearHoldAttempt(); flow = { step: "options", options: flow.options, selected: null, hold: null, busy: false, message: "", error: false, draftContact: { fullName: "", phone: "", email: "" }, policyAccepted: false }; renderFlow(); });
+    slot.querySelector("[data-flow-reset]")?.addEventListener("click", () => { clearHoldAttempt(); coordinationAttempt = null; flow = { step: requestOnly ? "search" : "options", options: flow.options, selected: null, hold: null, busy: false, message: "", error: false, draftContact: { fullName: "", phone: "", email: "" }, draftSpecialRequests: "", request: null, requestStatus: "", policyAccepted: false }; persistCoordinationDraft(); renderFlow(); });
     slot.querySelector("[data-check-request-status]")?.addEventListener("click", async () => {
       if (flow.busy || !flow.request?.reference) return;
       flow.busy = true; renderFlow();
@@ -486,6 +562,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
         }
         flow.requestStatus = result.data.status;
         flow.request.managerMessage = typeof result.data.managerMessage === "string" ? result.data.managerMessage : "";
+        persistCoordinationDraft();
         setMessage("");
       } catch {
         setMessage(locale === "fa" ? "بررسی وضعیت ناموفق بود؛ دوباره تلاش کنید." : locale === "ar" ? "تعذر التحقق من الحالة؛ حاول مرة أخرى." : "Status check failed. Try again.", true);
@@ -663,6 +740,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     if (requestOnly) {
       coordinationAttempt = null;
       flow = { step: "coordination-details", options: [], selected: null, hold: null, busy: false, message: "", error: false, draftContact: { fullName: "", phone: "", email: "" }, draftSpecialRequests: "" };
+      persistCoordinationDraft();
       renderFlow();
       slot.querySelector("[data-coordination-name]")?.focus();
       return;

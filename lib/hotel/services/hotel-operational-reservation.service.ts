@@ -12,11 +12,18 @@ import { enumerateStayNights } from "../domain/stay-dates";
 import { decideReservationTransition } from "../domain/booking-state";
 import { HOTEL_BOOKING_BASE_PROPERTY_SELECT } from "./booking-context";
 import { assertHotelOperationalReservationSchemaReady } from "./hotel-schema-readiness";
+import { hashCustomerIdentifier, normalizeCustomerPhone } from "@/lib/customer-identity/customer-identity.service";
 
 const id = z.string().trim().min(1).max(200);
 const MAX_TOMAN = BigInt(Number.MAX_SAFE_INTEGER);
 const stay = { roomTypeId: id, ratePlanId: id, checkIn: z.iso.date(), checkOut: z.iso.date(), adults: z.number().int().min(1).max(30), childAges: z.array(z.number().int().min(0).max(17)).max(20) };
 const confirmationAmount = z.union([z.number().int().safe().nonnegative(), z.string().regex(/^\d{1,16}$/)]).nullable().optional();
+const manualReservation = z.object({
+  roomId: id, roomTypeId: id, ratePlanId: id, checkIn: z.iso.date(), checkOut: z.iso.date(),
+  adults: z.number().int().min(1).max(30), childAges: z.array(z.number().int().min(0).max(17)).max(20),
+  source: z.enum(["WALK_IN", "PHONE", "RECEPTION"]),
+  guests: z.array(z.object({ fullName: z.string().trim().min(1).max(150), isPrimary: z.boolean(), isChild: z.boolean().optional(), age: z.number().int().min(0).max(17).optional(), phone: z.string().trim().min(8).max(24).optional() }).strict()).min(1).max(50),
+}).strict();
 export const hotelOperationalCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("quote"), ...stay }).strict(),
   z.object({ action: z.literal("search"), ...stay }).strict(),
@@ -32,6 +39,7 @@ export const hotelOperationalCommand = z.discriminatedUnion("action", [
 ]);
 const ACTIONS = "HOTEL_OPERATIONAL_ACTION";
 const QUOTES = "HOTEL_OPERATIONAL_QUOTE";
+const MANUAL_RESERVATIONS = "HOTEL_MANUAL_RESERVATION";
 const fail = (message: string, status = 409): never => { throw new ApiError(status, message); };
 const json = (value: unknown) => JSON.parse(JSON.stringify(value, (_key, item) => typeof item === "bigint" ? item.toString() : item)) as Prisma.InputJsonValue;
 const dateOnly = (value: Date) => value.toISOString().slice(0, 10);
@@ -85,6 +93,15 @@ export class HotelOperationalReservationService {
     if (!property) fail("Operational reservations are disabled for this property", 403);
     return property;
   }
+  private async authorizeManual(actor: HotelBookingActor, organizationId: string, propertyId: string) {
+    if (process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED !== "1") fail("Manual room management is disabled", 403);
+    if (actor.role === "CUSTOMER") fail("Reception role required", 403);
+    await authorizeHotelBookingActor(this.db, actor, organizationId, propertyId);
+    await assertHotelOperationalReservationSchemaReady(this.db);
+    const property = await this.db.hotelProperty.findFirst({ where: { id: propertyId, organizationId, isActive: true, deletedAt: null }, select: { ...HOTEL_BOOKING_BASE_PROPERTY_SELECT, operationalMode: true, manualConfirmationPolicy: true, allowedOfflinePaymentMethods: true, minimumVerifiedDepositAmount: true, pendingPaymentMinutes: true } });
+    if (!property) fail("Hotel property not found", 404);
+    return property;
+  }
   private async quotes(tx: Prisma.TransactionClient | PrismaClient, organizationId: string, propertyId: string, actor?: HotelBookingActor) {
     return tx.hotelStayQuote.findMany({ where: { organizationId, propertyId, ...(actor?.role === "CUSTOMER" ? { userId: actor.userId } : {}), id: { in: (await tx.hotelInventoryIdempotency.findMany({ where: { organizationId, operationScope: QUOTES }, select: { idempotencyKey: true } })).map(row => row.idempotencyKey) } } });
   }
@@ -108,16 +125,82 @@ export class HotelOperationalReservationService {
     }
   }
   async get(actor: HotelBookingActor, organizationId: string, propertyId: string) {
-    const property = await this.authorize(actor, organizationId, propertyId);
-    await this.expire(organizationId, propertyId);
-    const quotes = await this.quotes(this.db, organizationId, propertyId, actor);
+    const canUseManual = process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED === "1" && actor.role !== "CUSTOMER";
+    const manualProperty = canUseManual ? await this.authorizeManual(actor, organizationId, propertyId) : null;
+    const manualOnly = Boolean(manualProperty && (process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED !== "1" || process.env.HOTEL_GUEST_PORTAL_ENABLED !== "1" || manualProperty.operationalMode !== "RESERVATION"));
+    const property = manualOnly ? manualProperty! : await this.authorize(actor, organizationId, propertyId);
+    if (!manualOnly) await this.expire(organizationId, propertyId);
+    const quotes = manualOnly ? [] : await this.quotes(this.db, organizationId, propertyId, actor);
     const ids = quotes.flatMap(row => { const quote = row.snapshot as unknown as HotelPricedQuote; return quote.reservationId ? [quote.reservationId] : []; });
-    const reservations = await this.db.hotelReservation.findMany({ where: { organizationId, propertyId, id: { in: ids } }, include: { nights: { select: { roomId: true } }, guests: { select: { fullName: true, isPrimary: true } } }, orderBy: { createdAt: "desc" }, take: 100 });
+    const manualRows = actor.role === "CUSTOMER" ? [] : await this.db.hotelInventoryIdempotency.findMany({ where: { organizationId, operationScope: MANUAL_RESERVATIONS, AND: [{ resultJson: { path: ["propertyId"], equals: propertyId } }] }, orderBy: { createdAt: "desc" }, take: 200, select: { resultJson: true } });
+    const manualMeta = manualRows.flatMap(row => { const value = row.resultJson as Record<string, unknown> | null; return value && typeof value === "object" && typeof value.reservationId === "string" ? [{ id: value.reservationId, source: typeof value.source === "string" ? value.source : null }] : []; });
+    const manualIds = manualMeta.map(item => item.id);
+    const reservationIds = [...new Set([...ids, ...manualIds])];
+    const reservations = await this.db.hotelReservation.findMany({ where: { organizationId, propertyId, id: { in: reservationIds } }, include: { nights: { select: { roomId: true } }, guests: { select: { fullName: true, isPrimary: true } } }, orderBy: { createdAt: "desc" }, take: 100 });
     const roomTypes = await this.db.hotelRoomType.findMany({ where: { organizationId, propertyId, isActive: true, deletedAt: null }, select: { id: true, name: true } });
     const ratePlans = await this.db.hotelRatePlan.findMany({ where: { organizationId, propertyId, isActive: true }, select: { id: true, name: true, roomTypeId: true } });
     const rooms = actor.role === "CUSTOMER" ? [] : await this.db.hotelRoom.findMany({ where: { organizationId, propertyId, isActive: true, deletedAt: null, isOutOfService: false }, select: { id: true, code: true, roomTypeId: true } });
-    const history = await this.db.hotelInventoryIdempotency.findMany({ where: { organizationId, operationScope: { in: [ACTIONS, "HOTEL_OPERATIONAL_SYSTEM_EXPIRY"] }, AND: [{ resultJson: { path: ["propertyId"], equals: propertyId } }, ...(actor.role === "CUSTOMER" ? [{ resultJson: { path: ["actorUserId"], equals: actor.userId } }] : [])] }, orderBy: { createdAt: "desc" }, take: 200, select: { id: true, resultJson: true, createdAt: true } });
-    return json({ mode: "RESERVATION", view: actor.role === "CUSTOMER" ? "guest" : "reception", confirmationPolicy: { manualConfirmationPolicy: property.manualConfirmationPolicy, allowedOfflinePaymentMethods: property.allowedOfflinePaymentMethods, minimumVerifiedDepositAmount: property.minimumVerifiedDepositAmount?.toString() ?? null, pendingPaymentMinutes: property.pendingPaymentMinutes }, roomTypes, ratePlans, rooms, history, reservations: reservations.map(row => ({ id: row.id, reference: row.reference, guestName: row.guests.find(g => g.isPrimary)?.fullName ?? "", status: row.status, paymentMethod: row.paymentMethod, roomTypeId: row.roomTypeId, checkIn: dateOnly(row.checkIn), checkOut: dateOnly(row.checkOut), totalAmount: row.totalAmount, currency: row.currency, paidAmount: row.paidAmount, refundedAmount: row.refundedAmount, outstandingAmount: row.totalAmount - row.paidAmount, createdAt: row.createdAt, confirmedAt: row.confirmedAt, checkedInAt: row.checkedInAt, checkedOutAt: row.checkedOutAt, cancelledAt: row.cancelledAt, nights: row.nights })) });
+    const history = await this.db.hotelInventoryIdempotency.findMany({ where: { organizationId, operationScope: { in: [ACTIONS, "HOTEL_OPERATIONAL_SYSTEM_EXPIRY", ...(actor.role === "CUSTOMER" ? [] : [MANUAL_RESERVATIONS])] }, AND: [{ resultJson: { path: ["propertyId"], equals: propertyId } }, ...(actor.role === "CUSTOMER" ? [{ resultJson: { path: ["actorUserId"], equals: actor.userId } }] : [])] }, orderBy: { createdAt: "desc" }, take: 200, select: { id: true, resultJson: true, createdAt: true } });
+    return json({ mode: manualOnly ? "MANUAL" : "RESERVATION", view: actor.role === "CUSTOMER" ? "guest" : "reception", manualRoomManagementEnabled: process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED === "1", confirmationPolicy: { manualConfirmationPolicy: property.manualConfirmationPolicy, allowedOfflinePaymentMethods: property.allowedOfflinePaymentMethods, minimumVerifiedDepositAmount: property.minimumVerifiedDepositAmount?.toString() ?? null, pendingPaymentMinutes: property.pendingPaymentMinutes }, roomTypes, ratePlans, rooms, history, reservations: reservations.map(row => ({ id: row.id, reference: row.reference, guestName: row.guests.find(g => g.isPrimary)?.fullName ?? "", status: row.status, paymentMethod: row.paymentMethod, roomTypeId: row.roomTypeId, checkIn: dateOnly(row.checkIn), checkOut: dateOnly(row.checkOut), totalAmount: row.totalAmount, currency: row.currency, paidAmount: row.paidAmount, refundedAmount: row.refundedAmount, outstandingAmount: row.totalAmount - row.paidAmount, createdAt: row.createdAt, confirmedAt: row.confirmedAt, checkedInAt: row.checkedInAt, checkedOutAt: row.checkedOutAt, cancelledAt: row.cancelledAt, nights: row.nights, source: manualMeta.find(item => item.id === row.id)?.source ?? null })) });
+  }
+  /** Creates an immediately confirmed, unpaid reception booking behind the manual operations gate. */
+  async createManual(actor: HotelBookingActor, organizationId: string, propertyId: string, input: unknown, idempotencyKey: string) {
+    const property = await this.authorizeManual(actor, organizationId, propertyId);
+    const command = manualReservation.parse(input);
+    if (idempotencyKey.trim().length < 8 || idempotencyKey.length > 200) fail("Idempotency-Key required", 400);
+    const guestRecords = command.guests.map(guest => {
+      const normalizedPhone = guest.phone ? normalizeCustomerPhone(guest.phone) : null;
+      if (guest.phone && !normalizedPhone) fail("Enter a valid guest phone number", 422);
+      return { fullName: guest.fullName, isPrimary: guest.isPrimary, isChild: guest.isChild ?? false, age: guest.isChild ? guest.age ?? null : null, phoneHash: normalizedPhone ? hashCustomerIdentifier(organizationId, normalizedPhone) : undefined };
+    });
+    if (command.guests.filter(guest => guest.isPrimary).length !== 1 || guestRecords.filter(guest => !guest.isChild).length !== command.adults || guestRecords.filter(guest => guest.isChild).length !== command.childAges.length || !isDeepStrictEqual(guestRecords.filter(guest => guest.isChild).map(guest => guest.age).sort(), [...command.childAges].sort())) fail("Guest details do not match the party size", 422);
+    if (guestRecords.some(guest => guest.isChild && (guest.age === null || guest.age < 0 || guest.age > 17))) fail("Enter a valid age for each child", 422);
+    const nights = enumerateStayNights(command.checkIn, command.checkOut);
+    if (nights.length < property.minStayNights || nights.length > Math.min(property.maxStayNights, 31)) fail("Stay is outside property limits", 422);
+    const fingerprint = createHash("sha256").update(JSON.stringify([actor.userId, propertyId, command])).digest("hex");
+    try {
+      return await this.db.$transaction(async tx => {
+        await assertHotelOperationalReservationSchemaReady(tx);
+        await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify([organizationId, MANUAL_RESERVATIONS, idempotencyKey])},0))`);
+        const key = { organizationId_operationScope_idempotencyKey: { organizationId, operationScope: MANUAL_RESERVATIONS, idempotencyKey } };
+        const replay = await tx.hotelInventoryIdempotency.findUnique({ where: key });
+        if (replay) { if (replay.requestFingerprint !== fingerprint) fail("Idempotency-Key conflict"); return replay.resultJson; }
+        const activeProperty = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelProperty" WHERE "id"=${propertyId} AND "organizationId"=${organizationId} AND "isActive"=true AND "deletedAt" IS NULL FOR SHARE`);
+        if (!activeProperty.length) fail("Hotel property is inactive", 404);
+        const lockedType = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${command.roomTypeId} AND "propertyId"=${propertyId} AND "organizationId"=${organizationId} AND "isActive"=true AND "deletedAt" IS NULL FOR UPDATE`);
+        if (!lockedType.length) fail("Room type is not available", 422);
+        await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelRoom" WHERE "id"=${command.roomId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} FOR UPDATE`);
+        const room = await tx.hotelRoom.findFirst({ where: { id: command.roomId, organizationId, propertyId, roomTypeId: command.roomTypeId, isActive: true, deletedAt: null, isOutOfService: false }, select: { id: true } });
+        if (!room) fail("Selected physical room is unavailable", 422);
+        const from = new Date(`${command.checkIn}T00:00:00.000Z`), to = new Date(`${command.checkOut}T00:00:00.000Z`);
+        const [allocation, maintenance] = await Promise.all([
+          tx.hotelReservationRoom.findFirst({ where: { organizationId, roomId: command.roomId, date: { in: nights.map(day => new Date(`${day}T00:00:00.000Z`)) }, reservation: { status: { in: ["HELD", "PENDING_PAYMENT", "CONFIRMED", "CHECKED_IN"] } } }, select: { date: true } }),
+          tx.hotelRoomMaintenanceBlock.findFirst({ where: { organizationId, propertyId, roomId: command.roomId, releasedAt: null, from: { lt: to }, to: { gt: from } }, select: { id: true } }),
+        ]);
+        if (allocation) fail("Selected physical room is occupied for one or more stay nights");
+        if (maintenance) fail("Selected physical room has scheduled maintenance during this stay");
+        const now = this.now();
+        const today = new Intl.DateTimeFormat("en-CA", { timeZone: property.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+        if (command.checkIn < today) fail("Stay is outside property limits", 422);
+        const quote = (await priceHotelStay(tx, property, actor.userId, { action: "quote", roomTypeId: command.roomTypeId, ratePlanId: command.ratePlanId, checkIn: command.checkIn, checkOut: command.checkOut, adults: command.adults, childAges: command.childAges }, now)).quote!;
+        const holdId = randomUUID(), reference = `HD-${holdId.slice(0, 12).toUpperCase()}`;
+        const repository = new PrismaHotelRepositories(this.db);
+        const claimed = await repository.claimInventoryAndCreateHold({ scope: { organizationId }, propertyId, roomTypeId: command.roomTypeId, nights, quantity: 1, now, hold: { id: holdId, organizationId, propertyId, roomTypeId: command.roomTypeId, reference, checkIn: command.checkIn, checkOut: command.checkOut, nights, quantity: 1, expiresAt: new Date(now.getTime() + 600_000), status: "ACTIVE", createdAt: now } }, tx);
+        if (!claimed.isClaimed) fail(claimed.reason === "CONFLICT" ? "Inventory changed; reload and try again" : "No room inventory is available for these dates");
+        const reservationKey = `manual:${createHash("sha256").update(idempotencyKey).digest("hex")}`;
+        const reservation = await repository.createReservation({ id: randomUUID(), organizationId, propertyId, reference, idempotencyKey: reservationKey, holdId, roomTypeId: command.roomTypeId, ratePlanId: command.ratePlanId, status: "PENDING_PAYMENT", checkIn: command.checkIn, checkOut: command.checkOut, nights, nightlyRates: quote.nightlyRates, totalAmount: Number(quote.totalAmount), currency: quote.currency, cancellationPolicySnapshot: quote.policy, guests: guestRecords, occupancy: { adults: command.adults, children: command.childAges.length, childAges: command.childAges }, createdAt: now, updatedAt: now }, tx);
+        await tx.hotelBookingHold.update({ where: { id: holdId }, data: { status: "CONSUMED", expiresAt: new Date("9999-12-31T00:00:00.000Z") } });
+        await tx.hotelReservation.update({ where: { id: reservation.id }, data: { status: "CONFIRMED", confirmedAt: now } });
+        const assigned = await tx.hotelReservationRoom.updateMany({ where: { organizationId, reservationId: reservation.id, roomId: null }, data: { roomId: command.roomId } });
+        if (assigned.count !== nights.length) fail("Reservation room allocation could not be completed");
+        const result = { reservationId: reservation.id, reference, status: "CONFIRMED", totalAmount: String(quote.totalAmount), currency: quote.currency, source: command.source, paymentStatus: "UNPAID" };
+        await tx.hotelInventoryIdempotency.create({ data: { id: randomUUID(), organizationId, operationScope: MANUAL_RESERVATIONS, idempotencyKey, requestFingerprint: fingerprint, status: "COMPLETED", resultJson: json({ ...result, propertyId, action: "CREATE_MANUAL_RESERVATION", actorUserId: actor.userId }), completedAt: now } });
+        return result;
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, maxWait: 10000, timeout: 20000 });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2002" || error.code === "P2034")) fail("Room or inventory changed while saving; refresh and choose another room", 409);
+      throw error;
+    }
   }
   private async lockQuote(tx: Tx, actor: HotelBookingActor, organizationId: string, propertyId: string, quoteId: string) {
     await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelStayQuote" WHERE "id"=${quoteId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} FOR UPDATE`);
@@ -126,8 +209,10 @@ export class HotelOperationalReservationService {
     return { row: row!, quote: row!.snapshot as unknown as HotelPricedQuote };
   }
   async execute(actor: HotelBookingActor, organizationId: string, propertyId: string, input: unknown, idempotencyKey: string) {
-    await this.authorize(actor, organizationId, propertyId);
     const submitted = hotelOperationalCommand.parse(input);
+    const manualLifecycle = process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED === "1" && actor.role !== "CUSTOMER" && ["cancel", "assign-room", "check-in", "check-out"].includes(submitted.action);
+    if (manualLifecycle) await this.authorizeManual(actor, organizationId, propertyId);
+    else await this.authorize(actor, organizationId, propertyId);
     if (idempotencyKey.length < 8 || idempotencyKey.length > 200) fail("Idempotency-Key required", 400);
     if (["quote", "search", "quote-request"].includes(submitted.action)) await this.expire(organizationId, propertyId);
     const fingerprint = createHash("sha256").update(JSON.stringify([actor.userId, propertyId, submitted])).digest("hex");
@@ -138,7 +223,7 @@ export class HotelOperationalReservationService {
       const replay = await tx.hotelInventoryIdempotency.findUnique({ where: key });
       if (replay) { if (replay.requestFingerprint !== fingerprint) fail("Idempotency-Key conflict"); return replay.resultJson; }
       await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelProperty" WHERE "id"=${propertyId} AND "organizationId"=${organizationId} FOR SHARE`);
-        const property = await tx.hotelProperty.findFirst({ where: { id: propertyId, organizationId, operationalMode: "RESERVATION", isActive: true, deletedAt: null }, select: { ...HOTEL_BOOKING_BASE_PROPERTY_SELECT, operationalMode: true, manualConfirmationPolicy: true, allowedOfflinePaymentMethods: true, minimumVerifiedDepositAmount: true, pendingPaymentMinutes: true } });
+      const property = await tx.hotelProperty.findFirst({ where: { id: propertyId, organizationId, ...(!manualLifecycle ? { operationalMode: "RESERVATION" } : {}), isActive: true, deletedAt: null }, select: { ...HOTEL_BOOKING_BASE_PROPERTY_SELECT, operationalMode: true, manualConfirmationPolicy: true, allowedOfflinePaymentMethods: true, minimumVerifiedDepositAmount: true, pendingPaymentMinutes: true } });
       if (!property) fail("Operational reservations disabled", 403);
       const now = this.now(); const repo = new PrismaHotelRepositories(this.db);
       let result: Record<string, unknown>;
@@ -210,7 +295,10 @@ export class HotelOperationalReservationService {
         }
       } else {
         const candidates = await this.quotes(tx, organizationId, propertyId, actor);
-        if (!candidates.some(row => (row.snapshot as unknown as HotelPricedQuote).reservationId === command.reservationId)) fail("Reservation not found", 404);
+        const manualCandidates = manualLifecycle ? await tx.hotelInventoryIdempotency.findMany({ where: { organizationId, operationScope: MANUAL_RESERVATIONS, AND: [{ resultJson: { path: ["propertyId"], equals: propertyId } }] }, select: { resultJson: true } }) : [];
+        const isManualReservation = manualCandidates.some(row => row.resultJson && typeof row.resultJson === "object" && !Array.isArray(row.resultJson) && row.resultJson.reservationId === command.reservationId);
+        const isQuotedReservation = candidates.some(row => (row.snapshot as unknown as HotelPricedQuote).reservationId === command.reservationId);
+        if (manualLifecycle ? !isManualReservation : !isQuotedReservation) fail("Reservation not found", 404);
         await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelReservation" WHERE "id"=${command.reservationId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} FOR UPDATE`);
         let reservation = await tx.hotelReservation.findFirstOrThrow({ where: { id: command.reservationId, organizationId, propertyId }, include: { nights: true, hold: true } });
         if (command.action === "select-payment-method") {

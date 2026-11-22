@@ -56,3 +56,25 @@ test("operational reservation get fails closed by feature flag without reading p
     if (prevGuest === undefined) delete process.env.HOTEL_GUEST_PORTAL_ENABLED; else process.env.HOTEL_GUEST_PORTAL_ENABLED = prevGuest;
   }
 });
+
+test("manual reception entry fails closed when its independent gate is disabled", async () => {
+  const previous = process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED;
+  delete process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED;
+  const service = new HotelOperationalReservationService({} as PrismaClient);
+  try {
+    await assert.rejects(() => service.createManual(actor, "org-1", "prop-1", {}, "manual-key-123"), /manual room management is disabled/i);
+  } finally {
+    if (previous === undefined) delete process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED; else process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED = previous;
+  }
+});
+
+test("manual reception entry rejects customer actors before querying tenant data", async () => {
+  const previous = process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED;
+  process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED = "1";
+  const service = new HotelOperationalReservationService({} as PrismaClient);
+  try {
+    await assert.rejects(() => service.createManual({ ...actor, role: "CUSTOMER" }, "org-1", "prop-1", {}, "manual-key-123"), /reception role required/i);
+  } finally {
+    if (previous === undefined) delete process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED; else process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED = previous;
+  }
+});

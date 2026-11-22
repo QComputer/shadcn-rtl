@@ -811,6 +811,7 @@ test('inventory-free request reaches reception and tracks without creating a boo
       const persistedConflict = await db.hotelGuestBookingRequest.findUniqueOrThrow({ where: { id: entry.id }, select: { managerMessage: true } });
       expect(persistedConflict.managerMessage).toBe(`other staff ${locale}`);
     }
+    await manager.page.goto(`${appOrigin}/ar/dashboard/hotel-operations/${organizationId}/${propertyId}`);
     const card = manager.page.locator('section[aria-labelledby="hotel-stay-requests-title"] article').filter({ hasText: guestName });
     const search = manager.page.locator('#hotel-request-search');
     await search.fill(guestName);

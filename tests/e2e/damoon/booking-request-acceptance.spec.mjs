@@ -721,6 +721,7 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
 
 // The request-only path does not depend on published rates or inventory.
 test('inventory-free request reaches reception and tracks without creating a booking', async ({ browser }) => {
+  test.setTimeout(120_000);
   failClosed();
   const { PrismaClient } = await import('@prisma/client');
   const db = new PrismaClient();
@@ -773,6 +774,42 @@ test('inventory-free request reaches reception and tracks without creating a boo
       await expect(card.getByRole('button', { name: 'بررسی دوباره موجودی' })).toHaveCount(0);
       await expect(card.locator(`select option[value="OPTION_OFFERED"]`)).toHaveCount(0);
       await expect(card.locator(`select option[value="UNAVAILABLE"]`)).toHaveCount(0);
+      const labels = {
+        fa: { save: 'ذخیره یادداشت', saving: 'در حال ذخیره…', saved: 'ذخیره شد', unsaved: 'تغییرات ذخیره‌نشده', error: 'ذخیره ناموفق بود؛ متن حفظ شد.', conflict: 'درخواست تغییر کرده است؛ پس از نگهداری متن، فهرست را تازه کنید.' },
+        en: { save: 'Save note', saving: 'Saving…', saved: 'Saved', unsaved: 'Unsaved changes', error: 'Could not save; your text is preserved.', conflict: 'This request changed; keep your text and refresh the list.' },
+        ar: { save: 'حفظ الملاحظة', saving: 'جارٍ الحفظ…', saved: 'تم الحفظ', unsaved: 'تغييرات غير محفوظة', error: 'تعذر الحفظ؛ تم الاحتفاظ بالنص.', conflict: 'تغير الطلب؛ احتفظ بالنص ثم حدّث القائمة.' },
+      }[locale];
+      const note = card.locator('textarea');
+      const value = `local note ${locale}`;
+      await note.fill(value);
+      await expect(card.getByText(labels.unsaved, { exact: true })).toBeVisible();
+      let releaseFailure;
+      const failureGate = new Promise(resolve => { releaseFailure = resolve; });
+      const patchPath = `**/booking-requests/${entry.id}`;
+      const failSave = async route => { await failureGate; await route.fulfill({ status: 500, body: '{}' }); };
+      await manager.page.route(patchPath, failSave);
+      await card.getByRole('button', { name: labels.save }).click();
+      await expect(card.getByRole('button', { name: labels.saving })).toBeDisabled();
+      releaseFailure();
+      await expect(card.getByText(labels.error, { exact: true })).toBeVisible();
+      await expect(note).toHaveValue(value);
+      await expect(note).toBeEditable();
+      await manager.page.unroute(patchPath, failSave);
+      const retry = manager.page.waitForResponse(res => new URL(res.url()).pathname.endsWith(`/${entry.id}`) && res.request().method() === 'PATCH');
+      await card.getByRole('button', { name: labels.save }).click();
+      expect((await retry).status()).toBe(200);
+      await expect(card.getByText(labels.saved, { exact: true })).toBeVisible();
+      await note.fill(`unsaved conflict ${locale}`);
+      const latest = (await (await getRequestsApi(manager.page)).json()).requests.find(r => r.id === entry.id);
+      const otherStaff = await manager.page.request.patch(`${appOrigin}${requestsApi}/${entry.id}`, { headers: { Origin: appOrigin }, data: { expectedVersion: latest.version, managerMessage: `other staff ${locale}` } });
+      expect(otherStaff.status()).toBe(200);
+      const conflict = manager.page.waitForResponse(res => new URL(res.url()).pathname.endsWith(`/${entry.id}`) && res.request().method() === 'PATCH');
+      await card.getByRole('button', { name: labels.save }).click();
+      expect((await conflict).status()).toBe(409);
+      await expect(card.getByText(labels.conflict, { exact: true })).toBeVisible();
+      await expect(note).toHaveValue(`unsaved conflict ${locale}`);
+      const persistedConflict = await db.hotelGuestBookingRequest.findUniqueOrThrow({ where: { id: entry.id }, select: { managerMessage: true } });
+      expect(persistedConflict.managerMessage).toBe(`other staff ${locale}`);
     }
     const card = manager.page.locator('section[aria-labelledby="hotel-stay-requests-title"] article').filter({ hasText: guestName });
     const search = manager.page.locator('#hotel-request-search');
@@ -823,6 +860,18 @@ test('inventory-free request reaches reception and tracks without creating a boo
     expect((await tracked.json()).status).toBe('IN_REVIEW');
     const foreign = await postStatus(page, received.reference, `${foreignHost}:8080`);
     expect(foreign.status()).toBe(404);
+    const foreignMutation = await manager.page.request.patch(`${appOrigin}/api/organizations/${foreignOrganizationId}/hotels/${foreignPropertyId}/booking-requests/${entry.id}`, { headers: { Origin: appOrigin }, data: { expectedVersion: 0, managerMessage: 'unauthorized' } });
+    expect([401, 403, 404]).toContain(foreignMutation.status());
+    const closeRequest = manager.page.waitForResponse(res => new URL(res.url()).pathname.endsWith(`/${entry.id}`) && res.request().method() === 'PATCH');
+    await card.locator('select').selectOption('CLOSED');
+    expect((await closeRequest).status()).toBe(200);
+    await card.locator('textarea').fill('Closed request internal note');
+    const closedSave = manager.page.waitForResponse(res => new URL(res.url()).pathname.endsWith(`/${entry.id}`) && res.request().method() === 'PATCH');
+    await card.getByRole('button', { name: 'حفظ الملاحظة' }).click();
+    expect((await closedSave).status()).toBe(200);
+    const closedRecord = await db.hotelGuestBookingRequest.findUniqueOrThrow({ where: { id: entry.id }, select: { status: true, managerMessage: true } });
+    expect(closedRecord).toEqual({ status: 'CLOSED', managerMessage: 'Closed request internal note' });
+    expect(await (await postStatus(page, received.reference)).json()).not.toHaveProperty('managerMessage');
     expect(await Promise.all([db.hotelBookingHold.count({where:{organizationId,propertyId}}), db.hotelReservation.count({where:{organizationId,propertyId}})])).toEqual(before);
   } finally {
     await context.close();

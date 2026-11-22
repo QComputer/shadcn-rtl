@@ -49,6 +49,7 @@ type OperationalResult = {
   reservations?: Array<{ id: string; paymentMethod?: string | null }>;
   history?: Array<{ resultJson?: { actorUserId?: string; reservation?: { id: string } } }>;
 };
+type ManualResult = { reservationId: string; reference: string; status: string; totalAmount: string; currency: string; source: string; paymentStatus: string };
 
 function guardedConnection() {
   assert.notEqual(process.env.NODE_ENV, "production");
@@ -78,6 +79,7 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
   const orgs: string[] = [], users: string[] = [], properties: string[] = [], policies: string[] = [], roomTypes: string[] = [], rates: string[] = [], quotes: string[] = [];
   const originalOperational = process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED;
   const originalPortal = process.env.HOTEL_GUEST_PORTAL_ENABLED;
+  const originalManual = process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED;
   let passed = false;
   let clock = new Date("2027-11-01T12:00:00.000Z");
   const now = () => new Date(clock);
@@ -412,10 +414,49 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     assert.equal(convertedQuote.simulated, false);
     await assert.rejects(() => service.execute(otherGuest, a.id, pa.id, { action: "quote-request", requestId: enquiry.request!.id }, `foreign-request-${token}`), /request not found/i);
     await assert.rejects(() => service.execute(guestB, b.id, pb.id, { action: "quote-request", requestId: enquiry.request!.id }, `cross-tenant-request-${token}`), /request not found/i);
+
+    // Reception manual entry stays available with public reservation and guest portal gates off.
+    process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED = "1";
+    process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED = "0";
+    process.env.HOTEL_GUEST_PORTAL_ENABLED = "0";
+    const manualCommand = { roomId: receptionRooms[2].id, roomTypeId: roomA.id, ratePlanId: rateA.id, ...stay, source: "WALK_IN" as const, guests };
+    await assert.rejects(() => service.createManual(guestA, a.id, pa.id, manualCommand, `manual-customer-${token}`), /reception role required/i);
+    await assert.rejects(() => service.createManual(foreignReceptionist, a.id, pa.id, manualCommand, `manual-foreign-${token}`), /forbidden/i);
+    const maintenanceBlock = await db.hotelRoomMaintenanceBlock.create({ data: { organizationId: a.id, propertyId: pa.id, roomId: receptionRooms[2].id, from: day(stay.checkIn), to: day(stay.checkOut), reason: "Synthetic manual reservation overlap", idempotencyKey: `manual-maintenance-${token}`, requestFingerprint: `manual-maintenance-${token}`, createdBy: staff.id } });
+    await assert.rejects(() => service.createManual(receptionist, a.id, pa.id, manualCommand, `manual-blocked-${token}`), /scheduled maintenance/i);
+    await db.hotelRoomMaintenanceBlock.update({ where: { id: maintenanceBlock.id }, data: { releasedBy: staff.id, releasedAt: now() } });
+    const concurrentManual = await Promise.allSettled([
+      service.createManual(receptionist, a.id, pa.id, manualCommand, `manual-a-${token}`),
+      service.createManual(receptionist, a.id, pa.id, manualCommand, `manual-b-${token}`),
+    ]);
+    const successfulManual = concurrentManual.flatMap(outcome => outcome.status === "fulfilled" ? [outcome.value] : []);
+    assert.equal(successfulManual.length, 1, "only one concurrent manual booking may claim the same physical room nights");
+    const manualKey = concurrentManual[0].status === "fulfilled" ? `manual-a-${token}` : `manual-b-${token}`;
+    const manualCreated = successfulManual[0] as ManualResult;
+    assert.equal(manualCreated.status, "CONFIRMED"); assert.equal(manualCreated.paymentStatus, "UNPAID"); assert.equal(manualCreated.source, "WALK_IN");
+    const manualReplay = await service.createManual(receptionist, a.id, pa.id, manualCommand, manualKey) as ManualResult;
+    assert.equal(manualReplay.reservationId, manualCreated.reservationId, "manual create is idempotent");
+    const manualStored = await db.hotelReservation.findFirstOrThrow({ where: { id: manualCreated.reservationId, organizationId: a.id, propertyId: pa.id }, include: { nights: true, guests: true } });
+    assert.equal(manualStored.status, "CONFIRMED"); assert.equal(manualStored.paidAmount, BigInt(0));
+    assert.ok(manualStored.nights.every(night => night.roomId === manualCommand.roomId));
+    assert.ok(manualStored.guests[0]?.phoneHash === null, "guest phone is not required for walk-in entry");
+    const manualView = await service.get(receptionist, a.id, pa.id) as { mode: string; reservations: Array<{ id: string; source: string | null }> };
+    assert.equal(manualView.mode, "MANUAL");
+    assert.equal(manualView.reservations.find(row => row.id === manualCreated.reservationId)?.source, "WALK_IN");
+    const manualCancelled = await service.execute(receptionist, a.id, pa.id, { action: "cancel", reservationId: manualCreated.reservationId }, `manual-cancel-${token}`) as OperationalResult;
+    assert.equal(manualCancelled.reservation?.status, "CANCELLED");
+    const secondManual = await service.createManual(receptionist, a.id, pa.id, { ...manualCommand, source: "PHONE" }, `manual-after-cancel-${token}`) as ManualResult;
+    assert.equal(secondManual.status, "CONFIRMED", "cancellation releases the shared inventory claim");
+    await service.execute(receptionist, a.id, pa.id, { action: "assign-room", reservationId: secondManual.reservationId, roomId: receptionRooms[3].id }, `manual-reassign-${token}`);
+    const manualCheckIn = await service.execute(receptionist, a.id, pa.id, { action: "check-in", reservationId: secondManual.reservationId }, `manual-check-in-${token}`) as OperationalResult;
+    assert.equal(manualCheckIn.reservation?.status, "CHECKED_IN");
+    const manualCheckOut = await service.execute(receptionist, a.id, pa.id, { action: "check-out", reservationId: secondManual.reservationId }, `manual-check-out-${token}`) as OperationalResult;
+    assert.equal(manualCheckOut.reservation?.status, "CHECKED_OUT");
     passed = true;
   } finally {
     process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED = originalOperational;
     process.env.HOTEL_GUEST_PORTAL_ENABLED = originalPortal;
+    if (originalManual === undefined) delete process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED; else process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED = originalManual;
     try {
       if (orgs.length) {
         await db.hotelInventoryIdempotency.deleteMany({ where: { organizationId: { in: orgs } } });
@@ -429,6 +470,7 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
         await db.hotelInventory.deleteMany({ where: { organizationId: { in: orgs } } });
         await db.hotelRatePlan.deleteMany({ where: { id: { in: rates } } });
         await db.hotelCancellationPolicy.deleteMany({ where: { id: { in: policies } } });
+        await db.hotelRoomMaintenanceBlock.deleteMany({ where: { organizationId: { in: orgs } } });
         await db.hotelRoom.deleteMany({ where: { organizationId: { in: orgs } } });
         await db.hotelRoomType.deleteMany({ where: { id: { in: roomTypes } } });
         await db.hotelProperty.deleteMany({ where: { id: { in: properties } } });
@@ -440,6 +482,7 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
         assert.equal(await db.hotelReservation.count({ where: { organizationId: { in: orgs } } }), 0);
         assert.equal(await db.hotelBookingHold.count({ where: { organizationId: { in: orgs } } }), 0);
         assert.equal(await db.hotelStayQuote.count({ where: { organizationId: { in: orgs } } }), 0);
+        assert.equal(await db.hotelRoomMaintenanceBlock.count({ where: { organizationId: { in: orgs } } }), 0);
         assert.equal(await db.organization.count({ where: { id: { in: orgs } } }), 0);
         assert.equal(await db.user.count({ where: { id: { in: users } } }), 0);
       }

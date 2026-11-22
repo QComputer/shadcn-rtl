@@ -105,6 +105,7 @@ function isolatedServerEnv(): NodeJS.ProcessEnv {
     CUSTOMER_SSO_SECRET: `fixture-${randomUUID()}-${randomUUID()}`,
     CUSTOMER_SSO_ENABLED: "1",
     HOTEL_INVENTORY_IDEMPOTENCY_ENABLED: "1",
+    HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED: "1",
     AUTH_TRUST_HOST: "true",
     NEXT_PUBLIC_APP_URL: baseUrl,
     NEXT_PUBLIC_DEPLOYED_APP_URL: baseUrl,
@@ -300,6 +301,10 @@ after(async () => {
     }
     serverStopped = !server || server.exitCode !== null || server.signalCode !== null;
     if (ownedOrgIds.length) {
+      await db.hotelReservation.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
+      await db.hotelBookingHold.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
+      await db.hotelStayQuote.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
+      await db.hotelStayRequest.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelInventoryAdjustment.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelInventory.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelInventoryIdempotency.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
@@ -319,6 +324,8 @@ after(async () => {
       if (staffUserId) await db.user.deleteMany({ where: { id: staffUserId } });
       assert.equal(await db.organization.count({ where: { id: { in: ownedOrgIds } } }), 0);
       assert.equal(await db.hotelInventory.count({ where: { organizationId: { in: ownedOrgIds } } }), 0);
+      assert.equal(await db.hotelReservation.count({ where: { organizationId: { in: ownedOrgIds } } }), 0);
+      assert.equal(await db.hotelBookingHold.count({ where: { organizationId: { in: ownedOrgIds } } }), 0);
       assert.equal(await db.hotelProperty.count({ where: { organizationId: { in: ownedOrgIds } } }), 0);
       if (userId) assert.equal(await db.user.count({ where: { id: userId } }), 0);
       if (platformUserId) assert.equal(await db.user.count({ where: { id: platformUserId } }), 0);
@@ -729,6 +736,37 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   }));
   assert.equal(desktopLayout.documentFits, true, "desktop owner preview has no horizontal overflow");
   assert.equal(desktopLayout.workspaceDirection, "ltr", "English desktop workspace follows its locale direction");
+
+  stage = "browser-fa-manual-reception-reservation-with-public-gates-off";
+  await page.goto(`${baseUrl}/fa/hotel-reservations/${orgAId}/${propertyAId}`, { waitUntil: "domcontentloaded" });
+  const manualSection = page.getByRole("region", { name: "رزروهای هتل" });
+  await manualSection.waitFor({ state: "visible", timeout: 30_000 });
+  assert.equal(await manualSection.getAttribute("dir"), "rtl", "manual reception form is Persian-first and RTL");
+  await manualSection.getByLabel("تاریخ ورود").fill(from);
+  await manualSection.getByLabel("تاریخ خروج").fill(to);
+  await manualSection.getByLabel("نوع اتاق").selectOption(roomTypeId);
+  await manualSection.getByLabel("طرح نرخ").selectOption(ratePlanId);
+  await manualSection.getByLabel("بزرگسالان").fill("1");
+  await manualSection.getByLabel("کودکان").fill("0");
+  const manualRoom = await db.hotelRoom.findFirstOrThrow({ where: { id: roomIds[0], organizationId: orgAId, propertyId: propertyAId } });
+  await manualSection.getByLabel("اتاق فیزیکی").selectOption(manualRoom.id);
+  await manualSection.getByLabel("روش دریافت").selectOption("PHONE");
+  await manualSection.getByLabel("نام کامل مهمان 1").fill(`Manual Guest ${suffix.slice(0, 8)}`);
+  const manualCreateResponse = page.waitForResponse((response) => response.url().includes("/reservations/manual") && response.request().method() === "POST");
+  await manualSection.getByRole("button", { name: "ثبت رزرو و تخصیص اتاق" }).click();
+  const manualResponse = await manualCreateResponse;
+  assert.equal(manualResponse.status(), 200, "manual reception entry must succeed while public booking gates remain unset");
+  await manualSection.getByRole("status").filter({ hasText: "رزرو پذیرش ثبت شد و اتاق تخصیص یافت." }).waitFor({ state: "visible", timeout: 30_000 });
+  const manualDbRow = await db.hotelReservation.findFirstOrThrow({ where: { organizationId: orgAId, propertyId: propertyAId, guests: { some: { fullName: `Manual Guest ${suffix.slice(0, 8)}` } } }, include: { nights: true } });
+  assert.equal(manualDbRow.status, "CONFIRMED"); assert.equal(manualDbRow.paidAmount, BigInt(0), "manual reception entry never records a payment");
+  assert.ok(manualDbRow.nights.every((night) => night.roomId === manualRoom.id), "the selected physical room is assigned on every occupied night");
+  const manualAudit = await db.hotelInventoryIdempotency.findFirstOrThrow({ where: { organizationId: orgAId, operationScope: "HOTEL_MANUAL_RESERVATION", resultJson: { path: ["reservationId"], equals: manualDbRow.id } } });
+  assert.equal((manualAudit.resultJson as { source?: string }).source, "PHONE", "reservation source is retained in staff-only history");
+  const manualItem = manualSection.getByRole("listitem").filter({ hasText: manualDbRow.reference });
+  await manualItem.getByRole("button", { name: "ثبت ورود" }).click();
+  await manualItem.getByText("CHECKED_IN").waitFor({ state: "visible", timeout: 30_000 });
+  await manualItem.getByRole("button", { name: "ثبت خروج" }).click();
+  await manualItem.getByText("CHECKED_OUT").waitFor({ state: "visible", timeout: 30_000 });
 
   stage = "browser-mobile-fa-ar-layout";
   await page.setViewportSize({ width: 390, height: 844 });

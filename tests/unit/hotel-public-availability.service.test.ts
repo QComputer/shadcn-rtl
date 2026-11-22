@@ -67,6 +67,17 @@ test("caps the entire stay by configured physical capacity and the most constrai
   assert.equal(result?.options[0]?.isAvailable, true);
 });
 
+test("applies dated maintenance capacity to each night in the stay", async () => {
+  const result = await searchPublicHotelAvailability({ scope: { organizationId: "org-1" }, propertySlug: "hotel", query }, repository({
+    getInventoryNights: async () => [
+      { propertyId: "property-1", roomTypeId: "room-1", date: "2027-08-12", allotment: 5, booked: 0, held: 0, outOfService: 0, closedToArrival: false, closedToDeparture: false },
+      { propertyId: "property-1", roomTypeId: "room-1", date: "2027-08-13", allotment: 5, booked: 0, held: 0, outOfService: 0, closedToArrival: false, closedToDeparture: false },
+    ],
+    getPhysicalRoomCapacities: async () => [{ roomTypeId: "room-1", totalRooms: 3, availableRooms: 3, availableByNight: { "2027-08-12": 2, "2027-08-13": 1 } }],
+  }));
+  assert.equal(result?.options[0]?.availableRoomCount, 1, "the least sellable maintenance-affected night caps the entire stay");
+});
+
 test("rejects over-capacity occupancy and missing nightly rates without mutating state", async () => {
   const oversized = await searchPublicHotelAvailability({ scope: { organizationId: "org-1" }, propertySlug: "hotel", query: { ...query, occupancy: { adults: 3, children: 1 } } }, repository());
   assert.equal(oversized?.options.length, 0);

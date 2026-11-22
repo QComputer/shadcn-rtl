@@ -6,6 +6,7 @@ import { enumerateStayNights, validateOccupancyFitsRoom } from "@/lib/hotel/doma
 import { sellableUnitsForNight } from "@/lib/hotel/domain/availability";
 import { resolveNightlyRatesForWindow, quoteCancellation } from "@/lib/hotel/domain/rate";
 import { BED_CAPACITY, type BedConfiguration, type CancellationTier, type ReservationCancellationPolicySnapshot } from "@/lib/hotel/domain/types";
+import { getPhysicalRoomCapacitiesForNights } from "@/lib/hotel/persistence/physical-room-capacity";
 export type HotelPricedQuote = { id: string; actorUserId: string; propertyId: string; roomTypeId: string; ratePlanId: string; checkIn: string; checkOut: string; adults: number; childAges: number[]; nightlyRates: number[]; totalAmount: string; currency: string; expiresAt: string; policyVersion: number; policy: ReservationCancellationPolicySnapshot; holdId?: string; reservationId?: string };
 type Quote = HotelPricedQuote;
 export type HotelStayCriteria = { action: "search" | "quote"; roomTypeId: string; ratePlanId: string; checkIn: string; checkOut: string; adults: number; childAges: number[] };
@@ -34,15 +35,12 @@ const organizationId = property.organizationId; const propertyId = property.id;
         if (!resolution.isResolved || !Number.isSafeInteger(resolution.total)) fail(resolution.reason ?? "Unsupported total", 422);
         const nights = enumerateStayNights(command.checkIn, command.checkOut);
         const inventory = await tx.hotelInventory.findMany({ where: { organizationId, propertyId, roomTypeId: room!.id, date: { in: nights.map(date) } } });
-        const [physicalRoomCount, availablePhysicalRoomCount] = await Promise.all([
-          tx.hotelRoom.count({ where: { organizationId, propertyId, roomTypeId: room!.id } }),
-          tx.hotelRoom.count({ where: { organizationId, propertyId, roomTypeId: room!.id, isActive: true, deletedAt: null, isOutOfService: false } }),
-        ]);
+        const physical = await getPhysicalRoomCapacitiesForNights(tx, { organizationId }, propertyId, [room!.id], nights);
         // Physical rooms are the hard cap when modeled. Inventory-only room types must be explicitly
         // configured (totalAllotment) so unverified/draft rows cannot become sellable by stray inventory.
-        if (physicalRoomCount === 0 && room!.totalAllotment <= 0) return command.action === "search" ? { available: false, remaining: 0 } : fail("No inventory");
-        const physicalCap = physicalRoomCount > 0 ? availablePhysicalRoomCount : null;
-        const remaining = inventory.length === nights.length ? Math.min(...inventory.map(row => sellableUnitsForNight({ scope: { kind: "ROOM_TYPE", roomTypeId: room!.id }, date: dateOnly(row.date), allotment: row.allotment, booked: row.booked, held: row.held, outOfService: row.outOfService, closedToArrival: row.closedToArrival, closedToDeparture: row.closedToDeparture }, physicalCap))) : 0;
+        if (!physical.length && room!.totalAllotment <= 0) return command.action === "search" ? { available: false, remaining: 0 } : fail("No inventory");
+        const physicalCap = physical.length ? physical[0]!.availableByNight : null;
+        const remaining = inventory.length === nights.length ? Math.min(...inventory.map(row => sellableUnitsForNight({ scope: { kind: "ROOM_TYPE", roomTypeId: room!.id }, date: dateOnly(row.date), allotment: row.allotment, booked: row.booked, held: row.held, outOfService: row.outOfService, closedToArrival: row.closedToArrival, closedToDeparture: row.closedToDeparture }, physicalCap ? physicalCap[dateOnly(row.date)] : null))) : 0;
         if (command.action === "search") return { available: remaining > 0, remaining };
           if (!remaining && options.requireAvailability !== false) fail("No inventory");
           const policy = plan!.cancellationPolicy;

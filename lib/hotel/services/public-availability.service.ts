@@ -29,7 +29,7 @@ export async function searchPublicHotelAvailability(input: PublicHotelSearchInpu
   const nights = enumerateStayNights(input.query.window.checkIn, input.query.window.checkOut);
   const [persistedInventory, physicalCapacity] = await Promise.all([
     repositories.getInventoryNights(input.scope, property.id, roomTypeIds, nights),
-    repositories.getPhysicalRoomCapacities(input.scope, property.id, roomTypeIds),
+    repositories.getPhysicalRoomCapacities(input.scope, property.id, roomTypeIds, nights),
   ]);
   const capacityByType = new Map(physicalCapacity.map((roomType) => [roomType.roomTypeId, roomType]));
   const result = searchAvailability({
@@ -48,7 +48,7 @@ export async function searchPublicHotelAvailability(input: PublicHotelSearchInpu
         held: night.held,
         outOfService: night.outOfService,
         ...(capacityByType.has(roomTypeId)
-          ? { physicalRoomCapacity: capacityByType.get(roomTypeId)!.availableRooms }
+          ? { physicalRoomCapacity: capacityByType.get(roomTypeId)!.availableByNight?.[night.date] ?? capacityByType.get(roomTypeId)!.availableRooms }
           : (roomTypes.find((roomType) => roomType.id === roomTypeId)?.totalAllotment ?? 0) <= 0
             ? { physicalRoomCapacity: 0 }
             : {}),

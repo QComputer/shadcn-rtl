@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
@@ -123,6 +123,15 @@ test("Damoon public content uses owner-confirmed hospitality facts in fa/en/ar",
   assert.doesNotMatch(app, /تالار و رستوران|Restaurant & Cafe|المطعم والمقهى/);
   assert.match(app, /· 14:00/);
   assert.match(app, /· 12:00/);
+  assert.match(app, /<source type="image\/webp" srcset="\/assets\/hero-reference-v2-640\.webp 640w, \/assets\/hero-reference-v2-1280\.webp 1280w, \/assets\/hero-reference-v2-1920\.webp 1920w"/);
+  assert.match(app, /sizes="\(max-width: 760px\) 100vw, \(max-width: 1400px\) 64vw, 896px"/);
+  assert.match(app, /width="2243" height="701" alt="\$\{safeText\(note\)\}" fetchpriority="high" decoding="async"/);
+  const heroOriginal = await stat(resolve(root, "assets/hero-reference-v2.png"));
+  for (const width of [640, 1280, 1920]) {
+    const asset = `assets/hero-reference-v2-${width}.webp`;
+    const heroVariant = await stat(resolve(root, asset));
+    assert.ok(heroVariant.size > 0 && heroVariant.size < heroOriginal.size / 10, `${width}px source hero is a compact WebP derivative`);
+  }
   const html = await readFile(resolve(root, "index.html"), "utf8");
   assert.match(html, /name="robots" content="noindex,nofollow,noarchive"/);
   assert.doesNotMatch(html, /restaurant|café|cafe|رستوران|کافی.?شاپ/i);
@@ -132,6 +141,8 @@ test("Damoon public content uses owner-confirmed hospitality facts in fa/en/ar",
   const publicApp = await readFile(resolve(publicRoot, "app.js"), "utf8");
   const publicHospitality = await readFile(resolve(publicRoot, "hospitality.js"), "utf8");
   const publicManifest = JSON.parse(await readFile(resolve(publicRoot, "release-manifest.json"), "utf8"));
+  assert.match(publicApp, /<source type="image\/webp" srcset="\/damoon-front\/assets\/hero-reference-v2-640\.webp 640w, \/damoon-front\/assets\/hero-reference-v2-1280\.webp 1280w, \/damoon-front\/assets\/hero-reference-v2-1920\.webp 1920w"/);
+  for (const width of [640, 1280, 1920]) assert.ok(publicManifest.files[`assets/hero-reference-v2-${width}.webp`], `release manifest includes ${width}px responsive hero asset`);
   for (const asset of ["content.js", "translations.js", "hospitality.js", "hospitality.css"]) {
     const bytes = await readFile(resolve(publicRoot, asset));
     assert.equal(createHash("sha256").update(bytes).digest("hex"), publicManifest.files[asset], `release manifest matches generated ${asset}`);

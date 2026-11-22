@@ -123,6 +123,17 @@ test("Damoon Phase 1 pages, language switching, responsive layout and date-to-co
     for (const runtime of runtimes) {
       activeRuntimeOrigin = new URL(runtime.base).origin;
 
+    await page.goto(`${runtime.base}${localizedPath("fa", "/")}`, { waitUntil: "networkidle" });
+    const mobileHero = await page.locator(".page-hero--home img").evaluate(image => ({
+      currentSrc: new URL(image.currentSrc).pathname,
+      complete: image.complete,
+      width: image.clientWidth,
+      height: image.clientHeight,
+    }));
+    assert.equal(mobileHero.currentSrc, "/assets/hero-reference-v2-640.webp", `${runtime.name}: mobile selects the compact hero image`);
+    assert.equal(mobileHero.complete, true, `${runtime.name}: mobile hero image is ready`);
+    assert.ok(mobileHero.width > 0 && mobileHero.height > 0, `${runtime.name}: mobile hero has dimensions`);
+
     // Visit every contracted page in every language at a narrow viewport. This
     // checks real rendered content and page-level overflow, including long room titles.
     for (const locale of locales) {
@@ -158,6 +169,14 @@ test("Damoon Phase 1 pages, language switching, responsive layout and date-to-co
         const url = localizedPath(locale.code, path);
         await page.goto(`${runtime.base}${url}`, { waitUntil: "networkidle" });
         await page.locator("main#main").waitFor({ state: "visible" });
+        if (path === "/") {
+          const desktopHero = await page.locator(".page-hero--home img").evaluate(image => ({
+            currentSrc: new URL(image.currentSrc).pathname,
+            complete: image.complete,
+          }));
+          assert.equal(desktopHero.currentSrc, "/assets/hero-reference-v2-1280.webp", `${runtime.name}: desktop selects the right-sized hero image`);
+          assert.equal(desktopHero.complete, true, `${runtime.name}: desktop hero image is ready`);
+        }
         assert.equal(await page.locator("html").getAttribute("lang"), locale.code, `${url} desktop language`);
         assert.equal(await page.locator("html").getAttribute("dir"), locale.dir, `${url} desktop direction`);
         assert.ok((await page.locator("main#main").innerText()).trim().length > 20, `${url} desktop content`);

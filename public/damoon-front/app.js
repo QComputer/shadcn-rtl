@@ -120,13 +120,16 @@ function hero(page, path) {
   const isHome = path === "/";
   const src = isHome ? "/damoon-front/assets/hero-reference-v2.png" : page.image || (path.startsWith("/rooms/") ? "/damoon-front/assets/room-concept-1.webp" : "/damoon-front/assets/gallery-concept-1.webp");
   const note = page.imageNote || (path === "/" ? site.imageNote : ui.imageNotActual);
+  const visual = isHome
+    ? `<picture><source type="image/webp" srcset="/damoon-front/assets/hero-reference-v2-640.webp 640w, /damoon-front/assets/hero-reference-v2-1280.webp 1280w, /damoon-front/assets/hero-reference-v2-1920.webp 1920w" sizes="(max-width: 760px) 100vw, (max-width: 1400px) 64vw, 896px"><img src="${safeText(src)}" width="2243" height="701" alt="${safeText(note)}" fetchpriority="high" decoding="async"></picture>`
+    : `<img src="${safeText(src)}" alt="${safeText(note)}" fetchpriority="high" decoding="async">`;
   const actions = (page.actions || []).map(([href, label], index) => link(href, label, `button ${index ? "button--outline" : "button--primary"}`)).join("");
   const homeEyebrow = locale === "fa" ? "اقامتی آرام<br class=\"home-eyebrow-break\">در قلب شهرکرد" : safeText(ui.homeEyebrow);
   const homeSubtitle = safeText(ui.homeSubtitle);
   const homeLead = safeText(ui.homeLead);
   return `<section class="page-hero${isHome ? " page-hero--home" : ""}" aria-labelledby="page-title">
     <div class="page-hero__copy">${breadcrumb(path, page.title)}<p class="eyebrow">${isHome ? homeEyebrow : safeText(site.eyebrow)}</p>${page.badge ? `<p class="status-badge">${safeText(page.badge)}</p>` : ""}<h1 id="page-title">${safeText(isHome ? site.name : page.intro || page.title)}</h1>${isHome ? `<p class="home-subtitle">${homeSubtitle}</p>` : ""}<p class="page-hero__lead">${isHome ? homeLead : safeText(page.text || "")}</p><div class="page-hero__actions">${isHome ? link("/rooms", locale === "fa" ? "برنامه‌ریزی اقامت" : locale === "ar" ? "خطط لإقامتك" : "Plan your stay", "button button--primary") : actions || link("/contact", ui.coordinateWithHotel, "button button--primary")}</div></div>
-    <figure class="page-hero__visual"><img src="${safeText(src)}" alt="${safeText(note)}" fetchpriority="high"><figcaption>${safeText(note)}</figcaption></figure>
+    <figure class="page-hero__visual">${visual}<figcaption>${safeText(note)}</figcaption></figure>
   </section>`;
 }
 

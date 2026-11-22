@@ -402,6 +402,19 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     const checkedOut = await service.execute(receptionist, a.id, pa.id, { action: "check-out", reservationId: confirmedOne.id }, `check-out-${token}`) as OperationalResult;
     assert.equal(checkedOut.reservation?.status, "CHECKED_OUT");
 
+    const stayRequests = new HotelStayRequestService(db, now);
+    await stayRequests.configure(receptionist, a.id, pa.id, { mode: "REQUEST_ONLY" });
+    const enquiryQuote = await stayRequests.execute(guestA, a.id, pa.id, { action: "quote", roomTypeId: roomA.id, ratePlanId: rateA.id, ...stay }, `enquiry-quote-${token}`);
+    assert.ok(enquiryQuote.quote?.id);
+    const enquiry = await stayRequests.execute(guestA, a.id, pa.id, { action: "request", quoteId: enquiryQuote.quote!.id, guestName: `Enquirer ${token}` }, `enquiry-request-${token}`);
+    assert.ok(enquiry.request?.id);
+    await service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION" });
+    const convertedQuote = await service.execute(guestA, a.id, pa.id, { action: "quote-request", requestId: enquiry.request!.id }, `convert-request-${token}`) as OperationalResult;
+    assert.ok(convertedQuote.quote?.id);
+    assert.equal(convertedQuote.simulated, false);
+    await assert.rejects(() => service.execute(otherGuest, a.id, pa.id, { action: "quote-request", requestId: enquiry.request!.id }, `foreign-request-${token}`), /request not found/i);
+    await assert.rejects(() => service.execute(guestB, b.id, pb.id, { action: "quote-request", requestId: enquiry.request!.id }, `cross-tenant-request-${token}`), /request not found/i);
+
     // Reception manual entry stays available with public reservation and guest portal gates off.
     process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED = "1";
     process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED = "0";
@@ -439,20 +452,6 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     assert.equal(manualCheckIn.reservation?.status, "CHECKED_IN");
     const manualCheckOut = await service.execute(receptionist, a.id, pa.id, { action: "check-out", reservationId: secondManual.reservationId }, `manual-check-out-${token}`) as OperationalResult;
     assert.equal(manualCheckOut.reservation?.status, "CHECKED_OUT");
-    process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED = "1"; process.env.HOTEL_GUEST_PORTAL_ENABLED = "1";
-
-    const stayRequests = new HotelStayRequestService(db, now);
-    await stayRequests.configure(receptionist, a.id, pa.id, { mode: "REQUEST_ONLY" });
-    const enquiryQuote = await stayRequests.execute(guestA, a.id, pa.id, { action: "quote", roomTypeId: roomA.id, ratePlanId: rateA.id, ...stay }, `enquiry-quote-${token}`);
-    assert.ok(enquiryQuote.quote?.id);
-    const enquiry = await stayRequests.execute(guestA, a.id, pa.id, { action: "request", quoteId: enquiryQuote.quote!.id, guestName: `Enquirer ${token}` }, `enquiry-request-${token}`);
-    assert.ok(enquiry.request?.id);
-    await service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION" });
-    const convertedQuote = await service.execute(guestA, a.id, pa.id, { action: "quote-request", requestId: enquiry.request!.id }, `convert-request-${token}`) as OperationalResult;
-    assert.ok(convertedQuote.quote?.id);
-    assert.equal(convertedQuote.simulated, false);
-    await assert.rejects(() => service.execute(otherGuest, a.id, pa.id, { action: "quote-request", requestId: enquiry.request!.id }, `foreign-request-${token}`), /request not found/i);
-    await assert.rejects(() => service.execute(guestB, b.id, pb.id, { action: "quote-request", requestId: enquiry.request!.id }, `cross-tenant-request-${token}`), /request not found/i);
     passed = true;
   } finally {
     process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED = originalOperational;

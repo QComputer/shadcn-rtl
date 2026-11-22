@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "project": "Damoon / Bazarbaaz",
+  "snapshotDate": "2026-11-23",
+  "repository": "https://github.com/QComputer/shadcn-rtl",
+  "mainSha": "89e80a6e55b69c1e938674a344d60f46ed327913",
+  "runflare": {
+    "projectId": "37622",
+    "serviceId": "87432",
+    "reportedActiveVersion": "v124",
+    "reportedActiveSourceSha": null,
+    "sourceShaConfidence": "RUNFLARE_DASHBOARD_V124_ACTIVE_1_OF_1_PLUS_LIVE_PUBLIC_CSS_JS_EQUAL_MAIN; PROVIDER_SOURCE_SHA_NOT_EXPOSED",
+    "healthRevision": null
+  },
+  "liveManifest": {
+    "accommodation.css": "788e851522eb9ababfd29c5dc56514ff27387cbb3db7863116a03ee1a0393963",
+    "accommodation.js": "28bdecc388aee1509058b73711463034485967b805793329c151951953763b74",
+    "booking.js": "1b14d05865e7ab1c5f741528e864fe3b3f1ebdff1eb91fa7e5475cd4822fb0d5"
+  },
+  "sourceManifestAtMain": {
+    "accommodation.css": "788e851522eb9ababfd29c5dc56514ff27387cbb3db7863116a03ee1a0393963"
+  },
+  "prs": [
+    {
+      "pr": 136,
+      "mergeSha": "f5e77a34b23901f946efbf5442b879417026a031",
+      "state": "MERGED",
+      "production": "SUPERSEDED"
+    },
+    {
+      "pr": 140,
+      "head": "e86d99e37e9ba0c9ac799c4dd3083d9775b7249f",
+      "state": "OPEN_ON_HOLD",
+      "production": "NOT_DEPLOYED"
+    },
+    {
+      "pr": 141,
+      "mergeSha": "44e6e862301c4b2620c7561c4810241a88ef4115",
+      "state": "MERGED",
+      "production": "VERIFIED_V120"
+    },
+    {
+      "pr": 142,
+      "mergeSha": "e0c75802cb5aa442c5a0ea3b7b965e76e968ab5b",
+      "state": "MERGED",
+      "production": "VERIFIED_V121"
+    },
+    {
+      "pr": 143,
+      "mergeSha": "1901797d71de67bf094f47d900f0f2fd8f33e370",
+      "state": "MERGED",
+      "production": "VERIFIED_V122"
+    },
+    {
+      "pr": 144,
+      "mergeSha": "01bd9b6fbb79f93a634849b0e64c63f866aebe82",
+      "state": "MERGED",
+      "production": "VERIFIED_V123"
+    },
+    {
+      "pr": 145,
+      "mergeSha": "89e80a6e55b69c1e938674a344d60f46ed327913",
+      "state": "MERGED",
+      "production": "LIVE_ACCEPTANCE_PASSED_READ_ONLY_V124"
+    }
+  ],
+  "sourceEvidence": {
+    "github": "GitHub REST pull and main endpoints at 2026-11-23",
+    "liveAsset": "https://damoon-hotel.ir/damoon-front/release-manifest.json",
+    "provider": "Authenticated Runflare service dashboard refreshed 2026-11-23: v124 active with one active pod; live CSS/JS SHA equal main; provider source SHA not exposed. Production GET-only browser acceptance passed in FA/EN/AR at six viewport widths; request form not submitted."
+  },
+  "featureGates": {
+    "publicBooking": false,
+    "onlinePayment": false,
+    "productionMigrationAllowed": false,
+    "pr140MergeAllowed": false,
+    "guestRequestFlow": "SOURCE_CI_ACCEPTED_PRODUCTION_OPERATIONAL_POST_NOT_TESTED",
+    "noindex": true,
+    "realHotelPhotographyApprovedAndPublished": false
+  },
+  "productionAcceptance": {
+    "status": "LIVE_ACCEPTANCE_PASSED_READ_ONLY",
+    "date": "2026-11-23",
+    "sourceSha": "89e80a6e55b69c1e938674a344d60f46ed327913",
+    "runflareVersion": "v124",
+    "viewports": [360, 390, 640, 768, 1024, 1440],
+    "locales": ["fa", "en", "ar"],
+    "categoryCoordinationAndReload": "PASSED; category and check-in/out, adults, children, child ages preserved",
+    "themeAndKeyboard": "PASSED; light/dark state survives reload; labeled contact input is keyboard focusable",
+    "virtualTours": {
+      "vip01": "PASSED; embedded scene title VIP-01",
+      "vip3": "PASSED; embedded scene title VIP-03",
+      "lobby": "PASSED; embedded scene title Lobby",
+      "room303": "PASSED; embedded scene title 303"
+    },
+    "health": {"basic": "HTTP 200 status ok", "deep": "HTTP 200 status ok"},
+    "tenantRouting": {"bazarbaaz.ir": 200, "damoon-hotel.ir": 200, "akashoes.ir": 200, "fastfood13.ir": 200},
+    "browserErrors": 0,
+    "failedRequests": 0,
+    "unexpectedNonGetRequests": 0,
+    "noindex": "PASSED",
+    "requestOnly": "PASSED; no availability/price/hold/confirmed reservation/payment operation exposed",
+    "productionGuestSubmission": "NOT_PERFORMED"
+  },
+  "caveat": "Provider dashboard confirms v124 active and the public CSS/JS hashes match main, but the provider does not expose the deployed source SHA in this view and health revision is null. Browser acceptance was read-only; it does not accept the operational POST-to-reception workflow or create Production guest data."
+}

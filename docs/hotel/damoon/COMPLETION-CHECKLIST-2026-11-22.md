@@ -1,3 +1,6 @@
+<!-- DAMOON_CURRENT_REFERENCE_2026_11_23 -->
+> **مرجع وضعیت اجرایی دامون — ۲۰۲۶-۱۱-۲۳:** این سند شامل شواهد تاریخی و تصمیم‌های معتبر زمان نگارش خود است. برای آخرین وضعیت Git/Runflare، وضعیت PR145، اختلاف واقعیت‌های اتاق، آخرین نقشه راه و گیت‌های انتشار به [مرجع جاری](./CURRENT-STATE-2026-11-23.md) و [نقشه راه اجرایی](./EXECUTION-ROADMAP-2026-11-23.md) رجوع کنید. تصمیم‌های مالک و گیت‌های امنیتی قدیمی با این ارجاع حذف یا لغو نشده‌اند.
+
 # Hotel Damoon completion checklist — 2026-11-22
 
 This checklist records repository implementation and known launch inputs. A feature in code is not evidence of Production content, domain, payment, or booking acceptance.

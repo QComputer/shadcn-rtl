@@ -614,6 +614,44 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     expect(data.options.some((option) => option.isAvailable)).toBe(false);
   });
 
+  test("Needs action search paginates across real database rows", async () => {
+    const { PrismaClient } = await import("@prisma/client");
+    const db = new PrismaClient();
+    const name = `Pagination ${randomUUID()}`;
+    const checkIn = tomorrowISO();
+    const checkOut = dayAfterISO(checkIn);
+    const rows = Array.from({ length: 51 }, (_, index) => {
+      const hash = createHash("sha256").update(randomUUID()).digest("hex");
+      return {
+        organizationId, propertyId, trackingReferenceHash: hash, idempotencyHash: hash, requestFingerprint: hash,
+        checkIn: new Date(`${checkIn}T00:00:00Z`), checkOut: new Date(`${checkOut}T00:00:00Z`),
+        adults: 1, children: 0, childAges: [], guestName: name, guestPhone: "+989121234567",
+        status: index % 2 ? "IN_REVIEW" : "RECEIVED",
+      };
+    });
+    try {
+      await db.hotelGuestBookingRequest.createMany({ data: rows });
+      const query = new URLSearchParams({ status: "NEEDS_ACTION", search: name });
+      const first = await managerPage.request.get(`${appOrigin}${requestsApi}?${query}`);
+      expect(first.status()).toBe(200);
+      const page1 = await first.json();
+      expect(page1.requests).toHaveLength(50);
+      expect(page1.nextCursor).toBeTruthy();
+      query.set("cursor", page1.nextCursor);
+      const second = await managerPage.request.get(`${appOrigin}${requestsApi}?${query}`);
+      expect(second.status()).toBe(200);
+      const page2 = await second.json();
+      expect(page2.requests).toHaveLength(1);
+      expect(page2.nextCursor).toBeNull();
+      const combined = [...page1.requests, ...page2.requests];
+      expect(new Set(combined.map(row => row.id)).size).toBe(51);
+      expect(new Set(combined.map(row => row.status))).toEqual(new Set(["RECEIVED", "IN_REVIEW"]));
+      expect(combined.every(row => row.guestName === name)).toBe(true);
+    } finally {
+      await db.hotelGuestBookingRequest.deleteMany({ where: { organizationId, propertyId, guestName: name } });
+      await db.$disconnect();
+    }
+  });
   test("No reservation or payment created for request-only flow", async () => {
     const listResponse = await getRequestsApi(managerPage);
     expect(listResponse.ok()).toBe(true);
@@ -689,6 +727,8 @@ test('inventory-free request reaches reception and tracks without creating a boo
   const context = await newContext(browser);
   const page = await context.newPage();
   const manager = await loginManager(browser);
+  await manager.page.clock.install();
+  await manager.page.reload({ waitUntil: "domcontentloaded" });
   const guestName = `CI coordination ${randomUUID()}`;
   try {
     const checkIn = tomorrowISO();
@@ -725,14 +765,48 @@ test('inventory-free request reaches reception and tracks without creating a boo
       const card = manager.page.locator('section[aria-labelledby="hotel-stay-requests-title"] article').filter({ hasText: guestName });
       await expect(card).toBeVisible();
       await expect(card).toContainText(category);
+      await expect(card.locator('time')).toHaveAttribute('datetime', entry.createdAt);
+      await expect(card).toContainText(({fa:'جدید و بررسی‌نشده',en:'New and unreviewed',ar:'جديد ولم يُراجع'})[locale]);
       await expect(card.getByRole('button', { name: 'بررسی دوباره موجودی' })).toHaveCount(0);
       await expect(card.locator(`select option[value="OPTION_OFFERED"]`)).toHaveCount(0);
       await expect(card.locator(`select option[value="UNAVAILABLE"]`)).toHaveCount(0);
     }
     const card = manager.page.locator('section[aria-labelledby="hotel-stay-requests-title"] article').filter({ hasText: guestName });
+    const search = manager.page.locator('#hotel-request-search');
+    await search.fill(guestName);
+    const nameSearch = manager.page.waitForResponse(res => new URL(res.url()).pathname === requestsApi && new URL(res.url()).searchParams.get('search') === guestName);
+    await manager.page.getByRole('button', {name:'بحث', exact:true}).click();
+    expect((await nameSearch).status()).toBe(200);
+    await expect(card).toBeVisible();
+    await search.fill('+989121234567');
+    const phoneSearch = manager.page.waitForResponse(res => new URL(res.url()).pathname === requestsApi && new URL(res.url()).searchParams.get('search') === '+989121234567');
+    await manager.page.getByRole('button', {name:'بحث', exact:true}).click();
+    expect((await phoneSearch).status()).toBe(200);
+    await expect(card).toBeVisible();
+    await manager.page.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (value) => { window.__damoonCopiedPhone = value; } } }); });
+    await card.getByRole('button', {name:'نسخ الرقم'}).click();
+    await expect(card.getByRole('status')).toContainText('تم نسخ الرقم');
+    expect(await manager.page.evaluate(() => window.__damoonCopiedPhone)).toBe('+989121234567');
+    await manager.page.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('denied'); } } }); });
+    await card.getByRole('button', {name:'نسخ الرقم'}).click();
+    await expect(card.getByRole('status')).toContainText('تعذر النسخ');
+    await manager.page.bringToFront();
+    let autoRefreshCount = 0;
+    manager.page.on('request', request => { if (new URL(request.url()).pathname === requestsApi && request.method() === 'GET') autoRefreshCount += 1; });
+    await card.locator('textarea').fill('Internal test note');
+    await card.locator('textarea').press('Tab');
+    await manager.page.clock.fastForward(60_001);
+    expect(autoRefreshCount).toBe(0);
+    await expect(card.locator('textarea')).toHaveValue('Internal test note');
     const updated = manager.page.waitForResponse(res => res.url().endsWith(`/booking-requests/${entry.id}`) && res.request().method() === 'PATCH');
     await card.locator('select').selectOption('IN_REVIEW');
     expect((await updated).status()).toBe(200);
+    await expect(card.locator('select')).toBeEnabled();
+    const persisted = await db.hotelGuestBookingRequest.findUniqueOrThrow({ where: { id: entry.id }, select: { managerMessage: true, status: true } });
+    expect(persisted).toEqual({ managerMessage: 'Internal test note', status: 'IN_REVIEW' });
+    const refresh = manager.page.waitForResponse(res => new URL(res.url()).pathname === requestsApi && new URL(res.url()).searchParams.get('search') === '+989121234567' && res.request().method() === 'GET');
+    await manager.page.clock.fastForward(60_001);
+    expect((await refresh).status()).toBe(200);
     const tracked = await postStatus(page, received.reference);
     expect(tracked.status()).toBe(200);
     expect((await tracked.json()).status).toBe('IN_REVIEW');

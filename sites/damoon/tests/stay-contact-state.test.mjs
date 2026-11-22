@@ -124,13 +124,13 @@ test("standalone and shared Damoon bundles preserve localized contact party deta
         const roomPath = `/${expected.locale}/rooms/single`;
         const partialPlan = new URLSearchParams(query);
         partialPlan.delete("checkOut");
-        await page.goto(`${runtime.base}${roomPath}?${partialPlan}`, { waitUntil: "networkidle" });
+        await page.goto(`${runtime.base}${roomPath}?${partialPlan}`, { waitUntil: "domcontentloaded" });
         await page.locator("#booking-title").waitFor();
         assert.equal(await page.locator("[data-adult-count]").inputValue(), "2");
         assert.equal(await page.locator("[data-child-count]").inputValue(), "1");
         assert.equal(await page.locator('[data-child-age="0"]').inputValue(), "7");
 
-        await page.goto(`${runtime.base}${roomPath}?${query}`, { waitUntil: "networkidle" });
+        await page.goto(`${runtime.base}${roomPath}?${query}`, { waitUntil: "domcontentloaded" });
         await page.locator("#booking-summary-title").waitFor();
         assert.ok((await page.locator(".booking-summary").innerText()).includes(expected.adults));
 
@@ -149,7 +149,7 @@ test("standalone and shared Damoon bundles preserve localized contact party deta
         const freshContext = await browser.newContext();
         await isolateContactDependencies(freshContext);
         const freshPage = await freshContext.newPage();
-        await freshPage.goto(contactUrl.href, { waitUntil: "networkidle" });
+        await freshPage.goto(contactUrl.href, { waitUntil: "domcontentloaded" });
         assert.equal(await freshPage.evaluate(() => sessionStorage.length), 0);
         assert.equal(await freshPage.locator("html").getAttribute("lang"), expected.locale);
         const summary = freshPage.locator(".hospitality-stay-context").first();
@@ -162,7 +162,7 @@ test("standalone and shared Damoon bundles preserve localized contact party deta
 
         const zeroChildrenPage = await context.newPage();
         const staleAgeQuery = new URLSearchParams({ checkIn, checkOut, guests: "2", children: "0", childAges: "7" });
-        await zeroChildrenPage.goto(`${runtime.base}/${expected.locale}/rooms/single?${staleAgeQuery}`, { waitUntil: "networkidle" });
+        await zeroChildrenPage.goto(`${runtime.base}/${expected.locale}/rooms/single?${staleAgeQuery}`, { waitUntil: "domcontentloaded" });
         await zeroChildrenPage.locator("#booking-summary-title").waitFor();
         const zeroChildrenHref = await zeroChildrenPage.locator(".accommodation-coordination__actions .accommodation-link").getAttribute("href");
         const zeroChildrenUrl = new URL(zeroChildrenHref, runtime.base);
@@ -174,7 +174,7 @@ test("standalone and shared Damoon bundles preserve localized contact party deta
           bookingRequests.push(route.request().url());
           return route.abort();
         });
-        await page.goto(`${runtime.base}${categoryPath}?${query}`, { waitUntil: "networkidle" });
+        await page.goto(`${runtime.base}${categoryPath}?${query}`, { waitUntil: "domcontentloaded" });
         await page.locator("#booking-summary-title").waitFor();
         const summaryHref = await page.locator(".booking-summary a").getAttribute("href");
         const categoryContact = new URL(summaryHref, runtime.base);
@@ -185,14 +185,17 @@ test("standalone and shared Damoon bundles preserve localized contact party deta
         assert.equal(categoryContact.searchParams.get("adults"), "2");
         assert.equal(categoryContact.searchParams.get("children"), "1");
         assert.equal(categoryContact.searchParams.get("childAges"), "7");
-        await page.goto(`${runtime.base}/${expected.locale}/rooms/${expected.alias}?${query}`, { waitUntil: "networkidle" });
+        await page.goto(`${runtime.base}/${expected.locale}/rooms/${expected.alias}?${query}`, { waitUntil: "domcontentloaded" });
+        await page.locator("#booking-summary-title").waitFor();
         const aliasContact = new URL(await page.locator(".booking-summary a").getAttribute("href"), runtime.base);
         assert.equal(aliasContact.href, categoryContact.href, "interim category URLs retain the current stay context");
 
 
-        await page.goto(`${runtime.base}${categoryPath}?${partialPlan}`, { waitUntil: "networkidle" });
+        await page.goto(`${runtime.base}${categoryPath}?${partialPlan}`, { waitUntil: "domcontentloaded" });
         await page.locator("#booking-title").waitFor();
-        assert.equal(await page.locator("[data-track-request]").count(), 0);
+        // Request tracking is available independently of stay dates. This route
+        // remains request-only even while the guest completes the date range.
+        assert.equal(await page.locator("[data-track-request]").count(), 1);
         await page.locator('[data-date-field="checkOut"]').click();
         const departureDay = page.locator(`[data-calendar-day="${checkOut}"]`);
         if (!(await departureDay.count())) await page.locator("[data-month-next]").click();

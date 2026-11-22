@@ -3,13 +3,13 @@
   "project": "Damoon / Bazarbaaz",
   "snapshotDate": "2026-11-23",
   "repository": "https://github.com/QComputer/shadcn-rtl",
-  "mainSha": "89e80a6e55b69c1e938674a344d60f46ed327913",
+  "mainSha": "4090a726f29360a4db4a3dc3249d76eb2aa0f572",
   "runflare": {
     "projectId": "37622",
     "serviceId": "87432",
     "reportedActiveVersion": "v124",
     "reportedActiveSourceSha": null,
-    "sourceShaConfidence": "RUNFLARE_DASHBOARD_V124_ACTIVE_1_OF_1_PLUS_LIVE_PUBLIC_CSS_JS_EQUAL_MAIN; PROVIDER_SOURCE_SHA_NOT_EXPOSED",
+    "sourceShaConfidence": "RUNFLARE_DASHBOARD_V124_ACTIVE_1_OF_1_PLUS_LIVE_PUBLIC_CSS_JS_EQUAL_PR145_RUNTIME_SOURCE; PR146_DOCS_ONLY_MERGE_NO_NEW_DEPLOYMENT; PROVIDER_SOURCE_SHA_NOT_EXPOSED",
     "healthRevision": null
   },
   "liveManifest": {
@@ -62,12 +62,18 @@
       "mergeSha": "89e80a6e55b69c1e938674a344d60f46ed327913",
       "state": "MERGED",
       "production": "LIVE_ACCEPTANCE_PASSED_READ_ONLY_V124"
+    },
+    {
+      "pr": 146,
+      "mergeSha": "4090a726f29360a4db4a3dc3249d76eb2aa0f572",
+      "state": "MERGED_DOCS_ONLY",
+      "production": "NO_RUNTIME_CHANGE; RUNFLARE_STILL_V124; NO_NEW_DEPLOYLOG_ROW"
     }
   ],
   "sourceEvidence": {
-    "github": "GitHub REST pull and main endpoints at 2026-11-23",
+    "github": "GitHub PR/main endpoints at 2026-11-23; current main 4090a726f29360a4db4a3dc3249d76eb2aa0f572 after docs-only PR146",
     "liveAsset": "https://damoon-hotel.ir/damoon-front/release-manifest.json",
-    "provider": "Authenticated Runflare service dashboard refreshed 2026-11-23: v124 active with one active pod; live CSS/JS SHA equal main; provider source SHA not exposed. Production GET-only browser acceptance passed in FA/EN/AR at six viewport widths; request form not submitted."
+    "provider": "Authenticated Runflare service dashboard refreshed after PR146 merge: v124 active with one active pod, and deploylog contains no new row; live CSS/JS SHA still equal PR145 runtime source; provider source SHA not exposed. Production GET-only browser acceptance passed in FA/EN/AR at six viewport widths; request form not submitted."
   },
   "featureGates": {
     "publicBooking": false,
@@ -102,5 +108,15 @@
     "requestOnly": "PASSED; no availability/price/hold/confirmed reservation/payment operation exposed",
     "productionGuestSubmission": "NOT_PERFORMED"
   },
-  "caveat": "Provider dashboard confirms v124 active and the public CSS/JS hashes match main, but the provider does not expose the deployed source SHA in this view and health revision is null. Browser acceptance was read-only; it does not accept the operational POST-to-reception workflow or create Production guest data."
+  "isolatedRequestToReceptionAcceptance": {
+    "status": "PASSED_SYNTHETIC_POSTGRES_AND_BROWSER",
+    "workflowRun": "45078447100",
+    "workflowUrl": "https://github.com/QComputer/shadcn-rtl/actions/runs/45078447100",
+    "sourceSha": "89e80a6e55b69c1e938674a344d60f46ed327913",
+    "database": "workflow-owned disposable PostgreSQL 17; uniquely named DB; cleanup passed",
+    "scenarios": ["guest request without inventory/reservation/payment", "idempotency replay", "tracking in fa/en/ar", "manager reception review/update", "unauthorized access denied", "foreign tenant denied", "host/origin spoofing denied", "optimistic concurrency"],
+    "productionWrites": "NONE",
+    "remainingAcceptance": "Owner/reception operational sign-off and separate data authorization for any live guest record; R09 privacy-retention review"
+  },
+  "caveat": "Provider dashboard confirms v124 remains active after the docs-only PR146 merge and the public CSS/JS hashes match the PR145 runtime source, but the provider does not expose the deployed source SHA in this view and health revision is null. Browser acceptance was read-only; it does not accept the operational POST-to-reception workflow or create Production guest data."
 }

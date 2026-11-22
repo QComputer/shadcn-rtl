@@ -24,9 +24,10 @@ type InventoryNight = {
 };
 type RoomBoard = {
   dates: string[];
-  rooms: Array<{ id: string; code: string; roomTypeId: string; isOutOfService: boolean; nights: Array<{ date: string; status: "VACANT" | "OUT_OF_SERVICE" | "RESERVED" | "OCCUPIED" | "OUT_OF_SERVICE_CONFLICT"; reference: string | null }> }>;
+  rooms: Array<{ id: string; code: string; roomTypeId: string; isOutOfService: boolean; nights: Array<{ date: string; status: "VACANT" | "OUT_OF_SERVICE" | "RESERVED" | "OCCUPIED" | "OUT_OF_SERVICE_CONFLICT" | "MAINTENANCE" | "MAINTENANCE_CONFLICT"; reference: string | null }> }>;
   unassignedReservationNights: number;
 };
+type MaintenanceBlock = { id: string; roomId: string; roomCode: string; from: string; to: string; reason: string };
 type OperationsData = {
   property: { id: string; name: string; slug: string; timezone: string; currency: string };
   range: { from: string; to: string; nights: number };
@@ -34,6 +35,8 @@ type OperationsData = {
   ratePlans: RatePlan[];
   inventory: InventoryNight[];
   roomBoard: RoomBoard;
+  maintenanceBlocks: MaintenanceBlock[];
+  manualRoomManagementEnabled: boolean;
   cancellationPolicies: CancellationPolicy[];
 };
 type AvailabilityPreview = {
@@ -56,7 +59,7 @@ const labels = {
   fa: {
     title: "عملیات هتل",
     loading: "در حال بارگذاری…", loadError: "اطلاعات عملیات بارگذاری نشد.", saveError: "ذخیره انجام نشد.",
-    roomTypes: "انواع اتاق", rooms: "اتاق‌های فیزیکی", roomBoard: "وضعیت روزانه اتاق‌ها", boardDate: "تاریخ", boardRoom: "اتاق", vacant: "خالی", reserved: "رزروشده", occupied: "اشغال‌شده", unassigned: "شب رزرو بدون تخصیص اتاق فیزیکی", outOfServiceNote: "علامت خارج از سرویس برای همه تاریخ‌های نمایش‌داده‌شده اعمال می‌شود؛ این هنوز تقویم تعمیرات تاریخ‌دار نیست.", outOfServiceConflict: "تخصیص فعال با علامت خارج از سرویس", rates: "نرخ‌ها", inventory: "ظرفیت شبانه",
+    roomTypes: "انواع اتاق", rooms: "اتاق‌های فیزیکی", roomBoard: "وضعیت روزانه اتاق‌ها", boardDate: "تاریخ", boardRoom: "اتاق", vacant: "خالی", reserved: "رزروشده", occupied: "اشغال‌شده", unassigned: "شب رزرو بدون تخصیص اتاق فیزیکی", outOfServiceNote: "علامت خارج از سرویس برای همه تاریخ‌های نمایش‌داده‌شده اعمال می‌شود.", outOfServiceConflict: "تخصیص فعال با علامت خارج از سرویس", maintenance: "تعمیرات زمان‌بندی‌شده", maintenanceConflict: "تعمیرات با رزرو فعال تداخل دارد", maintenanceInvalid: "تاریخ پایان باید بعد از تاریخ شروع باشد و دلیل تعمیرات را وارد کنید.", maintenanceFrom: "شروع (شامل)", maintenanceTo: "پایان (غیرشامل)", maintenanceReason: "دلیل تعمیرات", createMaintenance: "ثبت تعمیرات", releaseMaintenance: "پایان تعمیرات", maintenanceGateClosed: "ثبت و پایان تعمیرات تا تأیید بهره‌برداری غیرفعال است.", rates: "نرخ‌ها", inventory: "ظرفیت شبانه",
     add: "افزودن", save: "ذخیره", update: "ذخیره تغییرات", cancel: "لغو ویرایش", edit: "ویرایش",
     slug: "شناسه نوع اتاق", name: "نام", description: "توضیحات", adults: "بزرگسالان", children: "کودکان", occupancy: "ظرفیت کل", beds: "تخت", bedKind: "نوع تخت", bedCount: "تعداد", bedKinds: { single: "یک‌نفره", double: "دو‌نفره", queen: "کوئین", king: "کینگ", sofa: "مبل تخت‌خواب‌شو", bunk: "دوطبقه", crib: "تخت کودک" },
     roomType: "نوع اتاق", code: "کد اتاق", floor: "طبقه", unavailable: "خارج از سرویس", active: "فعال", room: "اتاق",
@@ -72,7 +75,7 @@ const labels = {
   en: {
     title: "Hotel operations",
     loading: "Loading…", loadError: "Could not load operations.", saveError: "Save failed.",
-    roomTypes: "Room types", rooms: "Physical rooms", roomBoard: "Daily room board", boardDate: "Date", boardRoom: "Room", vacant: "Vacant", reserved: "Reserved", occupied: "Occupied", unassigned: "Reservation nights without a physical room assignment", outOfServiceNote: "The out-of-service flag applies to every displayed date; this is not a dated maintenance calendar.", outOfServiceConflict: "Active allocation conflicts with out-of-service flag", rates: "Rates", inventory: "Nightly inventory",
+    roomTypes: "Room types", rooms: "Physical rooms", roomBoard: "Daily room board", boardDate: "Date", boardRoom: "Room", vacant: "Vacant", reserved: "Reserved", occupied: "Occupied", unassigned: "Reservation nights without a physical room assignment", outOfServiceNote: "The out-of-service flag applies to every displayed date.", outOfServiceConflict: "Active allocation conflicts with out-of-service flag", maintenance: "Scheduled maintenance", maintenanceConflict: "Maintenance conflicts with an active reservation", maintenanceInvalid: "End date must be after the start date, and a reason is required.", maintenanceFrom: "Start (inclusive)", maintenanceTo: "End (exclusive)", maintenanceReason: "Maintenance reason", createMaintenance: "Schedule maintenance", releaseMaintenance: "Release maintenance", maintenanceGateClosed: "Maintenance changes are disabled until operations are approved.", rates: "Rates", inventory: "Nightly inventory",
     add: "Add", save: "Save", update: "Save changes", cancel: "Cancel edit", edit: "Edit",
     slug: "Room type slug", name: "Name", description: "Description", adults: "Adults", children: "Children", occupancy: "Max occupancy", beds: "Bed", bedKind: "Bed type", bedCount: "Count", bedKinds: { single: "Single", double: "Double", queen: "Queen", king: "King", sofa: "Sofa bed", bunk: "Bunk", crib: "Crib" },
     roomType: "Room type", code: "Room code", floor: "Floor", unavailable: "Out of service", active: "Active", room: "Room",
@@ -88,7 +91,7 @@ const labels = {
   ar: {
     title: "عمليات الفندق",
     loading: "جارٍ التحميل…", loadError: "تعذر تحميل العمليات.", saveError: "تعذر الحفظ.",
-    roomTypes: "أنواع الغرف", rooms: "الغرف الفعلية", roomBoard: "حالة الغرف اليومية", boardDate: "التاريخ", boardRoom: "الغرفة", vacant: "شاغرة", reserved: "محجوزة", occupied: "مشغولة", unassigned: "ليالي حجز بلا تخصيص غرفة فعلية", outOfServiceNote: "تُطبّق علامة خارج الخدمة على جميع التواريخ المعروضة؛ هذا ليس تقويم صيانة مؤرخًا.", outOfServiceConflict: "تخصيص نشط يتعارض مع علامة خارج الخدمة", rates: "الأسعار", inventory: "مخزون الليالي",
+    roomTypes: "أنواع الغرف", rooms: "الغرف الفعلية", roomBoard: "حالة الغرف اليومية", boardDate: "التاريخ", boardRoom: "الغرفة", vacant: "شاغرة", reserved: "محجوزة", occupied: "مشغولة", unassigned: "ليالي حجز بلا تخصيص غرفة فعلية", outOfServiceNote: "تُطبّق علامة خارج الخدمة على جميع التواريخ المعروضة.", outOfServiceConflict: "تخصيص نشط يتعارض مع علامة خارج الخدمة", maintenance: "الصيانة المجدولة", maintenanceConflict: "تتعارض الصيانة مع حجز نشط", maintenanceInvalid: "يجب أن يكون تاريخ النهاية بعد البداية وإدخال سبب الصيانة.", maintenanceFrom: "البداية (شاملة)", maintenanceTo: "النهاية (غير شاملة)", maintenanceReason: "سبب الصيانة", createMaintenance: "جدولة الصيانة", releaseMaintenance: "إنهاء الصيانة", maintenanceGateClosed: "تغييرات الصيانة معطلة حتى اعتماد التشغيل.", rates: "الأسعار", inventory: "مخزون الليالي",
     add: "إضافة", save: "حفظ", update: "حفظ التغييرات", cancel: "إلغاء التعديل", edit: "تعديل",
     slug: "معرّف نوع الغرفة", name: "الاسم", description: "الوصف", adults: "البالغون", children: "الأطفال", occupancy: "السعة القصوى", beds: "السرير", bedKind: "نوع السرير", bedCount: "العدد", bedKinds: { single: "مفرد", double: "مزدوج", queen: "كوين", king: "كينغ", sofa: "سرير أريكة", bunk: "طابقي", crib: "سرير أطفال" },
     roomType: "نوع الغرفة", code: "رمز الغرفة", floor: "الطابق", unavailable: "خارج الخدمة", active: "نشطة", room: "غرفة",
@@ -176,6 +179,10 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
   const [allotmentDelta, setAllotmentDelta] = useState("0");
   const [outDelta, setOutDelta] = useState("0");
   const [reason, setReason] = useState("");
+  const [maintenanceRoomId, setMaintenanceRoomId] = useState("");
+  const [maintenanceFrom, setMaintenanceFrom] = useState(initialFrom);
+  const [maintenanceTo, setMaintenanceTo] = useState(() => addDays(initialFrom, 1));
+  const [maintenanceReason, setMaintenanceReason] = useState("");
   const pendingIdempotency = useRef<{ signature: string; key: string } | null>(null);
   const rangeKey = `${from}|${to}`;
   const previewNightCount = (Date.parse(`${to}T00:00:00.000Z`) - Date.parse(`${from}T00:00:00.000Z`)) / 86_400_000;
@@ -263,7 +270,7 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
         body: JSON.stringify(payload),
       });
       const body = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(body?.error || text.saveError);
+      if (!response.ok) throw new Error(body?.error === "ROOM_MAINTENANCE_CONFLICT" ? text.maintenanceConflict : body?.error || text.saveError);
       setDataRange(null);
       await load();
       if (idempotent) pendingIdempotency.current = null;
@@ -307,6 +314,18 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
     const payload = { roomTypeId, code: roomCode, floor: roomFloor || null, isOutOfService: roomUnavailable, ...(editingRoomId ? { isActive: roomActive } : {}) };
     const result = await mutate(`/rooms${editingRoomId ? `/${encodeURIComponent(editingRoomId)}` : ""}`, editingRoomId ? "PATCH" : "POST", payload);
     if (result) resetRoomForm();
+  }
+  async function createMaintenance(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!maintenanceRoomId || maintenanceTo <= maintenanceFrom || !maintenanceReason.trim()) {
+      setError(text.maintenanceInvalid);
+      return;
+    }
+    const result = await mutate("/maintenance", "POST", { roomId: maintenanceRoomId, from: maintenanceFrom, to: maintenanceTo, reason: maintenanceReason.trim(), idempotencyKey: idempotencyKey() });
+    if (result) setMaintenanceReason("");
+  }
+  async function releaseMaintenance(blockId: string) {
+    await mutate(`/maintenance/${encodeURIComponent(blockId)}/release`, "POST", {});
   }
   async function createRatePlan(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -404,13 +423,25 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
             <tbody>{(activeData?.roomBoard.dates ?? []).map((date) => <tr key={date} className="border-t"><th scope="row" className="sticky right-0 whitespace-nowrap bg-background p-2" dir="ltr">{date}</th>{(activeData?.roomBoard.rooms ?? []).map((room) => {
               const cell = room.nights.find((night) => night.date === date);
               const status = cell?.status ?? "VACANT";
-              const label = status === "OUT_OF_SERVICE_CONFLICT" ? text.outOfServiceConflict : status === "OUT_OF_SERVICE" ? text.unavailable : status === "OCCUPIED" ? text.occupied : status === "RESERVED" ? text.reserved : text.vacant;
-              const color = status === "OUT_OF_SERVICE_CONFLICT" ? "bg-destructive text-destructive-foreground" : status === "OUT_OF_SERVICE" || status === "OCCUPIED" ? "bg-muted text-muted-foreground" : status === "RESERVED" ? "bg-amber-100 text-amber-950" : "bg-emerald-100 text-emerald-950";
+              const label = status === "MAINTENANCE_CONFLICT" ? text.maintenanceConflict : status === "MAINTENANCE" ? text.maintenance : status === "OUT_OF_SERVICE_CONFLICT" ? text.outOfServiceConflict : status === "OUT_OF_SERVICE" ? text.unavailable : status === "OCCUPIED" ? text.occupied : status === "RESERVED" ? text.reserved : text.vacant;
+              const color = status === "MAINTENANCE_CONFLICT" || status === "OUT_OF_SERVICE_CONFLICT" ? "bg-destructive text-destructive-foreground" : status === "MAINTENANCE" ? "bg-violet-100 text-violet-950" : status === "OUT_OF_SERVICE" || status === "OCCUPIED" ? "bg-muted text-muted-foreground" : status === "RESERVED" ? "bg-amber-100 text-amber-950" : "bg-emerald-100 text-emerald-950";
               return <td key={room.id} className="p-2"><span className={`inline-flex rounded px-2 py-1 text-xs ${color}`} aria-label={`${room.code}: ${label}`} title={cell?.reference ? `${label} · ${cell.reference}` : label}>{label}</span></td>;
             })}</tr>)}</tbody>
           </table>
         </div>
         {!activeData?.roomBoard.rooms.length ? <p className="text-sm text-muted-foreground">{text.none}</p> : null}
+      </div>
+      <div className="space-y-3 rounded-lg border p-3">
+        <h3 className="font-medium">{text.maintenance}</h3>
+        {!activeData?.manualRoomManagementEnabled ? <p className="text-sm text-muted-foreground" role="status">{text.maintenanceGateClosed}</p> : <form onSubmit={createMaintenance} className="grid gap-3 sm:grid-cols-2">
+          <label className="space-y-1 text-sm"><span>{text.room}</span><select className="h-10 min-w-0 w-full rounded-md border bg-background px-3" value={maintenanceRoomId} onChange={(event) => setMaintenanceRoomId(event.target.value)} required><option value="">{text.room}</option>{(activeData?.roomTypes ?? []).flatMap((type) => type.rooms.filter((room) => room.isActive).map((room) => <option key={room.id} value={room.id}>{room.code} · {type.name}</option>))}</select></label>
+          <Field label={text.maintenanceFrom} value={maintenanceFrom} setValue={setMaintenanceFrom} type="date" required />
+          <Field label={text.maintenanceTo} value={maintenanceTo} setValue={setMaintenanceTo} type="date" required />
+          <Field label={text.maintenanceReason} value={maintenanceReason} setValue={setMaintenanceReason} required />
+          <Button type="submit" disabled={busy || !maintenanceRoomId || !maintenanceReason.trim() || maintenanceTo <= maintenanceFrom}>{text.createMaintenance}</Button>
+        </form>}
+        <ul className="space-y-2 text-sm">{(activeData?.maintenanceBlocks ?? []).map((block) => <li key={block.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2"><span>{block.roomCode} · <time dir="ltr">{block.from}</time> – <time dir="ltr">{block.to}</time> · {block.reason}</span>{activeData?.manualRoomManagementEnabled ? <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void releaseMaintenance(block.id)}>{text.releaseMaintenance}</Button> : null}</li>)}</ul>
+        {activeData?.maintenanceBlocks.length === 0 ? <p className="text-sm text-muted-foreground">{text.none}</p> : null}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">{(activeData?.roomTypes ?? []).map((type) => <div key={type.id} className="rounded-lg border p-3"><h3 className="font-medium">{type.name}</h3><ul className="mt-2 space-y-2 text-sm">{type.rooms.map((room) => <li key={room.id} className="flex items-center justify-between gap-2"><span>{room.code}{room.floor ? ` · ${room.floor}` : ""}{room.isOutOfService ? ` · ${text.unavailable}` : ""}</span><Button type="button" size="sm" variant="ghost" onClick={() => startRoomEdit(room, type.id)}>{text.edit}</Button></li>)}</ul>{type.rooms.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">{text.none}</p> : null}</div>)}</div>
       <form onSubmit={saveRoom} className="grid gap-3 sm:grid-cols-2">

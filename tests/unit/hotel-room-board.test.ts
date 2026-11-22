@@ -35,3 +35,15 @@ test("hotel room board surfaces an allocation conflict on an out-of-service room
 
   assert.deepEqual(board.rooms[0].nights, [{ date: "2027-08-01", status: "OUT_OF_SERVICE_CONFLICT", reference: "R-1" }]);
 });
+
+test("hotel room board marks dated maintenance and an allocated maintenance conflict", () => {
+  const board = buildHotelRoomBoard({
+    from: "2027-08-01",
+    to: "2027-08-04",
+    rooms: [{ id: "room-1", code: "201", roomTypeId: "type-a", isOutOfService: false }],
+    reservations: [{ reference: "R-1", status: "CONFIRMED", nights: [{ date: "2027-08-02", roomId: "room-1" }] }],
+    maintenanceBlocks: [{ roomId: "room-1", from: "2027-08-02", to: "2027-08-04" }],
+  });
+
+  assert.deepEqual(board.rooms[0].nights.map(({ status }) => status), ["VACANT", "MAINTENANCE_CONFLICT", "MAINTENANCE"]);
+});

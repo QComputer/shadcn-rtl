@@ -22,6 +22,7 @@ $containerId = $null
 $testFailed = $true
 $port = $null
 $script:taskExitCode = 0
+. (Join-Path $PSScriptRoot 'damoon-local-cleanup.ps1')
 
 function Assert-DiskSpace {
   $drive = Get-PSDrive -Name C
@@ -275,15 +276,7 @@ finally {
   } catch { [Console]::Error.WriteLine("Warning: could not fully stop the task-owned Next.js process: $($_.Exception.Message)") }
   try { Stop-TaskContainer $containerId } catch { [Console]::Error.WriteLine("Warning: could not stop the task-owned PostgreSQL container: $($_.Exception.Message)") }
   Remove-Item Env:POSTGRES_USER,Env:POSTGRES_PASSWORD,Env:POSTGRES_DB,Env:DAMOON_LOCAL_E2E_ENV_FILE -ErrorAction SilentlyContinue
-  try {
-    if (Test-Path -LiteralPath $tempRoot) {
-      $resolved = (Resolve-Path -LiteralPath $tempRoot).Path
-      $tempBase = (Resolve-Path -LiteralPath $env:TEMP).Path
-      if ($resolved.StartsWith($tempBase, [System.StringComparison]::OrdinalIgnoreCase) -and $resolved -eq (Join-Path $tempBase "damoon-local-e2e-$suffix")) {
-        Remove-Item -LiteralPath $resolved -Recurse -Force
-      }
-    }
-  } catch { [Console]::Error.WriteLine("Warning: task temp cleanup failed: $($_.Exception.Message)") }
+  $script:taskExitCode = Invoke-DamoonTempCleanup -TempRoot $tempRoot -TempBase $env:TEMP -Suffix $suffix -ExitCode $script:taskExitCode
   if ($testFailed) { Write-Output 'Task-owned cleanup was attempted.' }
 }
 

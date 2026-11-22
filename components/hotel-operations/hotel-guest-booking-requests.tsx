@@ -75,6 +75,8 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
   const [requests, setRequests] = useState<GuestRequest[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [filter, setFilter] = useState<RequestFilter>("ALL");
+  const [oldestFirst, setOldestFirst] = useState(false);
+  const [now, setNow] = useState(0);
   const [searchInput, setSearchInput] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -101,6 +103,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
       if (nextCursor) url.searchParams.set("cursor", nextCursor);
       if (statusFilter !== "ALL") url.searchParams.set("status", statusFilter);
       if (searchFilter) url.searchParams.set("search", searchFilter);
+      if (oldestFirst) url.searchParams.set("sort", "oldest");
       const response = await fetch(url, { credentials: "same-origin", cache: "no-store" });
       const data = await response.json().catch(() => null) as { requests?: GuestRequest[]; nextCursor?: string | null } | null;
       if (!response.ok || !Array.isArray(data?.requests)) throw new Error(text.error);
@@ -117,7 +120,9 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
       loadInFlight.current = false;
       if (loadId === latestLoadId.current) setLoading(false);
     }
-  }, [base, filter, text.error]);
+  }, [base, filter, oldestFirst, text.error]);
+
+  useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 60_000); setNow(Date.now()); return () => window.clearInterval(timer); }, []);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -247,6 +252,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
       </div>
     </header>
     <button type="button" className="rounded-md border border-amber-600 px-4 py-2 font-medium" aria-pressed={filter === "NEEDS_ACTION"} onClick={() => changeFilter(filter === "NEEDS_ACTION" ? "ALL" : "NEEDS_ACTION")}>{indicators.action}</button>
+    <button type="button" className="min-h-11 rounded-md border px-4 py-2 text-sm" aria-pressed={oldestFirst} disabled={Boolean(busyId) || requests.some((item) => messages[item.id] !== undefined && messages[item.id] !== (item.managerMessage ?? ""))} onClick={() => setOldestFirst((value) => !value)}>{language === "fa" ? "قدیمی‌ترین درخواست‌ها ابتدا" : language === "ar" ? "الطلبات الأقدم أولاً" : "Oldest requests first"}</button>
     <form className="flex flex-wrap gap-2" onSubmit={applySearch}>
       <label className="sr-only" htmlFor="hotel-request-search">{text.searchLabel}</label>
       <input id="hotel-request-search" className="min-w-56 flex-1 rounded-md border bg-background px-3 py-2 text-sm" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder={text.searchPlaceholder} minLength={2} maxLength={80} />
@@ -281,6 +287,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
             {!coordination && <div><dt className="font-medium">{text.availability}</dt><dd>{availabilityText} <button type="button" className="ms-2 underline" disabled={busyId === request.id} onClick={() => void recheckAvailability(request)}>{busyId === request.id ? text.checking : text.checkAvailability}</button></dd></div>}
           </dl>
           {request.guestNote && <p className="rounded-md bg-muted p-3 text-sm"><strong>{text.note}: </strong>{request.guestNote}</p>}
+          {needsAction(request.status) && <p className="text-sm font-medium">{language === "fa" ? "در انتظار پیگیری — زمان از دریافت" : language === "ar" ? "بانتظار المتابعة — الوقت منذ الاستلام" : "Awaiting attention — time since received"}: {(() => { if (!now) return "—"; const minutes = Math.max(0, Math.floor((now - new Date(request.createdAt).getTime()) / 60_000)); const unit = minutes >= 1440 ? "day" : minutes >= 60 ? "hour" : "minute"; const amount = unit === "day" ? Math.floor(minutes / 1440) : unit === "hour" ? Math.floor(minutes / 60) : minutes; return Number.isFinite(amount) ? new Intl.RelativeTimeFormat(language === "fa" ? "fa-IR" : language, { numeric: "always" }).format(-amount, unit) : "—"; })()}</p>}
           <label className="grid gap-1 text-sm"><span className="font-medium">{coordination ? (language === "fa" ? "یادداشت داخلی پذیرش (برای مهمان نمایش داده نمی‌شود)" : language === "ar" ? "ملاحظة داخلية للاستقبال (لا تظهر للضيف)" : "Internal reception note (not shown to guest)") : (language === "fa" ? "پیام پذیرش برای مهمان" : language === "ar" ? "رسالة الاستقبال إلى الضيف" : "Reception message to guest")}</span><textarea className="min-h-20 rounded-md border bg-background p-3" maxLength={500} disabled={busyId === request.id} value={messages[request.id] ?? request.managerMessage ?? ""} onChange={(event) => { const value = event.target.value; if (value === (request.managerMessage ?? "")) dirtyMessages.current.delete(request.id); else dirtyMessages.current.add(request.id); setMessages((current) => ({ ...current, [request.id]: value })); }} /></label>
           <div className="flex flex-wrap items-center gap-2"><button type="button" className="min-h-11 rounded-md border px-3 text-sm" disabled={Boolean(busyId) || (messages[request.id] ?? request.managerMessage ?? "") === (request.managerMessage ?? "")} onClick={() => void saveNote(request)}>{busyId === request.id ? noteText.saving : noteText.save}</button>{(noteFeedback[request.id] || (messages[request.id] ?? request.managerMessage ?? "") !== (request.managerMessage ?? "")) && <span role="status" className="text-sm">{noteFeedback[request.id] === "conflict" ? noteText.conflict : noteFeedback[request.id] === "error" ? noteText.error : (messages[request.id] ?? request.managerMessage ?? "") !== (request.managerMessage ?? "") ? noteText.unsaved : noteFeedback[request.id] === "saved" ? noteText.saved : ""}</span>}</div>
           {nextStatuses.length > 0 && <div className="flex flex-wrap items-center gap-2">

@@ -127,6 +127,22 @@ test("needs action search and pagination remain scoped to the property", async (
   assert.equal(queries[1]?.skip, 1);
 });
 
+test("oldest-first sorting keeps needs-action search and cursor scoped", async () => {
+  let query: { where: unknown; orderBy: unknown; cursor?: unknown } | undefined;
+  const db = {
+    organizationMember: { findFirst: async () => ({ id: "member" }) },
+    organizationCapability: { findFirst: async () => ({ id: "capability" }) },
+    hotelProperty: { findFirst: async () => ({ id: propertyId }) },
+    hotelGuestBookingRequest: { findMany: async (value: typeof query) => { query = value; return []; } },
+  } as unknown as PrismaClient;
+  const service = new HotelManagementService(db);
+  await service.listGuestBookingRequests(principal, { organizationId }, propertyId, { status: "NEEDS_ACTION", search: "Ali", cursor: "last", sort: "oldest" });
+  assert.deepEqual(query?.orderBy, [{ createdAt: "asc" }, { id: "asc" }]);
+  assert.deepEqual(query?.cursor, { id: "last" });
+  assert.deepEqual(query?.where, { organizationId, propertyId, status: { in: ["RECEIVED", "IN_REVIEW"] }, OR: [{ guestName: { contains: "Ali", mode: "insensitive" } }, { guestPhone: { contains: "Ali" } }] });
+  await assert.rejects(() => service.listGuestBookingRequests(principal, { organizationId }, propertyId, { sort: "invalid" }), HotelManagementValidationError);
+});
+
 test("note-only update preserves closed status and checks version and tenant scope", async () => {
   const current = { id: "req", status: "CLOSED", version: 4, managerMessage: "old", roomTypeSlug: null, ratePlanCode: null };
   let update: { where: unknown; data: { status: string; managerMessage: string | null } } | undefined;

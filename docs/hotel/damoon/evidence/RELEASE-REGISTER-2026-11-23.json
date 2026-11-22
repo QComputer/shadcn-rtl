@@ -7,9 +7,9 @@
   "runflare": {
     "projectId": "37622",
     "serviceId": "87432",
-    "reportedActiveVersion": "v124",
+    "reportedActiveVersion": "v126",
     "reportedActiveSourceSha": null,
-    "sourceShaConfidence": "LAST_VERIFIED_V124_AT_PR146; PR146_AND_PR147_DID_NOT_CHANGE_RUNTIME; PR148_RUNTIME_CHANGE_PENDING; PROVIDER_SOURCE_SHA_NOT_EXPOSED",
+    "sourceShaConfidence": "DASHBOARD_V126_ACTIVE_1_OF_1; GIT_MAIN_CONNECTED_AUTO_PULL_ON; UNRESOLVED_REQUEST_INITIALIZED_FOR_4090A726; PR148_NOT_MERGED; PROVIDER_SOURCE_SHA_NOT_EXPOSED",
     "healthRevision": null
   },
   "liveManifest": {
@@ -78,13 +78,13 @@
     {
       "pr": 148,
       "state": "OPEN_RUNTIME_CHANGE",
-      "production": "PENDING_CI_MERGE_AND_DEPLOYMENT"
+      "production": "CI_PASSED; MERGE_BLOCKED_PENDING_OLDER_RUNFLARE_REQUEST_RESOLUTION"
     }
   ],
   "sourceEvidence": {
-    "github": "GitHub PR/main endpoints at 2026-11-23; current main f617e007812613a57724264d810832a6f3b13158 after isolated-acceptance PR147; PR148 is open",
+    "github": "GitHub PR/main endpoints at 2026-11-23; current main f617e007812613a57724264d810832a6f3b13158 after isolated-acceptance PR147; PR148 is open with runtime correction, exact-head checks to be refreshed after evidence update",
     "liveAsset": "https://damoon-hotel.ir/damoon-front/release-manifest.json",
-    "provider": "Last authenticated Runflare dashboard evidence after PR146 merge: v124 active with one active pod, and deploylog contained no new row; PR147 changed no runtime files. PR148 has a runtime content change and has not been merged. Provider source SHA is not exposed. Production GET-only browser acceptance passed in FA/EN/AR at six viewport widths; request form not submitted."
+    "provider": "Authenticated dashboard 2026-11-23: v126 active with one healthy pod; Git connection QComputer/shadcn-rtl/main and auto-pull enabled; latest available commit f617e0078126. Deploy log still has unresolved Request Initialized selecting old SHA 4090a726f29360a4db4a3dc3249d76eb2aa0f572. No new deployment initiated. Basic/deep health HTTP 200; Damoon deep DB connectivity OK. Live content.js bytes match manifest SHA a9fc9dd0e94806b26a7108cc2a91b301464ffee8f957aadf1d61715ac67441a1; PR148 is not deployed. Provider does not expose active source SHA."
   },
   "featureGates": {
     "publicBooking": false,

@@ -353,6 +353,31 @@ export class HotelManagementService {
     return { requests: rows, nextCursor: rows.length === 50 ? rows[rows.length - 1]?.id ?? null : null };
   }
 
+  async listGuestBookingRequestActivity(principal: HotelManagementPrincipal, scope: HotelManagementScope, propertyId: string, requestId: string) {
+    await this.authorize(principal, scope);
+    const property = await this.assertProperty(scope, propertyId);
+    const request = await this.db.hotelGuestBookingRequest.findFirst({ where: { id: requestId, organizationId: scope.organizationId, propertyId }, select: { id: true } });
+    if (!request) throw new HotelManagementAuthorizationError("Booking request is outside the property scope");
+    const rows = await this.db.auditLog.findMany({
+      where: { organizationId: scope.organizationId, entityType: "HotelGuestBookingRequest", entityId: request.id, action: { in: ["UPDATE", "CHANGE_STATUS"] } },
+      select: { id: true, action: true, createdAt: true, previousValue: true, newValue: true },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 50,
+    });
+    const parseStatus = (value: unknown) => {
+      if (!value || typeof value !== "object" || Array.isArray(value) || !("status" in value)) return null;
+      const status = value.status;
+      return typeof status === "string" && (HOTEL_GUEST_REQUEST_STATUSES as readonly string[]).includes(status) ? status : null;
+    };
+    const events = rows.flatMap<{ id: string; type: "status" | "note"; createdAt: Date; from: string | null; to: string | null }>((row) => {
+      const before = parseStatus(row.previousValue);
+      const after = parseStatus(row.newValue);
+      if (row.action === "CHANGE_STATUS" && before && after && before !== after) return [{ id: row.id, type: "status" as const, createdAt: row.createdAt, from: before, to: after }];
+      if (row.action === "UPDATE" && before && after && before === after && row.newValue && typeof row.newValue === "object" && !Array.isArray(row.newValue) && "hasManagerMessage" in row.newValue) return [{ id: row.id, type: "note" as const, createdAt: row.createdAt, from: null, to: null }];
+      return [];
+    });
+    return { timezone: property.timezone, events: events.reverse(), limited: rows.length === 50 };
+  }
+
   async updateGuestBookingRequestStatus(principal: HotelManagementPrincipal, scope: HotelManagementScope, propertyId: string, requestId: string, input: { status?: HotelGuestBookingRequestStatus; expectedVersion: number; managerMessage?: string }) {
     await this.authorize(principal, scope);
     await this.assertProperty(scope, propertyId);

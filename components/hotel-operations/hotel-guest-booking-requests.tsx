@@ -50,6 +50,24 @@ const transitions: Record<RequestStatus, RequestStatus[]> = {
   CLOSED: [],
 };
 
+function RequestActivity({ base, request, language }: { base: string; request: GuestRequest; language: "fa" | "en" | "ar" }) {
+  const [history, setHistory] = useState<{ timezone: string; limited: boolean; events: { id: string; type: "status" | "note"; createdAt: string; from: RequestStatus | null; to: RequestStatus | null }[] } | null>(null);
+  const [state, setState] = useState<"idle" | "loading" | "error">("idle");
+  const text = language === "fa" ? { title: "سابقه فعالیت", loading: "در حال دریافت…", error: "دریافت سابقه ناموفق بود.", empty: "فعالیتی ثبت نشده است.", note: "یادداشت ویرایش شد", status: "تغییر وضعیت", limited: "حداکثر ۵۰ رویداد اخیر بررسی شد." } : language === "ar" ? { title: "سجل النشاط", loading: "جارٍ التحميل…", error: "تعذر تحميل السجل.", empty: "لا يوجد نشاط مسجل.", note: "تم تعديل الملاحظة", status: "تغيير الحالة", limited: "تم فحص أحدث ٥٠ حدثاً كحد أقصى." } : { title: "Activity history", loading: "Loading…", error: "Could not load activity.", empty: "No recorded activity.", note: "Note edited", status: "Status changed", limited: "At most the latest 50 events were checked." };
+  const open = async () => {
+    setState("loading");
+    try {
+      const response = await fetch(`${base}/${encodeURIComponent(request.id)}/activity`, { credentials: "same-origin", cache: "no-store" });
+      if (!response.ok) throw new Error();
+      setHistory(await response.json()); setState("idle");
+    } catch { setState("error"); }
+  };
+  return <details className="rounded-md border p-3 text-sm" onToggle={(event) => { if (event.currentTarget.open) void open(); }}>
+    <summary className="cursor-pointer font-medium">{text.title}</summary>
+    {state === "loading" ? <p role="status">{text.loading}</p> : state === "error" ? <p role="alert">{text.error}</p> : history && <div className="mt-2 space-y-2">{history.events.length === 0 ? <p>{text.empty}</p> : <ol className="space-y-2">{history.events.map((event) => <li key={event.id}><time dateTime={event.createdAt}>{new Intl.DateTimeFormat(language === "fa" ? "fa-IR" : language, { dateStyle: "medium", timeStyle: "short", timeZone: history.timezone }).format(new Date(event.createdAt))}</time>{" — "}{event.type === "note" ? text.note : <>{text.status}: {event.from && labels[language][statusLabelKey[event.from]]} → {event.to && labels[language][statusLabelKey[event.to]]}</>}</li>)}</ol>}{history.limited && <p>{text.limited}</p>}</div>}
+  </details>;
+}
+
 export function HotelGuestBookingRequests({ organizationId, propertyId, locale }: { organizationId: string; propertyId: string; locale: string }) {
   const language = locale === "en" || locale === "ar" ? locale : "fa";
   const text = labels[language];
@@ -273,6 +291,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
             </select>
             {busyId === request.id && <span className="text-sm text-muted-foreground" role="status">…</span>}
           </div>}
+          <RequestActivity key={`${request.id}-${request.version}`} base={base} request={request} language={language} />
         </article>;
       })}
     </div>

@@ -154,3 +154,25 @@ test("note-only update preserves closed status and checks version and tenant sco
   assert.equal(update?.data.managerMessage, "note");
   await assert.rejects(() => service.updateGuestBookingRequestStatus(principal, { organizationId }, propertyId, "req", { expectedVersion: 3, managerMessage: "later" }), /changed/);
 });
+
+test("activity is scoped, bounded, ordered and excludes audit payloads", async () => {
+  let query: { where: unknown; take: number } | undefined;
+  const db = {
+    organizationMember: { findFirst: async () => ({ id: "member" }) },
+    organizationCapability: { findFirst: async () => ({ id: "capability" }) },
+    hotelProperty: { findFirst: async () => ({ id: propertyId, timezone: "Asia/Tehran" }) },
+    hotelGuestBookingRequest: { findFirst: async ({ where }: { where: { propertyId: string } }) => where.propertyId === propertyId ? { id: "req" } : null },
+    auditLog: { findMany: async (value: { where: unknown; take: number }) => { query = value; return [
+      { id: "3", action: "UPDATE", createdAt: new Date("2026-01-03"), previousValue: { status: "CLOSED", hasManagerMessage: true }, newValue: { status: "CLOSED", hasManagerMessage: true, secret: "private" } },
+      { id: "2", action: "UPDATE", createdAt: new Date("2026-01-02"), previousValue: { availabilityHint: "UNKNOWN" }, newValue: { availabilityHint: "AVAILABLE" } },
+      { id: "1", action: "CHANGE_STATUS", createdAt: new Date("2026-01-01"), previousValue: { status: "RECEIVED" }, newValue: { status: "CLOSED" } },
+    ]; } },
+  } as unknown as PrismaClient;
+  const service = new HotelManagementService(db);
+  const result = await service.listGuestBookingRequestActivity(principal, { organizationId }, propertyId, "req");
+  assert.deepEqual(result.events.map((event) => event.type), ["status", "note"]);
+  assert.equal(JSON.stringify(result).includes("private"), false);
+  assert.equal(query?.take, 50);
+  assert.deepEqual(query?.where, { organizationId, entityType: "HotelGuestBookingRequest", entityId: "req", action: { in: ["UPDATE", "CHANGE_STATUS"] } });
+  await assert.rejects(() => service.listGuestBookingRequestActivity(principal, { organizationId }, "other-property", "req"));
+});

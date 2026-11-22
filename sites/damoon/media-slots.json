@@ -1,53 +1,78 @@
 {
   "schemaVersion": 1,
   "publicationStatus": "OWNER_INPUT_PENDING",
+  "responsiveReview": {
+    "format": "webp",
+    "quality": 82,
+    "widths": [320, 640, 960, 1280, 1920]
+  },
   "slots": {
     "logo": {
+      "placement": "Brand mark",
+      "sizes": "(max-width: 760px) 36vw, 120px",
       "currentAsset": null,
       "currentKind": "TEXT_MONOGRAM",
       "approval": "PENDING"
     },
     "hero": {
+      "placement": "Homepage hero",
+      "sizes": "(max-width: 760px) 100vw, (max-width: 1400px) 64vw, 896px",
       "currentAsset": "hero-reference-v2.png",
       "currentKind": "CONCEPT",
       "approval": "PENDING"
     },
     "architecture": {
+      "placement": "Architecture and property context",
+      "sizes": "(max-width: 680px) 100vw, (max-width: 1040px) 50vw, 33vw",
       "currentAsset": "architecture-concept.webp",
       "currentKind": "CONCEPT",
       "approval": "PENDING"
     },
     "lobby": {
+      "placement": "Lobby and reception area",
+      "sizes": "(max-width: 680px) 100vw, (max-width: 1040px) 50vw, 33vw",
       "currentAsset": "lobby-concept.webp",
       "currentKind": "CONCEPT",
       "approval": "PENDING"
     },
     "single": {
+      "placement": "Single room category",
+      "sizes": "(max-width: 680px) 100vw, (max-width: 1040px) 50vw, 33vw",
       "currentAsset": "room-concept-1.webp",
       "currentKind": "CONCEPT",
       "approval": "PENDING"
     },
     "double": {
+      "placement": "Double room category",
+      "sizes": "(max-width: 680px) 100vw, (max-width: 1040px) 50vw, 33vw",
       "currentAsset": "room-concept-2.webp",
       "currentKind": "CONCEPT",
       "approval": "PENDING"
     },
     "suite": {
+      "placement": "Suite category",
+      "sizes": "(max-width: 680px) 100vw, (max-width: 1040px) 50vw, 33vw",
       "currentAsset": "room-concept-3.webp",
       "currentKind": "CONCEPT",
       "approval": "PENDING"
     },
     "gallery": {
+      "placement": "General hotel gallery",
+      "sizes": "(max-width: 680px) 100vw, (max-width: 1040px) 50vw, 33vw",
       "currentAsset": "gallery-concept-1.webp",
       "currentKind": "CONCEPT",
       "approval": "PENDING"
     },
     "restaurant": {
+      "placement": "Dining information illustration; not an operating restaurant",
+      "sizes": "(max-width: 680px) 100vw, (max-width: 1040px) 50vw, 33vw",
       "currentAsset": "gallery-concept-2.webp",
       "currentKind": "CONCEPT",
       "approval": "PENDING"
     },
     "cafe": {
+      "placement": "In-room refreshments information illustration",
+      "sizes": "(max-width: 680px) 100vw, (max-width: 1040px) 50vw, 33vw",
       "currentAsset": "gallery-concept-3.webp",
       "currentKind": "CONCEPT",
       "approval": "PENDING"

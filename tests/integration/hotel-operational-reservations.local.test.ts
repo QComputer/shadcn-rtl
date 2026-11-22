@@ -415,6 +415,7 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     assert.ok(raceHolds.length <= (maintenanceWon ? 2 : 3), "room-type locking serializes maintenance against concurrent holds without exceeding post-maintenance capacity");
     for (const [index, entry] of raceOutcomes.entries()) if (entry.status === "fulfilled" && entry.value.isClaimed) await repository.releaseHold({ organizationId: a.id }, `capacity-race-hold-${token}-${index}`, now());
     if (maintenanceWon && maintenanceOutcome?.status === "fulfilled") await management.releaseRoomMaintenanceBlock({ userId: staff.id, role: "ADMIN", organizationId: a.id }, { organizationId: a.id }, pa.id, maintenanceOutcome.value.id);
+    if (originalManual === undefined) delete process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED; else process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED = originalManual;
     const [roomOne, roomTwo] = receptionRooms;
     const makeConfirmedReservation = async (suffix: string) => {
       const reservationQuote = await quote(guestA, a.id, pa.id, roomA.id, rateA.id, `quote-${token}-${suffix}`);

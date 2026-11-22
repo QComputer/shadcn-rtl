@@ -801,6 +801,14 @@ test('inventory-free request reaches reception and tracks without creating a boo
     await manager.page.clock.fastForward(60_001);
     expect(autoRefreshCount).toBe(0);
     await expect(card.locator('textarea')).toHaveValue('Internal test note');
+    const noteSaved = manager.page.waitForResponse(res => new URL(res.url()).pathname.endsWith(`/${entry.id}`) && res.request().method() === 'PATCH');
+    await card.getByRole('button', { name: 'حفظ الملاحظة' }).click();
+    expect((await noteSaved).status()).toBe(200);
+    await expect(card.getByText('تم الحفظ', { exact: true })).toBeVisible();
+    const savedNote = await db.hotelGuestBookingRequest.findUniqueOrThrow({ where: { id: entry.id }, select: { managerMessage: true, status: true } });
+    expect(savedNote).toEqual({ managerMessage: 'Internal test note', status: 'RECEIVED' });
+    const trackingAfterNote = await postStatus(page, received.reference);
+    expect(await trackingAfterNote.json()).not.toHaveProperty('managerMessage');
     const updated = manager.page.waitForResponse(res => res.url().endsWith(`/booking-requests/${entry.id}`) && res.request().method() === 'PATCH');
     await card.locator('select').selectOption('IN_REVIEW');
     expect((await updated).status()).toBe(200);

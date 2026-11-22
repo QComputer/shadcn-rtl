@@ -353,35 +353,36 @@ export class HotelManagementService {
     return { requests: rows, nextCursor: rows.length === 50 ? rows[rows.length - 1]?.id ?? null : null };
   }
 
-  async updateGuestBookingRequestStatus(principal: HotelManagementPrincipal, scope: HotelManagementScope, propertyId: string, requestId: string, input: { status: HotelGuestBookingRequestStatus; expectedVersion: number; managerMessage?: string }) {
+  async updateGuestBookingRequestStatus(principal: HotelManagementPrincipal, scope: HotelManagementScope, propertyId: string, requestId: string, input: { status?: HotelGuestBookingRequestStatus; expectedVersion: number; managerMessage?: string }) {
     await this.authorize(principal, scope);
     await this.assertProperty(scope, propertyId);
     return this.db.$transaction(async (tx) => {
       const current = await tx.hotelGuestBookingRequest.findFirst({ where: { id: requestId, organizationId: scope.organizationId, propertyId } });
       if (!current) throw new HotelManagementAuthorizationError("Booking request is outside the property scope");
       if (current.version !== input.expectedVersion) throw new HotelManagementConflictError("Booking request changed; reload before updating");
-      if (!canTransitionHotelGuestBookingRequest(current.status as HotelGuestBookingRequestStatus, input.status)) {
+      if (input.status !== undefined && !canTransitionHotelGuestBookingRequest(current.status as HotelGuestBookingRequestStatus, input.status)) {
         throw new HotelManagementValidationError("Invalid booking request status transition");
       }
       if (current.roomTypeSlug === null && current.ratePlanCode === null &&
           (input.status === "OPTION_OFFERED" || input.status === "UNAVAILABLE")) {
         throw new HotelManagementValidationError("Coordination requests support review, decline and closure");
       }
-      const managerMessage = input.managerMessage?.trim() || null;
-      if (input.status === "OPTION_OFFERED" && !managerMessage) throw new HotelManagementValidationError("Add a message explaining the option or requested changes");
+      const managerMessage = input.managerMessage === undefined ? current.managerMessage : input.managerMessage.trim() || null;
+      const nextStatus = input.status ?? current.status;
+      if (nextStatus === "OPTION_OFFERED" && !managerMessage) throw new HotelManagementValidationError("Add a message explaining the option or requested changes");
       const changed = await tx.hotelGuestBookingRequest.updateMany({
         where: { id: requestId, organizationId: scope.organizationId, propertyId, version: input.expectedVersion, status: current.status },
-        data: { status: input.status, managerMessage, version: { increment: 1 } },
+        data: { status: nextStatus, managerMessage, version: { increment: 1 } },
       });
       if (changed.count !== 1) throw new HotelManagementConflictError("Booking request changed concurrently");
       await tx.auditLog.create({ data: {
-        action: "CHANGE_STATUS",
+        action: input.status === undefined ? "UPDATE" : "CHANGE_STATUS",
         entityType: "HotelGuestBookingRequest",
         entityId: current.id,
         organizationId: scope.organizationId,
         userId: principal.userId,
         previousValue: { status: current.status, version: current.version, hasManagerMessage: Boolean(current.managerMessage) },
-        newValue: { status: input.status, version: current.version + 1, hasManagerMessage: Boolean(managerMessage) },
+        newValue: { status: nextStatus, version: current.version + 1, hasManagerMessage: Boolean(managerMessage) },
       } });
       return tx.hotelGuestBookingRequest.findFirstOrThrow({
         where: { id: requestId, organizationId: scope.organizationId, propertyId },

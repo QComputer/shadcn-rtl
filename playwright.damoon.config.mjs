@@ -7,7 +7,7 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: "line",
-  outputDir: ".tmp/damoon-playwright-results",
+  outputDir: process.env.DAMOON_E2E_OUTPUT_DIR || ".tmp/damoon-playwright-results",
   use: {
     baseURL: process.env.DAMOON_STANDALONE_URL,
     headless: true,

@@ -1,5 +1,7 @@
 import { randomBytes } from "node:crypto";
-import { appendFileSync } from "node:fs";
+import { appendFileSync, lstatSync, writeFileSync } from "node:fs";
+import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { approveHotelPublication } from "@/lib/hotel/services/hotel-publication.service";
@@ -24,9 +26,33 @@ function failClosedTarget() {
   if (!/^damoon_[a-f0-9]{12,32}$/i.test(databaseName)) {
     throw new Error("E2E database name must be damoon_<unique hex run id>");
   }
-  if (!process.env.GITHUB_ENV) throw new Error("GITHUB_ENV is required so credentials and fixture ids remain step-scoped");
-  if (parsed.port !== "5432") throw new Error("E2E PostgreSQL must use the isolated service port 5432");
-  return { databaseName, databaseUser: decodeURIComponent(parsed.username), suffix: databaseName.slice("damoon_".length) };
+  if (process.env.DAMOON_CI_DATABASE_NAME !== databaseName) throw new Error("DAMOON_CI_DATABASE_NAME must identify the same isolated database");
+  const localMode = process.env.DAMOON_LOCAL_E2E === "1";
+  const expectedPort = localMode ? process.env.LOCAL_PRISMA_EXPECTED_PORT : "5432";
+  if (!expectedPort || parsed.port !== expectedPort) throw new Error("E2E PostgreSQL port must match the explicitly configured test port");
+  if (parsed.searchParams.size !== 1 || parsed.searchParams.get("schema") !== "public" || parsed.hash) throw new Error("E2E database URL must select only the public schema");
+  const suffix = databaseName.slice("damoon_".length);
+  const databaseUser = decodeURIComponent(parsed.username);
+  let localEnvFile;
+  if (localMode) {
+    if (parsed.hostname !== "127.0.0.1" || expectedPort === "5432" || databaseUser !== `damoon_test_${suffix}` || decodeURIComponent(parsed.password) === "postgres") {
+      throw new Error("Local acceptance requires a dedicated role and a non-default loopback port");
+    }
+    localEnvFile = resolve(process.env.DAMOON_LOCAL_E2E_ENV_FILE || "");
+    const tempRoot = resolve(tmpdir());
+    const relativePath = relative(tempRoot, localEnvFile);
+    const runDirectory = basename(dirname(localEnvFile));
+    if (isAbsolute(relativePath) || relativePath === ".." || relativePath.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`) || basename(localEnvFile) !== "fixture.env" || !new RegExp(`^damoon-local-e2e-${suffix}$`, "i").test(runDirectory)) {
+      throw new Error("Local fixture environment output must be fixture.env inside its unique OS temporary directory");
+    }
+    if (lstatSync(dirname(localEnvFile)).isSymbolicLink()) throw new Error("Local fixture output directory must not be a symbolic link");
+  } else {
+    if (!process.env.GITHUB_ENV) throw new Error("GITHUB_ENV is required in CI so fixture credentials remain step-scoped");
+    if (process.env.LOCAL_PRISMA_EXPECTED_PORT && process.env.LOCAL_PRISMA_EXPECTED_PORT !== "5432") {
+      throw new Error("Non-default PostgreSQL ports require the explicit DAMOON_LOCAL_E2E=1 local-test opt-in");
+    }
+  }
+  return { databaseName, databaseUser, suffix, localMode, localEnvFile };
 }
 
 function isoDay(offset: number) {
@@ -200,7 +226,8 @@ async function main() {
       console.log(`::add-mask::${values[key]}`);
     }
     const output = Object.entries(values).map(([key, value]) => `${key}=${value}`).join("\n") + "\n";
-    appendFileSync(process.env.GITHUB_ENV!, output, { encoding: "utf8" });
+    if (target.localMode) writeFileSync(target.localEnvFile!, output, { encoding: "utf8", flag: "wx" });
+    else appendFileSync(process.env.GITHUB_ENV!, output, { encoding: "utf8" });
     console.log(`Seeded two synthetic Hotel tenants in ${target.databaseName}; only tenant A has approved availability.`);
   } finally {
     await prisma.$disconnect();

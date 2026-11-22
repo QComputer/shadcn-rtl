@@ -6,10 +6,13 @@ const failClosed = () => {
   if (env.NODE_ENV !== "test") throw new Error("NODE_ENV must be 'test'");
   if (env.DAMOON_E2E_ENABLED !== "1") throw new Error("DAMOON_E2E_ENABLED must be '1'");
   const dbUrl = new URL(env.DATABASE_URL || "");
+  const localOptIn = env.DAMOON_LOCAL_E2E === "1";
+  const expectedPort = localOptIn ? env.LOCAL_PRISMA_EXPECTED_PORT : "5432";
+  const databaseName = decodeURIComponent(dbUrl.pathname.slice(1));
   if (env.DATABASE_URL !== env.DIRECT_URL) {
     throw new Error("DATABASE_URL must equal DIRECT_URL");
   }
-  if (!/^\/damoon_[a-f0-9]{16}$/i.test(dbUrl.pathname) || !["127.0.0.1", "::1", "localhost"].includes(dbUrl.hostname) || dbUrl.port !== "5432" || dbUrl.searchParams.get("schema") !== "public") {
+  if (dbUrl.protocol !== "postgresql:" || !/^damoon_[a-f0-9]{16}$/i.test(databaseName) || !["127.0.0.1", "::1", "localhost"].includes(dbUrl.hostname) || !/^\d{2,5}$/.test(expectedPort || "") || dbUrl.port !== expectedPort || dbUrl.searchParams.size !== 1 || dbUrl.searchParams.get("schema") !== "public" || (localOptIn && (dbUrl.hostname !== "127.0.0.1" || dbUrl.username !== `damoon_test_${databaseName.slice(7)}` || dbUrl.password === "postgres" || env.DAMOON_CI_DATABASE_NAME !== databaseName))) {
     throw new Error("Test DB must have damoon_ prefix and loopback host");
   }
   const required = [

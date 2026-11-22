@@ -660,6 +660,18 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
       expect(oldestRows).toHaveLength(51);
       expect(new Set(oldestRows.map(row => row.id)).size).toBe(51);
       expect(oldestRows.map(row => `${row.createdAt}:${row.id}`)).toEqual([...oldestRows.map(row => `${row.createdAt}:${row.id}`)].sort());
+      await managerPage.goto(`${appOrigin}/en/dashboard/hotel-operations/${organizationId}/${propertyId}`);
+      await managerPage.locator('#hotel-request-search').fill(name);
+      await managerPage.getByRole('button', { name: 'Search', exact: true }).click();
+      const inboxSection = managerPage.locator('section[aria-labelledby="hotel-stay-requests-title"]');
+      const firstCard = inboxSection.locator('article').filter({ hasText: name }).first();
+      await expect(firstCard).toBeVisible();
+      await firstCard.locator('textarea').fill('pagination draft');
+      await inboxSection.getByRole('button', { name: 'Load older requests' }).click();
+      await expect(inboxSection.getByText('You have an unsaved note. Save it or restore its previous value before continuing.', { exact: true })).toBeVisible();
+      await expect(firstCard.locator('textarea')).toHaveValue('pagination draft');
+      await firstCard.locator('textarea').fill('');
+      await inboxSection.getByRole('button', { name: 'Continue editing' }).click();
     } finally {
       await db.hotelGuestBookingRequest.deleteMany({ where: { organizationId, propertyId, guestName: name } });
       await db.$disconnect();

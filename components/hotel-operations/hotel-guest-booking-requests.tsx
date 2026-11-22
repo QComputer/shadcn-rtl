@@ -92,6 +92,12 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
   const loadInFlight = useRef(false);
   const loadedOlderPages = useRef(false);
   const dirtyMessages = useRef(new Set<string>());
+  const [draftWarning, setDraftWarning] = useState(false);
+  const guardNavigation = () => {
+    if (dirtyMessages.current.size === 0) return true;
+    setDraftWarning(true);
+    return false;
+  };
 
   const load = useCallback(async (nextCursor?: string | null, append = false, statusFilter: RequestFilter = filter, searchFilter = selectedSearch.current) => {
     loadInFlight.current = true;
@@ -107,7 +113,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
       const response = await fetch(url, { credentials: "same-origin", cache: "no-store" });
       const data = await response.json().catch(() => null) as { requests?: GuestRequest[]; nextCursor?: string | null } | null;
       if (!response.ok || !Array.isArray(data?.requests)) throw new Error(text.error);
-      if (loadId !== latestLoadId.current) return;
+      if (loadId !== latestLoadId.current || dirtyMessages.current.size > 0) return;
       setRequests((current) => {
         if (!append) return data.requests!;
         loadedOlderPages.current = true;
@@ -135,6 +141,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
   }, [busyId, load]);
 
   const update = async (request: GuestRequest, status: RequestStatus) => {
+    if ([...dirtyMessages.current].some((id) => id !== request.id)) { setDraftWarning(true); return; }
     const filterAtStart = selectedFilter.current;
     setBusyId(request.id); setError("");
     try {
@@ -178,12 +185,13 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
   };
 
   const recheckAvailability = async (request: GuestRequest) => {
+    if (!guardNavigation()) return;
     setBusyId(request.id); setError("");
     try {
       const response = await fetch(`${base}/${encodeURIComponent(request.id)}/availability`, { method: "POST", credentials: "same-origin" });
       const result = await response.json().catch(() => null) as { availabilityHint?: GuestRequest["availabilityHint"]; version?: number } | null;
       if (!response.ok || !result?.availabilityHint || typeof result.version !== "number") throw new Error(text.refreshAvailabilityError);
-      setRequests((current) => current.map((item) => item.id === request.id ? { ...item, availabilityHint: result.availabilityHint!, version: result.version! } : item));
+      if (!dirtyMessages.current.has(request.id)) setRequests((current) => current.map((item) => item.id === request.id ? { ...item, availabilityHint: result.availabilityHint!, version: result.version! } : item));
     } catch { setError(text.refreshAvailabilityError); }
     finally { setBusyId(null); }
   };
@@ -209,6 +217,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
       ? { scope: "الطلبات المحمّلة", fresh: "جديد ولم يُراجع", action: "يتطلب إجراء الاستقبال" }
       : { scope: "Loaded requests", fresh: "New and unreviewed", action: "Reception action needed" };
   const changeFilter = (nextFilter: RequestFilter) => {
+    if (!guardNavigation()) return;
     if (nextFilter === selectedFilter.current) return;
     selectedFilter.current = nextFilter; loadedOlderPages.current = false; latestLoadId.current += 1;
     setCursor(null); setRequests([]); setFilter(nextFilter);
@@ -220,6 +229,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
   const copyLabels = language === "fa" ? { copy: "کپی شماره", copied: "شماره کپی شد", failed: "کپی انجام نشد؛ شماره را دستی انتخاب کنید" } : language === "ar" ? { copy: "نسخ الرقم", copied: "تم نسخ الرقم", failed: "تعذر النسخ؛ حدد الرقم يدوياً" } : { copy: "Copy number", copied: "Number copied", failed: "Could not copy; select the number manually" };
   const applySearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!guardNavigation()) return;
     const nextSearch = searchInput.trim();
     selectedSearch.current = nextSearch;
     setAppliedSearch(nextSearch);
@@ -229,6 +239,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
     void load(null, false, selectedFilter.current, nextSearch);
   };
   const clearSearch = () => {
+    if (!guardNavigation()) return;
     setSearchInput("");
     selectedSearch.current = "";
     setAppliedSearch("");
@@ -248,11 +259,11 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
           <option value="NEEDS_ACTION">{indicators.action}</option>
           {statuses.map((status) => <option key={status} value={status}>{text[statusLabelKey[status]]}</option>)}
         </select>
-        <button type="button" className="rounded-md border px-3 py-2 text-sm" onClick={() => void load()} disabled={loading}>{text.refresh}</button>
+        <button type="button" className="rounded-md border px-3 py-2 text-sm" onClick={() => { if (guardNavigation()) void load(); }} disabled={loading}>{text.refresh}</button>
       </div>
     </header>
     <button type="button" className="rounded-md border border-amber-600 px-4 py-2 font-medium" aria-pressed={filter === "NEEDS_ACTION"} onClick={() => changeFilter(filter === "NEEDS_ACTION" ? "ALL" : "NEEDS_ACTION")}>{indicators.action}</button>
-    <button type="button" className="min-h-11 rounded-md border px-4 py-2 text-sm" aria-pressed={oldestFirst} disabled={Boolean(busyId) || requests.some((item) => messages[item.id] !== undefined && messages[item.id] !== (item.managerMessage ?? ""))} onClick={() => setOldestFirst((value) => !value)}>{language === "fa" ? "قدیمی‌ترین درخواست‌ها ابتدا" : language === "ar" ? "الطلبات الأقدم أولاً" : "Oldest requests first"}</button>
+    <button type="button" className="min-h-11 rounded-md border px-4 py-2 text-sm" aria-pressed={oldestFirst} disabled={Boolean(busyId)} onClick={() => { if (guardNavigation()) setOldestFirst((value) => !value); }}>{language === "fa" ? "قدیمی‌ترین درخواست‌ها ابتدا" : language === "ar" ? "الطلبات الأقدم أولاً" : "Oldest requests first"}</button>
     <form className="flex flex-wrap gap-2" onSubmit={applySearch}>
       <label className="sr-only" htmlFor="hotel-request-search">{text.searchLabel}</label>
       <input id="hotel-request-search" className="min-w-56 flex-1 rounded-md border bg-background px-3 py-2 text-sm" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder={text.searchPlaceholder} minLength={2} maxLength={80} />
@@ -261,7 +272,8 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
     </form>
     <p className="text-xs text-muted-foreground">{text.autoRefresh}</p>
     <div className="flex flex-wrap gap-2 text-sm" aria-live="polite"><span>{indicators.scope}:</span><span>{indicators.fresh}: {newCount}</span><span>{indicators.action}: {actionCount}</span></div>
-    {error && <p className="rounded-md border border-destructive/40 p-3 text-sm text-destructive" role="alert">{error} <button className="underline" onClick={() => void load()}>{text.retry}</button></p>}
+    {draftWarning && <div className="rounded-md border border-amber-600 p-3 text-sm" role="alert"><p>{language === "fa" ? "یادداشت ذخیره‌نشده دارید. برای ادامه، آن را ذخیره کنید یا به مقدار قبلی برگردانید." : language === "ar" ? "لديك ملاحظة غير محفوظة. احفظها أو أعدها إلى قيمتها السابقة للمتابعة." : "You have an unsaved note. Save it or restore its previous value before continuing."}</p><button type="button" className="mt-2 min-h-11 underline" onClick={() => setDraftWarning(false)}>{language === "fa" ? "ادامه ویرایش" : language === "ar" ? "متابعة التحرير" : "Continue editing"}</button></div>}
+    {error && <p className="rounded-md border border-destructive/40 p-3 text-sm text-destructive" role="alert">{error} <button className="underline" onClick={() => { if (guardNavigation()) void load(); }}>{text.retry}</button></p>}
     {loading && <p className="text-sm text-muted-foreground" role="status">{text.loading}</p>}
     {!loading && !shown.length && !error && <p className="rounded-lg border p-4 text-sm text-muted-foreground">{filter === "ALL" ? text.empty : text.emptyFiltered}</p>}
     <div className="grid gap-3">
@@ -302,6 +314,6 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
         </article>;
       })}
     </div>
-    {cursor && <button type="button" className="w-full rounded-md border px-3 py-2 text-sm" disabled={loading} onClick={() => void load(cursor, true)}>{text.more}</button>}
+    {cursor && <button type="button" className="w-full rounded-md border px-3 py-2 text-sm" disabled={loading} onClick={() => { if (guardNavigation()) void load(cursor, true); }}>{text.more}</button>}
   </section>;
 }

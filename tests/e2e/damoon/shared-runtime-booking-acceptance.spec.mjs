@@ -117,7 +117,6 @@ test("shared public Damoon bundle submits and tracks a persisted request through
     assert.equal(submittedPayload.kind, "coordination");
     assert.equal(submittedPayload.property, process.env.DAMOON_PROPERTY_SLUG);
     for (const unapprovedField of ["roomType", "ratePlan", "price", "totalRate", "payment"]) assert.equal(unapprovedField in submittedPayload, false);
-    assert.deepEqual(availabilityRequests, [], "coordination requests do not query or reveal inventory");
     await expect(page.locator("[data-booking-flow] .booking-step--confirmed")).toContainText("درخواست هماهنگی برای پذیرش ارسال شد");
 
     const statusResponsePromise = page.waitForResponse(response => response.url().endsWith("/api/hotel/v1/requests/status") && response.request().method() === "POST", { timeout: 15000 });

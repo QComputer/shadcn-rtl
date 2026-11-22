@@ -150,8 +150,23 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
     assert.equal(concurrentRows.length, 4);
     assert.equal(await db.hotelInventoryAdjustment.count({ where: { organizationId: organizationA.id, roomTypeId: roomType.id, date: { gte: date("2027-08-10"), lt: date("2027-08-14") } } }), 4, "only created rows receive initialization audit entries");
 
+    await db.hotelReservation.create({ data: {
+      organizationId: organizationA.id, propertyId: property.id, roomTypeId: roomType.id, ratePlanId: ratePlan.id,
+      reference: `BOARD-${suffix}`, status: "CONFIRMED", checkIn: date("2027-08-04"), checkOut: date("2027-08-05"),
+      totalAmount: BigInt(130000), cancellationPolicyKey: "synthetic", cancellationPolicySnapshot: { key: "synthetic" },
+      idempotencyKey: `hotel-ops-board-assigned-${suffix}`,
+      nights: { create: { date: date("2027-08-04"), roomTypeId: roomType.id, roomId: physicalRoom.id, rate: BigInt(130000) } },
+    } });
+    await db.hotelReservation.create({ data: {
+      organizationId: organizationA.id, propertyId: property.id, roomTypeId: roomType.id, ratePlanId: ratePlan.id,
+      reference: `UNASSIGNED-${suffix}`, status: "CHECKED_IN", checkIn: date("2027-08-05"), checkOut: date("2027-08-06"),
+      totalAmount: BigInt(130000), cancellationPolicyKey: "synthetic", cancellationPolicySnapshot: { key: "synthetic" },
+      idempotencyKey: `hotel-ops-board-unassigned-${suffix}`,
+      nights: { create: { date: date("2027-08-05"), roomTypeId: roomType.id, roomId: null, rate: BigInt(130000) } },
+    } });
+
     const operations = await service.getOperations(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, property.id, days("2027-08-01", "2027-08-15"));
-    assert.deepEqual(Object.keys(operations).sort(), ["cancellationPolicies", "inventory", "property", "range", "ratePlans", "roomTypes"]);
+    assert.deepEqual(Object.keys(operations).sort(), ["cancellationPolicies", "inventory", "property", "range", "ratePlans", "roomBoard", "roomTypes"]);
     assert.deepEqual(operations.range, { from: "2027-08-01", to: "2027-08-15", nights: 14 });
     assert.equal(operations.property.timezone, "Asia/Tehran");
     const resultRoomType = operations.roomTypes.find((row) => row.id === roomType.id);
@@ -163,8 +178,11 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
     assert.equal(committedNight?.available, 1, "closed-to-arrival/departure stay-through flags do not erase remaining capacity");
     assert.equal(committedNight?.closedToArrival, true);
     assert.equal(committedNight?.closedToDeparture, true);
+    const boardRoom = operations.roomBoard.rooms.find((room) => room.id === physicalRoom.id);
+    assert.deepEqual(boardRoom?.nights.find((night) => night.date === "2027-08-04"), { date: "2027-08-04", status: "RESERVED", reference: `BOARD-${suffix}` });
+    assert.equal(operations.roomBoard.unassignedReservationNights, 1);
     const serialized = JSON.stringify(operations);
-    assert.doesNotMatch(serialized, /email|phone|guest|reservation|payment|password|token/i, "read model excludes PII and reservation/payment details");
+    assert.doesNotMatch(serialized, /email|phone|guest|payment|password|token/i, "read model excludes PII and payment details");
 
     await assert.rejects(() => service.getOperations(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationB.id }, foreignProperty.id, days("2027-08-01", "2027-08-02")), HotelManagementAuthorizationError, "cross-tenant scope is denied");
     await assert.rejects(() => service.getOperations(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, foreignProperty.id, days("2027-08-01", "2027-08-02")), HotelManagementAuthorizationError, "foreign property in an owned organization scope is denied");
@@ -178,6 +196,7 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
   } finally {
     try {
       if (organizationIds.length) {
+        await db.hotelReservation.deleteMany({ where: { organizationId: { in: organizationIds } } });
         await db.hotelInventoryIdempotency.deleteMany({ where: { organizationId: { in: organizationIds }, operationScope: "HOTEL_INVENTORY_INITIALIZE" } });
         await db.hotelInventoryAdjustment.deleteMany({ where: { organizationId: { in: organizationIds } } });
         await db.hotelInventory.deleteMany({ where: { organizationId: { in: organizationIds } } });

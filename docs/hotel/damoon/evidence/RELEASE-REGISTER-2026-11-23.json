@@ -108,5 +108,15 @@
     "requestOnly": "PASSED; no availability/price/hold/confirmed reservation/payment operation exposed",
     "productionGuestSubmission": "NOT_PERFORMED"
   },
+  "isolatedRequestToReceptionAcceptance": {
+    "status": "PASSED_SYNTHETIC_POSTGRES_AND_BROWSER",
+    "workflowRun": "45078447100",
+    "workflowUrl": "https://github.com/QComputer/shadcn-rtl/actions/runs/45078447100",
+    "sourceSha": "89e80a6e55b69c1e938674a344d60f46ed327913",
+    "database": "workflow-owned disposable PostgreSQL 17; uniquely named DB; cleanup passed",
+    "scenarios": ["guest request without inventory/reservation/payment", "idempotency replay", "tracking in fa/en/ar", "manager reception review/update", "unauthorized access denied", "foreign tenant denied", "host/origin spoofing denied", "optimistic concurrency"],
+    "productionWrites": "NONE",
+    "remainingAcceptance": "Owner/reception operational sign-off and separate data authorization for any live guest record; R09 privacy-retention review"
+  },
   "caveat": "Provider dashboard confirms v124 remains active after the docs-only PR146 merge and the public CSS/JS hashes match the PR145 runtime source, but the provider does not expose the deployed source SHA in this view and health revision is null. Browser acceptance was read-only; it does not accept the operational POST-to-reception workflow or create Production guest data."
 }

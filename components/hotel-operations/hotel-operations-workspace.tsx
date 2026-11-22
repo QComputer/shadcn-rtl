@@ -29,7 +29,7 @@ type RoomBoard = {
 };
 type MaintenanceBlock = { id: string; roomId: string; roomCode: string; from: string; to: string; reason: string };
 type OperationsData = {
-  property: { id: string; name: string; slug: string; timezone: string; currency: string };
+  property: { id: string; name: string; slug: string; timezone: string; currency: string; checkInTime: string; checkOutTime: string };
   range: { from: string; to: string; nights: number };
   roomTypes: RoomType[];
   ratePlans: RatePlan[];
@@ -58,6 +58,11 @@ type AvailabilityPreview = {
 const labels = {
   fa: {
     title: "عملیات هتل",
+    propertyHours: "ساعت ورود و خروج",
+    checkInTime: "ساعت ورود",
+    checkOutTime: "ساعت خروج",
+    propertyLocalTime: "بر اساس ساعت محلی هتل",
+    savePropertyHours: "ذخیره ساعت‌ها",
     loading: "در حال بارگذاری…", loadError: "اطلاعات عملیات بارگذاری نشد.", saveError: "ذخیره انجام نشد.",
     roomTypes: "انواع اتاق", rooms: "اتاق‌های فیزیکی", roomBoard: "وضعیت روزانه اتاق‌ها", boardDate: "تاریخ", boardRoom: "اتاق", vacant: "خالی", reserved: "رزروشده", occupied: "اشغال‌شده", unassigned: "شب رزرو بدون تخصیص اتاق فیزیکی", outOfServiceNote: "علامت خارج از سرویس برای همه تاریخ‌های نمایش‌داده‌شده اعمال می‌شود.", outOfServiceConflict: "تخصیص فعال با علامت خارج از سرویس", maintenance: "تعمیرات زمان‌بندی‌شده", maintenanceConflict: "تعمیرات با رزرو فعال تداخل دارد", maintenanceInvalid: "تاریخ پایان باید بعد از تاریخ شروع باشد و دلیل تعمیرات را وارد کنید.", maintenanceFrom: "شروع (شامل)", maintenanceTo: "پایان (غیرشامل)", maintenanceReason: "دلیل تعمیرات", createMaintenance: "ثبت تعمیرات", releaseMaintenance: "پایان تعمیرات", maintenanceGateClosed: "ثبت و پایان تعمیرات تا تأیید بهره‌برداری غیرفعال است.", rates: "نرخ‌ها", inventory: "ظرفیت شبانه",
     add: "افزودن", save: "ذخیره", update: "ذخیره تغییرات", cancel: "لغو ویرایش", edit: "ویرایش",
@@ -74,6 +79,11 @@ const labels = {
   },
   en: {
     title: "Hotel operations",
+    propertyHours: "Check-in and check-out times",
+    checkInTime: "Check-in time",
+    checkOutTime: "Check-out time",
+    propertyLocalTime: "Times use the property's local time",
+    savePropertyHours: "Save times",
     loading: "Loading…", loadError: "Could not load operations.", saveError: "Save failed.",
     roomTypes: "Room types", rooms: "Physical rooms", roomBoard: "Daily room board", boardDate: "Date", boardRoom: "Room", vacant: "Vacant", reserved: "Reserved", occupied: "Occupied", unassigned: "Reservation nights without a physical room assignment", outOfServiceNote: "The out-of-service flag applies to every displayed date.", outOfServiceConflict: "Active allocation conflicts with out-of-service flag", maintenance: "Scheduled maintenance", maintenanceConflict: "Maintenance conflicts with an active reservation", maintenanceInvalid: "End date must be after the start date, and a reason is required.", maintenanceFrom: "Start (inclusive)", maintenanceTo: "End (exclusive)", maintenanceReason: "Maintenance reason", createMaintenance: "Schedule maintenance", releaseMaintenance: "Release maintenance", maintenanceGateClosed: "Maintenance changes are disabled until operations are approved.", rates: "Rates", inventory: "Nightly inventory",
     add: "Add", save: "Save", update: "Save changes", cancel: "Cancel edit", edit: "Edit",
@@ -90,6 +100,11 @@ const labels = {
   },
   ar: {
     title: "عمليات الفندق",
+    propertyHours: "مواعيد تسجيل الدخول والمغادرة",
+    checkInTime: "موعد تسجيل الدخول",
+    checkOutTime: "موعد تسجيل المغادرة",
+    propertyLocalTime: "الأوقات حسب التوقيت المحلي للفندق",
+    savePropertyHours: "حفظ المواعيد",
     loading: "جارٍ التحميل…", loadError: "تعذر تحميل العمليات.", saveError: "تعذر الحفظ.",
     roomTypes: "أنواع الغرف", rooms: "الغرف الفعلية", roomBoard: "حالة الغرف اليومية", boardDate: "التاريخ", boardRoom: "الغرفة", vacant: "شاغرة", reserved: "محجوزة", occupied: "مشغولة", unassigned: "ليالي حجز بلا تخصيص غرفة فعلية", outOfServiceNote: "تُطبّق علامة خارج الخدمة على جميع التواريخ المعروضة.", outOfServiceConflict: "تخصيص نشط يتعارض مع علامة خارج الخدمة", maintenance: "الصيانة المجدولة", maintenanceConflict: "تتعارض الصيانة مع حجز نشط", maintenanceInvalid: "يجب أن يكون تاريخ النهاية بعد البداية وإدخال سبب الصيانة.", maintenanceFrom: "البداية (شاملة)", maintenanceTo: "النهاية (غير شاملة)", maintenanceReason: "سبب الصيانة", createMaintenance: "جدولة الصيانة", releaseMaintenance: "إنهاء الصيانة", maintenanceGateClosed: "تغييرات الصيانة معطلة حتى اعتماد التشغيل.", rates: "الأسعار", inventory: "مخزون الليالي",
     add: "إضافة", save: "حفظ", update: "حفظ التغييرات", cancel: "إلغاء التعديل", edit: "تعديل",
@@ -130,6 +145,10 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
   const [to, setTo] = useState(() => addDays(initialFrom, 7));
   const [data, setData] = useState<OperationsData | null>(null);
   const [dataRange, setDataRange] = useState<string | null>(null);
+  const [checkInTime, setCheckInTime] = useState("");
+  const [checkOutTime, setCheckOutTime] = useState("");
+  const [propertyHoursDirty, setPropertyHoursDirty] = useState(false);
+  const propertyHoursDirtyRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -203,6 +222,10 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
     if (!response.ok) throw new Error(body?.error || text.loadError);
     if (!signal?.aborted) {
       setData(body as OperationsData);
+      if (!propertyHoursDirtyRef.current) {
+        setCheckInTime(body.property.checkInTime);
+        setCheckOutTime(body.property.checkOutTime);
+      }
       setDataRange(`${from}|${to}`);
       setError("");
       setRoomTypeId((current) => current || (body.roomTypes[0]?.id ?? ""));
@@ -343,6 +366,20 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
     event.preventDefault();
     await mutate(`/rate-plans/${encodeURIComponent(ratePlanId)}/nightly-rates`, "PUT", { from: rateFrom, to: rateTo, nightlyRate });
   }
+  async function savePropertyHours(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(checkInTime) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(checkOutTime)) {
+      setError(text.saveError);
+      return;
+    }
+    const result = await mutate("", "PATCH", { checkInTime, checkOutTime });
+    if (result?.property) {
+      setCheckInTime(result.property.checkInTime);
+      setCheckOutTime(result.property.checkOutTime);
+      propertyHoursDirtyRef.current = false;
+      setPropertyHoursDirty(false);
+    }
+  }
   async function initializeInventory(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await mutate("/inventory/initialize", "POST", { roomTypeId: inventoryTypeId, from: inventoryFrom, to: inventoryTo, allotment: Number(allotment), reason }, true);
@@ -355,6 +392,15 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
 
   return <div className="min-w-0 max-w-full space-y-6 [overflow-wrap:anywhere]" dir={locale === "fa" || locale === "ar" ? "rtl" : "ltr"}>
     <header className="space-y-2"><h1 className="text-2xl font-bold">{text.title}</h1><h2 className="text-lg font-semibold">{propertyName}</h2><p className="text-xs text-muted-foreground">{propertyTimezone}</p></header>
+    {activeData ? <section className="space-y-3 rounded-xl border bg-card p-4">
+      <h2 className="text-lg font-semibold">{text.propertyHours}</h2>
+      <p className="text-sm text-muted-foreground">{text.propertyLocalTime}: <bdi>{activeData.property.timezone}</bdi></p>
+      <form onSubmit={savePropertyHours} className="grid gap-3 sm:grid-cols-2">
+        <Field label={text.checkInTime} value={checkInTime} setValue={(value) => { propertyHoursDirtyRef.current = true; setPropertyHoursDirty(true); setCheckInTime(value); }} type="time" required />
+        <Field label={text.checkOutTime} value={checkOutTime} setValue={(value) => { propertyHoursDirtyRef.current = true; setPropertyHoursDirty(true); setCheckOutTime(value); }} type="time" required />
+        <Button type="submit" disabled={busy || !propertyHoursDirty}>{text.savePropertyHours}</Button>
+      </form>
+    </section> : null}
     <section className="rounded-xl border bg-card p-4">
       <h2 className="font-semibold">{text.range}</h2>
       <div className="mt-3 flex flex-wrap items-end gap-3">

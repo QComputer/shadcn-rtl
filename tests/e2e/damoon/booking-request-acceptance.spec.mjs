@@ -870,9 +870,25 @@ test('inventory-free request reaches reception and tracks without creating a boo
     const closedSave = manager.page.waitForResponse(res => new URL(res.url()).pathname.endsWith(`/${entry.id}`) && res.request().method() === 'PATCH');
     await card.getByRole('button', { name: 'حفظ الملاحظة' }).click();
     expect((await closedSave).status()).toBe(200);
+    await expect(card.getByText('تم الحفظ', { exact: true })).toBeVisible();
     const closedRecord = await db.hotelGuestBookingRequest.findUniqueOrThrow({ where: { id: entry.id }, select: { status: true, managerMessage: true } });
     expect(closedRecord).toEqual({ status: 'CLOSED', managerMessage: 'Closed request internal note' });
     expect(await (await postStatus(page, received.reference)).json()).not.toHaveProperty('managerMessage');
+    const activityResponse = manager.page.waitForResponse(res => new URL(res.url()).pathname.endsWith(`/${entry.id}/activity`));
+    await card.getByText('سجل النشاط', { exact: true }).click();
+    const activity = await activityResponse;
+    expect(activity.status()).toBe(200);
+    const history = await activity.json();
+    expect(history.timezone).toBe('Asia/Tehran');
+    expect(history.events.some(event => event.type === 'note')).toBe(true);
+    expect(history.events.some(event => event.type === 'status' && event.to === 'CLOSED')).toBe(true);
+    expect(history.events.map(event => event.createdAt)).toEqual([...history.events.map(event => event.createdAt)].sort());
+    expect(JSON.stringify(history)).not.toContain('Closed request internal note');
+    await expect(card.getByText('تم تعديل الملاحظة').first()).toBeVisible();
+    const foreignHistory = await manager.page.request.get(`${appOrigin}/api/organizations/${foreignOrganizationId}/hotels/${foreignPropertyId}/booking-requests/${entry.id}/activity`);
+    expect([401, 403, 404]).toContain(foreignHistory.status());
+    const anonymousHistory = await page.request.get(`${appOrigin}${requestsApi}/${entry.id}/activity`);
+    expect([401, 403]).toContain(anonymousHistory.status());
     expect(await Promise.all([db.hotelBookingHold.count({where:{organizationId,propertyId}}), db.hotelReservation.count({where:{organizationId,propertyId}})])).toEqual(before);
   } finally {
     await context.close();

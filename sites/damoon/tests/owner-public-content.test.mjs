@@ -10,11 +10,10 @@ import { renderHospitality } from "../hospitality.js";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const locales = {
   fa: {
-    noRestaurant: "رستوران فعال یا تالار پذیرایی ندارد",
+    noRestaurant: "رستوران مستقل یا تالار پذیرایی ندارد",
     noCafe: "فضای مستقل کافی‌شاپ",
     inRoom: "به مهمانان در اتاق",
-    breakfastPending: "در دست آماده‌سازی",
-    notOperational: "عملیاتی نیست",
+    breakfastOperational: "صبحانهٔ رایگان مهمانان",
     roomCount: "۲۰ اتاق",
     suiteCount: "۱۱ سوئیت",
     parkingLimited: "ظرفیت محدود",
@@ -23,11 +22,10 @@ const locales = {
     faxOnly: "فکس (فقط دریافت فکس)",
   },
   en: {
-    noRestaurant: "does not currently operate a restaurant or banquet hall",
+    noRestaurant: "does not operate a standalone restaurant or banquet hall",
     noCafe: "no standalone café or café seating area",
     inRoom: "served to hotel guests in their rooms",
-    breakfastPending: "under preparation",
-    notOperational: "not yet operational",
+    breakfastOperational: "Complimentary breakfast is served to hotel guests",
     roomCount: "20 rooms",
     suiteCount: "11 suites",
     parkingLimited: "limited parking",
@@ -36,11 +34,10 @@ const locales = {
     faxOnly: "Fax only",
   },
   ar: {
-    noRestaurant: "لا يوجد في فندق دامون مطعم أو قاعة مناسبات عاملة",
+    noRestaurant: "لا يوجد في فندق دامون مطعم مستقل أو قاعة مناسبات",
     noCafe: "لا توجد في فندق دامون مساحة مقهى مستقلة",
     inRoom: "لضيوف الفندق داخل غرفهم",
-    breakfastPending: "قيد التجهيز",
-    notOperational: "لم يبدأ تشغيلها بعد",
+    breakfastOperational: "يُقدّم إفطار مجاني لضيوف الفندق",
     roomCount: "٢٠ غرفة",
     suiteCount: "١١ جناحاً",
     parkingLimited: "مواقف سيارات محدودة",
@@ -76,8 +73,7 @@ test("Damoon public content uses owner-confirmed hospitality facts in fa/en/ar",
     assert.ok(dining.includes(expected.noRestaurant), `${locale} legacy restaurant route corrects venue status`);
     assert.ok(refreshments.includes(expected.noCafe), `${locale} legacy cafe route corrects venue status`);
     assert.ok(refreshments.includes(expected.inRoom), `${locale} explains in-room refreshment service`);
-    assert.ok(facilities.includes(expected.breakfastPending), `${locale} marks breakfast hall as under preparation`);
-    assert.ok(facilities.includes(expected.notOperational), `${locale} says breakfast hall is not operational`);
+    assert.ok(facilities.includes(expected.breakfastOperational), `${locale} confirms complimentary breakfast is served in the operational hall`);
     assert.ok(policies.includes("14:00") || policies.includes("۱۴:۰۰") || policies.includes("١٤:٠٠"), `${locale} policy states check-in at 14:00`);
     assert.ok(policies.includes("12:00") || policies.includes("۱۲:۰۰") || policies.includes("١٢:٠٠"), `${locale} policy states check-out at 12:00`);
     assert.ok(rooms.includes(expected.roomCount) && rooms.includes(expected.suiteCount), `${locale} accommodation page has confirmed aggregate totals`);
@@ -151,9 +147,11 @@ test("Damoon public content uses owner-confirmed hospitality facts in fa/en/ar",
   assert.doesNotMatch(generatedCopy, /taxi service|airport transfer|خدمات تاکسی|تاکسی هتل|سيارة أجرة|سيارات الأجرة/i);
   assert.doesNotMatch(generatedCopy, /wi\s*[- ]?fi|wireless|hotel internet|free internet|وای.?فای|واي.?فاي|إنترنت الفندق|انترنت الفندق/i);
   assert.doesNotMatch(generatedCopy, /24\s*[-/]?\s*hours?|24\/7|٢٤\s*ساعة|۲۴\s*ساعت|شبانه.?روزی/i);
-  assert.match(publicTranslations, /does not currently operate a restaurant or banquet hall/);
+  assert.match(publicTranslations, /does not operate a standalone restaurant or banquet hall/);
   assert.match(publicTranslations, /no standalone café or café seating area/);
-  assert.match(publicTranslations, /قيد التجهيز/);
+  assert.match(publicTranslations, /Complimentary breakfast is served to hotel guests in the breakfast hall/);
+  assert.match(publicTranslations, /يُقدّم إفطار مجاني لضيوف الفندق في قاعة الإفطار/);
+  assert.doesNotMatch(publicTranslations, /under preparation|not yet operational|قيد التجهيز|لم يبدأ تشغيلها بعد|در دست آماده‌سازی|عملیاتی نیست/);
   assert.doesNotMatch(publicTranslations, /restaurant is ready|مطعم الفندق جاهز|مقهى فاخر/i);
   assert.doesNotMatch(publicApp, /تالار و رستوران|Restaurant & Cafe|المطعم والمقهى/);
   for (const route of ["restaurant", "cafe", "policies", "rooms"]) {

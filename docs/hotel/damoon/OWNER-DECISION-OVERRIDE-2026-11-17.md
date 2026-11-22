@@ -26,3 +26,7 @@ Publish only the confirmed aggregate accommodation totals and broad accommodatio
 The public static frontend may display the facts above. Operational check-out settings, physical room records, inventory, rates, reservations, authorization, payments, and Production changes belong to the main BazarBaaz backend/integration agent and its approved workflow.
 
 Keep the deliberate `noindex` setting and existing VTour origin allowlist. Concept imagery must remain labeled as conceptual and must not be captioned as an operating restaurant, banquet hall, café venue, or completed breakfast hall.
+
+## Owner update — 2026-11-22
+
+The hotel owner has since confirmed that the complimentary guest breakfast hall is operational. This update supersedes only the breakfast hall readiness statements above. Public pages may state that complimentary breakfast is served in the breakfast hall. Ask reception for service details for the travel date; do not infer unconfirmed hours, menu, or other dining services. The no-restaurant, no-banquet-hall, no-standalone-café, and in-room-refreshments facts remain in force.

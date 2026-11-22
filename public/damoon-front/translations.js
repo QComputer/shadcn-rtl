@@ -26,17 +26,17 @@ export const translations = {
       ],
     },
     rooms: {
-      single: { title: "Single room", description: "Single room category; confirm exact capacity and in-room details with reception.", image: "/damoon-front/assets/room-concept-1.webp" },
-      double: { title: "Double room", description: "Double room category; confirm exact capacity and in-room details with reception.", image: "/damoon-front/assets/room-concept-2.webp" },
-      "suite": { title: "Suite", description: "Suite category; confirm exact capacity and in-room details with reception.", image: "/damoon-front/assets/room-concept-3.webp" },
+      single: { title: "Single room", description: "Single room category; confirm exact capacity and in-room details with reception.", image: "/assets/room-concept-1.webp" },
+      double: { title: "Double room", description: "Double room category; confirm exact capacity and in-room details with reception.", image: "/assets/room-concept-2.webp" },
+      "suite": { title: "Suite", description: "Suite category; confirm exact capacity and in-room details with reception.", image: "/assets/room-concept-3.webp" },
     },
     gallery: [
-      { src: "/damoon-front/assets/architecture-concept.webp", alt: "Concept architectural illustration for the page layout" },
-      { src: "/damoon-front/assets/lobby-concept.webp", alt: "Concept lobby illustration, not a hotel photo" },
-      { src: "/damoon-front/assets/room-concept-1.webp", alt: "Concept room illustration, not a hotel photo" },
-      { src: "/damoon-front/assets/room-concept-2.webp", alt: "Concept accommodation illustration, not a hotel photo" },
-      { src: "/damoon-front/assets/room-concept-3.webp", alt: "Concept suite illustration, not a hotel photo" },
-      { src: "/damoon-front/assets/gallery-concept-1.webp", alt: "Concept image for the site gallery" },
+      { src: "/assets/architecture-concept.webp", alt: "Concept architectural illustration for the page layout" },
+      { src: "/assets/lobby-concept.webp", alt: "Concept lobby illustration, not a hotel photo" },
+      { src: "/assets/room-concept-1.webp", alt: "Concept room illustration, not a hotel photo" },
+      { src: "/assets/room-concept-2.webp", alt: "Concept accommodation illustration, not a hotel photo" },
+      { src: "/assets/room-concept-3.webp", alt: "Concept suite illustration, not a hotel photo" },
+      { src: "/assets/gallery-concept-1.webp", alt: "Concept image for the site gallery" },
     ],
     pages: {
       "/": {
@@ -61,9 +61,9 @@ export const translations = {
         title: "Discover Shahrekord from Damoon", intro: "A local guide for Damoon guests", text: "Explore historic places and nearby landscapes with approximate straight-line distances from a public map point. The hotel pin and road distances have not been verified.",
       },
       "/restaurant": {
-        title: "Guest dining information", intro: "Dining information for hotel guests", text: "Damoon Hotel does not currently operate a restaurant or banquet hall. The large dining hall for complimentary guest breakfast is under preparation and is not yet operational.", actions: [["/rooms", "Explore accommodation"], ["/contact", "Contact reception"]],
+        title: "Guest dining information", intro: "Dining information for hotel guests", text: "Damoon Hotel does not operate a standalone restaurant or banquet hall. A complimentary guest breakfast hall is operational.", actions: [["/rooms", "Explore accommodation"], ["/contact", "Contact reception"]],
         sections: [
-          { heading: "Guest breakfast hall", text: "The large hall for complimentary guest breakfast is under preparation and is not yet open. Ask reception about services available for your travel dates.", link: "/contact", label: "Ask reception" },
+          { heading: "Guest breakfast hall", text: "Complimentary breakfast is served to hotel guests in the breakfast hall. Ask reception about service details for your travel dates.", link: "/contact", label: "Ask reception" },
           { heading: "Plan a stay", text: "Browse accommodation categories and contact reception to coordinate your stay.", link: "/rooms", label: "Explore accommodation" },
         ],
       },
@@ -75,7 +75,7 @@ export const translations = {
         title: "Hotel facilities", intro: "Facilities and services", text: "Contact reception to ask which services are available, their hours, and which facilities are available in a particular room.", actions: [["/contact", "Contact details"]],
         sections: [
           { heading: "Reception and services", text: "Reception operates daily from 06:00 until 01:00 the following morning. These are reception hours; check-in is from 14:00 and check-out is by 12:00 noon." },
-          { heading: "Guest breakfast hall", text: "The large hall for complimentary guest breakfast is under preparation and is not yet operational. Ask reception about current services.", link: "/restaurant", label: "Dining information" },
+          { heading: "Guest breakfast hall", text: "Complimentary breakfast is served to hotel guests in the breakfast hall. Ask reception about service details for your travel dates.", link: "/restaurant", label: "Dining information" },
           { heading: "In-room refreshments", text: "Café-style refreshments are served to guests in their rooms. The hotel has no separate café or café seating area.", link: "/cafe", label: "In-room service" },
           { heading: "Parking", text: "The hotel has limited parking. Please coordinate availability with reception before your visit.", link: "/contact", label: "Contact reception" },
         ],
@@ -151,17 +151,17 @@ export const translations = {
       ],
     },
     rooms: {
-      single: { title: "غرفة مفردة", description: "فئة غرفة مفردة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/damoon-front/assets/room-concept-1.webp" },
-      double: { title: "غرفة مزدوجة", description: "فئة غرفة مزدوجة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/damoon-front/assets/room-concept-2.webp" },
-      "suite": { title: "جناح", description: "فئة جناح؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/damoon-front/assets/room-concept-3.webp" },
+      single: { title: "غرفة مفردة", description: "فئة غرفة مفردة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/assets/room-concept-1.webp" },
+      double: { title: "غرفة مزدوجة", description: "فئة غرفة مزدوجة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/assets/room-concept-2.webp" },
+      "suite": { title: "جناح", description: "فئة جناح؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/assets/room-concept-3.webp" },
     },
     gallery: [
-      { src: "/damoon-front/assets/architecture-concept.webp", alt: "رسم معماري تصوري لتصميم الصفحة" },
-      { src: "/damoon-front/assets/lobby-concept.webp", alt: "تصميم تصوري للردهة، وليس صورة للفندق" },
-      { src: "/damoon-front/assets/room-concept-1.webp", alt: "تصميم تصوري لغرفة، وليس صورة للفندق" },
-      { src: "/damoon-front/assets/room-concept-2.webp", alt: "تصميم تصوري لمساحة إقامة، وليس صورة للفندق" },
-      { src: "/damoon-front/assets/room-concept-3.webp", alt: "تصميم تصوري لجناح، وليس صورة للفندق" },
-      { src: "/damoon-front/assets/gallery-concept-1.webp", alt: "صورة تصورية لمعرض الموقع" },
+      { src: "/assets/architecture-concept.webp", alt: "رسم معماري تصوري لتصميم الصفحة" },
+      { src: "/assets/lobby-concept.webp", alt: "تصميم تصوري للردهة، وليس صورة للفندق" },
+      { src: "/assets/room-concept-1.webp", alt: "تصميم تصوري لغرفة، وليس صورة للفندق" },
+      { src: "/assets/room-concept-2.webp", alt: "تصميم تصوري لمساحة إقامة، وليس صورة للفندق" },
+      { src: "/assets/room-concept-3.webp", alt: "تصميم تصوري لجناح، وليس صورة للفندق" },
+      { src: "/assets/gallery-concept-1.webp", alt: "صورة تصورية لمعرض الموقع" },
     ],
     pages: {
       "/": {
@@ -186,9 +186,9 @@ export const translations = {
         title: "معالم شهركرد من دامون", intro: "دليل محلي لضيوف دامون", text: "اكتشفوا المواقع التاريخية والمناظر القريبة مع مسافات مباشرة تقريبية من نقطة عامة على الخريطة. لم يُعتمد موقع الفندق ميدانياً ولم تُتحقق مسافات الطريق.",
       },
       "/restaurant": {
-        title: "معلومات الطعام لضيوف الفندق", intro: "معلومات الطعام والضيافة", text: "لا يوجد في فندق دامون مطعم أو قاعة مناسبات عاملة. القاعة الكبيرة المخصصة لإفطار الضيوف المجاني قيد التجهيز ولم يبدأ تشغيلها بعد.", actions: [["/rooms", "استعراض أماكن الإقامة"], ["/contact", "التواصل مع الاستقبال"]],
+        title: "معلومات الطعام لضيوف الفندق", intro: "معلومات الطعام والضيافة", text: "لا يوجد في فندق دامون مطعم مستقل أو قاعة مناسبات. قاعة إفطار الضيوف المجاني تعمل.", actions: [["/rooms", "استعراض أماكن الإقامة"], ["/contact", "التواصل مع الاستقبال"]],
         sections: [
-          { heading: "قاعة إفطار الضيوف", text: "القاعة الكبيرة المخصصة لإفطار الضيوف المجاني قيد التجهيز ولم تُفتح بعد. اسألوا الاستقبال عن الخدمات المتاحة في موعد السفر.", link: "/contact", label: "استفسروا من الاستقبال" },
+          { heading: "قاعة إفطار الضيوف", text: "يُقدّم إفطار مجاني لضيوف الفندق في قاعة الإفطار. اسألوا الاستقبال عن تفاصيل الخدمة في موعد السفر.", link: "/contact", label: "استفسروا من الاستقبال" },
           { heading: "التخطيط للإقامة", text: "استعرضوا فئات الإقامة وتواصلوا مع الاستقبال للتنسيق.", link: "/rooms", label: "استعراض أماكن الإقامة" },
         ],
       },
@@ -200,7 +200,7 @@ export const translations = {
         title: "مرافق الفندق", intro: "المرافق والخدمات", text: "تواصلوا مع الاستقبال للاستفسار عن الخدمات المتاحة حالياً وساعاتها والمرافق المتوفرة في غرفة معينة.", actions: [["/contact", "معلومات التواصل"]],
         sections: [
           { heading: "الاستقبال والخدمات", text: "يعمل الاستقبال يومياً من الساعة 06:00 حتى الساعة 01:00 من صباح اليوم التالي. هذه ساعات عمل الاستقبال؛ تسجيل الدخول من الساعة 14:00 وتسجيل المغادرة حتى الساعة 12:00 ظهراً." },
-          { heading: "قاعة إفطار الضيوف", text: "القاعة الكبيرة لإفطار الضيوف المجاني قيد التجهيز ولم يبدأ تشغيلها بعد. اسألوا الاستقبال عن الخدمات المتاحة حالياً.", link: "/restaurant", label: "معلومات الطعام والضيافة" },
+          { heading: "قاعة إفطار الضيوف", text: "يُقدّم إفطار مجاني لضيوف الفندق في قاعة الإفطار. اسألوا الاستقبال عن تفاصيل الخدمة في موعد السفر.", link: "/restaurant", label: "معلومات الطعام والضيافة" },
           { heading: "المرطبات داخل الغرفة", text: "تُقدّم المرطبات للضيوف داخل غرفهم. لا توجد مساحة مقهى مستقلة أو أماكن جلوس للمقهى.", link: "/cafe", label: "خدمة داخل الغرفة" },
           { heading: "مواقف السيارات", text: "تتوفر مواقف سيارات محدودة في الفندق. يرجى التنسيق مع الاستقبال مسبقاً للتأكد من توفر موقف في موعد زيارتكم.", link: "/contact", label: "التواصل مع الاستقبال" },
         ],

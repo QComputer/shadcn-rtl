@@ -26,11 +26,22 @@ for (const f of files) {
 await writeFile(join(root,'theme-tokens.css'),paletteStyles());
 await writeFile(join(output,'theme-tokens.css'),paletteStyles());
 if (!directPublic) await cp(join(root,'assets'), join(output,'assets'), { recursive: true });
-const leafletDist = dirname(require.resolve('leaflet'));
+let leafletDist;
+let leafletLicense;
+try {
+  leafletDist = dirname(require.resolve('leaflet'));
+  leafletLicense = join(leafletDist, '..', 'LICENSE');
+} catch (error) {
+  if (error?.code !== 'MODULE_NOT_FOUND') throw error;
+  // Keep standalone builds usable without installing dependencies when the
+  // reviewed public bundle already contains the licensed Leaflet distribution.
+  leafletDist = join(publicDir, 'vendor', 'leaflet');
+  leafletLicense = join(leafletDist, 'LICENSE');
+}
 const leafletOutput = join(output, 'vendor', 'leaflet');
 await mkdir(join(leafletOutput, 'images'), { recursive: true });
 for (const file of ['leaflet.js', 'leaflet.css']) await cp(join(leafletDist, file), join(leafletOutput, file));
-await cp(join(leafletDist, '..', 'LICENSE'), join(leafletOutput, 'LICENSE'));
+await cp(leafletLicense, join(leafletOutput, 'LICENSE'));
 for (const file of ['marker-icon.png', 'marker-icon-2x.png', 'marker-shadow.png', 'layers.png', 'layers-2x.png']) await cp(join(leafletDist, 'images', file), join(leafletOutput, 'images', file));
 const html = await readFile(join(output,'index.html'),'utf8');
 const routes = [...Object.keys(pages), ...rooms.map(r=>`/rooms/${r.slug}`), ...damoonAttractionsData.attractions.map((attraction)=>`/attractions/${attraction.id}`)];

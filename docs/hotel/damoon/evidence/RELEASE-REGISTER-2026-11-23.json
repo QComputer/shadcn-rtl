@@ -3,13 +3,13 @@
   "project": "Damoon / Bazarbaaz",
   "snapshotDate": "2026-11-23",
   "repository": "https://github.com/QComputer/shadcn-rtl",
-  "mainSha": "4090a726f29360a4db4a3dc3249d76eb2aa0f572",
+  "mainSha": "f617e007812613a57724264d810832a6f3b13158",
   "runflare": {
     "projectId": "37622",
     "serviceId": "87432",
-    "reportedActiveVersion": "v124",
+    "reportedActiveVersion": "v126",
     "reportedActiveSourceSha": null,
-    "sourceShaConfidence": "RUNFLARE_DASHBOARD_V124_ACTIVE_1_OF_1_PLUS_LIVE_PUBLIC_CSS_JS_EQUAL_PR145_RUNTIME_SOURCE; PR146_DOCS_ONLY_MERGE_NO_NEW_DEPLOYMENT; PROVIDER_SOURCE_SHA_NOT_EXPOSED",
+    "sourceShaConfidence": "DASHBOARD_V126_ACTIVE_1_OF_1; GIT_MAIN_CONNECTED_AUTO_PULL_ON; UNRESOLVED_REQUEST_INITIALIZED_FOR_4090A726; PR148_NOT_MERGED; PROVIDER_SOURCE_SHA_NOT_EXPOSED",
     "healthRevision": null
   },
   "liveManifest": {
@@ -68,12 +68,23 @@
       "mergeSha": "4090a726f29360a4db4a3dc3249d76eb2aa0f572",
       "state": "MERGED_DOCS_ONLY",
       "production": "NO_RUNTIME_CHANGE; RUNFLARE_STILL_V124; NO_NEW_DEPLOYLOG_ROW"
+    },
+    {
+      "pr": 147,
+      "mergeSha": "f617e007812613a57724264d810832a6f3b13158",
+      "state": "MERGED_TESTS_AND_DOCS",
+      "production": "NO_RUNTIME_CHANGE"
+    },
+    {
+      "pr": 148,
+      "state": "OPEN_RUNTIME_CHANGE",
+      "production": "CI_PASSED; MERGE_BLOCKED_PENDING_OLDER_RUNFLARE_REQUEST_RESOLUTION"
     }
   ],
   "sourceEvidence": {
-    "github": "GitHub PR/main endpoints at 2026-11-23; current main 4090a726f29360a4db4a3dc3249d76eb2aa0f572 after docs-only PR146",
+    "github": "GitHub PR/main endpoints at 2026-11-23; current main f617e007812613a57724264d810832a6f3b13158 after isolated-acceptance PR147; PR148 is open with runtime correction, exact-head checks to be refreshed after evidence update",
     "liveAsset": "https://damoon-hotel.ir/damoon-front/release-manifest.json",
-    "provider": "Authenticated Runflare service dashboard refreshed after PR146 merge: v124 active with one active pod, and deploylog contains no new row; live CSS/JS SHA still equal PR145 runtime source; provider source SHA not exposed. Production GET-only browser acceptance passed in FA/EN/AR at six viewport widths; request form not submitted."
+    "provider": "Authenticated dashboard 2026-11-23: v126 active with one healthy pod; Git connection QComputer/shadcn-rtl/main and auto-pull enabled; latest available commit f617e0078126. Deploy log still has unresolved Request Initialized selecting old SHA 4090a726f29360a4db4a3dc3249d76eb2aa0f572. No new deployment initiated. Basic/deep health HTTP 200; Damoon deep DB connectivity OK. Live content.js bytes match manifest SHA a9fc9dd0e94806b26a7108cc2a91b301464ffee8f957aadf1d61715ac67441a1; PR148 is not deployed. Provider does not expose active source SHA."
   },
   "featureGates": {
     "publicBooking": false,

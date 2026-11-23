@@ -120,9 +120,35 @@ function safeContent(value: Prisma.JsonValue, locale: HotelPublicLocale) {
   if (!parsed.success) return null;
   const localized = localize(parsed.data as unknown as Prisma.JsonValue, locale) as Record<string, unknown>;
   const sections = Array.isArray(localized.sections) ? localized.sections.filter((section): section is Record<string, unknown> => Boolean(section && typeof section === "object" && !Array.isArray(section) && (section as Record<string, unknown>).visible === true)).sort((left, right) => Number(left.order) - Number(right.order)) : [];
+  const rawCatalog = localized.accommodationCatalog;
+  const accommodationCatalog = rawCatalog && typeof rawCatalog === "object" && !Array.isArray(rawCatalog)
+    ? {
+        ...(rawCatalog as Record<string, unknown>),
+        categories: Array.isArray((rawCatalog as Record<string, unknown>).categories)
+          ? ((rawCatalog as Record<string, unknown>).categories as unknown[])
+              .filter((category): category is Record<string, unknown> => {
+                if (!category || typeof category !== "object" || Array.isArray(category)) return false;
+                const candidate = category as Record<string, unknown>;
+                return candidate.visible === true && typeof candidate.title === "string";
+              })
+              .map((category) => ({
+                slug: category.slug,
+                kind: category.kind,
+                order: category.order,
+                count: category.count,
+                title: category.title,
+                ...(typeof category.description === "string" || category.description === null ? { description: category.description } : {}),
+                ...(Array.isArray(category.amenities) ? { amenities: category.amenities } : {}),
+                ...(typeof category.capacitySpecification === "string" || category.capacitySpecification === null ? { capacitySpecification: category.capacitySpecification } : {}),
+              }))
+              .sort((left, right) => Number(left.order) - Number(right.order))
+          : [],
+      }
+    : undefined;
   return hotelWebsitePublicContentSchema.safeParse({
     ...localized,
     sections,
+    ...(accommodationCatalog ? { accommodationCatalog } : {}),
     contact: { phone: parsed.data.contact.phone, email: parsed.data.contact.email },
   }).data ?? null;
 }

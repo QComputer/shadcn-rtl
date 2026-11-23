@@ -26,12 +26,15 @@ export const translations = {
       ],
     },
     rooms: {
-      "vip-suite": { title: "VIP two-room suite", description: "The hotel has 7 VIP suites, each arranged as two rooms." },
-      "standard-room": { title: "Standard room", description: "The hotel has 17 standard units, each arranged as one room." },
-      "studio-suite": { title: "Studio suite", description: "The hotel has 7 open-plan studio suites without a separate bedroom." },
-      single: { title: "Single room", description: "Single room category; confirm exact capacity and in-room details with reception.", image: "/assets/room-concept-1.webp" },
-      double: { title: "Double room", description: "Double room category; confirm exact capacity and in-room details with reception.", image: "/assets/room-concept-2.webp" },
-      "suite": { title: "Suite", description: "Suite category; confirm exact capacity and in-room details with reception.", image: "/assets/room-concept-3.webp" },
+      "vip-suite": { title: "VIP suite", description: "VIP suite group for coordination requests; ask reception to confirm unit details and capacity." },
+      "standard-room": { title: "Standard room", description: "Standard room group for coordination requests; ask reception to confirm unit details and capacity." },
+      "studio-suite": { title: "Studio suite", description: "Studio suite group for coordination requests; ask reception to confirm unit details and capacity." },
+      single: { title: "Single room", description: "Single room category for coordination requests. The category name does not verify a unit’s exact capacity or layout.", image: "/assets/room-concept-1.webp" },
+      double: { title: "Double room", description: "Double room category for coordination requests. The category name does not verify a unit’s exact capacity or layout.", image: "/assets/room-concept-2.webp" },
+      "suite-3-person": { title: "Three-person suite", description: "Three-person suite category for coordination requests; ask reception to confirm actual unit details and capacity.", image: "/assets/room-concept-3.webp" },
+      "suite-4-person": { title: "Four-person suite", description: "Four-person suite category for coordination requests; ask reception to confirm actual unit details and capacity.", image: "/assets/room-concept-2.webp" },
+      "suite-5-person": { title: "Five-person suite", description: "Five-person suite category for coordination requests; ask reception to confirm actual unit details and capacity.", image: "/assets/room-concept-3.webp" },
+      suite: { title: "Suite group", description: "Legacy suite link for coordination requests; ask reception to confirm actual unit details and capacity.", image: "/assets/room-concept-3.webp" },
     },
     gallery: [
       { src: "/assets/architecture-concept.webp", alt: "Concept architectural illustration for the page layout" },
@@ -53,7 +56,7 @@ export const translations = {
         ],
       },
       "/rooms": {
-        title: "Rooms and suites", intro: "Accommodation spaces", text: "Damoon Hotel has 31 accommodation units. This page lists the accommodation categories; exact capacity, in-room amenities, rates, and availability are not shown.",
+        title: "Rooms and suites", intro: "Accommodation spaces", text: "Damoon Hotel has 31 accommodation units: 20 rooms and 11 suites. The category counts shown are the owner-selected public presentation baseline; nightly availability, exact capacity, beds, and unit amenities must be confirmed with reception. Rates are not shown and this page does not make a reservation.",
       },
       "/attractions": {
         title: "Discover Shahrekord from Damoon", intro: "A local guide for Damoon guests", text: "Explore historic places and nearby landscapes with approximate straight-line distances from a public map point. The hotel pin and road distances have not been verified.",
@@ -83,7 +86,7 @@ export const translations = {
         title: "About Damoon Hotel", intro: "About the hotel", text: "Damoon Hotel in Shahrekord has 31 accommodation units. Contact reception to coordinate your stay and ask about guest services.", actions: [["/contact", "Contact the hotel"]],
         sections: [
           { heading: "A warm welcome", text: "Damoon aims to offer warm, friendly, and calm hospitality, so guests can feel at ease and at home throughout their stay." },
-          { heading: "Staying at Damoon", text: "Browse the VIP two-room suites, standard rooms, and studio suites. Ask reception to confirm capacity, in-room amenities, and current rates.", link: "/rooms", label: "Browse accommodation" },
+          { heading: "Staying at Damoon", text: "Browse the accommodation groups and ask reception to confirm unit details and capacity for your request.", link: "/rooms", label: "Browse accommodation" },
           { heading: "Check-in and check-out", text: "Check-in is from 14:00 and check-out is by 12:00 noon.", link: "/policies", label: "Stay information" },
         ],
       },
@@ -149,12 +152,15 @@ export const translations = {
       ],
     },
     rooms: {
-      "vip-suite": { title: "جناح VIP بغرفتين", description: "يضم الفندق ٧ أجنحة VIP، يتألف كل منها من غرفتين." },
-      "standard-room": { title: "غرفة قياسية", description: "يضم الفندق ١٧ وحدة قياسية، تتألف كل منها من غرفة واحدة." },
-      "studio-suite": { title: "جناح استوديو", description: "يضم الفندق ٧ أجنحة استوديو بتصميم مفتوح دون غرفة نوم منفصلة." },
-      single: { title: "غرفة مفردة", description: "فئة غرفة مفردة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/assets/room-concept-1.webp" },
-      double: { title: "غرفة مزدوجة", description: "فئة غرفة مزدوجة؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/assets/room-concept-2.webp" },
-      "suite": { title: "جناح", description: "فئة جناح؛ يرجى تأكيد السعة الدقيقة والتجهيزات مع الاستقبال.", image: "/assets/room-concept-3.webp" },
+      "vip-suite": { title: "جناح VIP", description: "مجموعة جناح VIP مخصصة لطلبات التنسيق؛ يرجى تأكيد تفاصيل الوحدة وسعتها مع الاستقبال." },
+      "standard-room": { title: "غرفة قياسية", description: "مجموعة الغرف القياسية مخصصة لطلبات التنسيق؛ يرجى تأكيد تفاصيل الوحدة وسعتها مع الاستقبال." },
+      "studio-suite": { title: "جناح استوديو", description: "مجموعة أجنحة الاستوديو مخصصة لطلبات التنسيق؛ يرجى تأكيد تفاصيل الوحدة وسعتها مع الاستقبال." },
+      single: { title: "غرفة مفردة", description: "فئة غرفة مفردة لطلبات التنسيق؛ لا يؤكد اسم الفئة السعة الدقيقة أو تصميم الوحدة.", image: "/assets/room-concept-1.webp" },
+      double: { title: "غرفة مزدوجة", description: "فئة غرفة مزدوجة لطلبات التنسيق؛ لا يؤكد اسم الفئة السعة الدقيقة أو تصميم الوحدة.", image: "/assets/room-concept-2.webp" },
+      "suite-3-person": { title: "جناح لثلاثة أشخاص", description: "فئة جناح لثلاثة أشخاص لطلبات التنسيق؛ يرجى تأكيد تفاصيل الوحدة وسعتها الفعلية مع الاستقبال.", image: "/assets/room-concept-3.webp" },
+      "suite-4-person": { title: "جناح لأربعة أشخاص", description: "فئة جناح لأربعة أشخاص لطلبات التنسيق؛ يرجى تأكيد تفاصيل الوحدة وسعتها الفعلية مع الاستقبال.", image: "/assets/room-concept-2.webp" },
+      "suite-5-person": { title: "جناح لخمسة أشخاص", description: "فئة جناح لخمسة أشخاص لطلبات التنسيق؛ يرجى تأكيد تفاصيل الوحدة وسعتها الفعلية مع الاستقبال.", image: "/assets/room-concept-3.webp" },
+      suite: { title: "مجموعة الأجنحة", description: "رابط أجنحة قديم لطلبات التنسيق؛ يرجى تأكيد تفاصيل الوحدة وسعتها الفعلية مع الاستقبال.", image: "/assets/room-concept-3.webp" },
     },
     gallery: [
       { src: "/assets/architecture-concept.webp", alt: "رسم معماري تصوري لتصميم الصفحة" },
@@ -176,7 +182,7 @@ export const translations = {
         ],
       },
       "/rooms": {
-        title: "الغرف والأجنحة", intro: "أماكن الإقامة", text: "يضم فندق دامون ٣١ وحدة إقامة. تعرض هذه الصفحة فئات الإقامة، ولا تعرض السعة الدقيقة أو التجهيزات أو الأسعار أو التوفر.",
+        title: "الغرف والأجنحة", intro: "أماكن الإقامة", text: "يضم فندق دامون ٣١ وحدة إقامة: ٢٠ غرفة و١١ جناحاً. الأعداد المعروضة للفئات هي التوزيع الذي اختاره المالك للعرض العام؛ يجب تأكيد التوفر الليلي والسعة الدقيقة والأسِرّة والتجهيزات مع الاستقبال. لا تُعرض الأسعار ولا يتم الحجز من هذه الصفحة.",
       },
       "/attractions": {
         title: "معالم شهركرد من دامون", intro: "دليل محلي لضيوف دامون", text: "اكتشفوا المواقع التاريخية والمناظر القريبة مع مسافات مباشرة تقريبية من نقطة عامة على الخريطة. لم يُعتمد موقع الفندق ميدانياً ولم تُتحقق مسافات الطريق.",

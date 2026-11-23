@@ -16,7 +16,7 @@ import {
   type HotelCmsRevision,
   type HotelCmsScope,
 } from "@/lib/hotel-cms/hotel-cms-api";
-import { addFaqItem, addFeatureItem, addSection, blankDraft, checkDraftMinimum, localized, locales, moveSection, setLocalized } from "@/lib/hotel-cms/hotel-cms-editor";
+import { addFaqItem, addFeatureItem, addSection, blankDraft, checkDraftMinimum, damoonSelectedAccommodationCatalog, isDamoonWebsiteScope, localized, locales, moveSection, setLocalized, withSiteDefaults } from "@/lib/hotel-cms/hotel-cms-editor";
 import styles from "./hotel-cms-workspace.module.css";
 
 type CmsRole = "ADMIN" | "MANAGER" | "SUPER_ADMIN";
@@ -38,17 +38,17 @@ function InlineField({ label, value, onChange, multiline = false, placeholder = 
   return <StudioField className={styles.field} label={label} value={value} onChange={onChange} multiline={multiline} placeholder={placeholder} />;
 }
 
-export function HotelCmsWorkspace({ scope, role, propertyLabel }: Props) {
+export function HotelCmsWorkspace({ scope, siteScope, role, propertyLabel }: Props) {
   const organizationId = scope.organizationId;
   const propertyId = scope.propertyId;
   const api = useMemo(() => createHotelCmsApi({ organizationId, propertyId }), [organizationId, propertyId]);
   const [locale, setLocale] = useState<HotelCmsLocale>("fa");
-  const [draft, setDraft] = useState<HotelCmsDraft>(() => blankDraft());
+  const [draft, setDraft] = useState<HotelCmsDraft>(() => blankDraft(siteScope));
   const [revisions, setRevisions] = useState<HotelCmsRevision[]>([]);
   const [history, setHistory] = useState<HotelCmsHistory>({ reviews: [], publications: [] });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [tab, setTab] = useState<"editor" | "preview" | "brand" | "history">("editor");
+  const [tab, setTab] = useState<"editor" | "accommodation" | "preview" | "brand" | "history">("editor");
   const [preview, setPreview] = useState<Awaited<ReturnType<typeof api.preview>> | null>(null);
   const [availableMedia, setAvailableMedia] = useState<HotelCmsAvailableMedia[]>([]);
   const [mediaLoading, setMediaLoading] = useState(true);
@@ -86,7 +86,7 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel }: Props) {
           const savedPreview = await api.preview(savedDraft.revisionId, "fa", controller.signal);
           if (!controller.signal.aborted) {
             setDraft({
-              content: savedPreview.content,
+              content: withSiteDefaults(savedPreview.content, siteScope),
               media: savedPreview.media.map((item) => ({ imageId: item.imageId, scope: item.scope, roomTypeId: item.roomTypeId, slot: item.slot as HotelCmsMedia["slot"], sortOrder: item.sortOrder, altText: item.altText })),
             });
             setSelectedId(savedDraft.revisionId);
@@ -102,7 +102,7 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel }: Props) {
       }
     });
     return () => controller.abort();
-  }, [api, scopeKey]);
+  }, [api, scopeKey, siteScope]);
 
   const update = (transform: (content: HotelWebsiteContent) => HotelWebsiteContent) => {
     setDraft((current) => ({ ...current, content: transform(current.content) }));
@@ -140,7 +140,7 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel }: Props) {
         slot: item.slot as HotelCmsMedia["slot"], sortOrder: item.sortOrder,
         altText: item.altText,
       }));
-      setDraft({ content: version.content, media });
+      setDraft({ content: withSiteDefaults(version.content, siteScope), media });
       setSelectedId(id);
       setPreview(version);
       setHasUnsavedChanges(false);
@@ -182,6 +182,9 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel }: Props) {
     void perform(() => api.revoke(activePublication.id, note.trim() || undefined), "انتشار لغو شد و تاریخچه حفظ شده است.", () => setNote(""));
   };
 
+  const isDamoon = isDamoonWebsiteScope(siteScope);
+  const accommodationCatalog = draft.content.accommodationCatalog ?? (isDamoon ? damoonSelectedAccommodationCatalog() : undefined);
+
   return <section className={styles.shell} lang="fa" dir="rtl" aria-label="مدیریت محتوای وب‌سایت هتل">
     <header className={styles.header}>
       <div><p className={styles.kicker}>بازارباز / مدیریت وب‌سایت هتل</p><h1>{propertyLabel}</h1><p className={styles.subhead}>محتوا را آماده کنید، نسخه جدید بسازید و آن را برای تأیید بفرستید.</p></div>
@@ -194,7 +197,7 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel }: Props) {
     {notice && <p role="status" className={styles.notice}>{notice}</p>}
     <div className={styles.columns}>
       <aside className={styles.sidebar} aria-label="نسخه‌های محتوا">
-        <div className={styles.sideHeading}><h2>نسخه‌ها</h2><button disabled={busy} onClick={() => { if (hasUnsavedChanges && !window.confirm("تغییرات ذخیره‌نشده کنار گذاشته شود؟")) return; setDraft(blankDraft()); setSelectedId(null); setPreview(null); setHasUnsavedChanges(false); setTab("editor"); resetMessages(); }}>+ نسخه تازه</button></div>
+        <div className={styles.sideHeading}><h2>نسخه‌ها</h2><button disabled={busy} onClick={() => { if (hasUnsavedChanges && !window.confirm("تغییرات ذخیره‌نشده کنار گذاشته شود؟")) return; setDraft(blankDraft(siteScope)); setSelectedId(null); setPreview(null); setHasUnsavedChanges(false); setTab("editor"); resetMessages(); }}>+ نسخه تازه</button></div>
         {loading ? <p>در حال بارگذاری…</p> : revisions.length === 0 ? <p className={styles.muted}>هنوز نسخه‌ای ساخته نشده است.</p> : <ul className={styles.versionList}>{revisions.map((revision) => {
           const published = revision.publications.some((p) => !p.revokedAt);
           return <li key={revision.revisionId}><button className={`${styles.version} ${selectedId === revision.revisionId ? styles.selected : ""}`} disabled={busy} onClick={() => void selectRevision(revision.revisionId)}>
@@ -206,6 +209,7 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel }: Props) {
       <div className={styles.main}>
         <nav className={styles.tabs} aria-label="بخش‌های مدیریت">
           <button aria-current={tab === "editor" ? "page" : undefined} onClick={() => setTab("editor")}>ویرایش محتوا</button>
+          {isDamoon && <button aria-current={tab === "accommodation" ? "page" : undefined} onClick={() => setTab("accommodation")}>گروه‌های اقامتی</button>}
           <button aria-current={tab === "preview" ? "page" : undefined} onClick={() => void openPreview()}>پیش‌نمایش ذخیره‌شده</button>
           {isAdmin && <button aria-current={tab === "brand" ? "page" : undefined} onClick={() => setTab("brand")}>هویت بصری</button>}
           <button aria-current={tab === "history" ? "page" : undefined} onClick={() => setTab("history")}>تاریخچه</button>
@@ -274,6 +278,27 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel }: Props) {
             <button type="button" className={styles.remove} onClick={() => updateMedia((media) => media.filter((_, i) => i !== index))}>حذف تصویر</button>
           </div>)}
           <div className={styles.footerBar}><span>پس از ذخیره، برای ارسال نسخه ثبت‌شده از بخش گردش کار استفاده کنید.</span><button className={styles.primary} disabled={busy} onClick={() => void submitDraft()}>{busy ? "در حال انجام…" : "ثبت نسخه جدید"}</button></div>
+        </div>}
+        {tab === "accommodation" && isDamoon && accommodationCatalog && <div className={styles.editor}>
+          <div className={styles.explain}>این اعداد تعداد انتخاب‌شده برای هر گروه اقامتی هستند؛ موجودی شبانه یا تعداد اتاق قابل رزرو نیستند. شناسهٔ هر گروه برای حفظ پیوندهای عمومی ثابت می‌ماند. این تغییرات فقط پس از ثبت نسخه، بررسی، تأیید و انتشار در گردش‌کار وب‌سایت اعمال می‌شوند.</div>
+          <div className={styles.toolbar}><h2>گروه‌های اقامتی دامون</h2><label>زبان ویرایش <select value={locale} onChange={(event) => setLocale(event.target.value as HotelCmsLocale)}>{locales.map((id) => <option key={id} value={id}>{localeNames[id]}</option>)}</select></label></div>
+          <div className={styles.formGrid}>
+            <InlineField label="جمع اتاق‌ها" value={String(accommodationCatalog.totalRooms)} onChange={(value) => update((content) => ({ ...content, accommodationCatalog: { ...accommodationCatalog, totalRooms: value === "" ? 0 : Number(value) } }))} />
+            <InlineField label="جمع سوئیت‌ها" value={String(accommodationCatalog.totalSuites)} onChange={(value) => update((content) => ({ ...content, accommodationCatalog: { ...accommodationCatalog, totalSuites: value === "" ? 0 : Number(value) } }))} />
+          </div>
+          {accommodationCatalog.categories.slice().sort((left, right) => left.order - right.order).map((category) => <article key={category.slug} className={styles.sectionCard}>
+            <div className={styles.sectionHeading}><strong>{category.slug}</strong><label className={styles.checkbox}><input type="checkbox" checked={category.visible} onChange={(event) => update((content) => ({ ...content, accommodationCatalog: { ...accommodationCatalog, categories: accommodationCatalog.categories.map((item) => item.slug === category.slug ? { ...item, visible: event.target.checked } : item) } }))} /> نمایش پس از انتشار</label></div>
+            <div className={styles.formGrid}>
+              <label className={styles.field}><span>نوع گروه</span><select value={category.kind} onChange={(event) => update((content) => ({ ...content, accommodationCatalog: { ...accommodationCatalog, categories: accommodationCatalog.categories.map((item) => item.slug === category.slug ? { ...item, kind: event.target.value as "ROOM" | "SUITE" } : item) } }))}><option value="ROOM">اتاق</option><option value="SUITE">سوئیت</option></select></label>
+              <InlineField label="تعداد گروه انتخاب‌شده" value={String(category.count)} onChange={(value) => update((content) => ({ ...content, accommodationCatalog: { ...accommodationCatalog, categories: accommodationCatalog.categories.map((item) => item.slug === category.slug ? { ...item, count: value === "" ? 0 : Number(value) } : item) } }))} />
+              <InlineField label={`عنوان (${localeNames[locale]})`} value={localized(category.title, locale)} onChange={(value) => update((content) => ({ ...content, accommodationCatalog: { ...accommodationCatalog, categories: accommodationCatalog.categories.map((item) => item.slug === category.slug ? { ...item, title: setLocalized(item.title, locale, value) } : item) } }))} />
+              <InlineField label={`توضیح (${localeNames[locale]})`} multiline value={localized(category.description, locale)} onChange={(value) => update((content) => ({ ...content, accommodationCatalog: { ...accommodationCatalog, categories: accommodationCatalog.categories.map((item) => item.slug === category.slug ? { ...item, description: setLocalized(item.description, locale, value) } : item) } }))} />
+              <InlineField label={`امکانات تأییدشده (${localeNames[locale]}؛ هر مورد در یک خط)`} multiline value={(category.amenities ?? []).map((item) => localized(item, locale)).filter(Boolean).join("\n")} onChange={(value) => update((content) => ({ ...content, accommodationCatalog: { ...accommodationCatalog, categories: accommodationCatalog.categories.map((item) => item.slug === category.slug ? { ...item, amenities: value.split(/\r?\n/).map((line, index) => setLocalized(item.amenities?.[index], locale, line.trim())).filter((entry) => Object.values(entry).some(Boolean)) } : item) } }))} />
+              <InlineField label={`شرح ظرفیتِ تأییدشده (${localeNames[locale]})`} multiline value={localized(category.capacitySpecification, locale)} onChange={(value) => update((content) => ({ ...content, accommodationCatalog: { ...accommodationCatalog, categories: accommodationCatalog.categories.map((item) => item.slug === category.slug ? { ...item, capacitySpecification: setLocalized(item.capacitySpecification, locale, value) } : item) } }))} />
+            </div>
+          </article>)}
+          <p className={styles.warning}>فیلد امکانات و ظرفیت خالی بماند تا زمانی که مالک یا مدیریت هتل اطلاعات آن را تأیید کند. تصاویر دسته‌ها از کتابخانهٔ رسانهٔ تأییدشده قابل پیوند نیستند؛ برای جلوگیری از اتصال به موجودی عملیاتی، این فرم چنین پیوندی را نمایش نمی‌دهد.</p>
+          <div className={styles.footerBar}><span>ذخیره، نسخهٔ منتشرشده را تغییر نمی‌دهد؛ تکمیل گردش‌کار لازم است.</span><button className={styles.primary} disabled={busy} onClick={() => void submitDraft()}>{busy ? "در حال انجام…" : "ثبت نسخه جدید"}</button></div>
         </div>}
         {tab === "preview" && <div className={styles.editor}>
           <div className={styles.previewFlag}>پیش‌نمایش خصوصی · غیرقابل نمایش عمومی</div>

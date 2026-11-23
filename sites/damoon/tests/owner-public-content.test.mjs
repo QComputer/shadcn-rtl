@@ -4,7 +4,7 @@ import { readFile, stat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { normalizePath, pageForPath, siteForLocale } from "../content.js";
+import { accommodationCategories, normalizePath, pageForPath, roomForLocale, siteForLocale } from "../content.js";
 import { renderHospitality } from "../hospitality.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -16,6 +16,7 @@ const locales = {
     breakfastReady: "آمادهٔ استفاده",
     complimentaryBreakfast: "برای مهمانان هتل رایگان",
     unitCount: "۳۱ واحد اقامتی",
+    unitBreakdown: "۲۰ اتاق و ۱۱ سوئیت",
     parkingLimited: "ظرفیت محدود",
     receptionStart: "۰۶:۰۰",
     receptionEnd: "۰۱:۰۰",
@@ -28,6 +29,7 @@ const locales = {
     breakfastReady: "ready for use",
     complimentaryBreakfast: "complimentary for hotel guests",
     unitCount: "31 accommodation units",
+    unitBreakdown: "20 rooms and 11 suites",
     parkingLimited: "limited parking",
     receptionStart: "06:00",
     receptionEnd: "01:00",
@@ -40,6 +42,7 @@ const locales = {
     breakfastReady: "جاهزة للاستخدام",
     complimentaryBreakfast: "مجاني لنزلاء الفندق",
     unitCount: "٣١ وحدة إقامة",
+    unitBreakdown: "٢٠ غرفة و١١ جناحاً",
     parkingLimited: "مواقف سيارات محدودة",
     receptionStart: "06:00",
     receptionEnd: "01:00",
@@ -65,6 +68,8 @@ test("Damoon public content uses owner-confirmed hospitality facts in fa/en/ar",
     const facilities = textOf(facilityPage);
     const policies = textOf(pageForPath("/policies", locale));
     const rooms = textOf(pageForPath("/rooms", locale));
+    const roomGroups = ["vip-suite", "standard-room", "studio-suite"]
+      .map((slug) => textOf(pageForPath(`/rooms/${slug}`, locale))).join(" ");
     const site = siteForLocale(locale);
     const contact = pageForPath("/contact", locale);
 
@@ -78,7 +83,14 @@ test("Damoon public content uses owner-confirmed hospitality facts in fa/en/ar",
     assert.ok(policies.includes("14:00") || policies.includes("۱۴:۰۰") || policies.includes("١٤:٠٠"), `${locale} policy states check-in at 14:00`);
     assert.ok(policies.includes("12:00") || policies.includes("۱۲:۰۰") || policies.includes("١٢:٠٠"), `${locale} policy states check-out at 12:00`);
     assert.ok(rooms.includes(expected.unitCount), `${locale} accommodation page has confirmed aggregate totals`);
+    assert.ok(rooms.includes(expected.unitBreakdown), `${locale} accommodation page exposes the owner-confirmed room/suite aggregate`);
     assert.ok(!/one-bed|two-bed|three-bed|four- and five-bed|سرير واحد|سريرين|ثلاثة أسرّة|خمسة أسرّة/i.test(rooms), `${locale} room summary avoids unverified bed layouts`);
+    assert.doesNotMatch(`${rooms} ${roomGroups}`, /\b(?:7|17)\s+(?:VIP|standard|studio)|\b(?:7|17)\s+(?:VIP|standard)\s+(?:suite|unit|room)|(?:٧|١٧)\s+(?:أجنحة|وحدة|جناح)|(?:۷|۱۷)\s+(?:سوئیت|واحد|اتاق)|two[- ]room|open[- ]plan|without a separate bedroom|غرفتين|تصميم مفتوح|دون غرفة نوم منفصلة|فضای یکپارچه|اتاق خواب جداگانه/i, `${locale} room groups avoid superseded public group claims and unverified room layouts`);
+    assert.deepEqual(accommodationCategories.map(({ count }) => count), [3, 17, 6, 3, 2]);
+    assert.equal(accommodationCategories.slice(0, 2).reduce((sum, item) => sum + item.count, 0), 20);
+    assert.equal(accommodationCategories.slice(2).reduce((sum, item) => sum + item.count, 0), 11);
+    assert.equal(accommodationCategories.reduce((sum, item) => sum + item.count, 0), 31);
+    for (const category of accommodationCategories) assert.ok(roomForLocale(category.slug, locale)?.title, `${locale} translates ${category.slug}`);
     assert.ok(facilities.toLowerCase().includes(expected.parkingLimited.toLowerCase()), `${locale} states parking is limited`);
     const receptionCopy = facilityPage.sections[0].text;
     assert.ok(receptionCopy.includes(expected.receptionStart) && receptionCopy.includes(expected.receptionEnd), `${locale} states reception hours 06:00–01:00`);
@@ -154,6 +166,10 @@ test("Damoon public content uses owner-confirmed hospitality facts in fa/en/ar",
     assert.equal(createHash("sha256").update(bytes).digest("hex"), publicManifest.files[asset], `release manifest matches generated ${asset}`);
   }
   const generatedCopy = `${publicContent}\n${publicTranslations}\n${publicApp}\n${publicHospitality}`;
+  assert.match(publicContent, /۳۱ واحد اقامتی دارد: ۲۰ اتاق و ۱۱ سوئیت/);
+  assert.match(publicTranslations, /31 accommodation units: 20 rooms and 11 suites/);
+  assert.match(publicTranslations, /٣١ وحدة إقامة: ٢٠ غرفة و١١ جناحاً/);
+  assert.doesNotMatch(generatedCopy, /two[- ]room|open[- ]plan|without a separate bedroom|The hotel has 7 VIP suites|17 standard units|7 open-plan studio suites|غرفتين|غرفة واحدة|تصميم مفتوح|دون غرفة نوم منفصلة|دو اتاقه|تک‌اتاقه|فضای یکپارچه|اتاق خواب جداگانه|سوئیت دو اتاقه|هتل ۷ سوئیت VIP|هتل ۱۷ واحد استاندارد|هتل ۷ سوئیت استودیو/i, "generated public runtime removes unsupported accommodation breakdowns and layouts");
   for (const number of ["+983832261984", "+983832261985", "+983832261987", "+983832261988", "+983832261986"]) {
     assert.ok(generatedCopy.includes(number), `generated public assets include owner-provided number ${number}`);
   }

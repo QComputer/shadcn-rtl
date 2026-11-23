@@ -29,16 +29,19 @@ export const site = {
 };
 
 export const accommodationCategories = [
-  { slug: "vip-suite", title: "سوئیت دو اتاقه VIP", description: "هتل ۷ سوئیت VIP دارد که هر کدام دو اتاق دارند.", image: "/assets/room-concept-2.webp" },
-  { slug: "standard-room", title: "اتاق استاندارد", description: "هتل ۱۷ واحد استاندارد تک‌اتاقه دارد.", image: "/assets/room-concept-1.webp" },
-  { slug: "studio-suite", title: "سوئیت استودیو", description: "هتل ۷ سوئیت استودیو با فضای یکپارچه دارد. این سوئیت‌ها اتاق خواب جداگانه ندارند.", image: "/assets/room-concept-3.webp" },
+  { slug: "single", title: "اتاق یک‌نفره", count: 3, description: "گروه اتاق یک‌نفره برای هماهنگی درخواست؛ عنوان گروه به‌تنهایی ظرفیت یا چیدمان واحد را تأیید نمی‌کند.", image: "/assets/room-concept-1.webp" },
+  { slug: "double", title: "اتاق دونفره", count: 17, description: "گروه اتاق دونفره برای هماهنگی درخواست؛ عنوان گروه به‌تنهایی ظرفیت یا چیدمان واحد را تأیید نمی‌کند.", image: "/assets/room-concept-2.webp" },
+  { slug: "suite-3-person", title: "سوئیت سه‌نفره", count: 6, description: "گروه سوئیت سه‌نفره برای هماهنگی درخواست؛ ظرفیت و جزئیات واقعی را از پذیرش بپرسید.", image: "/assets/room-concept-3.webp" },
+  { slug: "suite-4-person", title: "سوئیت چهارنفره", count: 3, description: "گروه سوئیت چهارنفره برای هماهنگی درخواست؛ ظرفیت و جزئیات واقعی را از پذیرش بپرسید.", image: "/assets/room-concept-2.webp" },
+  { slug: "suite-5-person", title: "سوئیت پنج‌نفره", count: 2, description: "گروه سوئیت پنج‌نفره برای هماهنگی درخواست؛ ظرفیت و جزئیات واقعی را از پذیرش بپرسید.", image: "/assets/room-concept-3.webp" },
 ];
 
 export const rooms = [
   ...accommodationCategories,
-  { slug: "single", title: "اتاق یک‌نفره", description: "گروه اتاق یک‌نفره؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/assets/room-concept-1.webp" },
-  { slug: "double", title: "اتاق دونفره", description: "گروه اتاق دونفره؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/assets/room-concept-2.webp" },
-  { slug: "suite", title: "سوئیت", description: "گروه سوئیت؛ ظرفیت دقیق و امکانات داخل واحد را از پذیرش بپرسید.", image: "/assets/room-concept-3.webp" },
+  { slug: "vip-suite", title: "گروه سوئیت VIP", description: "پیوند قدیمی گروه VIP برای هماهنگی درخواست؛ جزئیات واحد و ظرفیت را از پذیرش بپرسید.", image: "/assets/room-concept-2.webp" },
+  { slug: "standard-room", title: "گروه اتاق استاندارد", description: "پیوند قدیمی گروه اتاق استاندارد برای هماهنگی درخواست؛ جزئیات واحد و ظرفیت را از پذیرش بپرسید.", image: "/assets/room-concept-1.webp" },
+  { slug: "studio-suite", title: "گروه سوئیت استودیو", description: "پیوند قدیمی گروه سوئیت استودیو برای هماهنگی درخواست؛ جزئیات واحد و ظرفیت را از پذیرش بپرسید.", image: "/assets/room-concept-3.webp" },
+  { slug: "suite", title: "گروه سوئیت", description: "پیوند قدیمی گروه سوئیت برای هماهنگی درخواست؛ جزئیات واحد و ظرفیت را از پذیرش بپرسید.", image: "/assets/room-concept-3.webp" },
 ];
 
 const accommodationAliases = {
@@ -80,7 +83,7 @@ export const pages = {
     title: "اتاق‌ها و سوئیت‌ها",
     intro: "فضاهای اقامت",
     sections: accommodationSections("fa"),
-    text: "هتل دامون ۳۱ واحد اقامتی دارد. نام گروه‌های اقامتی در این صفحه آمده است؛ ظرفیت دقیق، امکانات اختصاصی، نرخ و موجودی هر گروه نمایش داده نمی‌شوند.",
+    text: "هتل دامون ۳۱ واحد اقامتی دارد: ۲۰ اتاق و ۱۱ سوئیت. تعداد گروه‌های اقامتی در این صفحه مبنای انتخاب‌شده برای ارائهٔ عمومی است؛ موجودی شبانه، ظرفیت دقیق، تخت‌ها و امکانات واحدها را پذیرش تأیید می‌کند. نرخ نمایش داده نمی‌شود و این صفحه رزرو انجام نمی‌دهد.",
   },
   "/attractions": {
     title: damoonAttractionsData.labels.fa.headline,
@@ -129,7 +132,7 @@ export const pages = {
     actions: [["/contact", "تماس با هتل"]],
     sections: [
       { heading: "مهمان‌نوازی دامون", text: "دامون با رویکردی گرم، صمیمی و آرام، می‌خواهد مهمان در طول اقامت احساس آسودگی و خانهٔ دوم داشته باشد." },
-      { heading: "اقامت در دامون", text: "سوئیت‌های دو اتاقه VIP، اتاق‌های استاندارد و سوئیت‌های استودیو را در بخش اقامت ببینید. برای ظرفیت دقیق، امکانات واحد و نرخ روز با پذیرش هماهنگ کنید.", link: "/rooms", label: "دیدن گروه‌های اقامتی" },
+      { heading: "اقامت در دامون", text: "گروه‌های اقامتی را در صفحهٔ اتاق‌ها ببینید و برای تأیید جزئیات واحد و ظرفیت با پذیرش هماهنگ کنید.", link: "/rooms", label: "دیدن گروه‌های اقامتی" },
       { heading: "زمان ورود و خروج", text: "زمان ورود ساعت ۱۴:۰۰ و زمان خروج ساعت ۱۲:۰۰ است.", link: "/policies", label: "اطلاعات اقامت" },
     ],
   },
@@ -196,9 +199,9 @@ export function roomForPath(path, locale = "fa") {
 }
 
 function accommodationSections(locale) {
-  return accommodationCategories.map(({ slug }) => {
+  return accommodationCategories.map(({ slug, count }) => {
     const room = roomForLocale(slug, locale);
-    return { heading: room.title, text: room.description, link: `/rooms/${slug}`, image: room.image };
+    return { heading: room.title, text: room.description, count, link: `/rooms/${slug}`, image: room.image };
   });
 }
 

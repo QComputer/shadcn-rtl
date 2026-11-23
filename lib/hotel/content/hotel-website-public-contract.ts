@@ -6,6 +6,15 @@ const publicSection = z.discriminatedUnion("kind", [
   z.object({ key: z.string(), order: z.number().int(), visible: z.boolean(), kind: z.literal("FEATURE_LIST"), heading: publicLocalizedText, items: z.array(z.object({ key: z.string(), label: publicLocalizedText, description: publicLocalizedText.optional() }).strict()) }).strict(),
   z.object({ key: z.string(), order: z.number().int(), visible: z.boolean(), kind: z.literal("FAQ"), heading: publicLocalizedText, items: z.array(z.object({ question: publicLocalizedText, answer: publicLocalizedText }).strict()) }).strict(),
 ]);
+const publicAccommodationCatalog = z.object({
+  totalRooms: z.number().int().nonnegative(),
+  totalSuites: z.number().int().nonnegative(),
+  categories: z.array(z.object({
+    slug: z.string(), kind: z.enum(["ROOM", "SUITE"]), order: z.number().int().nonnegative(), count: z.number().int().nonnegative(),
+    title: z.string(), description: publicLocalizedText.optional(), amenities: z.array(publicLocalizedText).optional(),
+    capacitySpecification: publicLocalizedText.optional(),
+  }).strict()),
+}).strict();
 
 export const hotelWebsitePublicContentSchema = z.object({
   title: publicLocalizedText,
@@ -13,6 +22,7 @@ export const hotelWebsitePublicContentSchema = z.object({
   introduction: z.object({ heading: publicLocalizedText.optional(), body: publicLocalizedText }).strict(),
   sections: z.array(publicSection),
   contact: z.object({ phone: z.string().optional(), email: z.string().email().optional() }).strict(),
+  accommodationCatalog: publicAccommodationCatalog.optional(),
 }).strict();
 
 const galleryItem = z.object({ src: z.string().startsWith("/api/hotel/v1/website/media/"), altText: publicLocalizedText, sortOrder: z.number().int().nonnegative(), slot: z.enum(["GALLERY", "HERO_DESKTOP", "HERO_MOBILE"]) }).strict();

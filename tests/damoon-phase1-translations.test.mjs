@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizePath, pages, rooms, pageForPath, roomForLocale } from "../sites/damoon/content.js";
+import { accommodationCategories, normalizePath, pages, rooms, pageForPath, roomForLocale } from "../sites/damoon/content.js";
 import translations from "../sites/damoon/translations.js";
 
 const locales = ["en", "ar"];
@@ -27,21 +27,32 @@ test("English and Arabic cover every main Damoon page and room section", () => {
   }
 });
 
-test("Damoon catalog uses corrected unit totals, public layouts, and compatible category aliases", () => {
+test("Damoon catalog uses the owner-selected five-category baseline and preserves legacy routes", () => {
   const categories = [
-    { slug: "vip-suite", alias: "vip", descriptions: { fa: /۷ سوئیت VIP.*دو اتاق/, en: /7 VIP suites.*two rooms/, ar: /٧ أجنحة VIP.*غرفتين/ } },
-    { slug: "standard-room", alias: "single-room", descriptions: { fa: /۱۷ واحد استاندارد تک‌اتاقه/, en: /17 standard units.*one room/, ar: /١٧ وحدة قياسية.*غرفة واحدة/ } },
-    { slug: "studio-suite", alias: "fourth-floor-suite", descriptions: { fa: /۷ سوئیت استودیو.*اتاق خواب جداگانه ندارند/, en: /7 open-plan studio suites without a separate bedroom/, ar: /٧ أجنحة استوديو.*دون غرفة نوم منفصلة/ } },
+    { slug: "single", count: 3, titles: { fa: "اتاق یک‌نفره", en: "Single room", ar: "غرفة مفردة" } },
+    { slug: "double", count: 17, titles: { fa: "اتاق دونفره", en: "Double room", ar: "غرفة مزدوجة" } },
+    { slug: "suite-3-person", count: 6, titles: { fa: "سوئیت سه‌نفره", en: "Three-person suite", ar: "جناح لثلاثة أشخاص" } },
+    { slug: "suite-4-person", count: 3, titles: { fa: "سوئیت چهارنفره", en: "Four-person suite", ar: "جناح لأربعة أشخاص" } },
+    { slug: "suite-5-person", count: 2, titles: { fa: "سوئیت پنج‌نفره", en: "Five-person suite", ar: "جناح لخمسة أشخاص" } },
   ];
+  assert.deepEqual(accommodationCategories.map(({ slug, count }) => ({ slug, count })), categories.map(({ slug, count }) => ({ slug, count })));
+  assert.equal(categories.slice(0, 2).reduce((sum, item) => sum + item.count, 0), 20);
+  assert.equal(categories.slice(2).reduce((sum, item) => sum + item.count, 0), 11);
+  assert.equal(categories.reduce((sum, item) => sum + item.count, 0), 31);
   for (const locale of ["fa", ...locales]) {
     const sections = pageForPath("/rooms", locale).sections;
     assert.deepEqual(sections.map(({ link }) => link), categories.map(({ slug }) => `/rooms/${slug}`));
-    for (const [index, { slug, alias, descriptions }] of categories.entries()) {
-      assert.match(sections[index].text, descriptions[locale]);
-      assert.doesNotMatch(sections[index].text, /third floor|fourth floor|طبقهٔ|الطابق/iu);
-      assert.equal(normalizePath(`/${locale}/rooms/${alias}`), `/rooms/${slug}`);
-      assert.equal(roomForLocale(alias, locale).slug, slug);
+    for (const [index, { slug, count, titles }] of categories.entries()) {
+      assert.equal(roomForLocale(slug, locale).title, titles[locale]);
+      assert.equal(sections[index].count, count);
+      assert.match(sections[index].text, locale === "fa" ? /درخواست/ : locale === "en" ? /coordination requests/ : /طلبات التنسيق/);
+      assert.doesNotMatch(sections[index].text, /bed layout|عدد الأسرة|چیدمان تخت/i);
+      assert.equal(normalizePath(`/${locale}/rooms/${slug}`), `/rooms/${slug}`);
     }
+  }
+  for (const [alias, target] of Object.entries({ vip: "vip-suite", "single-room": "standard-room", "fourth-floor-suite": "studio-suite", "suite-3-bed": "suite", "suite-4-5-bed": "suite" })) {
+    assert.equal(normalizePath(`/fa/rooms/${alias}`), `/rooms/${target}`);
+    assert.ok(pageForPath(`/rooms/${target}`, "fa"), `legacy route ${target} remains renderable`);
   }
 });
 

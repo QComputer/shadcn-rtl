@@ -1,6 +1,6 @@
 # Hotel Damoon — accommodation category management and content contract
 
-**Status: PR148 implementation and disposable-PostgreSQL acceptance passed; Production deployment/live acceptance pending.** Read alongside `OWNER-DECISION-ACCOMMODATION-BASELINE-2026-11-23.md`.
+**Status: PR148 implementation and disposable-PostgreSQL acceptance passed; public assets hash-match the merge; interactive Production CMS acceptance pending.** Read alongside `OWNER-DECISION-ACCOMMODATION-BASELINE-2026-11-23.md`.
 
 ## Existing sources to inspect
 
@@ -51,4 +51,4 @@ If existing platform models cannot safely represent both without a schema extens
 
 ## PR148 implementation evidence
 
-The first editable public category catalog is implemented in PR148 at head `65f010bfdd58b3697d6edcb46c47170484d46e0b`, merged as `9379d82761bea87c20b86be1a96da9dcb9bd7428`. Workflow `45088093245` passed on disposable PostgreSQL for draft invisibility, manager edit, independent admin review/approval/publication, public read, 3/17/6/3/2 quantities, FA/EN/AR content, tenant isolation and safe projection. This proves the tested code path only; Runflare is still v126 and post-deploy public editing/publication is not yet Production accepted. No migration, Production data write or booking activation was introduced.
+The first editable public category catalog is implemented in PR148 at head `65f010bfdd58b3697d6edcb46c47170484d46e0b`, merged as `9379d82761bea87c20b86be1a96da9dcb9bd7428`. Workflow `45088093245` passed on disposable PostgreSQL for draft invisibility, manager edit, independent admin review/approval/publication, public read, 3/17/6/3/2 quantities, FA/EN/AR content, tenant isolation and safe projection. The live public manifest now hash-matches PR148, but the Runflare version/source revision is not exposed by current health metadata and public CMS edit/publish acceptance remains untested. No migration, Production data write or booking activation was introduced.

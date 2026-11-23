@@ -7,16 +7,19 @@
   "runflare": {
     "projectId": "37622",
     "serviceId": "87432",
-    "reportedActiveVersion": "v126",
+    "reportedActiveVersion": "v126 (last portal observation; after that observation live manifest matched PR148)",
     "reportedActiveSourceSha": null,
-    "sourceShaConfidence": "RUNFLARE_GITHUBAPP_REQUEST_INITIALIZED_AT_2026-11-23T00:26:47Z_FOR_MAIN_9379D82761; NO_BUILD_LOG_OR_COMPLETED_EVENT; V126_ACTIVE_1_OF_1; AUTO_PULL_ON; PROVIDER_SOURCE_SHA_NOT_EXPOSED",
+    "sourceShaConfidence": "LIVE_PUBLIC_MANIFEST_ASSET_HASHES_MATCH_PR148_MAIN_9379D82761; RUNFLARE_PORTAL_LAST_OBSERVED_V126_WITH_REQUEST_INITIALIZED; POST_HASH_REFRESH_PROVIDER_VERSION_NOT_REVERIFIED; HEALTH_REVISION_NULL",
     "healthRevision": null
   },
   "liveManifest": {
-    "accommodation.css": "788e851522eb9ababfd29c5dc56514ff27387cbb3db7863116a03ee1a0393963",
-    "accommodation.js": "28bdecc388aee1509058b73711463034485967b805793329c151951953763b74",
+    "accommodation.css": "c3e3d4662b729ae0a767f604c0e54268c243138213401a1ba555b51f8778c064",
+    "accommodation.js": "223850efecc9fbd65eb35af473956747b04a46e237198b3e65712a2d72b0bb0e",
     "booking.js": "1b14d05865e7ab1c5f741528e864fe3b3f1ebdff1eb91fa7e5475cd4822fb0d5",
-    "content.js": "a9fc9dd0e94806b26a7108cc2a91b301464ffee8f957aadf1d61715ac67441a1"
+    "content.js": "727636d03129b83bd40711764dca4c8e70f9db2980829c204b02b4d14fa71c2c",
+    "app.js": "d29e0273ced081f2f0d5ceb248e50f3607b11d139de6ac6d90ec9cdeb48f9010",
+    "translations.js": "4c0ca6cf232fed0288547303192f9f6d2a7bdc8cc6c2b098a3596f1a07e62063",
+    "virtual-tour.js": "2aad2664f784eb2e5e7a934ff5dd00ea84c560e54fed602ac54968c09203ffa5"
   },
   "sourceManifestAtMain": {
     "accommodation.css": "c3e3d4662b729ae0a767f604c0e54268c243138213401a1ba555b51f8778c064",
@@ -90,8 +93,8 @@
   ],
   "sourceEvidence": {
     "github": "GitHub API 2026-11-23: PR148 head 65f010bfdd58b3697d6edcb46c47170484d46e0b merged to main as 9379d82761bea87c20b86be1a96da9dcb9bd7428. Relevant Actions successful: runs 45088093180, 45088092192, 45088092271, 45088092212, 45088092180; CMS disposable PostgreSQL run 45088093245 passed. Known Vercel suspended-preview block is the only failing context; CodeRabbit skipped.",
-    "liveAsset": "https://damoon-hotel.ir/damoon-front/release-manifest.json; live content.js SHA-256 a9fc9dd0e94806b26a7108cc2a91b301464ffee8f957aadf1d61715ac67441a1 (pre-PR148); live app.js observed prefix 3d387758; live accommodation.css/JS and booking.js full hashes are recorded in liveManifest.",
-    "provider": "Authenticated Runflare dashboard 2026-11-23: service 87432 Git connection QComputer/shadcn-rtl/main and auto-pull enabled; latest listed commit abbreviated 9379d82761. GithubApp request initialized at 2026-11-23 03:56 local / 00:26:47Z. Deployment log pane has no build output and no completed event. v126 remains active 1/1 healthy; provider does not expose active source SHA. No duplicate deployment was started."
+    "liveAsset": "Read-only HTTPS GET 2026-11-23: release-manifest.json on damoon-hotel.ir reports PR148-exact SHA-256 values for accommodation.css, accommodation.js, app.js, content.js, translations.js and virtual-tour.js. Manifest is deployed asset-level evidence; API health revision is null and does not identify Runflare version.",
+    "provider": "Authenticated Runflare portal last observed service 87432 on v126 1/1, repo QComputer/shadcn-rtl/main auto-pull enabled, latest commit 9379d82761, GithubApp Request Initialized with no build logs. A later public HTTPS manifest GET showed exact PR148 asset hashes; portal was not reverified after this change, so current deployment version/source remains unknown. No duplicate deployment was initiated."
   },
   "featureGates": {
     "publicBooking": false,
@@ -164,7 +167,7 @@
     "productionWrites": "NONE",
     "remainingAcceptance": "Owner/reception operational sign-off and separate data authorization for any live guest record; R09 privacy-retention review"
   },
-  "caveat": "PR148 is merged and CI/CMS disposable-PostgreSQL accepted, but not yet verified as deployed. Runflare v126 remains active while the GithubApp request for main 9379d82761 is Request Initialized with no build logs/completed event; production asset hashes remain the pre-PR148 values. Prior v124 PR145 read-only browser acceptance is historical, not post-PR148 acceptance.",
+  "caveat": "PR148 is merged and CI/CMS disposable-PostgreSQL accepted. The public manifest now matches the merge for six inspected assets and GET-only health/routes smoke passed. Runflare portal was last seen at v126 with a GithubApp request initialized before the hash refresh; current provider version/source is unverified, and browser-level public CMS acceptance remains pending. This evidence does not authorize public booking, Production writes/migrations, PR140, or indexing.",
   "pr148CmsAcceptance": {
     "status": "PASSED_DISPOSABLE_POSTGRES_CI",
     "workflowRun": "45088093245",
@@ -183,9 +186,36 @@
     "productionAcceptance": "NOT_RUN_DEPLOYMENT_PENDING"
   },
   "pr148ProductionAcceptance": {
-    "status": "NOT_RUN_DEPLOYMENT_PENDING",
-    "liveAssetHashesMatch": false,
-    "browserAcceptance": "NOT_RUN",
+    "status": "ASSET_HASHES_MATCH; READ_ONLY_HEALTH_AND_ROUTE_SMOKE_PASSED; RUNFLARE_VERSION_UNVERIFIED; INTERACTIVE_CMS_ACCEPTANCE_PENDING",
+    "liveAssetHashesMatch": true,
+    "matchedAssets": [
+      "accommodation.css",
+      "accommodation.js",
+      "app.js",
+      "content.js",
+      "translations.js",
+      "virtual-tour.js"
+    ],
+    "health": {
+      "damoonBasic": "HTTP 200 status ok",
+      "damoonDeep": "HTTP 200 status ok; database checked and ok",
+      "bazarbaazBasic": "HTTP 200 status ok",
+      "bazarbaazDeep": "HTTP 200 status ok; database checked and ok"
+    },
+    "routes": [
+      "/fa/rooms",
+      "/en/rooms",
+      "/ar/rooms",
+      "/fa/virtual-tour",
+      "/en/virtual-tour",
+      "/ar/virtual-tour",
+      "/hotel-reservations/start",
+      "/fa/hotel-reservations/start",
+      "/en/hotel-reservations/start",
+      "/ar/hotel-reservations/start"
+    ],
+    "routesResult": "ALL HTTP 200; noindex detected",
+    "browserAcceptance": "NOT_RUN; no interactive CMS edit/publication tested",
     "publicGuestWrites": "NONE"
   }
 }

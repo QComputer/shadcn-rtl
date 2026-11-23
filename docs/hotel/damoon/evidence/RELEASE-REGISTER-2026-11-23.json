@@ -7,9 +7,9 @@
   "runflare": {
     "projectId": "37622",
     "serviceId": "87432",
-    "reportedActiveVersion": "v126 (last portal observation; after that observation live manifest matched PR148)",
-    "reportedActiveSourceSha": null,
-    "sourceShaConfidence": "LIVE_PUBLIC_MANIFEST_ASSET_HASHES_MATCH_PR148_MAIN_9379D82761; RUNFLARE_PORTAL_LAST_OBSERVED_V126_WITH_REQUEST_INITIALIZED; POST_HASH_REFRESH_PROVIDER_VERSION_NOT_REVERIFIED; HEALTH_REVISION_NULL",
+    "reportedActiveVersion": "v127 (active, 1/1 healthy pod)",
+    "reportedActiveSourceSha": "9379d82761bea87c20b86be1a96da9dcb9bd7428",
+    "sourceShaConfidence": "SERVICE_V127_ACTIVE_1_OF_1; LATEST_GITHUBAPP_DEPLOYMENT_COMPLETED; PROVIDER_LOG_IDENTIFIES_9379D82761BEA87C20B86BE1A96DA9DCB9BD7428; GIT_MAIN_AUTO_PULL_ON; HEALTH_REVISION_NULL",
     "healthRevision": null
   },
   "liveManifest": {
@@ -85,7 +85,7 @@
     {
       "pr": 148,
       "state": "MERGED",
-      "production": "RUNFLARE_REQUEST_INITIALIZED; V126_STILL_ACTIVE; DEPLOYMENT_AND_LIVE_ACCEPTANCE_PENDING",
+      "production": "RUNFLARE_V127_ACTIVE_SOURCE_LOG_9379D827; LIVE_PUBLIC_CATEGORY_READ_FA_EN_AR_PASSED; PRODUCTION_CMS_WRITE_NOT_TESTED",
       "head": "65f010bfdd58b3697d6edcb46c47170484d46e0b",
       "mergeSha": "9379d82761bea87c20b86be1a96da9dcb9bd7428",
       "ci": "SIX_RELEVANT_ACTIONS_SUCCESS; KNOWN_SUSPENDED_VERCEL_PREVIEW_BLOCKED; CODE_RABBIT_SKIPPED"
@@ -93,8 +93,8 @@
   ],
   "sourceEvidence": {
     "github": "GitHub API 2026-11-23: PR148 head 65f010bfdd58b3697d6edcb46c47170484d46e0b merged to main as 9379d82761bea87c20b86be1a96da9dcb9bd7428. Relevant Actions successful: runs 45088093180, 45088092192, 45088092271, 45088092212, 45088092180; CMS disposable PostgreSQL run 45088093245 passed. Known Vercel suspended-preview block is the only failing context; CodeRabbit skipped.",
-    "liveAsset": "Read-only HTTPS GET 2026-11-23: release-manifest.json on damoon-hotel.ir reports PR148-exact SHA-256 values for accommodation.css, accommodation.js, app.js, content.js, translations.js and virtual-tour.js. Manifest is deployed asset-level evidence; API health revision is null and does not identify Runflare version.",
-    "provider": "Authenticated Runflare portal last observed service 87432 on v126 1/1, repo QComputer/shadcn-rtl/main auto-pull enabled, latest commit 9379d82761, GithubApp Request Initialized with no build logs. A later public HTTPS manifest GET showed exact PR148 asset hashes; portal was not reverified after this change, so current deployment version/source remains unknown. No duplicate deployment was initiated."
+    "liveAsset": "Read-only HTTPS GET 2026-11-23: release-manifest.json reports PR148-exact SHA-256 values for accommodation.css, accommodation.js, app.js, content.js, translations.js and virtual-tour.js; values match source manifest at main 9379d82761bea87c20b86be1a96da9dcb9bd7428.",
+    "provider": "Authenticated Runflare portal 2026-11-23: service 87432 v127 active with 1/1 healthy pod. Latest GitHub App deployment status Completed; its provider log reads \"Reverted To commit 9379d82761bea87c20b86be1a96da9dcb9bd7428\" (Runflare commit-selection deployment control, not a Git revert). Git integration is QComputer/shadcn-rtl main with auto-pull checked. An older Request Initialized row remains in history but no current build/deployment is running. Provider health revision is null."
   },
   "featureGates": {
     "publicBooking": false,
@@ -167,7 +167,7 @@
     "productionWrites": "NONE",
     "remainingAcceptance": "Owner/reception operational sign-off and separate data authorization for any live guest record; R09 privacy-retention review"
   },
-  "caveat": "PR148 is merged and CI/CMS disposable-PostgreSQL accepted. The public manifest now matches the merge for six inspected assets and GET-only health/routes smoke passed. Runflare portal was last seen at v126 with a GithubApp request initialized before the hash refresh; current provider version/source is unverified, and browser-level public CMS acceptance remains pending. This evidence does not authorize public booking, Production writes/migrations, PR140, or indexing.",
+  "caveat": "PR148 is merged, CI and CMS draft/review/approval/publication/public-read acceptance passed on disposable PostgreSQL (run 45088093245), Runflare v127 is active, and its latest completed deployment log identifies main 9379d82761bea87c20b86be1a96da9dcb9bd7428. Live public category read was accepted in FA/EN/AR with no Production writes. Mobile-specific viewport acceptance and privileged Production CMS edit/publication remain untested. This does not authorize public booking, Production writes/migrations, PR140, or indexing.",
   "pr148CmsAcceptance": {
     "status": "PASSED_DISPOSABLE_POSTGRES_CI",
     "workflowRun": "45088093245",
@@ -186,7 +186,7 @@
     "productionAcceptance": "NOT_RUN_DEPLOYMENT_PENDING"
   },
   "pr148ProductionAcceptance": {
-    "status": "ASSET_HASHES_MATCH; READ_ONLY_HEALTH_AND_ROUTE_SMOKE_PASSED; RUNFLARE_VERSION_UNVERIFIED; INTERACTIVE_CMS_ACCEPTANCE_PENDING",
+    "status": "V127_ACTIVE_SOURCE_LOG_MATCHES_MAIN; ASSET_HASHES_MATCH; READ_ONLY_PUBLIC_CATEGORY_BROWSER_ACCEPTED_FA_EN_AR; HEALTH_OK; MOBILE_VIEWPORT_AND_PRODUCTION_CMS_WRITE_NOT_TESTED",
     "liveAssetHashesMatch": true,
     "matchedAssets": [
       "accommodation.css",
@@ -215,7 +215,9 @@
       "/ar/hotel-reservations/start"
     ],
     "routesResult": "ALL HTTP 200; noindex detected",
-    "browserAcceptance": "NOT_RUN; no interactive CMS edit/publication tested",
-    "publicGuestWrites": "NONE"
+    "browserAcceptance": "Read-only live browser: five categories and 3/17/6/3/2 in FA/EN/AR; category CTA preserved category and 2026-12-01/2026-12-29, adults=3, children=1, childAges=8 through locale changes; request-only form wording visible; no form submitted. Default in-app viewport only; no mobile override in this session. Separate from PR145 six-viewport acceptance and PR148 disposable-PostgreSQL CMS workflow.",
+    "publicGuestWrites": "NONE",
+    "productionGuestWrites": "NONE",
+    "mobileViewport": "NOT_RETESTED_IN_THIS_SESSION; PR145 SIX-VIEWPORT ACCEPTANCE IS HISTORICAL AND SEPARATE"
   }
 }

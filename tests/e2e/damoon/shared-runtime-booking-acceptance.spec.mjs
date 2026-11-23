@@ -272,7 +272,7 @@ test("Damoon DEMO_BOOKING completes simulated payment and is visible in authoriz
     await managerPage.waitForURL(url => url.pathname === receptionPath, { timeout: 30000 });
     await expect(managerPage.locator("text=رزرو نمایشی").first()).toBeVisible({ timeout: 15000 });
     await expect(managerPage.locator("text=Demo Guest")).toBeVisible();
-    await expect(managerPage.locator("text=DEMO — Synthetic double room")).toBeVisible();
+    await expect(managerPage.getByText("Demo Guest · DEMO — Synthetic double room", { exact: true })).toBeVisible();
     await expect(managerPage.locator("text=موفق (شبیه‌سازی)")).toBeVisible();
     const provision = await managerPage.request.post(new URL("/api/hotel/v1/demo-bookings/provision", env.DAMOON_APP_URL).href, { headers: { Origin: appOrigin, "Content-Type": "application/json" }, data: { nightlyRate: 125000, allotment: 2 } });
     assert.equal(provision.status(), 200, await provision.text());

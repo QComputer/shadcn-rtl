@@ -412,10 +412,16 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     expect(crossOriginPost.status()).toBe(403);
 
     const requestCard = managerPage.locator("article").filter({ has: managerPage.locator(`#request-status-${requestId}`) });
+    await managerPage.setViewportSize({ width: 390, height: 844 });
     await requestCard.locator(`#request-status-${requestId}`).selectOption("IN_REVIEW");
     await expect(requestCard.locator(".rounded-full").first()).toContainText("در حال بررسی");
+    await expect(requestCard.locator("[data-status-update-feedback]")).toHaveText("وضعیت درخواست به در حال بررسی تغییر کرد.");
+    const statusControl = requestCard.locator(`#request-status-${requestId}`);
+    const statusBounds = await statusControl.boundingBox();
+    expect(statusBounds && statusBounds.height).toBeGreaterThanOrEqual(44);
+    expect(statusBounds && statusBounds.x + statusBounds.width).toBeLessThanOrEqual(390);
 
-    await expect(requestCard.locator(`#request-status-${requestId}`)).toBeEnabled();
+    await expect(statusControl).toBeEnabled();
 
     await guestPage.locator('[data-track-request] [data-track-reference]').fill(reference);
     const trackResponsePromise = guestPage.waitForResponse((r) => r.url().endsWith("/api/hotel/v1/requests/status") && r.request().method() === "POST");

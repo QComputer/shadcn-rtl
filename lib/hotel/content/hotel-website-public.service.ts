@@ -131,7 +131,16 @@ function safeContent(value: Prisma.JsonValue, locale: HotelPublicLocale) {
                 const candidate = category as Record<string, unknown>;
                 return candidate.visible === true && typeof candidate.title === "string";
               })
-              .map((category) => Object.fromEntries(Object.entries(category).filter(([key]) => key !== "visible")))
+              .map((category) => ({
+                slug: category.slug,
+                kind: category.kind,
+                order: category.order,
+                count: category.count,
+                title: category.title,
+                ...(typeof category.description === "string" || category.description === null ? { description: category.description } : {}),
+                ...(Array.isArray(category.amenities) ? { amenities: category.amenities } : {}),
+                ...(typeof category.capacitySpecification === "string" || category.capacitySpecification === null ? { capacitySpecification: category.capacitySpecification } : {}),
+              }))
               .sort((left, right) => Number(left.order) - Number(right.order))
           : [],
       }

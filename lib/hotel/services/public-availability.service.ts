@@ -1,4 +1,5 @@
 import { searchAvailability } from "@/lib/hotel/domain/availability";
+import { recommendRooms, type RecommendationReasonCode } from "@/lib/hotel/domain/recommendation";
 import type { PrismaClient } from "@prisma/client";
 import { enumerateStayNights } from "@/lib/hotel/domain/stay-dates";
 import type { AvailabilityQuery, RoomTypeAvailability } from "@/lib/hotel/domain/types";
@@ -15,8 +16,31 @@ export type PublicHotelSearchResult = {
   readonly nightCount: number;
   readonly inventoryReserved: false;
   readonly options: readonly RoomTypeAvailability[];
+  readonly recommendations: readonly { roomTypeId: string; rank: number; reasonCodes: readonly RecommendationReasonCode[] }[];
   readonly rejected: ReadonlyArray<{ roomTypeId: string; reason: string }>;
 };
+
+function recommendOptions(options: readonly RoomTypeAvailability[], query: AvailabilityQuery, stayLengthNights: number) {
+  const ranked = recommendRooms({
+    options,
+    query: {
+      guests: query.occupancy.adults + query.occupancy.children,
+      adults: query.occupancy.adults,
+      children: query.occupancy.children,
+      preferences: {
+        ...(query.requiredAmenities ? { amenities: query.requiredAmenities } : {}),
+        ...(query.maxNightlyRate !== undefined ? { budgetPerNight: query.maxNightlyRate } : {}),
+      },
+      stayLengthNights,
+      now: new Date(0),
+    },
+  });
+  return ranked.recommendations.map(({ roomTypeId, rank, reasons }) => ({
+    roomTypeId,
+    rank,
+    reasonCodes: reasons.map(({ code }) => code),
+  }));
+}
 
 /** Read-only search orchestration. It never claims inventory or creates booking records. */
 export async function searchPublicHotelAvailability(input: PublicHotelSearchInput, repositories: PublicHotelReadRepositories = new PrismaHotelRepositories()): Promise<PublicHotelSearchResult | null> {
@@ -57,7 +81,15 @@ export async function searchPublicHotelAvailability(input: PublicHotelSearchInpu
       })),
     })),
   });
-  return { property: { id: property.id, slug: property.slug, name: property.name, currency: property.currency }, nights: result.nights, nightCount: result.nightCount, inventoryReserved: false, options: result.options, rejected: result.rejected };
+  return {
+    property: { id: property.id, slug: property.slug, name: property.name, currency: property.currency },
+    nights: result.nights,
+    nightCount: result.nightCount,
+    inventoryReserved: false,
+    options: result.options,
+    recommendations: recommendOptions(result.options, input.query, result.nightCount),
+    rejected: result.rejected,
+  };
 }
 
 export function serializePublicAvailability(result: PublicHotelSearchResult) {
@@ -91,5 +123,18 @@ export async function searchPublishedHotelAvailability(host: string | null | und
     }
     if (roomApproved && rateApproved && policyApproved) approvedOptions.push(option);
   }
-  return { ...result, options: approvedOptions };
+  return {
+    ...result,
+    options: approvedOptions,
+    // Rank only the current approved projection so unpublished room/rate data cannot leak through recommendation metadata.
+    recommendations: recommendOptions(approvedOptions, {
+      propertyId: property.id,
+      window: { checkIn: input.checkIn, checkOut: input.checkOut },
+      occupancy: input.occupancy,
+      roomTypeIds: result.options.map((option) => option.roomType.id),
+      ratePlanId: input.ratePlan,
+      requiredAmenities: input.amenities,
+      maxNightlyRate: input.maxNightlyRate,
+    }, result.nightCount),
+  };
 }

@@ -136,6 +136,7 @@ test("guest coordination sends only requested stay details and keeps the feature
     assert.equal(disabledAttempts, 4);
     assert.equal(new Set(retryKeys).size, 1, "ambiguous and rate-limited retries reuse the same idempotency key");
     const previousRequestKey = retryKeys[0];
+    assert.equal(await disabledPage.locator("[data-flow-reset]").innerText(), "شروع درخواست تازه", "the completion action clearly starts a new request");
     await disabledPage.locator("[data-flow-reset]").click();
     await disabledPage.locator(".booking-form .booking-submit[type=submit]").click();
     await disabledPage.locator("[data-create-coordination-request]").waitFor({ state: "visible" });

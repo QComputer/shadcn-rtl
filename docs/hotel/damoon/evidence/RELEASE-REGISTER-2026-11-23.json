@@ -227,6 +227,24 @@
       "observedBody": "proxy-generated Loading page, not application JSON",
       "cause": "UNCONFIRMED; do not infer production environment gate or database failure"
     },
-    "dynamicCmsProductionAcceptance": "NOT_ACCEPTED; only disposable PostgreSQL workflow 45088093245 passed"
+    "dynamicCmsProductionAcceptance": "NOT_ACCEPTED; only disposable PostgreSQL workflow 45088093245 passed",
+    "publicTours": [
+      {
+        "scene": "VIP-01",
+        "url": "https://andarama.bazarbaaz.ir/t/vip-01"
+      },
+      {
+        "scene": "VIP-3",
+        "url": "https://andarama.bazarbaaz.ir/t/vip-3"
+      },
+      {
+        "scene": "Lobby",
+        "url": "https://andarama.bazarbaaz.ir/t/lobby"
+      },
+      {
+        "scene": "Room 303",
+        "url": "https://andarama.bazarbaaz.ir/t/303"
+      }
+    ]
   }
 }

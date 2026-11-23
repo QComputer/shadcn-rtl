@@ -40,6 +40,11 @@ const requestCopy = {
   en: { submit: "Send a stay coordination request", notBooking: "This form sends a coordination request to reception only. It does not select or hold a room, confirm a booking, or take payment.", unavailable: "Stay coordination requests are not enabled yet.", received: "Coordination request sent to reception", reference: "Secure tracking reference", keepReference: "Keep this reference to check your request later.", legacyReceiptUnavailable: "A previous request was sent, but its tracking reference was not kept in this browser. To avoid creating a duplicate, do not submit it again. Use the tracking form if you have the reference, or contact reception.", newRequest: "Start a new request", status: "Request status", check: "Check status", checking: "Checking status...", trackLabel: "Track with secure reference", trackButton: "Show status", trackError: "No request was found for this reference.", statuses: { RECEIVED: "Received", IN_REVIEW: "Under review", OPTION_OFFERED: "An option is ready for your review", UNAVAILABLE: "Unavailable for these dates", DECLINED: "Declined", CLOSED: "Closed" } },
   ar: { submit: "إرسال طلب تنسيق الإقامة", notBooking: "يرسل هذا النموذج طلب تنسيق إلى الاستقبال فقط. لا يختار غرفة ولا يحجزها ولا يؤكد الحجز أو يستلم دفعة.", unavailable: "طلبات تنسيق الإقامة غير مفعلة حالياً.", received: "تم إرسال طلب التنسيق إلى الاستقبال", reference: "رمز متابعة آمن", keepReference: "احتفظ بهذا الرمز لمتابعة طلبك لاحقاً.", legacyReceiptUnavailable: "تم إرسال طلب سابق، لكن رمز المتابعة لم يُحفظ في هذا المتصفح. لتجنب إنشاء طلب مكرر، لا ترسله مرة أخرى. استخدم نموذج المتابعة إذا كان الرمز متوفراً لديك، أو تواصل مع الاستقبال.", newRequest: "بدء طلب جديد", status: "حالة الطلب", check: "تحقق من الحالة", checking: "جارٍ التحقق من الحالة...", trackLabel: "المتابعة باستخدام الرمز الآمن", trackButton: "عرض الحالة", trackError: "لم يتم العثور على طلب بهذا الرمز.", statuses: { RECEIVED: "تم الاستلام", IN_REVIEW: "قيد المراجعة", OPTION_OFFERED: "الخيار جاهز لمراجعتك", UNAVAILABLE: "غير متاح في هذه التواريخ", DECLINED: "مرفوض", CLOSED: "مغلق" } },
 };
+const requestConflictCopy = {
+  fa: "این کلید قبلاً با اطلاعات دیگری استفاده شده است؛ برای جلوگیری از درخواست تکراری، آن را دوباره ارسال نکنید و با پذیرش تماس بگیرید.",
+  en: "This request key was already used with different details. To avoid a duplicate, do not submit a new request; contact reception.",
+  ar: "استُخدم مفتاح الطلب هذا مع بيانات مختلفة. لتجنب التكرار، لا ترسل طلباً جديداً وتواصل مع الاستقبال.",
+};
 
 function validArrival(value, minISO) {
   if (typeof value !== "string" || !value) return false;
@@ -416,6 +421,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     if (requestOnly && status === 429) return locale === "fa" ? "درخواست‌های زیادی ثبت شده است. کمی بعد دوباره تلاش کنید." : locale === "ar" ? "تم إرسال طلبات كثيرة. حاول مرة أخرى بعد قليل." : "Too many requests. Try again shortly.";
     if (requestOnly && status === 400) return locale === "fa" ? "اطلاعات درخواست معتبر نیست. تاریخ و اطلاعات تماس را بررسی کنید." : locale === "ar" ? "بيانات الطلب غير صالحة. تحقق من التواريخ ومعلومات الاتصال." : "The request details are invalid. Check the dates and contact information.";
     if (requestOnly && status === 404) return locale === "fa" ? "درخواست هماهنگی برای این اقامتگاه در دسترس نیست." : locale === "ar" ? "طلبات التنسيق غير متاحة لهذا العقار." : "Coordination requests are unavailable for this property.";
+    if (requestOnly && status === 409 && /idempotency-key was used with a different request/i.test(err)) return requestConflictCopy[locale] || requestConflictCopy.en;
     if (requestOnly && status === 409) return locale === "fa" ? "این درخواست با پیگیری قبلی هم‌خوان نیست. اطلاعات را بررسی و دوباره تلاش کنید." : locale === "ar" ? "لا يتطابق الطلب مع المحاولة السابقة. راجع البيانات وحاول مجدداً." : "This request does not match the previous attempt. Review the details and try again.";
     if (requestOnly && status === 503) return requestCopy[locale]?.unavailable || requestCopy.en.unavailable;
     if (requestOnly && status >= 500) return locale === "fa" ? "ثبت درخواست موقتاً ناموفق بود. کمی بعد با همان اطلاعات دوباره تلاش کنید." : locale === "ar" ? "تعذر إرسال الطلب مؤقتاً. حاول لاحقاً بالمعلومات نفسها." : "The request could not be sent temporarily. Retry later with the same details.";
@@ -487,9 +493,8 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
         ...(specialRequests ? { specialRequests } : {}),
       };
       const body = JSON.stringify(payload);
-      if (!coordinationAttempt || (coordinationAttempt.body && coordinationAttempt.body !== body)) {
-        coordinationAttempt = { body, key: createIdempotencyKey() };
-      } else {
+      if (!coordinationAttempt) coordinationAttempt = { body, key: createIdempotencyKey() };
+      else {
         // After reload the key is restored without its PII-bearing request body.
         // Bind it to the first re-entered payload in memory; the server enforces
         // fingerprint equality and returns 409 if this key already meant other data.
@@ -502,10 +507,6 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
         const result = await postJson("/api/hotel/v1/requests", payload, { "Idempotency-Key": coordinationAttempt.key });
         if (!result.ok || typeof result.data?.reference !== "string") {
           const errorText = typeof result.data?.error === "string" ? result.data.error : "";
-          if (result.status === 409 && /idempotency-key was used with a different request/i.test(errorText)) {
-            coordinationAttempt = null;
-            persistCoordinationDraft();
-          }
           flow.busy = false;
           renderFlow();
           setMessage(result.status === 503 ? (requestCopy[locale]?.unavailable || requestCopy.en.unavailable) : apiErrorMessage(result.status, result.data, errorText), true);

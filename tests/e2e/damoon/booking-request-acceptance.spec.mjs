@@ -1058,11 +1058,11 @@ test('inventory-free request reaches reception and tracks without creating a boo
     await expect(card).toBeVisible();
     await manager.page.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (value) => { window.__damoonCopiedPhone = value; } } }); });
     await card.getByRole('button', {name:'نسخ الرقم'}).click();
-    await expect(card.getByRole('status')).toContainText('تم نسخ الرقم');
+    await expect(card.getByText('تم نسخ الرقم', { exact: true })).toBeVisible();
     expect(await manager.page.evaluate(() => window.__damoonCopiedPhone)).toBe('+989121234567');
     await manager.page.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('denied'); } } }); });
     await card.getByRole('button', {name:'نسخ الرقم'}).click();
-    await expect(card.getByRole('status')).toContainText('تعذر النسخ');
+    await expect(card.getByText('تعذر النسخ', { exact: true })).toBeVisible();
     await manager.page.bringToFront();
     let autoRefreshCount = 0;
     manager.page.on('request', request => { if (new URL(request.url()).pathname === requestsApi && request.method() === 'GET') autoRefreshCount += 1; });

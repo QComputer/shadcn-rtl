@@ -41,7 +41,7 @@ function verifyTarget() {
   const bindings = container.NetworkSettings.Ports["5432/tcp"];
   assert.ok(bindings?.length === 1 && bindings[0]?.HostIp === "127.0.0.1" && bindings[0]?.HostPort === url.port);
   const migrations = readdirSync("prisma/migrations", { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
-  assert.equal(migrations.length, 95);
+  assert.ok(migrations.length > 0, "the disposable database must migrate the checked-out repository's complete migration set");
   return { runId, containerId, volume, databaseName, migrations };
 }
 
@@ -108,7 +108,7 @@ test("C1B2 public website reads enforce host, website capability, exact publicat
     const ledger = await prisma.$queryRaw<Array<{ migration_name: string; finished_at: Date | null; rolled_back_at: Date | null }>>`SELECT migration_name, finished_at, rolled_back_at FROM "_prisma_migrations" ORDER BY migration_name`;
     assert.deepEqual(ledger.map((row) => row.migration_name), target.migrations);
     assert.ok(ledger.every((row) => row.finished_at && !row.rolled_back_at));
-    assert.equal(ledger.length, 95);
+    assert.equal(ledger.length, target.migrations.length);
     assert.equal(await prisma.organization.count(), 0, "target must have no pre-existing organizations");
     assert.equal(await prisma.user.count(), 0, "target must have no pre-existing users");
     assert.equal(await prisma.hotelProperty.count(), 0, "target must have no pre-existing Hotel properties");

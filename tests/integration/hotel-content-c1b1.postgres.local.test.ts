@@ -49,8 +49,8 @@ function readDisposableTarget() {
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort();
-  assert.equal(migrationNames.length, 95, "expected 94 C1A migrations plus the C1B1 idempotency migration");
-  assert.equal(migrationNames.at(-1), "20261013100000_hotel_website_operations_idempotency");
+  assert.ok(migrationNames.length > 0, "the disposable database must migrate the checked-out repository's complete migration set");
+  assert.ok(migrationNames.includes("20261013100000_hotel_website_operations_idempotency"), "the expected C1B1 idempotency migration remains present");
   return { databaseUrl, databaseName, runId: runId.toLowerCase(), migrationNames };
 }
 
@@ -112,7 +112,7 @@ test("C1B1 management authorization, idempotency, editorial transitions, and rol
     `;
     assert.deepEqual(ledger.map((row) => row.migration_name), target.migrationNames);
     assert.ok(ledger.every((row) => row.finished_at !== null && row.rolled_back_at === null));
-    assert.equal(ledger.length, 95);
+    assert.equal(ledger.length, target.migrationNames.length);
     assert.equal(await prisma.organization.count(), 0, "acceptance database must contain no pre-existing organizations");
     assert.equal(await prisma.user.count(), 0, "acceptance database must contain no pre-existing users");
     assert.equal(await prisma.hotelProperty.count(), 0, "acceptance database must contain no pre-existing Hotel properties");

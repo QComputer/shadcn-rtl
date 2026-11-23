@@ -13,10 +13,15 @@ const RATE_DEFAULT = 125_000;
 async function authorizedOrganization(request: Request) {
   const session = await requireAuthSession(request);
   if (!["ADMIN", "MANAGER", "STAFF"].includes(session.user.role)) return null;
-  const organization = await prisma.organization.findFirst({ where: { slug: ORG, vertical: "HOTEL", isActive: true, deletedAt: null }, select: { id: true, slug: true } });
-  if (!organization) return null;
-  const membership = await prisma.organizationMember.findFirst({ where: { organizationId: organization.id, userId: session.user.id, isActive: true, role: { in: ["ADMIN", "MANAGER", "STAFF"] } }, select: { id: true, role: true } });
-  return membership ? { organization, actorId: session.user.id, role: membership.role } : null;
+  const memberships = await prisma.organizationMember.findMany({
+    where: { userId: session.user.id, isActive: true, role: { in: ["ADMIN", "MANAGER", "STAFF"] } },
+    select: { role: true, organization: { select: { id: true, slug: true, vertical: true, isActive: true, deletedAt: true } } },
+  });
+  const membership = memberships.find(({ organization }) =>
+    organization.vertical === "HOTEL" && organization.isActive && !organization.deletedAt &&
+    (organization.slug === ORG || (process.env.DAMOON_LOCAL_E2E === "1" && organization.slug.startsWith("damoon-e2e-"))),
+  );
+  return membership ? { organization: membership.organization, actorId: session.user.id, role: membership.role } : null;
 }
 
 /** Idempotently provisions only the separately scoped synthetic Damoon demo catalog. */

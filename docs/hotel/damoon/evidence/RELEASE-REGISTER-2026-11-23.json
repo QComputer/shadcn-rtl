@@ -15,7 +15,8 @@
   "liveManifest": {
     "accommodation.css": "788e851522eb9ababfd29c5dc56514ff27387cbb3db7863116a03ee1a0393963",
     "accommodation.js": "28bdecc388aee1509058b73711463034485967b805793329c151951953763b74",
-    "booking.js": "1b14d05865e7ab1c5f741528e864fe3b3f1ebdff1eb91fa7e5475cd4822fb0d5"
+    "booking.js": "1b14d05865e7ab1c5f741528e864fe3b3f1ebdff1eb91fa7e5475cd4822fb0d5",
+    "content.js": "a9fc9dd0e94806b26a7108cc2a91b301464ffee8f957aadf1d61715ac67441a1"
   },
   "sourceManifestAtMain": {
     "accommodation.css": "c3e3d4662b729ae0a767f604c0e54268c243138213401a1ba555b51f8778c064",
@@ -89,7 +90,7 @@
   ],
   "sourceEvidence": {
     "github": "GitHub API 2026-11-23: PR148 head 65f010bfdd58b3697d6edcb46c47170484d46e0b merged to main as 9379d82761bea87c20b86be1a96da9dcb9bd7428. Relevant Actions successful: runs 45088093180, 45088092192, 45088092271, 45088092212, 45088092180; CMS disposable PostgreSQL run 45088093245 passed. Known Vercel suspended-preview block is the only failing context; CodeRabbit skipped.",
-    "liveAsset": "https://damoon-hotel.ir/damoon-front/release-manifest.json",
+    "liveAsset": "https://damoon-hotel.ir/damoon-front/release-manifest.json; live content.js SHA-256 a9fc9dd0e94806b26a7108cc2a91b301464ffee8f957aadf1d61715ac67441a1 (pre-PR148); live app.js observed prefix 3d387758; live accommodation.css/JS and booking.js full hashes are recorded in liveManifest.",
     "provider": "Authenticated Runflare dashboard 2026-11-23: service 87432 Git connection QComputer/shadcn-rtl/main and auto-pull enabled; latest listed commit abbreviated 9379d82761. GithubApp request initialized at 2026-11-23 03:56 local / 00:26:47Z. Deployment log pane has no build output and no completed event. v126 remains active 1/1 healthy; provider does not expose active source SHA. No duplicate deployment was started."
   },
   "featureGates": {

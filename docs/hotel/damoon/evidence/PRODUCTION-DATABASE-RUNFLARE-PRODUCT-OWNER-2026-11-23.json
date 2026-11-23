@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "decisionDate": "2026-11-23",
+  "authority": "OWNER_EXPLICIT_LATEST_CORRECTION",
+  "decisionId": "BAZARBAAZ_RUNFLARE_PRODUCT_POSTGRES_PRODUCTION_20261123",
+  "production": {
+    "application": {
+      "provider": "Runflare",
+      "projectName": "product",
+      "projectId": "37622",
+      "serviceId": "87432"
+    },
+    "database": {
+      "provider": "Runflare",
+      "engine": "PostgreSQL-PostGIS 17.3",
+      "projectName": "product",
+      "projectId": "37622",
+      "serviceName": "maindb",
+      "serviceId": "87429",
+      "status": "ACTIVE_OBSERVED",
+      "internalNetworking": "AVAILABLE",
+      "remoteAccess": "ENABLED",
+      "applicationTargetBinding": "UNVERIFIED"
+    },
+    "repository": "QComputer/shadcn-rtl",
+    "mainShaAtDocumentation": "aa38b8c0a6a13de4b40cfe8b60ca7904be8349f7"
+  },
+  "nonProductionOrExcluded": {
+    "Neon": "NOT_PRODUCTION_DO_NOT_QUERY_FOR_PRODUCTION_DIAGNOSTICS",
+    "Render": "UNRELATED_TO_BAZARBAAZ_DAMOON_PRODUCTION",
+    "Vercel": "SUSPENDED_PREVIEW_NOT_PRODUCTION_RELEASE_PATH"
+  },
+  "cms": {
+    "staticFallback": "3_17_6_3_2_OBSERVED",
+    "dynamicPublicApi": "HTTP_503_NGINX_HTML_BOTH_CANDIDATE_SLUGS",
+    "rootCause": "UNCONFIRMED",
+    "productionAcceptance": "NOT_ACCEPTED"
+  },
+  "actions": {
+    "databaseConnectionOrQuery": false,
+    "productionWrites": false,
+    "migrations": false,
+    "featureFlagChanges": false,
+    "deployment": false,
+    "publicBookingPayments": "DISABLED",
+    "pr140": "ON_HOLD"
+  },
+  "credentialValuesStored": false,
+  "productionTopologyReferenceOwnerVerified20261123": {
+    "source": "docs/BAZARBAAZ-PRODUCTION-TOPOLOGY-2026-11-23.md",
+    "decisionDate": "2026-11-23",
+    "authority": "OWNER_EXPLICIT_CORRECTION_AND_RUNFLARE_CONSOLE_OBSERVATION",
+    "runflareProject": {
+      "name": "product",
+      "id": "37622"
+    },
+    "appServiceId": "87432",
+    "databaseService": {
+      "name": "maindb",
+      "id": "87429",
+      "engine": "PostgreSQL-PostGIS",
+      "version": "17.3",
+      "status": "ACTIVE_OBSERVED"
+    },
+    "actualApplicationDatabaseTarget": "UNVERIFIED",
+    "neonProduction": false,
+    "renderRelated": false,
+    "remoteDatabaseConnection": {
+      "environmentVariable": "DB_REMOTE_URI",
+      "exclusiveUriSource": true,
+      "failClosedIfMissing": true,
+      "secretValueDisclosed": false,
+      "connectionAuthorizedByThisRecord": false,
+      "appRuntimeBindingProvenByThisVariable": false,
+      "prohibitedFallbacks": [
+        "DATABASE_URL",
+        "DIRECT_URL",
+        "BB_PRODUCTION_READONLY_URL",
+        "NEON_URI",
+        "HARDCODED_URI"
+      ]
+    },
+    "cmsPublicApi": {
+      "http": 503,
+      "body": "NGINX_HTML",
+      "origin": "UNCONFIRMED",
+      "dynamicProductionAccepted": false
+    },
+    "productionMigrationAllowed": false,
+    "productionWritesAllowed": false,
+    "pr140MergeAllowed": false
+  }
+}

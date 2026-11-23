@@ -579,7 +579,7 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     const conflictingReplay = await postRequest(page, { ...submittedPayload, specialRequests: "Changed synthetic note" }, idempotencyKey);
     expect(conflictingReplay.status()).toBe(409);
     expect(await conflictingReplay.text()).toMatch(/idempotency-key was used with a different request/i);
-    expect((await postStatus(page, committedResponse.reference, foreignHost)).status()).toBe(404);
+    expect((await postStatus(page, committedResponse.reference, `${foreignHost}:8080`)).status()).toBe(404);
 
     await page.reload({ waitUntil: "networkidle" });
     await expect(page.locator("[data-coordination-name]")).toBeVisible();

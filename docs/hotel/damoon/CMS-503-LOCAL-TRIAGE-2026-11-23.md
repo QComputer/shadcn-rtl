@@ -50,6 +50,14 @@ prints connection details, enumerates business records, or writes a report
 file. Unit tests use a synthetic URI and a mocked client; no database was
 contacted.
 
+- `tests/unit/runflare-db-audit.test.mjs`: 5/5 passed, including absent-URI,
+  alternate-variable, remote-host, wrong-database, wrong-role, read-only
+  transaction, and identity-mismatch cases.
+- Targeted ESLint passed for the edited script and tests. Full TypeScript check
+  passed with `pnpm exec tsc --noEmit --incremental false`.
+- Running the CLI with an empty `DB_REMOTE_URI` exited nonzero before driver
+  connection and printed no target or credential data.
+
 This is local implementation evidence only. It does not prove the Production
 Nginx `503` is resolved, identify the live feature-gate value, verify the live
 property slug, or establish Production CMS acceptance.

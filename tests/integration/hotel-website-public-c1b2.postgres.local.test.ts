@@ -162,6 +162,7 @@ test("C1B2 public website reads enforce host, website capability, exact publicat
       ["single", "ROOM", 3], ["double", "ROOM", 17], ["suite-3-person", "SUITE", 6],
       ["suite-4-person", "SUITE", 3], ["suite-5-person", "SUITE", 2],
     ]);
+    assert.equal(JSON.stringify(publishedCatalog).includes("\"visible\""), false, "editorial visibility controls are not exposed in public content");
     assert.equal(publishedCatalog.categories.reduce((sum, category) => sum + (category.kind === "ROOM" ? category.count : 0), 0), 20);
     assert.equal(publishedCatalog.categories.reduce((sum, category) => sum + (category.kind === "SUITE" ? category.count : 0), 0), 11);
     assert.equal(JSON.stringify(published).includes("totalAllotment"), false, "public category counts never derive from operational room allotments");

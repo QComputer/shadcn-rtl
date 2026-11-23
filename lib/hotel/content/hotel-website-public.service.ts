@@ -131,6 +131,7 @@ function safeContent(value: Prisma.JsonValue, locale: HotelPublicLocale) {
                 const candidate = category as Record<string, unknown>;
                 return candidate.visible === true && typeof candidate.title === "string";
               })
+              .map(({ visible: _visible, ...category }) => category)
               .sort((left, right) => Number(left.order) - Number(right.order))
           : [],
       }

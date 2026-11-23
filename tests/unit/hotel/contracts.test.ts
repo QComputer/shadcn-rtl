@@ -157,6 +157,17 @@ describe("hotel validation contracts", () => {
     assert.equal(result.success, false);
   });
 
+  it("requires one validated age for each child in availability and booking occupancy", () => {
+    assert.equal(availabilitySearchSchema.safeParse({
+      ...validSearch,
+      occupancy: { adults: 2, children: 1 },
+    }).success, false);
+    assert.equal(availabilitySearchSchema.safeParse({
+      ...validSearch,
+      occupancy: { adults: 2, children: 1, childAges: [0] },
+    }).success, true);
+  });
+
   it("requires a primary guest and an idempotency key on booking", () => {
     const base = {
       property: "damoon-hotel",
@@ -176,6 +187,16 @@ describe("hotel validation contracts", () => {
       false,
     );
     assert.equal(bookingRequestSchema.safeParse({ ...base, idempotencyKey: "short" }).success, false);
+    const childBooking = {
+      ...base,
+      occupancy: { adults: 1, children: 1, childAges: [7] },
+      guests: [{ fullName: "Ali Rezaei", isPrimary: true }],
+    };
+    assert.equal(bookingRequestSchema.safeParse(childBooking).success, true);
+    assert.equal(bookingRequestSchema.safeParse({
+      ...childBooking,
+      occupancy: { adults: 1, children: 1 },
+    }).success, false);
   });
 
   it("refuses a guest list larger than the declared occupancy", () => {

@@ -70,7 +70,13 @@ export const occupancySchema = z
     childAges: z.array(z.number().int().min(0).max(17)).max(12).optional(),
   })
   .superRefine((value, ctx) => {
-    if (value.childAges && value.childAges.length !== value.children) {
+    if (value.children > 0 && value.childAges === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["childAges"],
+        message: "childAges must contain one entry per child",
+      });
+    } else if (value.childAges && value.childAges.length !== value.children) {
       ctx.addIssue({
         code: "custom",
         path: ["childAges"],

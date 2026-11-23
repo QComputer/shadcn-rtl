@@ -31,6 +31,10 @@ Runflare configuration, feature flag, or guest/content record was accessed.
 - `tests/unit/hotel-website-public-routes.test.ts`: 6/6 passed. This includes
   the gate-off JSON 503/no-database-call contract and a synthetic service
   failure returning no-store JSON 500.
+- `sites/damoon/tests/room-coordination-cta.browser.test.mjs`: 1/1 passed.
+  A browser run against the standalone local frontend verified that both an
+  application JSON 503 and an Nginx-shaped HTML 503 preserve all five bundled
+  accommodation categories and request-only messaging in the FA/EN/AR journey.
 - Disposable-PostgreSQL acceptance was not run: Docker was not running, and
   this task did not start it. No Production connection was attempted.
 - Dynamic CMS publication and Production property-slug resolution remain

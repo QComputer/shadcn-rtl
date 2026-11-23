@@ -5,6 +5,7 @@ import { parseJsonObject } from "@/lib/hotel/management/api-adapter";
 import { createPrismaHotelRepositories } from "@/lib/hotel/persistence/prisma-hotel-repositories";
 import { confirmBookingHold } from "@/lib/hotel/services/hotel-booking.service";
 import { resolveHotelTenantForHost } from "@/lib/hotel/services/hotel-publication.service";
+import { resolveDamoonDemoProperty } from "@/lib/hotel/services/damoon-demo-booking.server";
 import { hashCustomerIdentifier, normalizeCustomerPhone, resolveCustomerIdentity } from "@/lib/customer-identity/customer-identity.service";
 import { bookingRequestSchema } from "@/lib/hotel/validation/hotel-contracts";
 import { z } from "zod";
@@ -16,18 +17,17 @@ const requestSchema = bookingRequestSchema.extend({
 
 export async function POST(request: Request) {
   try {
-    if (process.env.HOTEL_ANONYMOUS_RESERVATION_OPERATIONAL_ENABLED !== "1") {
-      throw new ApiError(503, "Anonymous hotel reservations are not operationally enabled.");
-    }
     const body = requestSchema.parse(parseJsonObject(await request.json()));
     const host = request.headers.get("host");
     const tenant = await resolveHotelTenantForHost(host);
     if (!tenant) throw new ApiError(404, "Hotel is not available");
+    const demo = await resolveDamoonDemoProperty(host, body.property);
+    if (!demo && process.env.HOTEL_ANONYMOUS_RESERVATION_OPERATIONAL_ENABLED !== "1") throw new ApiError(503, "Anonymous hotel reservations are not operationally enabled.");
     if (body.idempotencyKey !== body.holdIdempotencyKey) throw new ApiError(409, "Reservation retry key does not match the hold");
 
-    const phone = normalizeCustomerPhone(body.contact.phone);
-    if (!phone) throw new ApiError(400, "A valid guest mobile number is required");
-    const phoneHash = hashCustomerIdentifier(tenant.organizationId, phone);
+    const phone = demo ? null : normalizeCustomerPhone(body.contact.phone);
+    if (!demo && !phone) throw new ApiError(400, "A valid guest mobile number is required");
+    const phoneHash = hashCustomerIdentifier(tenant.organizationId, demo ? `demo:${body.idempotencyKey}` : phone!);
     const scope = { organizationId: tenant.organizationId };
     const repositories = createPrismaHotelRepositories();
     const existing = await prisma.hotelReservation.findFirst({
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     if (existing) {
       const primary = existing.guests.find((guest) => guest.isPrimary);
       if (existing.idempotencyKey !== body.idempotencyKey || primary?.phoneHash !== phoneHash) throw new ApiError(404, "Reservation is not available");
-      return Response.json({ reference: existing.reference, status: existing.status, paymentStatus: Number(existing.paidAmount) >= Number(existing.totalAmount) ? "PAID" : "UNPAID", totalAmount: String(existing.totalAmount), currency: existing.currency }, { status: 200 });
+      return Response.json({ reference: existing.reference, status: existing.status, paymentStatus: demo ? (existing.status === "CONFIRMED" ? "SIMULATED" : "PENDING_SIMULATION") : Number(existing.paidAmount) >= Number(existing.totalAmount) ? "PAID" : "UNPAID", totalAmount: String(existing.totalAmount), currency: existing.currency, ...(demo ? { mode: "DEMO_BOOKING", synthetic: true } : {}) }, { status: 200 });
     }
 
     const inputForFingerprint = {
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
       ratePlan: body.ratePlan,
       input: { ...inputForFingerprint, contact: { fullName: body.contact.fullName.trim(), phone: body.contact.phone.trim(), email: body.contact.email?.trim().toLowerCase() } },
     })).digest("hex");
-    const replay = await repositories.findAnonymousHoldReplay({ scope, idempotencyKey: body.holdIdempotencyKey, requestFingerprint: fingerprint, propertySlug: body.property, roomTypeSlug: body.roomType, ratePlanCode: body.ratePlan });
+    const replay = await repositories.findAnonymousHoldReplay({ scope, idempotencyKey: body.holdIdempotencyKey, requestFingerprint: fingerprint, propertySlug: body.property, roomTypeSlug: body.roomType, ratePlanCode: body.ratePlan, ...(demo ? { publicationApprovalBypass: "DAMOON_DEMO_BOOKING" as const } : {}) });
     if (!replay || !("isReplay" in replay) || !replay.isReplay || replay.result.holdId !== body.holdId) throw new ApiError(409, "The booking hold expired or does not match this request");
 
     const hold = await repositories.findHold(scope, body.holdId);
@@ -72,9 +72,11 @@ export async function POST(request: Request) {
     const plan = property ? await prisma.hotelRatePlan.findFirst({ where: { organizationId: tenant.organizationId, propertyId: property.id, roomTypeId: hold.roomTypeId, code: body.ratePlan, isActive: true }, select: { id: true } }) : null;
     if (!property || !plan) throw new ApiError(409, "The selected room or rate is no longer available");
 
-    await resolveCustomerIdentity({ organizationId: tenant.organizationId, phone, email: body.contact.email, metadata: { source: "HOTEL_ANONYMOUS_RESERVATION" } });
-    const guests = body.guests.map((guest) => ({ ...guest, ...(guest.isPrimary ? { phoneHash } : {}) }));
-    if (!guests.some((guest) => guest.isPrimary)) guests.unshift({ fullName: body.contact.fullName, isPrimary: true, isChild: false, phoneHash });
+    if (!demo) await resolveCustomerIdentity({ organizationId: tenant.organizationId, phone: phone!, email: body.contact.email, metadata: { source: "HOTEL_ANONYMOUS_RESERVATION" } });
+    const guests = demo
+      ? [{ fullName: "Demo Guest", isPrimary: true, isChild: false, phoneHash }]
+      : body.guests.map((guest) => ({ ...guest, ...(guest.isPrimary ? { phoneHash } : {}) }));
+    if (!demo && !guests.some((guest) => guest.isPrimary)) guests.unshift({ fullName: body.contact.fullName, isPrimary: true, isChild: false, phoneHash });
     const result = await confirmBookingHold({ booking: repositories, payments: repositories, now: () => new Date() }, {
       scope,
       holdId: body.holdId,
@@ -89,7 +91,7 @@ export async function POST(request: Request) {
       idempotencyKey: body.idempotencyKey,
     });
     if (!result.isConfirmed) throw new ApiError(409, "The booking hold can no longer be converted to a reservation");
-    return Response.json({ reference: result.reservation.reference, status: result.reservation.status, paymentStatus: "UNPAID", totalAmount: String(result.reservation.totalAmount), currency: result.reservation.currency }, { status: 201 });
+    return Response.json({ reference: result.reservation.reference, status: result.reservation.status, paymentStatus: demo ? "PENDING_SIMULATION" : "UNPAID", totalAmount: String(result.reservation.totalAmount), currency: result.reservation.currency, ...(demo ? { mode: "DEMO_BOOKING", synthetic: true } : {}) }, { status: 201 });
   } catch (error) {
     return jsonError(error);
   }

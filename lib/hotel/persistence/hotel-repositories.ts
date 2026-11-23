@@ -161,7 +161,7 @@ export interface HotelAvailabilityRepository {
 }
 
 export interface HotelBookingRepository {
-  findAnonymousHoldReplay?(input: { scope: TenantScope; idempotencyKey: string; requestFingerprint: string; propertySlug: string; roomTypeSlug: string; ratePlanCode: string }): Promise<{ isReplay: true; result: { holdId: string; reference: string; status: string; expiresAt: Date; currency: string; totalAmount: number; nightlyRates: readonly number[]; policySnapshot: unknown; inventoryReserved: true } } | { isConflict: true } | null>
+  findAnonymousHoldReplay?(input: { scope: TenantScope; idempotencyKey: string; requestFingerprint: string; propertySlug: string; roomTypeSlug: string; ratePlanCode: string; publicationApprovalBypass?: "DAMOON_DEMO_BOOKING" }): Promise<{ isReplay: true; result: { holdId: string; reference: string; status: string; expiresAt: Date; currency: string; totalAmount: number; nightlyRates: readonly number[]; policySnapshot: unknown; inventoryReserved: true } } | { isConflict: true } | null>
   createAnonymousHoldAtomically?(input: {
     scope: TenantScope
     propertyId: string
@@ -173,6 +173,8 @@ export interface HotelBookingRepository {
     holdId: string
     reference: string
     now: Date
+    /** Only set after the public request has passed the exact Damoon DEMO_BOOKING host/property resolver. */
+    publicationApprovalBypass?: "DAMOON_DEMO_BOOKING"
     acceptedCancellationPolicyVersion?: number | null
     acceptedTotalRate?: string | null
   }): Promise<{ isHeld: true; holdId: string; reference: string; expiresAt: Date; totalAmount: number; currency: string; nightlyRates: readonly number[]; policySnapshot: ReservationCancellationPolicySnapshot | null; replay?: boolean } | { isHeld: false; reason: string; replay?: boolean }>

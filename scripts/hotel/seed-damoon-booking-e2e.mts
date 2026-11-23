@@ -137,6 +137,9 @@ async function main() {
       kind: "APEX", type: "CUSTOM", status: "ACTIVE", isPrimary: false,
       providerVerified: true, dnsConfigured: true, sslReady: true, activatedAt: new Date(),
     } });
+    const demoProperty = await prisma.hotelProperty.create({
+      data: { organizationId: tenantA.organization.id, organizationSlug: tenantA.organization.slug, slug: "damoon-demo", name: "DEMO — Synthetic Damoon stay", timezone: "Asia/Tehran", currency: "TOMAN" },
+    });
     const tenantB = await createTenant(prisma, suffix, "b", `damoon-foreign-${suffix}.test`, passwordB);
 
     const adminSlug = `damoon-e2e-${suffix}-a-admin`;
@@ -188,6 +191,23 @@ async function main() {
     }));
     await prisma.hotelInventory.createMany({ data: inventory });
 
+    const demoRoomType = await prisma.hotelRoomType.create({ data: {
+      organizationId: tenantA.organization.id, propertyId: demoProperty.id, slug: "demo-double", name: "DEMO — Synthetic double room",
+      maxAdults: 2, maxChildren: 2, maxOccupancy: 4, beds: [{ kind: "queen", count: 1 }], totalAllotment: 2,
+    } });
+    const demoPolicy = await prisma.hotelCancellationPolicy.create({ data: {
+      organizationId: tenantA.organization.id, propertyId: demoProperty.id, key: `demo-no-charge-${suffix}`, name: "Demo-only terms — no real charge",
+      freeCancellationCutoffHours: 0, fullCancellationRetention: 0, cancellationTiers: [], isActive: true, version: 1,
+    } });
+    const demoRatePlan = await prisma.hotelRatePlan.create({ data: {
+      organizationId: tenantA.organization.id, propertyId: demoProperty.id, roomTypeId: demoRoomType.id, code: "demo-rate", name: "DEMO — Synthetic price",
+      currency: "TOMAN", baseNightlyRate: BigInt(125_000), mealPlan: "none", minNights: 1, maxNights: 0, cancellationPolicyId: demoPolicy.id, isActive: true,
+    } });
+    await prisma.hotelInventory.createMany({ data: Array.from({ length: 24 }, (_, index) => ({
+      organizationId: tenantA.organization.id, propertyId: demoProperty.id, roomTypeId: demoRoomType.id, date: isoDay(index),
+      allotment: 2, booked: 0, held: 0, outOfService: 0,
+    })) });
+
     const scope = { availability: true, quote: false, policies: false };
     for (const resource of [
       { resourceType: "PROPERTY" as const, resourceId: tenantA.property.id },
@@ -207,6 +227,9 @@ async function main() {
     const values: Record<string, string> = {
       DAMOON_ORGANIZATION_ID: tenantA.organization.id,
       DAMOON_PROPERTY_ID: tenantA.property.id,
+      DAMOON_DEMO_PROPERTY_ID: demoProperty.id,
+      DAMOON_DEMO_ROOM_TYPE_ID: demoRoomType.id,
+      DAMOON_DEMO_RATE_PLAN_ID: demoRatePlan.id,
       DAMOON_PROPERTY_SLUG: tenantA.property.slug,
       DAMOON_MANAGER_USERNAME: tenantA.username,
       DAMOON_MANAGER_PASSWORD: passwordA,

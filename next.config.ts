@@ -11,6 +11,12 @@ const securityHeaders = [
 ];
 
 const appBasePath = resolveAppBasePath();
+// The disposable Damoon acceptance runner gets a unique Next output directory
+// so its dev server cannot race another checkout or a shared local server.
+const damoonLocalE2eDistDir = process.env.DAMOON_NEXT_DIST_DIR;
+if (damoonLocalE2eDistDir && !/^\.next-damoon-e2e-[a-f0-9]{16}$/.test(damoonLocalE2eDistDir)) {
+  throw new Error("DAMOON_NEXT_DIST_DIR must use the isolated Damoon E2E directory format.");
+}
 // Next expects hostname patterns here, not a full URL (scheme or port).
 function configuredDevelopmentHost() {
   try { return new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").hostname; }
@@ -18,6 +24,7 @@ function configuredDevelopmentHost() {
 }
 
 const nextConfig: NextConfig = {
+  ...(damoonLocalE2eDistDir ? { distDir: damoonLocalE2eDistDir } : {}),
   // RunFlare prebuild requires a successful independent exact-SHA CI typecheck.
   // Vercel and ordinary builds always retain Next's built-in TypeScript check.
   typescript: {

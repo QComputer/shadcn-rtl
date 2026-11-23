@@ -15,11 +15,15 @@ function failClosed() {
   }
   const databaseUrl = new URL(env.DATABASE_URL || "");
   const databaseName = decodeURIComponent(databaseUrl.pathname.slice(1));
-  if (env.DATABASE_URL !== env.DIRECT_URL || databaseUrl.protocol !== "postgresql:" || databaseUrl.hostname !== "127.0.0.1" || databaseUrl.port !== "5432" || databaseUrl.username !== "postgres" || databaseUrl.password !== "postgres" || databaseUrl.searchParams.get("schema") !== "public" || !/^damoon_[a-f0-9]{16}$/i.test(databaseName) || env.DAMOON_CI_DATABASE_NAME !== databaseName) {
-    throw new Error("Shared Damoon acceptance requires the exact CI postgres role/credential and workflow-owned disposable database");
+  const local = env.DAMOON_LOCAL_E2E === "1";
+  const validCiDb = databaseUrl.port === "5432" && databaseUrl.username === "postgres" && databaseUrl.password === "postgres" && /^damoon_[a-f0-9]{16}$/i.test(databaseName);
+  const validLocalDb = databaseUrl.port === env.LOCAL_PRISMA_EXPECTED_PORT && /^damoon_test_[a-f0-9]{16}$/i.test(databaseUrl.username) && /^damoon_[a-f0-9]{16}$/i.test(databaseName) && Boolean(databaseUrl.password);
+  if (env.DATABASE_URL !== env.DIRECT_URL || databaseUrl.protocol !== "postgresql:" || databaseUrl.hostname !== "127.0.0.1" || (!local && !validCiDb) || (local && !validLocalDb) || databaseUrl.searchParams.get("schema") !== "public" || env.DAMOON_CI_DATABASE_NAME !== databaseName) {
+    throw new Error("Shared Damoon acceptance requires the exact workflow-owned disposable loopback database");
   }
   const sharedUrl = new URL(env.DAMOON_SHARED_RUNTIME_URL || "");
-  if (sharedUrl.protocol !== "http:" || sharedUrl.hostname !== "damoon-hotel.ir" || sharedUrl.port !== "3000" || sharedUrl.pathname !== "/") {
+  const nextPort = local ? env.DAMOON_NEXT_PORT : "3000";
+  if (sharedUrl.protocol !== "http:" || sharedUrl.hostname !== "damoon-hotel.ir" || sharedUrl.port !== nextPort || sharedUrl.pathname !== "/") {
     throw new Error("Shared runtime URL must be the test-only Damoon host mapped to Next on port 3000");
   }
   for (const name of ["DAMOON_ORGANIZATION_ID", "DAMOON_PROPERTY_ID", "DAMOON_PROPERTY_SLUG", "DAMOON_ROOM_TYPE_SLUG", "DAMOON_RATE_PLAN_CODE"]) {
@@ -30,6 +34,12 @@ function failClosed() {
 
 function isLoopbackAddress(address) {
   return address === "::1" || /^127(?:\.\d{1,3}){3}$/.test(address);
+}
+
+function localHostResolverArgs() {
+  return process.env.DAMOON_LOCAL_E2E === "1"
+    ? [`--host-resolver-rules=MAP damoon-hotel.ir 127.0.0.1, MAP ${process.env.DAMOON_FOREIGN_HOST} 127.0.0.1`]
+    : [];
 }
 
 function dateAtOffset(offset) {
@@ -50,7 +60,7 @@ async function inventorySnapshot(prisma, input, roomTypeId, checkIn, checkOut) {
 
 test("shared public Damoon bundle submits and tracks a persisted request through same-origin Next APIs", { timeout: 90000 }, async () => {
   const { databaseName, sharedUrl } = failClosed();
-  const resolutions = await lookup(sharedUrl.hostname, { all: true, verbatim: true });
+  const resolutions = process.env.DAMOON_LOCAL_E2E === "1" ? [{ address: "127.0.0.1" }] : await lookup(sharedUrl.hostname, { all: true, verbatim: true });
   if (!resolutions.length || resolutions.some(({ address }) => !isLoopbackAddress(address))) {
     throw new Error("Damoon shared-runtime host must resolve exclusively to loopback before browser access");
   }
@@ -80,7 +90,7 @@ test("shared public Damoon bundle submits and tracks a persisted request through
     const email = `shared-${runId}@example.test`;
     assert.equal(await prisma.hotelGuestBookingRequest.count({ where: { organizationId: input.organizationId, propertyId: input.propertyId, guestEmail: email } }), 0);
 
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch({ headless: true, args: localHostResolverArgs() });
     const page = await browser.newPage();
     const appErrors = [];
     page.on("pageerror", error => appErrors.push(error.message));
@@ -160,7 +170,7 @@ test("shared public Damoon bundle submits and tracks a persisted request through
 
 test('shared accommodation tour preserves category and stay across locales and viewports', { timeout: 90000 }, async () => {
   const { sharedUrl } = failClosed();
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: true, args: localHostResolverArgs() });
   try {
     const checkIn = dateAtOffset(7);
     const checkOut = dateAtOffset(8);
@@ -185,4 +195,98 @@ test('shared accommodation tour preserves category and stay across locales and v
       }
     }
   } finally { await browser.close(); }
+});
+
+test("Damoon DEMO_BOOKING completes simulated payment and is visible in authorized reception", { timeout: 90000 }, async () => {
+  const { databaseName, sharedUrl } = failClosed();
+  const env = process.env;
+  for (const name of ["DAMOON_ORGANIZATION_ID", "DAMOON_DEMO_PROPERTY_ID", "DAMOON_DEMO_ROOM_TYPE_ID", "DAMOON_MANAGER_USERNAME", "DAMOON_MANAGER_PASSWORD", "DAMOON_APP_URL"]) assert.ok(env[name], `${name} is required`);
+  const prisma = new PrismaClient();
+  const browser = await chromium.launch({ headless: true, args: localHostResolverArgs() });
+  let managerContext;
+  try {
+    await prisma.$connect();
+    const [identity] = await prisma.$queryRaw`SELECT current_database() AS "databaseName", current_user AS "userName"`;
+    assert.equal(identity?.databaseName, databaseName);
+    assert.equal(identity?.userName, "postgres");
+    const orgId = env.DAMOON_ORGANIZATION_ID;
+    const propertyId = env.DAMOON_DEMO_PROPERTY_ID;
+    const before = await prisma.hotelReservation.count({ where: { organizationId: orgId, propertyId } });
+    const paymentsBefore = await prisma.paymentRequest.count({ where: { organizationId: orgId } });
+    const checkIn = dateAtOffset(7), checkOut = dateAtOffset(9);
+    const url = new URL("fa/hotel-reservations/start", sharedUrl);
+    url.search = new URLSearchParams({ mode: "DEMO_BOOKING", property: "damoon-demo", checkIn, checkOut, adults: "2", children: "0" }).toString();
+    const guest = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const appErrors = [];
+    guest.on("pageerror", error => appErrors.push(error.message));
+    const apiPaths = [];
+    guest.on("request", request => { const path = new URL(request.url()).pathname; if (path.startsWith("/api/hotel/v1/")) apiPaths.push(path); });
+    await guest.goto(url.href, { waitUntil: "networkidle" });
+    await expect(guest.locator("html")).toHaveAttribute("lang", "fa");
+    await expect(guest.locator(".booking-demo-entry")).toHaveCount(0);
+    await guest.locator(".booking-form .booking-submit[type=submit]").click();
+    await expect(guest.locator("[data-select-option]").first()).toBeVisible({ timeout: 15000 });
+    await guest.locator("[data-select-option]").first().click();
+    await expect(guest.locator("[data-policy-accept]")).toBeVisible();
+    await guest.locator("[data-policy-accept]").check();
+    const holdResponse = guest.waitForResponse(response => response.url().endsWith("/api/hotel/v1/holds") && response.request().method() === "POST");
+    await guest.locator("[data-create-hold]").click();
+    const hold = await holdResponse;
+    assert.ok([200, 201].includes(hold.status()), await hold.text());
+    await expect(guest.locator(".booking-step--demo")).toContainText("کد نمایشی");
+    await expect(guest.locator(".booking-step--demo")).toContainText("آمادهٔ پرداخت شبیه‌سازی‌شده");
+    const demoPayment = guest.waitForResponse(response => response.url().endsWith("/api/hotel/v1/demo-payments") && response.request().method() === "POST");
+    await guest.locator('[data-demo-payment="SUCCESS"]').click();
+    const paymentResponse = await demoPayment;
+    assert.equal(paymentResponse.status(), 200, await paymentResponse.text());
+    const payment = await paymentResponse.json();
+    assert.equal(payment.mode, "DEMO_BOOKING");
+    assert.equal(payment.charged, false);
+    assert.equal(payment.reservationStatus, "CONFIRMED");
+    await expect(guest.locator(".booking-step--demo")).toContainText("رزرو نمایشی تأیید شد");
+    assert.ok(apiPaths.includes("/api/hotel/v1/availability/search"));
+    assert.ok(apiPaths.includes("/api/hotel/v1/holds"));
+    assert.ok(apiPaths.includes("/api/hotel/v1/reservations"));
+    assert.ok(apiPaths.includes("/api/hotel/v1/demo-payments"));
+    assert.equal(apiPaths.some(path => /sandbox-payments|\/payments(?:\/|$)/.test(path)), false, "demo does not call real or sandbox payment processing APIs");
+
+    const rows = await prisma.hotelReservation.findMany({ where: { organizationId: orgId, propertyId }, orderBy: { createdAt: "desc" }, take: 1, include: { guests: true } });
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].status, "CONFIRMED");
+    assert.equal(rows[0].totalAmount, BigInt(250_000));
+    assert.deepEqual(rows[0].guests.map(row => row.fullName), ["Demo Guest"]);
+    assert.equal(await prisma.hotelBookingHold.count({ where: { organizationId: orgId, propertyId, status: "CONSUMED" } }), 1);
+    assert.equal(await prisma.paymentRequest.count({ where: { organizationId: orgId } }), paymentsBefore, "simulated payment creates no payment request");
+    assert.equal(await prisma.hotelPaymentAllocation.count({ where: { organizationId: orgId, hotelReservationId: rows[0].id } }), 0, "simulated payment creates no ledger allocation");
+
+    const manager = await browser.newContext();
+    managerContext = manager;
+    const managerPage = await manager.newPage();
+    const appOrigin = new URL(env.DAMOON_APP_URL).origin;
+    const receptionPath = `/fa/hotel-reservations/${orgId}/${propertyId}`;
+    const callbackUrl = `${appOrigin}${receptionPath}`;
+    await managerPage.goto(`${appOrigin}/fa/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+    await managerPage.locator("#username").fill(env.DAMOON_MANAGER_USERNAME);
+    await managerPage.locator("#password").fill(env.DAMOON_MANAGER_PASSWORD);
+    await managerPage.locator('form button[type="submit"]').click();
+    await managerPage.waitForURL(url => url.pathname === receptionPath, { timeout: 30000 });
+    await expect(managerPage.locator("text=رزرو نمایشی").first()).toBeVisible({ timeout: 15000 });
+    await expect(managerPage.locator("text=Demo Guest")).toBeVisible();
+    await expect(managerPage.getByText("Demo Guest · DEMO — Synthetic double room", { exact: true })).toBeVisible();
+    await expect(managerPage.locator("text=موفق (شبیه‌سازی)")).toBeVisible();
+    const provision = await managerPage.request.post(new URL("/api/hotel/v1/demo-bookings/provision", env.DAMOON_APP_URL).href, { headers: { Origin: appOrigin, "Content-Type": "application/json" }, data: { nightlyRate: 125000, allotment: 2 } });
+    assert.equal(provision.status(), 200, await provision.text());
+    assert.equal((await provision.json()).propertyId, propertyId, "management provisioning is idempotent for the fixed demo property");
+    const foreignUrl = new URL("/api/hotel/v1/demo-payments", sharedUrl);
+    foreignUrl.hostname = env.DAMOON_FOREIGN_HOST;
+    const crossTenant = await guest.request.post(foreignUrl.href, { data: { property: "damoon-demo", reference: rows[0].reference, outcome: "SUCCESS", idempotencyKey: randomUUID() } });
+    assert.equal(crossTenant.status(), 404, "a foreign tenant host cannot act on Damoon demo reservations");
+    assert.equal(await prisma.hotelReservation.count({ where: { organizationId: orgId, propertyId } }), before + 1, "only one synthetic-property demo reservation was created");
+    assert.deepEqual(appErrors, []);
+    await guest.close();
+  } finally {
+    await managerContext?.close();
+    await browser.close();
+    await prisma.$disconnect();
+  }
 });

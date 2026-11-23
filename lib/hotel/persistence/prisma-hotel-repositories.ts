@@ -226,7 +226,7 @@ export class PrismaHotelRepositories
       { resourceType: "RATE_PLAN", resourceId: planRow.id, resourceRevision: planRev, scope: "availability" },
       ...(planRow.cancellationPolicy && policyRev ? [{ resourceType: "CANCELLATION_POLICY", resourceId: planRow.cancellationPolicy.id, resourceRevision: policyRev, scope: "policies" }] : []),
     ];
-    if (!expected.every((item) => approvals.some((approval) => approval.resourceType === item.resourceType && approval.resourceId === item.resourceId && approval.resourceRevision === item.resourceRevision && (approval.scope as Record<string, unknown>)?.[item.scope] === true))) return null;
+    if (input.publicationApprovalBypass !== "DAMOON_DEMO_BOOKING" && !expected.every((item) => approvals.some((approval) => approval.resourceType === item.resourceType && approval.resourceId === item.resourceId && approval.resourceRevision === item.resourceRevision && (approval.scope as Record<string, unknown>)?.[item.scope] === true))) return null;
     const result = row.resultJson as any;
     return { isReplay: true as const, result: { ...result, expiresAt: new Date(result.expiresAt), inventoryReserved: true as const } };
   }
@@ -264,7 +264,7 @@ export class PrismaHotelRepositories
         { resourceType: "RATE_PLAN", resourceId: input.ratePlanId, resourceRevision: rateRevision, scope: "availability" },
         ...(planRow.cancellationPolicy && policyRevision ? [{ resourceType: "CANCELLATION_POLICY", resourceId: planRow.cancellationPolicy.id, resourceRevision: policyRevision, scope: "policies" }] : []),
       ];
-      if (!expected.every((item) => approved.some((row) => row.resourceType === item.resourceType && row.resourceId === item.resourceId && row.resourceRevision === item.resourceRevision && (row.scope as Record<string, unknown>)?.[item.scope] === true))) return { isHeld: false as const, reason: "PUBLICATION_NOT_APPROVED" };
+      if (input.publicationApprovalBypass !== "DAMOON_DEMO_BOOKING" && !expected.every((item) => approved.some((row) => row.resourceType === item.resourceType && row.resourceId === item.resourceId && row.resourceRevision === item.resourceRevision && (row.scope as Record<string, unknown>)?.[item.scope] === true))) return { isHeld: false as const, reason: "PUBLICATION_NOT_APPROVED" };
       if (planRow.cancellationPolicy && Number.isInteger((input as { acceptedCancellationPolicyVersion?: number | null }).acceptedCancellationPolicyVersion) && planRow.cancellationPolicy.version !== (input as { acceptedCancellationPolicyVersion?: number | null }).acceptedCancellationPolicyVersion) return { isHeld: false as const, reason: "POLICY_TERMS_CHANGED" };
       const nights = enumerateStayNights(input.query.window.checkIn, input.query.window.checkOut);
       const seasonalRows = await tx.hotelNightlyRate.findMany({ where: { organizationId: input.scope.organizationId, propertyId: input.propertyId, ratePlanId: input.ratePlanId } });

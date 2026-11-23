@@ -505,6 +505,204 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     }
   });
 
+  test("lost response after persistence retries the same request without storing guest data", async () => {
+    const checkIn = tomorrowISO();
+    const checkOut = dayAfterISO(checkIn);
+    const contact = { fullName: "Synthetic Retry Guest", phone: "+989121112233", email: `lost-response-${randomUUID()}@example.test` };
+    const payload = {
+      kind: "coordination",
+      property: propertySlug,
+      checkIn,
+      checkOut,
+      occupancy: { adults: 2, children: 1, childAges: [8] },
+      contact,
+      specialRequests: "Synthetic retry acceptance",
+    };
+    const context = await newContext(browser);
+    guestContexts.push(context);
+    const page = await context.newPage();
+    const forbiddenCalls = [];
+    page.on("request", (request) => {
+      if (/\/api\/hotel\/v1\/(availability|holds|reservations|sandbox-payments)(\/|$)/.test(new URL(request.url()).pathname)) forbiddenCalls.push(request.url());
+    });
+    await page.goto(`${standaloneUrl.origin}/fa/`, { waitUntil: "networkidle" });
+    await chooseStayDates(page, checkIn, checkOut);
+    await page.locator("[data-adult-count]").selectOption("2");
+    await page.locator("[data-child-count]").selectOption("1");
+    await page.locator('[data-child-age="0"]').fill("8");
+    await page.locator(".booking-form .booking-submit[type=submit]").click();
+    await page.locator("[data-coordination-name]").fill(contact.fullName);
+    await page.locator("[data-coordination-phone]").fill(contact.phone);
+    await page.locator("[data-coordination-email]").fill(contact.email);
+    await page.locator("[data-coordination-note]").fill(payload.specialRequests);
+
+    let browserPostCount = 0;
+    let submittedPayload;
+    let idempotencyKey;
+    let committedResponse;
+    await page.route("**/api/hotel/v1/requests", async (route) => {
+      if (route.request().method() !== "POST") return route.continue();
+      browserPostCount++;
+      if (browserPostCount !== 1) return route.continue();
+      submittedPayload = route.request().postDataJSON();
+      idempotencyKey = route.request().headers()["idempotency-key"];
+      const committed = await route.fetch();
+      expect(committed.status()).toBe(201);
+      committedResponse = await committed.json();
+      await route.abort("failed");
+    });
+
+    const submitButton = page.locator("[data-create-coordination-request]");
+    await submitButton.evaluate((button) => { button.click(); button.click(); });
+    await expect(page.locator(".booking-message")).toHaveText("پاسخی دریافت نشد؛ همان فرم را دوباره ارسال کنید.");
+    await expect(page.locator(".booking-message")).toHaveAttribute("role", "status");
+    expect(browserPostCount).toBe(1, "rapid double-click must start one browser submission");
+    expect(committedResponse.reference).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(committedResponse.bookingConfirmed).toBe(false);
+    expect(committedResponse.inventoryReserved).toBe(false);
+
+    const storageKey = "damoon-coordination-request-v1";
+    const persistedAfterFailure = await page.evaluate((key) => JSON.parse(sessionStorage.getItem(key) || "null"), storageKey);
+    expect(persistedAfterFailure).toEqual({ version: 2, step: "coordination-details", pendingAttempt: { key: idempotencyKey } });
+    const serializedState = JSON.stringify(persistedAfterFailure);
+    for (const sensitiveValue of [contact.fullName, contact.phone, contact.email, payload.specialRequests, committedResponse.reference, submittedPayload.contact.phone]) {
+      expect(serializedState).not.toContain(sensitiveValue);
+    }
+
+    const [concurrentReplayA, concurrentReplayB] = await Promise.all([
+      postRequest(page, submittedPayload, idempotencyKey),
+      postRequest(page, submittedPayload, idempotencyKey),
+    ]);
+    expect([concurrentReplayA.status(), concurrentReplayB.status()]).toEqual([200, 200]);
+    expect((await concurrentReplayA.json()).reference).toBe(committedResponse.reference);
+    expect((await concurrentReplayB.json()).reference).toBe(committedResponse.reference);
+    const conflictingReplay = await postRequest(page, { ...submittedPayload, specialRequests: "Changed synthetic note" }, idempotencyKey);
+    expect(conflictingReplay.status()).toBe(409);
+    expect(await conflictingReplay.text()).toMatch(/idempotency-key was used with a different request/i);
+    expect((await postStatus(page, committedResponse.reference, foreignHost)).status()).toBe(404);
+
+    await page.reload({ waitUntil: "networkidle" });
+    await expect(page.locator("[data-coordination-name]")).toBeVisible();
+    await expect(page.locator("[data-coordination-name]")).toHaveValue("");
+    await expect(page.locator("[data-coordination-phone]")).toHaveValue("");
+    await expect(page.locator("[data-coordination-email]")).toHaveValue("");
+    await expect(page.locator("[data-adult-count]")).toHaveValue("2");
+    await expect(page.locator("[data-child-count]")).toHaveValue("1");
+    await expect(page.locator('[data-child-age="0"]')).toHaveValue("8");
+    await expect(page.locator('[data-date-value="checkIn"]')).not.toContainText("انتخاب تاریخ");
+    await page.locator("[data-coordination-name]").fill(contact.fullName);
+    await page.locator("[data-coordination-phone]").fill(contact.phone);
+    await page.locator("[data-coordination-email]").fill(contact.email);
+    await page.locator("[data-coordination-note]").fill(payload.specialRequests);
+
+    const retryRequestPromise = page.waitForRequest((request) => request.url().endsWith("/api/hotel/v1/requests") && request.method() === "POST");
+    const retryResponsePromise = page.waitForResponse((response) => response.url().endsWith("/api/hotel/v1/requests") && response.request().method() === "POST");
+    await page.locator("[data-create-coordination-request]").click();
+    const retryRequest = await retryRequestPromise;
+    const retryResponse = await retryResponsePromise;
+    expect(retryResponse.status()).toBe(200);
+    const retryBody = await retryResponse.json();
+    expect(retryRequest.headers()["idempotency-key"]).toBe(idempotencyKey);
+    expect(retryRequest.postDataJSON()).toEqual(submittedPayload);
+    expect(retryBody.reference).toBe(committedResponse.reference);
+    expect(retryBody.bookingConfirmed).toBe(false);
+    expect(retryBody.inventoryReserved).toBe(false);
+    expect(forbiddenCalls).toEqual([]);
+    const persistedAfterSuccess = await page.evaluate((key) => JSON.parse(sessionStorage.getItem(key) || "null"), storageKey);
+    expect(persistedAfterSuccess).toEqual({ version: 2, step: "coordination-details", pendingAttempt: { key: idempotencyKey } });
+    const finalStoredText = JSON.stringify(persistedAfterSuccess);
+    for (const sensitiveValue of [contact.fullName, contact.phone, contact.email, payload.specialRequests, committedResponse.reference]) {
+      expect(finalStoredText).not.toContain(sensitiveValue);
+    }
+
+    const { PrismaClient } = await import("@prisma/client");
+    const client = new PrismaClient();
+    try {
+      const idempotencyHash = createHash("sha256").update(`${organizationId}\0${idempotencyKey}`).digest("hex");
+      const matchingRows = await client.hotelGuestBookingRequest.findMany({ where: { organizationId, idempotencyHash } });
+      expect(matchingRows).toHaveLength(1);
+      expect(matchingRows[0].propertyId).toBe(propertyId);
+      expect(matchingRows[0].checkIn.toISOString().slice(0, 10)).toBe(checkIn);
+      expect(matchingRows[0].checkOut.toISOString().slice(0, 10)).toBe(checkOut);
+      expect(matchingRows[0].childAges).toEqual([8]);
+      expect(matchingRows[0].guestEmail).toBe(contact.email);
+      expect(matchingRows[0].roomTypeSlug).toBeNull();
+      expect(matchingRows[0].ratePlanCode).toBeNull();
+      expect(matchingRows[0].availabilityHint).toBe("UNKNOWN");
+    } finally { await client.$disconnect(); }
+
+    const inboxRequest = await waitForRequestInInbox(managerPage, contact.email);
+    const inboxData = await (await getRequestsApi(managerPage)).json();
+    expect(inboxData.requests.filter((request) => request.guestEmail === contact.email)).toHaveLength(1);
+    expect(inboxRequest.status).toBe("RECEIVED");
+    await page.unroute("**/api/hotel/v1/requests");
+  });
+
+  test("network retry feedback is localized and announced accessibly in FA/EN/AR", async () => {
+    const retryCopy = {
+      fa: "پاسخی دریافت نشد؛ همان فرم را دوباره ارسال کنید.",
+      en: "No response received. Retry the same form.",
+      ar: "لم يصل رد؛ أعد إرسال النموذج نفسه.",
+    };
+    for (const locale of ["fa", "en", "ar"]) {
+      const checkIn = tomorrowISO();
+      const checkOut = dayAfterISO(checkIn);
+      const context = await newContext(browser);
+      guestContexts.push(context);
+      const page = await context.newPage();
+      await page.goto(`${standaloneUrl.origin}/${locale}/`, { waitUntil: "networkidle" });
+      await chooseStayDates(page, checkIn, checkOut);
+      await page.locator("[data-adult-count]").selectOption("2");
+      await page.locator(".booking-form .booking-submit[type=submit]").click();
+      await page.locator("[data-coordination-name]").fill("Synthetic Retry Guest");
+      await page.locator("[data-coordination-phone]").fill("+989121112233");
+      await page.locator("[data-coordination-email]").fill(`retry-${locale}-${randomUUID()}@example.test`);
+      await page.route("**/api/hotel/v1/requests", (route) => route.abort("failed"));
+      await page.locator("[data-create-coordination-request]").click();
+      const message = page.locator(".booking-message");
+      await expect(message).toHaveText(retryCopy[locale]);
+      await expect(message).toHaveAttribute("role", "status");
+      await expect(message).toHaveAttribute("aria-live", "polite");
+      await context.close();
+    }
+  });
+
+  test("legacy coordination PII is scrubbed without enabling a duplicate resubmission", async () => {
+    const checkIn = tomorrowISO();
+    const checkOut = dayAfterISO(checkIn);
+    const legacyContact = { fullName: "Legacy Synthetic Guest", phone: "+989121224455", email: "legacy-storage@example.test" };
+    const legacyNote = "Legacy synthetic private note";
+    const legacyReference = "R".repeat(43);
+    const context = await newContext(browser);
+    guestContexts.push(context);
+    const page = await context.newPage();
+    await page.goto(`${standaloneUrl.origin}/fa/`, { waitUntil: "domcontentloaded" });
+    await page.evaluate(({ checkIn, checkOut, legacyContact, legacyNote, legacyReference }) => {
+      sessionStorage.setItem("damoon-stay-selection-v2", JSON.stringify({ checkIn, checkOut, adults: 2, children: 0, childAges: [] }));
+      sessionStorage.setItem("damoon-coordination-request-v1", JSON.stringify({
+        version: 1,
+        step: "confirmed",
+        draftContact: legacyContact,
+        draftSpecialRequests: legacyNote,
+        pendingAttempt: null,
+        request: { reference: legacyReference, status: "RECEIVED" },
+      }));
+    }, { checkIn, checkOut, legacyContact, legacyNote, legacyReference });
+
+    await page.reload({ waitUntil: "networkidle" });
+    await expect(page.locator(".booking-step--confirmed")).toContainText(legacyReference);
+    const migrated = await page.evaluate(() => JSON.parse(sessionStorage.getItem("damoon-coordination-request-v1") || "null"));
+    expect(migrated).toEqual({ version: 2, step: "legacy-confirmed", pendingAttempt: null });
+    const persisted = JSON.stringify(migrated);
+    for (const sensitiveValue of [legacyContact.fullName, legacyContact.phone, legacyContact.email, legacyNote, legacyReference, '"body"']) {
+      expect(persisted).not.toContain(sensitiveValue);
+    }
+    await page.reload({ waitUntil: "networkidle" });
+    await expect(page.locator(".booking-step--confirmed")).toContainText("برای جلوگیری از ثبت تکراری");
+    await expect(page.locator("[data-coordination-name]")).toHaveCount(0);
+    await context.close();
+  });
+
   test("Negative: Bad reference returns 404 on status check", async () => {
     const c = await newContext(browser);
     guestContexts.push(c);

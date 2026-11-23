@@ -41,7 +41,7 @@ Future independent path (NOT public-enabled):
 ## قرارداد درخواست مهمان
 
 - `booking-flow.js`: helperهای حفظ تاریخ ISO، بزرگسال/کودک/سن، selected room/category و idempotency key رمزنگارانه؛ داده هویتی یا مبلغ نباید وارد URL سفر شود.
-- `booking.js`: state در `sessionStorage` برای draft و retry، POST درخواست با `Idempotency-Key`، بازخوانی status با tracking reference. وجود داده تماس در sessionStorage یک ریسک حریم خصوصی قابل بازبینی است، نه گواه رمزنگاری محلی.
+- `booking.js`: تاریخ/ترکیب مهمان و مرحله فرم در `sessionStorage`؛ برای retry فقط کلید تصادفی `Idempotency-Key` ذخیره می‌شود. نام، تلفن، ایمیل، یادداشت، بدنه درخواست و tracking reference فقط در حافظه صفحه می‌مانند. داده حساس legacy از نسخه قدیمی هنگام بارگذاری به‌صورت فوری از `sessionStorage` پاک‌سازی می‌شود؛ این ذخیره‌سازی را نباید رمزنگاری یا مخزن امن فرض کرد.
 - `tests/e2e/damoon/shared-runtime-booking-acceptance.spec.mjs` و Workflow `damoon-booking-acceptance.yml` به backend واقعی ولی **PostgreSQL 17 disposable** متصل می‌شوند. نتیجه آن‌ها به DB Production تعمیم داده نمی‌شود.
 - استفاده واقعی با پذیرش نیازمند کنترل نقش، وضعیت/تاریخچه، ضدتکرار و محافظت reference در هر دو endpoint است. صفحه زنده بدون Submit، این زنجیره را تست نمی‌کند.
 

@@ -1,6 +1,6 @@
 # Damoon | معماری اجرایی و قراردادهای مشترک
 
-**مبنای مشاهده:** مخزن `QComputer/shadcn-rtl`، `main=89e80a6e55b69c1e938674a344d60f46ed327913`؛ بازبینی کدها در مسیرهای زیر، بدون اجرای local build/DB.
+**مبنای مشاهده:** مخزن `QComputer/shadcn-rtl`، آخرین main ادغام‌شده `9379d82761bea87c20b86be1a96da9dcb9bd7428`؛ برای وضعیت deployment/Production به release register رجوع کنید.
 
 ## تصویر معماری فعلی
 
@@ -60,3 +60,9 @@ Future independent path (NOT public-enabled):
 ## اصول طراحی آینده
 
 هر feature باید از قبل مشخص کند: `(tenant authority, source data, feature flag, API contract, idempotency, persistence, public surface, tests, release receipts, recovery path)`. توسعه UI تا زمان دریافت عکس/تورِ منتشرنشده نباید معطل شود؛ ساخت داده عملیاتی و قیمت از تصاویر یا متن مفهومی ممنوع است.
+
+## OWNER_ACCOMMODATION_AMENDMENT_20261123 — Current owner-selected category baseline
+
+The implementation now targets **3 single rooms, 17 double rooms, 6 three-person suites, 3 four-person suites and 2 five-person suites**, aggregate **20 rooms + 11 suites = 31 units**. This is the owner-selected editable **product default**, not certified physical capacity. Dashboard/website category edits must follow existing tenant-scoped publication/revision rules, preserve slugs/CTAs and remain separate from operational room inventory. Refer to `OWNER-DECISION-ACCOMMODATION-BASELINE-2026-11-23.md` and `ACCOMMODATION-ADMIN-AND-CONTENT-CONTRACT-2026-11-23.md`. No Production writes, migration, PR140 merge or booking activation are authorized.
+
+PR148 implements the baseline through the existing tenant-scoped Hotel CMS draft/review/approval/publication architecture. Public category quantities come from the published editorial projection and have no dependency on `HotelRoomType.totalAllotment`; physical inventory and reservation records are unaffected. CI plus disposable PostgreSQL acceptance passed (workflow `45088093245`, PR head `65f010bfdd58b3697d6edcb46c47170484d46e0b`). The merge SHA is `9379d82761bea87c20b86be1a96da9dcb9bd7428`. Production deployment/public read acceptance remains pending Runflare.

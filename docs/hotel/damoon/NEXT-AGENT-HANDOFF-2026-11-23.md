@@ -2,15 +2,15 @@
 
 ## اصول حاکم
 
-Repo: `QComputer/shadcn-rtl`; baseline `main=89e80a6e55b69c1e938674a344d60f46ed327913`; **قبل از هر اقدام git status / origin/main refresh**. سرعت بالا اما بدون آمیختن success CI و Production. یک Checkout مشترک مطابق `AGENTS.md`؛ بدون Worktree جدید و بدون حذف کار Agent دیگر. Runflare انتشار خودکار main، پس هر Merge اثر Production دارد.
+Repo: `QComputer/shadcn-rtl`; latest main `9379d82761bea87c20b86be1a96da9dcb9bd7428` (PR148). **قبل از هر اقدام git status / origin/main refresh**. سرعت بالا اما بدون آمیختن success CI و Production. یک Checkout مشترک مطابق `AGENTS.md`؛ بدون Worktree جدید و بدون حذف کار Agent دیگر. Runflare انتشار خودکار main، پس هر Merge اثر Production دارد.
 
 ## Agent B — Release Owner و Frontend
 
 1. PR145 ادغام‌شده و در Runflare v124 فعال است؛ هر دو hash CSS/JS با `main` برابرند. Deploy دیگری شروع نکن.
 2. **M0 تکمیل شده است**؛ پذیرش خواندنی در FA/EN/AR و شش viewport انجام شد: کارت اتاق→درخواست، room/stay parameters، reload/locale، light/dark، noindex، request-only، چهار VTour، health، و Bazarbaaz/Akashoes/Fastfood13. هیچ Production POST انجام نشد. نتایج کامل در `evidence/RELEASE-REGISTER-2026-11-23.json` است.
-3. اکنون M1 را در PR کوچک ادامه بده: guest selection/room category/CTA→request→tracking→authorized reception. فقط ایراد واقعی و test gap؛ flow موجود PR142 را از نو نساز. اجرای `damoon-booking-acceptance.yml` روی PostgreSQL disposable، role/tenant denial و Production بدون POST.
-4. فایل `sites/damoon/content.js` را برای اختلاف ۲۰/۱۱ و ۷/۱۷/۷ Audit کن. اصلاح عدد فقط پس از تأیید مالک/مدیر؛ اگر متن عمومی فعلی بر داده بدون پشتوانه تکیه دارد، راه‌حل حداقلی غیرمدعی را در PR جدا پیشنهاد بده.
-5. اسناد `CURRENT-STATE` و Release receipt را پس از انتشار واقعی به‌روز کن؛ M2 media QA را بدون انتظار برای تور VIP-02 آماده کن.
+3. M1 API/browser پذیرش ایزوله با PostgreSQL موقت در PR147/PR148 موفق است؛ پس از تکمیل انتشار CMS، به R09 privacy review و پذیرش عملیاتی مدیر/پذیرش ادامه بده. Production فقط GET/HEAD؛ هیچ درخواست مهمان واقعی نساز.
+4. PR148 baseline مالک ۳/۱۷/۶/۳/۲ و CMS کاتالوگ قابل ویرایش/انتشار را پیاده و روی disposable PostgreSQL قبول کرده؛ merge `9379d82761bea87c20b86be1a96da9dcb9bd7428`. Runflare v126 هنوز فعال و درخواست GithubApp `Request Initialized` است؛ همان درخواست را رصد کن، deployment موازی نساز، بعد از تطبیق manifest/browser Production پذیرش را ثبت کن.
+5. عکس‌های دسته همچنان به room-type/media association تأییدشده و provenance/حقوق مالک نیاز دارند؛ noindex و برچسب Concept را حفظ کن. اسناد جاری/Release receipt را پس از انتشار واقعی به‌روز کن.
 6. PRهای مستقل frontend با Required CI موفق و بدون Migration/فعال‌سازی رزرو، تحت standing approval مالک قابل ادغام هستند. در SHA drift یا اثر ناخواسته توقف تشخیصی و اصلاح در همان PR.
 
 ## Agent A — بک‌اند و Review

@@ -57,3 +57,10 @@ Room card / Home / Direct booking-start
 ## خروجی تحویل
 
 یک Receipt با `{sourceSha, environment, dbFixtureId, tests, rolesVerified, noLiveGuestWrites, liveAssetSha, status}` تولید شود. فقط در صورت سبز بودن تست گردش واقعی پذیرش و بازبینی حریم خصوصی، `COORDINATION_OPERATIONAL_ACCEPTED` اعلام گردد.
+
+## OWNER_ACCOMMODATION_AMENDMENT_20261123 — Current owner-selected category baseline
+
+The implementation now targets **3 single rooms, 17 double rooms, 6 three-person suites, 3 four-person suites and 2 five-person suites**, aggregate **20 rooms + 11 suites = 31 units**. This is the owner-selected editable **product default**, not certified physical capacity. Dashboard/website category edits must follow existing tenant-scoped publication/revision rules, preserve slugs/CTAs and remain separate from operational room inventory. Refer to `OWNER-DECISION-ACCOMMODATION-BASELINE-2026-11-23.md` and `ACCOMMODATION-ADMIN-AND-CONTENT-CONTRACT-2026-11-23.md`. No Production writes, migration, PR140 merge or booking activation are authorized.
+# CMS/public accommodation acceptance update — PR148
+
+PR148 head `65f010bfdd58b3697d6edcb46c47170484d46e0b` passed workflow `45088093245` against workflow-owned disposable PostgreSQL. Acceptance covers draft invisibility, owner-manager draft followed by independent-admin review/approval/publication/public read, 3/17/6/3/2 baseline, FA/EN/AR content, tenant isolation, no `HotelRoomType.totalAllotment` dependency, no editorial `visible` leakage, and read-only public projection. CI passed; merge commit/main is `9379d82761bea87c20b86be1a96da9dcb9bd7428`. Production writes were none. Production deployment and post-deploy browser acceptance are pending Runflare's `Request Initialized` event; do not report the CMS as Production accepted until assets and public behavior are verified.

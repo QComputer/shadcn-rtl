@@ -1,3 +1,5 @@
+> **OWNER_ACCOMMODATION_AMENDMENT_20261123** — A newer owner decision selects a five-category initial accommodation baseline (3 single + 17 double + 6 three-person suites + 3 four-person suites + 2 five-person suites = 31). See `OWNER-DECISION-ACCOMMODATION-BASELINE-2026-11-23.md`. This does not authorize production inventory/migrations or remove historical evidence.
+
 <!-- DAMOON_CURRENT_REFERENCE_2026_11_23 -->
 > **مرجع وضعیت اجرایی دامون — ۲۰۲۶-۱۱-۲۳:** این سند شامل شواهد تاریخی و تصمیم‌های معتبر زمان نگارش خود است. برای آخرین وضعیت Git/Runflare، وضعیت PR145، اختلاف واقعیت‌های اتاق، آخرین نقشه راه و گیت‌های انتشار به [مرجع جاری](./CURRENT-STATE-2026-11-23.md) و [نقشه راه اجرایی](./EXECUTION-ROADMAP-2026-11-23.md) رجوع کنید. تصمیم‌های مالک و گیت‌های امنیتی قدیمی با این ارجاع حذف یا لغو نشده‌اند.
 

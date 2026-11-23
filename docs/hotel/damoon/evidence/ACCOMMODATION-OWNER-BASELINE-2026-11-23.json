@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-23",
+  "decisionId": "DAMOON-OWNER-ACCOMMODATION-BASELINE-2026-11-23",
+  "authority": "OWNER_DIRECT_SELECTED_IMPLEMENTATION_DEFAULT",
+  "historicalQuestionnaireFullyReviewed": false,
+  "source": {
+    "ownerAggregate": "docs/hotel/damoon/OWNER-DECISION-OVERRIDE-2026-11-17.md",
+    "candidateBreakdown": "docs/hotel/damoon/DAMOON-31-UNIT-DRAFT-RECONCILIATION-2026-11-17.json",
+    "latestDecision": "docs/hotel/damoon/OWNER-DECISION-ACCOMMODATION-BASELINE-2026-11-23.md",
+    "note": "Some subtype values were model assumptions; current owner selected this coherent baseline for product implementation."
+  },
+  "counts": {
+    "rooms": 20,
+    "suites": 11,
+    "total": 31
+  },
+  "categories": [
+    {
+      "key": "single-room",
+      "unitKind": "ROOM",
+      "initialQuantity": 3,
+      "fa": "اتاق یک‌نفره",
+      "en": "Single room",
+      "ar": "غرفة مفردة"
+    },
+    {
+      "key": "double-room",
+      "unitKind": "ROOM",
+      "initialQuantity": 17,
+      "fa": "اتاق دونفره",
+      "en": "Double room",
+      "ar": "غرفة مزدوجة"
+    },
+    {
+      "key": "suite-three",
+      "unitKind": "SUITE",
+      "initialQuantity": 6,
+      "fa": "سوئیت سه‌نفره",
+      "en": "Three-person suite",
+      "ar": "جناح لثلاثة أشخاص"
+    },
+    {
+      "key": "suite-four",
+      "unitKind": "SUITE",
+      "initialQuantity": 3,
+      "fa": "سوئیت چهارنفره",
+      "en": "Four-person suite",
+      "ar": "جناح لأربعة أشخاص"
+    },
+    {
+      "key": "suite-five",
+      "unitKind": "SUITE",
+      "initialQuantity": 2,
+      "fa": "سوئیت پنج‌نفره",
+      "en": "Five-person suite",
+      "ar": "جناح لخمسة أشخاص"
+    }
+  ],
+  "categoryKeysAreTechnicalCandidates": true,
+  "dashboardEditabilityTarget": true,
+  "publicBookingEnabledByDecision": false,
+  "operationalRoomCreationAuthorized": false,
+  "productionWritesAuthorized": false,
+  "productionMigrationAuthorized": false,
+  "backwardCompatibleRoutesRequired": true,
+  "questionnaireQ01toQ90CoverageComplete": false
+}

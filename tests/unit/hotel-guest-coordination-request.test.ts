@@ -21,11 +21,13 @@ const createdAt = new Date("2026-11-21T09:00:00.000Z");
 let propertyEnabled = true;
 let publicationEnabled = false;
 let availabilityChecks = 0;
+let createAttempts = 0;
 const bookingRequests = {
   async findFirst({ where }: { where: Partial<Row> }) {
     return rows.find((row) => Object.entries(where).every(([key, value]) => row[key as keyof Row] === value)) ?? null;
   },
   async create({ data }: { data: Prisma.HotelGuestBookingRequestUncheckedCreateInput }) {
+    createAttempts++;
     if (rows.some((row) => row.organizationId === data.organizationId && row.idempotencyHash === data.idempotencyHash)) {
       throw new Prisma.PrismaClientKnownRequestError("Duplicate idempotency key", { code: "P2002", clientVersion: "test" });
     }
@@ -42,9 +44,10 @@ mock.module("@/lib/db-runtime", { namedExports: { prisma: {
       async $queryRaw(query: Prisma.Sql) {
         assert.match(query.sql, /"isActive" AND "deletedAt" IS NULL AND "operationalMode" = 'REQUEST_ONLY'\s+FOR SHARE/);
         assert.match(query.sql, /"organizationId" = \? AND "slug" = \?/);
-        return propertyEnabled && query.values[0] === "org-damoon" && query.values[1] === "damoon-hotel"
-          ? [{ id: "property-damoon" }]
-          : [];
+        if (!propertyEnabled) return [];
+        if (query.values[0] === "org-damoon" && query.values[1] === "damoon-hotel") return [{ id: "property-damoon" }];
+        if (query.values[0] === "org-other-hotel" && query.values[1] === "other-hotel") return [{ id: "property-other-hotel" }];
+        return [];
       },
     });
   },
@@ -110,6 +113,7 @@ test("coordination requires an explicit kind and calendar dates and rejects room
 test("coordination persists once without publication or availability, with private scoped tracking", async () => {
   const { submitHotelGuestBookingRequest, readHotelGuestBookingRequestStatus } = service;
   const key = "coordination-key-0001";
+  const priorCreateAttempts = createAttempts;
   const results = await Promise.all([
     submitHotelGuestBookingRequest(input, requestHeaders(), key),
     submitHotelGuestBookingRequest(input, requestHeaders(), key),
@@ -117,6 +121,7 @@ test("coordination persists once without publication or availability, with priva
   assert.equal(results[0].reference, results[1].reference);
   assert.match(results[0].reference, /^[A-Za-z0-9_-]{43}$/);
   assert.deepEqual(results.map(({ replay }) => replay).sort(), [false, true]);
+  assert.equal(createAttempts - priorCreateAttempts, 2, "both requests raced to create and the unique constraint recovered one replay");
   assert.equal(results[0].availabilityHint, undefined);
   assert.equal(rows.length, 1);
   assert.equal(rows[0].organizationId, "org-damoon");
@@ -136,6 +141,27 @@ test("coordination persists once without publication or availability, with priva
   const changedCategory = hotelGuestBookingRequestSchema.parse({ ...details, preferredCategory: "standard-room" });
   await assert.rejects(submitHotelGuestBookingRequest(changedCategory, requestHeaders(), key), hasStatus(409));
   assert.equal(availabilityChecks, 0);
+});
+
+test("the same idempotency key is isolated by tenant for create and tracking", async () => {
+  const { submitHotelGuestBookingRequest, readHotelGuestBookingRequestStatus } = service;
+  const key = "shared-tenant-key-0001";
+  const before = rows.length;
+  const damoon = await submitHotelGuestBookingRequest(input, requestHeaders("damoon.example"), key);
+  const otherInput = hotelGuestBookingRequestSchema.parse({ ...details, property: "other-hotel" });
+  const otherTenant = await submitHotelGuestBookingRequest(otherInput, requestHeaders("other-hotel.example"), key);
+
+  assert.notEqual(damoon.reference, otherTenant.reference);
+  assert.equal(rows.length, before + 2);
+  assert.equal(rows.at(-2)?.organizationId, "org-damoon");
+  assert.equal(rows.at(-1)?.organizationId, "org-other-hotel");
+  assert.deepEqual(await readHotelGuestBookingRequestStatus(damoon.reference, "damoon.example"), {
+    status: "RECEIVED",
+    createdAt: createdAt.toISOString(),
+    updatedAt: createdAt.toISOString(),
+  });
+  await assert.rejects(readHotelGuestBookingRequestStatus(damoon.reference, "other-hotel.example"), hasStatus(404));
+  await assert.rejects(readHotelGuestBookingRequestStatus(otherTenant.reference, "damoon.example"), hasStatus(404));
 });
 
 test("coordination fails closed for disabled requests, missing child ages and unverified or mismatched hosts", async () => {

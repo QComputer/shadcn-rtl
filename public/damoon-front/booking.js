@@ -36,9 +36,9 @@ const dateIcon = '<svg class="booking-field__symbol" viewBox="0 0 32 32" aria-hi
 const guestIcon = '<svg class="booking-field__symbol" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="14" cy="9" r="6"/><path d="M3 29v-5c0-5 4-8 11-8s11 3 11 8v5H3Zm21-25c6 2 6 10 0 12m3 3c3 2 4 5 3 10"/></svg>';
 const submitArrow = '<svg class="booking-submit__arrow" viewBox="0 0 32 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 12h27M21 4l8 8-8 8"/></svg>';
 const requestCopy = {
-  fa: { submit: "ارسال درخواست هماهنگی اقامت", notBooking: "این فرم فقط درخواست هماهنگی برای پذیرش می‌فرستد؛ اتاق نگه‌داری یا رزرو نمی‌شود و پرداخت آنلاین ندارد.", unavailable: "ثبت درخواست هماهنگی در حال حاضر فعال نیست.", received: "درخواست هماهنگی برای پذیرش ارسال شد", reference: "کد پیگیری امن", keepReference: "این کد را برای پیگیری نزد خود نگه دارید.", status: "وضعیت درخواست", check: "بررسی وضعیت", checking: "در حال بررسی وضعیت...", trackLabel: "پیگیری با کد امن", trackButton: "نمایش وضعیت", trackError: "درخواستی با این کد پیدا نشد یا کد معتبر نیست.", statuses: { RECEIVED: "دریافت‌شده", IN_REVIEW: "در حال بررسی", OPTION_OFFERED: "پیشنهاد برای بررسی شما آماده است", UNAVAILABLE: "در این زمان در دسترس نیست", DECLINED: "پذیرفته نشد", CLOSED: "بسته‌شده" } },
-  en: { submit: "Send a stay coordination request", notBooking: "This form sends a coordination request to reception only. It does not select or hold a room, confirm a booking, or take payment.", unavailable: "Stay coordination requests are not enabled yet.", received: "Coordination request sent to reception", reference: "Secure tracking reference", keepReference: "Keep this reference to check your request later.", status: "Request status", check: "Check status", checking: "Checking status...", trackLabel: "Track with secure reference", trackButton: "Show status", trackError: "No request was found for this reference.", statuses: { RECEIVED: "Received", IN_REVIEW: "Under review", OPTION_OFFERED: "An option is ready for your review", UNAVAILABLE: "Unavailable for these dates", DECLINED: "Declined", CLOSED: "Closed" } },
-  ar: { submit: "إرسال طلب تنسيق الإقامة", notBooking: "يرسل هذا النموذج طلب تنسيق إلى الاستقبال فقط. لا يختار غرفة ولا يحجزها ولا يؤكد الحجز أو يستلم دفعة.", unavailable: "طلبات تنسيق الإقامة غير مفعلة حالياً.", received: "تم إرسال طلب التنسيق إلى الاستقبال", reference: "رمز متابعة آمن", keepReference: "احتفظ بهذا الرمز لمتابعة طلبك لاحقاً.", status: "حالة الطلب", check: "تحقق من الحالة", checking: "جارٍ التحقق من الحالة...", trackLabel: "المتابعة باستخدام الرمز الآمن", trackButton: "عرض الحالة", trackError: "لم يتم العثور على طلب بهذا الرمز.", statuses: { RECEIVED: "تم الاستلام", IN_REVIEW: "قيد المراجعة", OPTION_OFFERED: "الخيار جاهز لمراجعتك", UNAVAILABLE: "غير متاح في هذه التواريخ", DECLINED: "مرفوض", CLOSED: "مغلق" } },
+  fa: { submit: "ارسال درخواست هماهنگی اقامت", notBooking: "این فرم فقط درخواست هماهنگی برای پذیرش می‌فرستد؛ اتاق نگه‌داری یا رزرو نمی‌شود و پرداخت آنلاین ندارد.", unavailable: "ثبت درخواست هماهنگی در حال حاضر فعال نیست.", received: "درخواست هماهنگی برای پذیرش ارسال شد", reference: "کد پیگیری امن", keepReference: "این کد را برای پیگیری نزد خود نگه دارید.", legacyReceiptUnavailable: "یک درخواست قبلی ثبت شده است، اما کد پیگیری در این مرورگر نگه‌داری نشده. برای جلوگیری از ثبت تکراری، درخواست را دوباره ارسال نکنید؛ اگر کد را دارید از بخش پیگیری استفاده کنید یا با پذیرش تماس بگیرید.", newRequest: "شروع درخواست تازه", status: "وضعیت درخواست", check: "بررسی وضعیت", checking: "در حال بررسی وضعیت...", trackLabel: "پیگیری با کد امن", trackButton: "نمایش وضعیت", trackError: "درخواستی با این کد پیدا نشد یا کد معتبر نیست.", statuses: { RECEIVED: "دریافت‌شده", IN_REVIEW: "در حال بررسی", OPTION_OFFERED: "پیشنهاد برای بررسی شما آماده است", UNAVAILABLE: "در این زمان در دسترس نیست", DECLINED: "پذیرفته نشد", CLOSED: "بسته‌شده" } },
+  en: { submit: "Send a stay coordination request", notBooking: "This form sends a coordination request to reception only. It does not select or hold a room, confirm a booking, or take payment.", unavailable: "Stay coordination requests are not enabled yet.", received: "Coordination request sent to reception", reference: "Secure tracking reference", keepReference: "Keep this reference to check your request later.", legacyReceiptUnavailable: "A previous request was sent, but its tracking reference was not kept in this browser. To avoid creating a duplicate, do not submit it again. Use the tracking form if you have the reference, or contact reception.", newRequest: "Start a new request", status: "Request status", check: "Check status", checking: "Checking status...", trackLabel: "Track with secure reference", trackButton: "Show status", trackError: "No request was found for this reference.", statuses: { RECEIVED: "Received", IN_REVIEW: "Under review", OPTION_OFFERED: "An option is ready for your review", UNAVAILABLE: "Unavailable for these dates", DECLINED: "Declined", CLOSED: "Closed" } },
+  ar: { submit: "إرسال طلب تنسيق الإقامة", notBooking: "يرسل هذا النموذج طلب تنسيق إلى الاستقبال فقط. لا يختار غرفة ولا يحجزها ولا يؤكد الحجز أو يستلم دفعة.", unavailable: "طلبات تنسيق الإقامة غير مفعلة حالياً.", received: "تم إرسال طلب التنسيق إلى الاستقبال", reference: "رمز متابعة آمن", keepReference: "احتفظ بهذا الرمز لمتابعة طلبك لاحقاً.", legacyReceiptUnavailable: "تم إرسال طلب سابق، لكن رمز المتابعة لم يُحفظ في هذا المتصفح. لتجنب إنشاء طلب مكرر، لا ترسله مرة أخرى. استخدم نموذج المتابعة إذا كان الرمز متوفراً لديك، أو تواصل مع الاستقبال.", newRequest: "بدء طلب جديد", status: "حالة الطلب", check: "تحقق من الحالة", checking: "جارٍ التحقق من الحالة...", trackLabel: "المتابعة باستخدام الرمز الآمن", trackButton: "عرض الحالة", trackError: "لم يتم العثور على طلب بهذا الرمز.", statuses: { RECEIVED: "تم الاستلام", IN_REVIEW: "قيد المراجعة", OPTION_OFFERED: "الخيار جاهز لمراجعتك", UNAVAILABLE: "غير متاح في هذه التواريخ", DECLINED: "مرفوض", CLOSED: "مغلق" } },
 };
 
 function validArrival(value, minISO) {
@@ -75,24 +75,34 @@ function readStored(minISO) {
 function readCoordinationDraft() {
   try {
     const saved = JSON.parse(sessionStorage.getItem(COORDINATION_STORAGE_KEY) || "null");
-    if (!saved || saved.version !== 1 || typeof saved !== "object") return null;
+    if (!saved || ![1, 2].includes(saved.version) || typeof saved !== "object") return null;
     const draftContact = {
       fullName: typeof saved.draftContact?.fullName === "string" ? saved.draftContact.fullName.slice(0, 120) : "",
       phone: typeof saved.draftContact?.phone === "string" ? saved.draftContact.phone.slice(0, 24) : "",
       email: typeof saved.draftContact?.email === "string" ? saved.draftContact.email.slice(0, 200) : "",
     };
     const draftSpecialRequests = typeof saved.draftSpecialRequests === "string" ? saved.draftSpecialRequests.slice(0, 500) : "";
-    const pending = saved.pendingAttempt && typeof saved.pendingAttempt.body === "string" && saved.pendingAttempt.body.length <= 24000
-      && typeof saved.pendingAttempt.key === "string" && /^damoon-[a-f0-9]{64}$/.test(saved.pendingAttempt.key)
-      ? { body: saved.pendingAttempt.body, key: saved.pendingAttempt.key } : null;
+    const pendingKey = typeof saved.pendingAttempt?.key === "string" && /^damoon-[a-f0-9]{64}$/.test(saved.pendingAttempt.key)
+      ? saved.pendingAttempt.key : null;
     const request = saved.request && typeof saved.request.reference === "string" && /^[A-Za-z0-9_-]{32,128}$/.test(saved.request.reference)
       && typeof saved.request.status === "string"
       ? { reference: saved.request.reference, status: saved.request.status } : null;
+    if (saved.version === 1) {
+      // Migrate and immediately remove legacy contact details, request bodies and
+      // tracking references from same-tab storage. Keep legacy form values only
+      // in this page's memory for the current render.
+      sessionStorage.removeItem(COORDINATION_STORAGE_KEY);
+      sessionStorage.setItem(COORDINATION_STORAGE_KEY, JSON.stringify({
+        version: 2,
+        step: saved.step === "confirmed" && request ? "legacy-confirmed" : saved.step === "coordination-details" ? "coordination-details" : "search",
+        pendingAttempt: pendingKey ? { key: pendingKey } : null,
+      }));
+    }
     return {
-      step: saved.step === "confirmed" && request ? "confirmed" : saved.step === "coordination-details" ? "coordination-details" : "search",
-      draftContact,
-      draftSpecialRequests,
-      pendingAttempt: pending,
+      step: saved.version === 2 && saved.step === "legacy-confirmed" ? "legacy-confirmed" : saved.step === "confirmed" && request ? "confirmed" : saved.step === "coordination-details" ? "coordination-details" : "search",
+      draftContact: saved.version === 1 ? draftContact : { fullName: "", phone: "", email: "" },
+      draftSpecialRequests: saved.version === 1 ? draftSpecialRequests : "",
+      pendingAttempt: pendingKey ? { key: pendingKey, body: "" } : null,
       request,
     };
   } catch { return null; }
@@ -175,7 +185,14 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   let adults = selection.adults;
   let children = selection.children;
   let childAges = Array.isArray(selection.childAges) ? [...selection.childAges] : [];
-  const savedCoordination = requestOnly && validateStayRange(range, today) === "OK" ? readCoordinationDraft() : null;
+  // Read legacy coordination state even when its stay dates have expired, so
+  // PII from the previous format is scrubbed from sessionStorage on every visit.
+  const restoredCoordination = requestOnly ? readCoordinationDraft() : null;
+  const savedCoordination = restoredCoordination && (
+    validateStayRange(range, today) === "OK" ||
+    restoredCoordination.step === "legacy-confirmed" ||
+    (restoredCoordination.step === "confirmed" && restoredCoordination.request)
+  ) ? restoredCoordination : null;
   let activeSegment = "checkIn";
   let monthCursor = range.checkIn || today;
   let dialogOpener = null;
@@ -188,16 +205,11 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     try {
       if (!requestOnly) return;
       sessionStorage.setItem(COORDINATION_STORAGE_KEY, JSON.stringify({
-        version: 1,
-        step: flow.step === "confirmed" && flow.request ? "confirmed" : flow.step === "coordination-details" ? "coordination-details" : "search",
-        draftContact: {
-          fullName: String(flow.draftContact?.fullName || "").slice(0, 120),
-          phone: String(flow.draftContact?.phone || "").slice(0, 24),
-          email: String(flow.draftContact?.email || "").slice(0, 200),
-        },
-        draftSpecialRequests: String(flow.draftSpecialRequests || "").slice(0, 500),
-        pendingAttempt: coordinationAttempt,
-        request: flow.request ? { reference: flow.request.reference, status: flow.requestStatus || flow.request.status } : null,
+        version: 2,
+        // The request and tracking reference are retained only in page memory.
+        // Persisting the opaque idempotency key enables a safe retry after reload.
+        step: flow.step === "legacy-confirmed" ? "legacy-confirmed" : flow.step === "confirmed" || flow.step === "coordination-details" ? "coordination-details" : "search",
+        pendingAttempt: coordinationAttempt?.key ? { key: coordinationAttempt.key } : null,
       }));
     } catch {}
   }
@@ -345,6 +357,10 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     </section>`;
   }
   function confirmationPanel() {
+    if (requestOnly && flow.step === "legacy-confirmed" && !flow.request) {
+      const copy = requestCopy[locale] || requestCopy.en;
+      return `<section class="booking-step booking-step--confirmed"><h4>${escapeHtml(copy.received)}</h4><p>${escapeHtml(copy.legacyReceiptUnavailable)}</p><div class="booking-step__actions"><button type="button" class="booking-link" data-flow-reset>${escapeHtml(copy.newRequest)}</button></div></section>`;
+    }
     if (requestOnly && flow.request) {
       const request = flow.request;
       const status = flow.requestStatus || request.status;
@@ -361,7 +377,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   function renderFlow() {
     if (message) message.textContent = flow.message || ""; else message.textContent = "";
     message.classList.toggle("is-error", Boolean(flow.error));
-    if (flow.step === "confirmed") { flowNode.innerHTML = confirmationPanel(); bindFlow(); return; }
+    if (flow.step === "confirmed" || flow.step === "legacy-confirmed") { flowNode.innerHTML = confirmationPanel(); bindFlow(); return; }
     if (flow.step === "coordination-details") { flowNode.innerHTML = coordinationRequestPanel(); bindFlow(); return; }
     if (flow.step === "details" || flow.selected) { flowNode.innerHTML = selectedOptionPanel(); bindFlow(); return; }
     if (flow.step === "options") {
@@ -471,8 +487,13 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
         ...(specialRequests ? { specialRequests } : {}),
       };
       const body = JSON.stringify(payload);
-      if (!coordinationAttempt || coordinationAttempt.body !== body) {
+      if (!coordinationAttempt || (coordinationAttempt.body && coordinationAttempt.body !== body)) {
         coordinationAttempt = { body, key: createIdempotencyKey() };
+      } else {
+        // After reload the key is restored without its PII-bearing request body.
+        // Bind it to the first re-entered payload in memory; the server enforces
+        // fingerprint equality and returns 409 if this key already meant other data.
+        coordinationAttempt.body = body;
       }
       persistCoordinationDraft();
       flow.busy = true;
@@ -490,7 +511,6 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
           setMessage(result.status === 503 ? (requestCopy[locale]?.unavailable || requestCopy.en.unavailable) : apiErrorMessage(result.status, result.data, errorText), true);
           return;
         }
-        coordinationAttempt = null;
         flow = { ...flow, step: "confirmed", request: result.data, requestStatus: result.data.status, busy: false, message: "", error: false };
         persistCoordinationDraft();
         renderFlow();

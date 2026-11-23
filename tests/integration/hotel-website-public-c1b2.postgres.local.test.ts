@@ -45,12 +45,25 @@ function verifyTarget() {
   return { runId, containerId, volume, databaseName, migrations };
 }
 
-const pageContent = (title: string) => ({
+const ownerAccommodationCatalog = {
+  totalRooms: 20,
+  totalSuites: 11,
+  categories: [
+    { slug: "single", kind: "ROOM" as const, order: 0, visible: true, count: 3, title: { fa: "اتاق یک‌نفره", en: "Single room", ar: "غرفة مفردة" }, description: { fa: "گروه هماهنگی", en: "Coordination category", ar: "فئة للتنسيق" }, amenities: [], capacitySpecification: {} },
+    { slug: "double", kind: "ROOM" as const, order: 1, visible: true, count: 17, title: { fa: "اتاق دونفره", en: "Double room", ar: "غرفة مزدوجة" }, description: { fa: "گروه هماهنگی", en: "Coordination category", ar: "فئة للتنسيق" }, amenities: [], capacitySpecification: {} },
+    { slug: "suite-3-person", kind: "SUITE" as const, order: 2, visible: true, count: 6, title: { fa: "سوئیت سه‌نفره", en: "Three-person suite", ar: "جناح لثلاثة أشخاص" }, description: { fa: "گروه هماهنگی", en: "Coordination category", ar: "فئة للتنسيق" }, amenities: [], capacitySpecification: {} },
+    { slug: "suite-4-person", kind: "SUITE" as const, order: 3, visible: true, count: 3, title: { fa: "سوئیت چهارنفره", en: "Four-person suite", ar: "جناح لأربعة أشخاص" }, description: { fa: "گروه هماهنگی", en: "Coordination category", ar: "فئة للتنسيق" }, amenities: [], capacitySpecification: {} },
+    { slug: "suite-5-person", kind: "SUITE" as const, order: 4, visible: true, count: 2, title: { fa: "سوئیت پنج‌نفره", en: "Five-person suite", ar: "جناح لخمسة أشخاص" }, description: { fa: "گروه هماهنگی", en: "Coordination category", ar: "فئة للتنسيق" }, amenities: [], capacitySpecification: {} },
+  ],
+};
+
+const pageContent = (title: string, accommodationCatalog?: typeof ownerAccommodationCatalog) => ({
   title: { fa: `${title} فارسی`, en: title },
   hero: { heading: { fa: `خوش آمدید ${title}`, en: `Welcome ${title}` } },
   introduction: { body: { fa: `معرفی ${title}`, en: `${title} introduction` } },
   sections: [{ key: "story", order: 1, visible: true, kind: "TEXT", heading: { en: "Story" }, body: { en: `${title} story` } }],
   contact: { phone: "+10000000000", address: { en: "Do not publish this address" } },
+  ...(accommodationCatalog ? { accommodationCatalog } : {}),
 });
 
 test("C1B2 public website reads enforce host, website capability, exact publication and current media eligibility in PostgreSQL", { skip: !enabled, concurrency: false }, async () => {
@@ -108,13 +121,16 @@ test("C1B2 public website reads enforce host, website capability, exact publicat
     const image = await prisma.image.create({ data: { organizationId: a.organization.id, filename: `c1b2-${suffix}-a.png`, mimeType: "image/png", url: `/uploads/c1b2-${suffix}-a.png`, access: "PUBLIC" } });
     const scope = { organizationId: a.organization.id, propertyId: a.property.id };
     const draft = await management.createDraft(principal(a.manager, a.organization.id), scope, {
-      content: pageContent("Tenant A"),
+      content: pageContent("Tenant A", ownerAccommodationCatalog),
       media: [
         { imageId: image.id, scope: "PROPERTY", roomTypeId: null, slot: "GALLERY", sortOrder: 0, altText: { en: "Tenant A exterior" } },
         { imageId: image.id, scope: "ROOM_CATEGORY", roomTypeId: room.id, slot: "GALLERY", sortOrder: 0, altText: { en: "Suite" } },
       ],
     }, `c1b2-create-${suffix}`);
     const revisionId = draft.result.id;
+    const beforePublication = await getPublishedHotelWebsite({ host: a.domainName, propertySlug: "damoon", locale: "en", db: prisma });
+    assert.equal(beforePublication?.mode, "UNPUBLISHED", "a draft must not leak through the public read service");
+    if (beforePublication?.mode === "UNPUBLISHED") assert.equal(beforePublication.content, null);
     await management.submit(principal(a.manager, a.organization.id), scope, revisionId, undefined, `c1b2-submit-${suffix}`);
     await management.decide(principal(a.admin, a.organization.id), scope, revisionId, "APPROVED", undefined, `c1b2-review-${suffix}`);
     await management.publish(principal(a.admin, a.organization.id), scope, revisionId, `c1b2-publish-${suffix}`);
@@ -140,6 +156,15 @@ test("C1B2 public website reads enforce host, website capability, exact publicat
     assert.equal(published?.mode, "PUBLISHED");
     if (!published || published.mode !== "PUBLISHED") throw new Error("published website unexpectedly absent");
     assert.equal((published.content as { title: string }).title, "Tenant A");
+    const publishedCatalog = (published.content as { accommodationCatalog: { totalRooms: number; totalSuites: number; categories: Array<{ slug: string; kind: "ROOM" | "SUITE"; count: number; title: string }> } }).accommodationCatalog;
+    assert.deepEqual([publishedCatalog.totalRooms, publishedCatalog.totalSuites], [20, 11]);
+    assert.deepEqual(publishedCatalog.categories.map(({ slug, kind, count }) => [slug, kind, count]), [
+      ["single", "ROOM", 3], ["double", "ROOM", 17], ["suite-3-person", "SUITE", 6],
+      ["suite-4-person", "SUITE", 3], ["suite-5-person", "SUITE", 2],
+    ]);
+    assert.equal(publishedCatalog.categories.reduce((sum, category) => sum + (category.kind === "ROOM" ? category.count : 0), 0), 20);
+    assert.equal(publishedCatalog.categories.reduce((sum, category) => sum + (category.kind === "SUITE" ? category.count : 0), 0), 11);
+    assert.equal(JSON.stringify(published).includes("totalAllotment"), false, "public category counts never derive from operational room allotments");
     assert.equal("address" in (published.content as { contact: object }).contact, false);
     assert.equal(published.propertyGallery.length, 1);
     assert.ok(published.propertyGallery[0]?.src.startsWith("/api/hotel/v1/website/media/"));
@@ -153,7 +178,20 @@ test("C1B2 public website reads enforce host, website capability, exact publicat
     assert.equal((await getPublishedHotelWebsiteMedia({ host: a.domainName, associationId: association.id, db: prisma }))?.url, image.url);
     const tenantBWebsite = await getPublishedHotelWebsite({ host: b.domainName, propertySlug: "damoon", locale: "en", db: prisma });
     assert.equal(tenantBWebsite?.mode, "PUBLISHED");
-    if (tenantBWebsite?.mode === "PUBLISHED") assert.equal((tenantBWebsite.content as { title: string }).title, "Tenant B");
+    if (tenantBWebsite?.mode === "PUBLISHED") {
+      assert.equal((tenantBWebsite.content as { title: string }).title, "Tenant B");
+      assert.equal("accommodationCatalog" in tenantBWebsite.content, false, "one tenant's published categories never cross into another tenant");
+    }
+
+    for (const locale of ["fa", "en", "ar"] as const) {
+      const localizedWebsite = await getPublishedHotelWebsite({ host: a.domainName, propertySlug: "damoon", locale, db: prisma });
+      assert.equal(localizedWebsite?.mode, "PUBLISHED");
+      if (localizedWebsite?.mode === "PUBLISHED") {
+        const localizedCatalog = (localizedWebsite.content as { accommodationCatalog: { categories: Array<{ slug: string; title: string }> } }).accommodationCatalog;
+        assert.equal(localizedCatalog.categories.length, 5);
+        assert.ok(localizedCatalog.categories.every((category) => Boolean(category.title.trim())));
+      }
+    }
     assert.equal(await getPublishedHotelWebsiteMedia({ host: b.domainName, associationId: association.id, db: prisma }), null);
     assert.equal(await getPublishedHotelWebsite({ host: "unknown.test.example", propertySlug: "damoon", locale: "en", db: prisma }), null);
 

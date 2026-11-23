@@ -20,6 +20,7 @@ test("room cards offer accessible request-only coordination and preserve stay de
   });
   let browser;
   const apiRequests = [];
+  let simulateUnavailable = false;
   try {
     let ready = false;
     for (let attempt = 0; attempt < 60; attempt += 1) {
@@ -34,6 +35,7 @@ test("room cards offer accessible request-only coordination and preserve stay de
       apiRequests.push(`${route.request().method()} ${route.request().url()}`);
       const url = new URL(route.request().url());
       if (url.pathname === "/api/hotel/v1/website/properties/damoon") {
+        if (simulateUnavailable) return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "UNAVAILABLE" }) });
         const locale = url.searchParams.get("locale");
         const categories = ["single", "double", "suite-3-person", "suite-4-person", "suite-5-person"].map((slug, index) => ({
           slug, kind: index < 2 ? "ROOM" : "SUITE", order: index, count: [3, 17, 6, 3, 2][index],
@@ -76,6 +78,12 @@ test("room cards offer accessible request-only coordination and preserve stay de
       await page.waitForFunction((activeLocale) => document.querySelector('[data-accommodation-category="suite-3-person"] [data-accommodation-title]')?.textContent === `Published suite-3-person ${activeLocale}`, locale);
       assert.match(await page.locator("[data-accommodation-count]").innerText(), /6/);
     }
+    simulateUnavailable = true;
+    await page.goto(`${base}/fa/rooms?${query}`, { waitUntil: "domcontentloaded" });
+    const fallbackCards = page.locator(".accommodation-card");
+    assert.equal(await fallbackCards.count(), 5, "a failed public CMS read retains the bundled five-category fallback");
+    for (const count of [3, 17, 6, 3, 2]) assert.ok((await fallbackCards.allInnerTexts()).some((text) => text.includes(String(count))), `fallback retains approved category count ${count}`);
+    assert.match(await fallbackCards.first().locator(".accommodation-card__actions p").innerText(), /request|رزرو|طلب|تأیید|تأكيد/iu, "fallback remains request-only");
     assert.ok(apiRequests.every((request) => /^GET http:\/\/127\.0\.0\.1:\d+\/api\/hotel\/v1\/website\/properties\/damoon\?locale=(fa|en|ar)$/.test(request)), "room discovery reads only the published public website content endpoint");
     assert.equal(apiRequests.some((request) => /availability|quote|hold|reservation|payment|requests/i.test(request)), false, "room discovery never calls booking, availability, or payment operations");
     await context.close();

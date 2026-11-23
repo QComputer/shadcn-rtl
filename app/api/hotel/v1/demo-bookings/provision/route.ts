@@ -12,11 +12,11 @@ const RATE_DEFAULT = 125_000;
 
 async function authorizedOrganization(request: Request) {
   const session = await requireAuthSession(request);
-  if (!session.user.organizationId || !["ADMIN", "MANAGER", "STAFF"].includes(session.user.role)) return null;
-  const organization = await prisma.organization.findFirst({ where: { id: session.user.organizationId, slug: ORG, vertical: "HOTEL", isActive: true, deletedAt: null }, select: { id: true, slug: true } });
+  if (!["ADMIN", "MANAGER", "STAFF"].includes(session.user.role)) return null;
+  const organization = await prisma.organization.findFirst({ where: { slug: ORG, vertical: "HOTEL", isActive: true, deletedAt: null }, select: { id: true, slug: true } });
   if (!organization) return null;
-  const membership = await prisma.organizationMember.findFirst({ where: { organizationId: organization.id, userId: session.user.id, isActive: true, role: { in: ["ADMIN", "MANAGER", "STAFF"] } }, select: { id: true } });
-  return membership ? { organization, actorId: session.user.id, role: session.user.role } : null;
+  const membership = await prisma.organizationMember.findFirst({ where: { organizationId: organization.id, userId: session.user.id, isActive: true, role: { in: ["ADMIN", "MANAGER", "STAFF"] } }, select: { id: true, role: true } });
+  return membership ? { organization, actorId: session.user.id, role: membership.role } : null;
 }
 
 /** Idempotently provisions only the separately scoped synthetic Damoon demo catalog. */

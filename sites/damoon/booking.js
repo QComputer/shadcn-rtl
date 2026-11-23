@@ -19,6 +19,7 @@ import {
   holdAttemptFingerprint,
   parseChildAges,
   policySummary,
+  recommendationForOption,
   requestAttemptFingerprint,
   validateContact,
   withStaySelection,
@@ -334,7 +335,10 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     const nights = Array.isArray(option.nights) ? option.nights.length : 0;
     const policy = option.ratePlan?.cancellationPolicy;
     const summary = policySummary(policy, locale);
-    return `<article class="booking-option"><div class="booking-option__main"><h4>${escapeHtml(option.roomType?.name || option.roomType?.slug || "")}</h4><p>${escapeHtml(option.ratePlan?.name || option.ratePlan?.code || "")} · ${escapeHtml(nightsLabel(nights, locale, ui))}</p>${summary ? `<p class="booking-option__policy">${escapeHtml(summary)}</p>` : ""}</div><div class="booking-option__price"><strong>${escapeHtml(formatMoney(option.totalRate, option.ratePlan?.currency, locale))}</strong><span>${escapeHtml(ui.totalPrice || "Total")}</span><button type="button" class="booking-option__select" data-select-option="${index}">${escapeHtml(ui.selectRoom || "Select")}</button></div></article>`;
+    const recommendation = recommendationForOption(flow.recommendations, option);
+    const recommendedLabel = locale === "fa" ? "پیشنهاد مناسب" : locale === "ar" ? "خيار موصى به" : "Recommended option";
+    const recommendationMarkup = recommendation ? `<div class="booking-option__recommendation" aria-label="${escapeHtml([recommendedLabel, recommendation.reason?.[locale]].filter(Boolean).join(" — "))}"><span class="booking-option__badge">${escapeHtml(recommendedLabel)} · ${escapeHtml(new Intl.NumberFormat(locale === "fa" ? "fa-IR" : locale === "ar" ? "ar" : "en-US").format(recommendation.rank))}</span>${recommendation.reason?.[locale] ? `<span class="booking-option__reason">${escapeHtml(recommendation.reason[locale])}</span>` : ""}</div>` : "";
+    return `<article class="booking-option${recommendation ? " booking-option--recommended" : ""}"><div class="booking-option__main">${recommendationMarkup}<h4>${escapeHtml(option.roomType?.name || option.roomType?.slug || "")}</h4><p>${escapeHtml(option.ratePlan?.name || option.ratePlan?.code || "")} · ${escapeHtml(nightsLabel(nights, locale, ui))}</p>${summary ? `<p class="booking-option__policy">${escapeHtml(summary)}</p>` : ""}</div><div class="booking-option__price"><strong>${escapeHtml(formatMoney(option.totalRate, option.ratePlan?.currency, locale))}</strong><span>${escapeHtml(ui.totalPrice || "Total")}</span><button type="button" class="booking-option__select" data-select-option="${index}">${escapeHtml(ui.selectRoom || "Select")}</button></div></article>`;
   }
   function selectedOptionPanel() {
     const option = flow.selected; if (!option) return "";
@@ -795,7 +799,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       }
       // Successful response with no bookable options is genuine sold-out/unavailable inventory.
       if (!items.length) { flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: locale === "fa" ? "برای این تاریخ اتاقی موجود نیست." : locale === "ar" ? "لا توجد غرف متاحة." : "No rooms available for these dates.", error: true }; renderFlow(); return; }
-      flow = { step: "options", options: data?.options || items, selected: null, hold: null, busy: false, message: (locale === "fa" ? "گزینه‌های موجود: " : locale === "ar" ? "الخيارات المتاحة: " : "Available options: ") + items.length, error: false, draftContact: flow.draftContact, policyAccepted: false }; renderFlow();
+      flow = { step: "options", options: data?.options || items, recommendations: Array.isArray(data?.recommendations) ? data.recommendations : [], selected: null, hold: null, busy: false, message: (locale === "fa" ? "گزینه‌های موجود: " : locale === "ar" ? "الخيارات المتاحة: " : "Available options: ") + items.length, error: false, draftContact: flow.draftContact, policyAccepted: false }; renderFlow();
       slot.querySelector("[data-booking-flow]")?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
     } catch {
       flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: locale === "fa" ? "خطای شبکه در دریافت موجودی. وضعیت نامشخص است؛ دوباره تلاش کنید." : locale === "ar" ? "خطأ في الشبكة أثناء التحقق من التوفر. أعد المحاولة." : "Network error while checking availability. Try again.", error: true }; renderFlow();

@@ -189,6 +189,10 @@ button.booking-field { cursor: pointer; }
 .booking-option__main h4 { margin: 0 0 4px; font-size: 15px; font-weight: 700; }
 .booking-option__main p { margin: 0; color: var(--muted); font-size: 12px; }
 .booking-option__policy { margin-top: 6px !important; }
+.booking-option--recommended { border-color: var(--accent, #5a4632); }
+.booking-option__recommendation { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 9px; margin: 0 0 8px; }
+.booking-option__badge { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 9px; color: var(--surface, #fff); background: var(--accent, #5a4632); border-radius: 999px; font-size: 11px; font-weight: 700; }
+.booking-option__reason { color: var(--muted); font-size: 12px; }
 .booking-option__price { display: grid; gap: 4px; justify-items: end; text-align: end; min-width: 140px; }
 .booking-option__price strong { font-size: 16px; }
 .booking-option__price span { color: var(--muted); font-size: 11px; }

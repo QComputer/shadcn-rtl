@@ -41,6 +41,7 @@ Future independent path (NOT public-enabled):
 - تور: `virtual-tour.js` origin allowlist `https://andarama.bazarbaaz.ir` و فقط چهار Scene verified؛ حالت lazy-on-demand و failover به open-direct.
 - رسانه: `media-slots.json` و `prepare-media.mjs` برای تولید نسخه WebP خصوصی؛ این ابزار publish نمی‌کند.
 - booking gate: `booking-activation.js` به‌صورت explicit `enabled:false`؛ سیاست request-only از دو سوی UI/API باید enforce شود.
+- پیشنهادهای جست‌وجوی موجودی صرفاً راهنمایی هستند: رابط FA/EN/AR فقط رتبه و دلیل محلی‌سازی‌شدهٔ همان `roomTypeId` را روی گزینهٔ موجود و منتشرشده نشان می‌دهد؛ این پیشنهاد رزرو یا تضمین موجودی نیست. تا زمان فعال‌سازی مجاز، مسیر request-only اصلاً API موجودی، نرخ، hold، reservation یا پرداخت را فراخوانی نمی‌کند.
 
 ## قرارداد درخواست مهمان
 

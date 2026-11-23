@@ -10,6 +10,7 @@ import {
   buildReservationEntryUrl,
   buildGuestRequestPayload,
   createIdempotencyKey,
+  recommendationForOption,
   requestAttemptFingerprint,
 } from "../public/damoon-front/booking-flow.js";
 
@@ -17,7 +18,23 @@ test("shared Damoon browser module graph loads its guest-request entry points", 
   assert.equal(typeof mountBooking, "function");
   assert.equal(typeof buildReservationEntryUrl, "function");
   assert.equal(typeof buildGuestRequestPayload, "function");
+  assert.equal(typeof recommendationForOption, "function");
   assert.equal(typeof requestAttemptFingerprint, "function");
+});
+
+test("shared recommendation metadata is advisory, localized and matched to a returned room type", () => {
+  const recommendation = recommendationForOption(
+    [{ roomTypeId: "published-double", rank: 1, reasonCodes: ["ONLY_AVAILABLE_OPTION"] }],
+    { roomType: { id: "published-double", slug: "double" } },
+  );
+  assert.equal(recommendation.rank, 1);
+  assert.equal(recommendation.reason.fa, "تنها گزینهٔ موجود");
+  assert.equal(recommendation.reason.en, "Only available option");
+  assert.equal(recommendation.reason.ar, "الخيار المتاح الوحيد");
+  assert.equal(recommendationForOption(
+    [{ roomTypeId: "unpublished-room", rank: 1, reasonCodes: ["ONLY_AVAILABLE_OPTION"] }],
+    { roomType: { id: "published-double", slug: "double" } },
+  ), null);
 });
 
 test("shared guest request payload carries the selected stay without hold or payment claims", () => {
@@ -67,6 +84,9 @@ test("shared-runtime home page opens the authenticated preview and preserves req
   assert.match(booking, /\/api\/hotel\/v1\/requests/);
   assert.match(booking, /data-reservation-entry/);
   assert.match(booking, /postJson\("\/api\/hotel\/v1\/availability\/search"/);
+  assert.match(booking, /recommendations: Array\.isArray\(data\?\.recommendations\)/);
+  assert.match(booking, /booking-option__recommendation/);
+  assert.match(booking, /aria-label=/);
   assert.match(booking, /buildReservationEntryUrl\(new URL\(routeHref\("\/hotel-reservations\/start"\)/);
   assert.match(booking, /data-create-\$\{requestOnly \? "request" : "hold"\}/);
   assert.match(booking, /data-track-request/);
@@ -74,11 +94,25 @@ test("shared-runtime home page opens the authenticated preview and preserves req
   assert.match(styles, /booking-field--text textarea/);
 });
 
-test("shared-runtime browser loads tracking UI and posts status to the shared API path", { timeout: 30000 }, async () => {
+test("shared-runtime browser tracks requests and keeps booking-start request-only", { timeout: 30000 }, async () => {
   const bundleRoot = resolve("public/damoon-front");
   const requests = [];
+  const reservationOperations = [];
   const mime = { ".css": "text/css", ".html": "text/html", ".js": "text/javascript", ".json": "application/json", ".png": "image/png", ".ttf": "font/ttf", ".webp": "image/webp" };
   const server = createServer(async (request, response) => {
+    if (request.url === "/api/hotel/v1/requests" && request.method === "POST") {
+      let body = "";
+      for await (const chunk of request) body += chunk;
+      requests.push(JSON.parse(body));
+      response.writeHead(201, { "content-type": "application/json" });
+      response.end(JSON.stringify({ reference: "synthetic-reference-123456789012345678901234567890123456", status: "RECEIVED" }));
+      return;
+    }
+    if (/^\/api\/hotel\/v1\/(availability|holds|reservations|payments)(\/|$)/.test(request.url || "")) {
+      reservationOperations.push(`${request.method} ${request.url}`);
+      response.writeHead(503, { "content-type": "application/json" }).end(JSON.stringify({ error: "TEST_BLOCKED" }));
+      return;
+    }
     if (request.url === "/api/hotel/v1/requests/status" && request.method === "POST") {
       let body = "";
       for await (const chunk of request) body += chunk;
@@ -113,6 +147,29 @@ test("shared-runtime browser loads tracking UI and posts status to the shared AP
     ]);
     await page.locator("[data-track-result]").getByText("دریافت‌شده").waitFor();
     assert.deepEqual(requests, [{ reference: "r".repeat(48) }]);
+
+    await page.goto(`http://127.0.0.1:${server.address().port}/fa/hotel-reservations/start?property=damoon-hotel&checkIn=2027-01-10&checkOut=2027-01-11&adults=2&children=1&childAges=7`, { waitUntil: "networkidle" });
+    await page.locator(".booking-form .booking-submit[type=submit]").click();
+    await page.locator("[data-coordination-name]").waitFor();
+    assert.match(await page.locator("[data-booking-flow]").innerText(), /فقط درخواست هماهنگی/);
+    await page.locator("[data-coordination-name]").fill("Synthetic Guest");
+    await page.locator("[data-coordination-phone]").fill("+989123456789");
+    await page.locator("[data-coordination-email]").fill("synthetic@example.test");
+    await Promise.all([
+      page.waitForResponse(response => response.url().endsWith("/api/hotel/v1/requests") && response.status() === 201),
+      page.locator("[data-create-coordination-request]").click(),
+    ]);
+    assert.match(await page.locator("[data-booking-flow] .booking-step--confirmed").innerText(), /درخواست هماهنگی برای پذیرش ارسال شد/);
+    assert.equal(requests.length, 2);
+    assert.deepEqual(requests[1], {
+      kind: "coordination",
+      property: "damoon-hotel",
+      checkIn: "2027-01-10",
+      checkOut: "2027-01-11",
+      occupancy: { adults: 2, children: 1, childAges: [7] },
+      contact: { fullName: "Synthetic Guest", phone: "+989123456789", email: "synthetic@example.test" },
+    });
+    assert.deepEqual(reservationOperations, [], "request-only route must not call availability, hold, reservation, or payment endpoints");
   } finally {
     await browser?.close();
     await new Promise(resolveClose => server.close(resolveClose));

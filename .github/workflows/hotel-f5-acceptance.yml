@@ -11,6 +11,11 @@ on:
         type: boolean
         required: true
         default: false
+      cms_acceptance_only:
+        description: Skip the separate F5 migration rehearsal and run only isolated C1B2/C1B1 PostgreSQL acceptance
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -54,10 +59,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec prisma validate
       - run: pnpm exec prisma generate
-      - run: node scripts/hotel/verify-f5-pg17-rehearsal.mjs --before
-      - run: pnpm exec prisma migrate deploy
-      - run: node scripts/hotel/verify-f5-pg17-rehearsal.mjs --after-migrate
+      - if: ${{ !inputs.cms_acceptance_only }}
+        run: node scripts/hotel/verify-f5-pg17-rehearsal.mjs --before
+      - if: ${{ !inputs.cms_acceptance_only }}
+        run: pnpm exec prisma migrate deploy
+      - if: ${{ !inputs.cms_acceptance_only }}
+        run: node scripts/hotel/verify-f5-pg17-rehearsal.mjs --after-migrate
       - name: Re-run the provenance-verified additive branding repair
+        if: ${{ !inputs.cms_acceptance_only }}
         shell: bash
         run: |
           git fetch --no-tags origin refs/tags/hotel-f5-branding-repair-source:refs/tags/hotel-f5-branding-repair-source
@@ -65,8 +74,10 @@ jobs:
           git show 57e407077f88c22c62ff12ff15cc6c2602ee3c96:prisma/migrations/20260926160000_repair_organization_branding_columns/migration.sql > "$RUNNER_TEMP/branding-repair.sql"
           echo "cfa7ed49b14f25ca88593525a6f269e189b6be1e78e760bb5073ecf40c98eb59  $RUNNER_TEMP/branding-repair.sql" | sha256sum --check
           pnpm exec prisma db execute --schema prisma/schema.prisma --file "$RUNNER_TEMP/branding-repair.sql"
-      - run: pnpm exec prisma migrate deploy
-      - run: node scripts/hotel/verify-f5-pg17-rehearsal.mjs
+      - if: ${{ !inputs.cms_acceptance_only }}
+        run: pnpm exec prisma migrate deploy
+      - if: ${{ !inputs.cms_acceptance_only }}
+        run: node scripts/hotel/verify-f5-pg17-rehearsal.mjs
 
       - name: Create a uniquely labeled disposable C1B2 API acceptance database
         id: c1b2-db

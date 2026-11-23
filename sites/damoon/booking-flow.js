@@ -68,6 +68,44 @@ export function availableOptions(result) {
   return options.filter((o) => o && o.isAvailable !== false && o.roomType?.slug && o.ratePlan?.code);
 }
 
+const recommendationReasonCodes = new Set([
+  "ONLY_AVAILABLE_OPTION",
+  "MATCHES_REQUESTED_AMENITIES",
+  "WITHIN_BUDGET",
+  "BEST_AVAILABILITY",
+  "SMALLEST_SUFFICIENT_CAPACITY",
+  "MATCHES_VIEW_PREFERENCE",
+  "FLEXIBLE_CANCELLATION",
+  "FALLBACK_LOWEST_PRICE",
+]);
+
+const recommendationLabels = {
+  ONLY_AVAILABLE_OPTION: { fa: "تنها گزینهٔ موجود", en: "Only available option", ar: "الخيار المتاح الوحيد" },
+  MATCHES_REQUESTED_AMENITIES: { fa: "ویژگی‌های درخواستی شما را دارد", en: "Matches your requested features", ar: "يطابق الميزات المطلوبة" },
+  WITHIN_BUDGET: { fa: "در محدودهٔ بودجهٔ شما", en: "Within your budget", ar: "ضمن ميزانيتكم" },
+  BEST_AVAILABILITY: { fa: "موجودی مناسب‌تری دارد", en: "Best availability", ar: "أفضل توفراً" },
+  SMALLEST_SUFFICIENT_CAPACITY: { fa: "ظرفیت متناسب با تعداد مهمانان", en: "Capacity fits your guest count", ar: "سعة تناسب عدد الضيوف" },
+  MATCHES_VIEW_PREFERENCE: { fa: "با ترجیح شما هماهنگ است", en: "Matches your preference", ar: "يطابق تفضيلكم" },
+  FLEXIBLE_CANCELLATION: { fa: "شرایط لغو انعطاف‌پذیر", en: "Flexible cancellation terms", ar: "شروط إلغاء مرنة" },
+  FALLBACK_LOWEST_PRICE: { fa: "کمترین مبلغ در گزینه‌های موجود", en: "Lowest price among available options", ar: "أقل سعر بين الخيارات المتاحة" },
+};
+
+/** Return an advisory label only when the API recommendation belongs to this visible room type. */
+export function recommendationForOption(recommendations, option) {
+  const roomTypeId = option?.roomType?.id;
+  if (typeof roomTypeId !== "string" || !roomTypeId || !Array.isArray(recommendations)) return null;
+  const recommendation = recommendations.find((item) => item?.roomTypeId === roomTypeId
+    && Number.isInteger(item.rank) && item.rank > 0);
+  if (!recommendation) return null;
+  const reasonCode = Array.isArray(recommendation.reasonCodes)
+    ? recommendation.reasonCodes.find((code) => recommendationReasonCodes.has(code))
+    : null;
+  return {
+    rank: recommendation.rank,
+    reason: reasonCode ? recommendationLabels[reasonCode] : null,
+  };
+}
+
 export function formatMoney(amount, currency, locale) {
   const n = typeof amount === "bigint" ? Number(amount) : Number(amount);
   if (!Number.isFinite(n)) return "";

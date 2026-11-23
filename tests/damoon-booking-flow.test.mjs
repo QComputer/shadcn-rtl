@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { availableOptions, buildGuestRequestPayload, buildHoldPayload, createIdempotencyKey, formatMoney, holdAttemptFingerprint, parseChildAges, policySummary, requestAttemptFingerprint, validateContact } from "../sites/damoon/booking-flow.js";
+import { availableOptions, buildGuestRequestPayload, buildHoldPayload, createIdempotencyKey, formatMoney, holdAttemptFingerprint, parseChildAges, policySummary, recommendationForOption, requestAttemptFingerprint, validateContact } from "../sites/damoon/booking-flow.js";
 
 test("parseChildAges requires explicit valid ages and never invents defaults", () => {
   assert.deepEqual(parseChildAges([], 0), { ok: true, ages: [] });
@@ -32,6 +32,22 @@ test("availableOptions filters unavailable/malformed options", () => {
   ] });
   assert.equal(options.length, 1);
   assert.equal(options[0].roomType.slug, "std");
+});
+
+test("recommendation labels are limited to the matching visible room type and localized reason codes", () => {
+  const option = { roomType: { id: "published-room", slug: "double" } };
+  const recommendations = [
+    { roomTypeId: "unpublished-room", rank: 1, reasonCodes: ["ONLY_AVAILABLE_OPTION"] },
+    { roomTypeId: "published-room", rank: 2, reasonCodes: ["SMALLEST_SUFFICIENT_CAPACITY"] },
+  ];
+  const result = recommendationForOption(recommendations, option);
+  assert.equal(result.rank, 2);
+  assert.equal(result.reason.fa, "ظرفیت متناسب با تعداد مهمانان");
+  assert.equal(result.reason.en, "Capacity fits your guest count");
+  assert.equal(result.reason.ar, "سعة تناسب عدد الضيوف");
+  assert.equal(recommendationForOption(recommendations, { roomType: { id: "missing" } }), null);
+  assert.equal(recommendationForOption([{ roomTypeId: "published-room", rank: 0, reasonCodes: ["ONLY_AVAILABLE_OPTION"] }], option), null);
+  assert.equal(recommendationForOption([{ roomTypeId: "published-room", rank: 1, reasonCodes: ["INVENTED_REASON"] }], option).reason, null);
 });
 
 test("buildHoldPayload uses real option, preserves child ages in occupancy, does not invent child names, and includes reviewed quote/policy fields", () => {

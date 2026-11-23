@@ -3,14 +3,15 @@
   "project": "Damoon / Bazarbaaz",
   "snapshotDate": "2026-11-23",
   "repository": "https://github.com/QComputer/shadcn-rtl",
-  "mainSha": "9379d82761bea87c20b86be1a96da9dcb9bd7428",
+  "mainSha": "aa38b8c0a6a13de4b40cfe8b60ca7904be8349f7",
   "runflare": {
     "projectId": "37622",
     "serviceId": "87432",
-    "reportedActiveVersion": "v127 (active, 1/1 healthy pod)",
+    "reportedActiveVersion": "v128 (active, 1/1 healthy pod)",
     "reportedActiveSourceSha": null,
-    "sourceShaConfidence": "V127_ACTIVE_1_OF_1; LATEST_COMPLETED_GITHUBAPP_DEPLOYMENT_LOG_IDENTIFIES_9379D82761BEA87C20B86BE1A96DA9DCB9BD7428; ACTIVE_POD_SOURCE_SHA_NOT_EXPOSED; LIVE_ASSET_HASHES_MATCH; GIT_MAIN_AUTO_PULL_ON; HEALTH_REVISION_NULL",
-    "healthRevision": null
+    "sourceShaConfidence": "V128_ACTIVE_1_OF_1; PROVIDER_DEPLOYMENT_LOG_RECORDS_SELECTED_SHA_AA38B8C0A6A13DE4B40CFE8B60CA7904BE8349F7; THIS_IS_NOT_ACTIVE_POD_SOURCE_SHA_PROOF; ACTIVE_POD_SOURCE_SHA_NOT_EXPOSED; GIT_MAIN_AUTO_PULL_ON; HEALTH_REVISION_NULL",
+    "healthRevision": null,
+    "evidenceScope": "LATEST_VERIFIED_PROVIDER_STATE; selected commit comes from deployment log only, not authoritative active-pod source metadata"
   },
   "liveManifest": {
     "accommodation.css": "c3e3d4662b729ae0a767f604c0e54268c243138213401a1ba555b51f8778c064",
@@ -94,7 +95,7 @@
   "sourceEvidence": {
     "github": "GitHub API 2026-11-23: PR148 head 65f010bfdd58b3697d6edcb46c47170484d46e0b merged to main as 9379d82761bea87c20b86be1a96da9dcb9bd7428. Relevant Actions successful: runs 45088093180, 45088092192, 45088092271, 45088092212, 45088092180; CMS disposable PostgreSQL run 45088093245 passed. Known Vercel suspended-preview block is the only failing context; CodeRabbit skipped.",
     "liveAsset": "Read-only HTTPS GET 2026-11-23: release-manifest.json reports PR148-exact SHA-256 values for accommodation.css, accommodation.js, app.js, content.js, translations.js and virtual-tour.js; values match source manifest at main 9379d82761bea87c20b86be1a96da9dcb9bd7428.",
-    "provider": "Authenticated Runflare portal 2026-11-23: service 87432 v127 active with 1/1 healthy pod. Latest GitHub App deployment status Completed; its provider log reads \"Reverted To commit 9379d82761bea87c20b86be1a96da9dcb9bd7428\" (Runflare commit-selection deployment control, not a Git revert). Git integration is QComputer/shadcn-rtl main with auto-pull checked. An older Request Initialized row remains in history but no current build/deployment is running. The deployment log supplies the selected commit, but the active pod record does not expose an authoritative source SHA; health revision is null."
+    "provider": "Historical PR148 provider observation at that snapshot: Authenticated Runflare portal 2026-11-23: service 87432 v127 active with 1/1 healthy pod. Latest GitHub App deployment status Completed; its provider log reads \"Reverted To commit 9379d82761bea87c20b86be1a96da9dcb9bd7428\" (Runflare commit-selection deployment control, not a Git revert). Git integration is QComputer/shadcn-rtl main with auto-pull checked. An older Request Initialized row remains in history but no current build/deployment is running. The deployment log supplies the selected commit, but the active pod record does not expose an authoritative source SHA; health revision is null. Current post-PR149 evidence: Runflare v128 active, 1/1 healthy; its provider deployment log records selected SHA aa38b8c0a6a13de4b40cfe8b60ca7904be8349f7. This is not authoritative active-pod source SHA proof; active pod SHA remains unexposed."
   },
   "featureGates": {
     "publicBooking": false,
@@ -167,7 +168,7 @@
     "productionWrites": "NONE",
     "remainingAcceptance": "Owner/reception operational sign-off and separate data authorization for any live guest record; R09 privacy-retention review"
   },
-  "caveat": "PR148 is merged, CI and CMS workflow acceptance passed only on disposable PostgreSQL (run 45088093245), Runflare v127 is active, and its latest completed deployment log names main 9379d82761bea87c20b86be1a96da9dcb9bd7428; the active pod source SHA itself is not exposed. Live public assets match source. Static fallback category read was accepted in FA/EN/AR at 360/390 without horizontal overflow, but live public CMS GET returned an Nginx HTML 503 and its upstream/configuration cause is unconfirmed. Dynamic Production CMS reads and editing/publication are not accepted. No Production writes were made. This does not authorize public booking, Production writes/migrations, PR140, or indexing.",
+  "caveat": "Latest verified repository main is aa38b8c0a6a13de4b40cfe8b60ca7904be8349f7 (PR149, documentation-only). Runflare v128 is reported active with 1/1 healthy pod; the provider deployment log records that same SHA as the selected commit, but does not prove the active pod's source SHA. Earlier PR148/v127 values are preserved under historicalPrePr149Snapshot. PR148 CMS workflow acceptance passed only on disposable PostgreSQL (run 45088093245); public static fallback category read was accepted in FA/EN/AR at 360/390 without horizontal overflow, but live public CMS GET returned an Nginx HTML 503 and its upstream/configuration cause is unconfirmed. Dynamic Production CMS reads and editing/publication are not accepted. No Production writes were made. This does not authorize public booking, Production writes/migrations, PR140, or indexing.",
   "pr148CmsAcceptance": {
     "status": "PASSED_DISPOSABLE_POSTGRES_CI",
     "workflowRun": "45088093245",
@@ -246,5 +247,80 @@
         "url": "https://andarama.bazarbaaz.ir/t/303"
       }
     ]
-  }
+  },
+  "productionTopologyOwnerVerified20261123": {
+    "source": "docs/BAZARBAAZ-PRODUCTION-TOPOLOGY-2026-11-23.md",
+    "decisionDate": "2026-11-23",
+    "authority": "OWNER_EXPLICIT_CORRECTION_AND_RUNFLARE_CONSOLE_OBSERVATION",
+    "runflareProject": {
+      "name": "product",
+      "id": "37622"
+    },
+    "appServiceId": "87432",
+    "databaseService": {
+      "name": "maindb",
+      "id": "87429",
+      "engine": "PostgreSQL-PostGIS",
+      "version": "17.3",
+      "status": "ACTIVE_OBSERVED"
+    },
+    "actualApplicationDatabaseTarget": "UNVERIFIED",
+    "neonProduction": false,
+    "renderRelated": false,
+    "remoteDatabaseConnection": {
+      "environmentVariable": "DB_REMOTE_URI",
+      "exclusiveUriSource": true,
+      "failClosedIfMissing": true,
+      "secretValueDisclosed": false,
+      "connectionAuthorizedByThisRecord": false,
+      "appRuntimeBindingProvenByThisVariable": false,
+      "prohibitedFallbacks": [
+        "DATABASE_URL",
+        "DIRECT_URL",
+        "BB_PRODUCTION_READONLY_URL",
+        "NEON_URI",
+        "HARDCODED_URI"
+      ]
+    },
+    "cmsPublicApi": {
+      "http": 503,
+      "body": "NGINX_HTML",
+      "origin": "UNCONFIRMED",
+      "dynamicProductionAccepted": false
+    },
+    "productionMigrationAllowed": false,
+    "productionWritesAllowed": false,
+    "pr140MergeAllowed": false
+  },
+  "runflarePostPr149DeploymentEvidence20261123": {
+    "provider": "Runflare",
+    "projectName": "product",
+    "projectId": "37622",
+    "applicationServiceId": "87432",
+    "databaseService": {
+      "name": "maindb",
+      "serviceId": "87429",
+      "engine": "PostgreSQL-PostGIS 17.3",
+      "status": "ACTIVE_OBSERVED"
+    },
+    "pr149MainSha": "aa38b8c0a6a13de4b40cfe8b60ca7904be8349f7",
+    "deploymentVersion": "v128",
+    "deploymentStatus": "COMPLETED_ACTIVE_1_OF_1_HEALTHY",
+    "providerSelectedSourceSha": "aa38b8c0a6a13de4b40cfe8b60ca7904be8349f7",
+    "releaseScope": "PR149_DOCUMENTATION_ONLY; NO_NEW_RUNTIME_BEHAVIOR",
+    "remoteDatabaseUriVariable": "DB_REMOTE_URI",
+    "uriValueStored": false,
+    "productionDatabaseConnectionOrQuery": false,
+    "productionWritesOrMigrations": false,
+    "selectedSourceShaEvidenceType": "PROVIDER_DEPLOYMENT_LOG_ONLY_NOT_ACTIVE_POD_SOURCE_ATTESTATION"
+  },
+  "historicalPrePr149Snapshot": {
+    "mainSha": "9379d82761bea87c20b86be1a96da9dcb9bd7428",
+    "reportedActiveVersion": "v127 (active, 1/1 healthy pod)",
+    "reportedActiveSourceSha": null,
+    "sourceShaConfidence": "V127_ACTIVE_1_OF_1; LATEST_COMPLETED_GITHUBAPP_DEPLOYMENT_LOG_IDENTIFIES_9379D82761BEA87C20B86BE1A96DA9DCB9BD7428; ACTIVE_POD_SOURCE_SHA_NOT_EXPOSED; LIVE_ASSET_HASHES_MATCH; GIT_MAIN_AUTO_PULL_ON; HEALTH_REVISION_NULL",
+    "caveat": "PR148 is merged, CI and CMS workflow acceptance passed only on disposable PostgreSQL (run 45088093245), Runflare v127 is active, and its latest completed deployment log names main 9379d82761bea87c20b86be1a96da9dcb9bd7428; the active pod source SHA itself is not exposed. Live public assets match source. Static fallback category read was accepted in FA/EN/AR at 360/390 without horizontal overflow, but live public CMS GET returned an Nginx HTML 503 and its upstream/configuration cause is unconfirmed. Dynamic Production CMS reads and editing/publication are not accepted. No Production writes were made. This does not authorize public booking, Production writes/migrations, PR140, or indexing.",
+    "snapshotRole": "HISTORICAL_PR148_STATE_SUPERSEDED_BY_LATEST_VERIFIED_STATE"
+  },
+  "mainShaEvidence": "PR149 merged to main; documentation-only, no new runtime behavior"
 }

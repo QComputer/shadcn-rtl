@@ -1,3 +1,7 @@
+<!-- BAZARBAAZ_CURRENT_PRODUCTION_TOPOLOGY_20261123: START -->
+> **CURRENT PRODUCTION INFRASTRUCTURE — OWNER CONFIRMED, 2026-11-23:** Runflare project `product` (ID `37622`); application service `87432`; **Production PostgreSQL-PostGIS 17.3 `maindb` service `87429` (active, console observed)**. The application's actual database target/binding is still **UNVERIFIED**. **Neon is NOT Production; Render is unrelated.** All authorized remote DB connection URIs must come only from `DB_REMOTE_URI`, fail closed if missing, never log the value; this does not authorize a connection. Static Damoon 3/17/6/3/2 fallback is verified, but dynamic CMS GET returned Nginx HTML HTTP 503 and Production CMS publication remains unaccepted. PR140, Production writes/migrations, booking/payment and unapproved feature changes remain ON HOLD. Current reference: `docs/BAZARBAAZ-PRODUCTION-TOPOLOGY-2026-11-23.md`. Historical Neon documents are not current operational authority.
+<!-- BAZARBAAZ_CURRENT_PRODUCTION_TOPOLOGY_20261123: END -->
+
 # Damoon | دفتر اختلاف‌ها، حقایق تأییدشده و ورودی‌های باقی‌مانده
 
 **سلسله مراتب:** تصمیم صریح جدید مالک > تصمیم تأییدشده مدیریت هتل > Master دارای منشأ > پرسشنامه/اصلاحیه > مستندات فنی > گزارش‌های تاریخی > وب عمومی. قاعده Master و اسناد `OWNER-DECISION-OVERRIDE-2026-11-17.md` و `OWNER-DECISION-BREAKFAST-2026-11-20.md` حفظ می‌شود.

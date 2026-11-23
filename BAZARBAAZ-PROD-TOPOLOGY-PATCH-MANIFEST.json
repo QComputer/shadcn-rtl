@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 2,
+  "name": "Bazarbaaz Runflare Production Docs Finalization v2 — DB_REMOTE_URI Owner Directive",
+  "created": "2026-11-23",
+  "supersedes": "Bazarbaaz_Runflare_Production_Docs_Finalization_2026-11-23.zip",
+  "baseMainObserved": "aa38b8c0a6a13de4b40cfe8b60ca7904be8349f7",
+  "intendedExistingBranch": "codex/damoon-prod-db-authority-20261123",
+  "requiresBranchOwnerDecisionFiles": true,
+  "remoteDbUriSource": "DB_REMOTE_URI",
+  "environmentVariableContainsSecret": true,
+  "accessOrProductionWritesAuthorized": false,
+  "files": [
+    {
+      "path": "README-PRODUCTION-DOCS-FINALIZATION.md",
+      "sizeBytes": 4951,
+      "sha256": "2cb464c7ce7ad191ac48f2c6ee84a451d435c3cb662db52c1c2d256fba4837d1"
+    },
+    {
+      "path": "docs/BAZARBAAZ-PRODUCTION-TOPOLOGY-2026-11-23.md",
+      "sizeBytes": 5824,
+      "sha256": "9a83f2d8012e530e88effcb72dc8c40719906fe75d61d8129a8094f1ede24060"
+    },
+    {
+      "path": "docs/BAZARBAAZ-REMOTE-DB-CONNECTION-CONTRACT-2026-11-23.md",
+      "sizeBytes": 3636,
+      "sha256": "ad37ea059562573193621a43c938fec60d2b7a07237ebfe6bac3d99ac5c5aace"
+    },
+    {
+      "path": "docs/hotel/damoon/PRODUCTION-NEON-HISTORY-AND-OPERATOR-QUARANTINE-2026-11-23.md",
+      "sizeBytes": 4342,
+      "sha256": "cbc076136b37b669d272e33e5c7a05b53a4842efafffad1ade8e98426a255d95"
+    },
+    {
+      "path": "scripts/docs/apply-bazarbaaz-runflare-production-docs-20261123.py",
+      "sizeBytes": 10368,
+      "sha256": "4845a96f4b7ef19ea3a1eb5f07be04e6ae97dc25038adfbd2d04c1113888750a"
+    }
+  ]
+}

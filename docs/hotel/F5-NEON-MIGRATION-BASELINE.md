@@ -1,3 +1,7 @@
+<!-- BAZARBAAZ_CURRENT_PRODUCTION_TOPOLOGY_20261123: START -->
+> **HISTORICAL / NON-OPERATIONAL NEON CONTEXT — SUPERSEDED FOR CURRENT PRODUCTION (2026-11-23).** Older Neon-as-Production statements reflect their original dates and must NOT be used as current deployment/database identity or execution instructions. Current Production: Runflare project `product` / `37622`, app `87432`, active PostgreSQL-PostGIS `maindb` / `87429`; runtime binding unverified. Neon NOT Production; Render unrelated. Remote DB URI source is `DB_REMOTE_URI` only (never print its value); do not run obsolete Neon-attestation scripts. Use `docs/BAZARBAAZ-PRODUCTION-TOPOLOGY-2026-11-23.md`. **Especially do not execute the older Neon-attested Production inspection tooling against current Production.**
+<!-- BAZARBAAZ_CURRENT_PRODUCTION_TOPOLOGY_20261123: END -->
+
 # Hotel F5 Neon staging and migration baseline — preparation only
 
 Status: **blocked before Neon access, provisioning, database writes, or deployment**. This document is an operator plan and source inventory, not evidence of the current Production schema or migration ledger.

@@ -246,5 +246,70 @@
         "url": "https://andarama.bazarbaaz.ir/t/303"
       }
     ]
+  },
+  "productionTopologyOwnerVerified20261123": {
+    "source": "docs/BAZARBAAZ-PRODUCTION-TOPOLOGY-2026-11-23.md",
+    "decisionDate": "2026-11-23",
+    "authority": "OWNER_EXPLICIT_CORRECTION_AND_RUNFLARE_CONSOLE_OBSERVATION",
+    "runflareProject": {
+      "name": "product",
+      "id": "37622"
+    },
+    "appServiceId": "87432",
+    "databaseService": {
+      "name": "maindb",
+      "id": "87429",
+      "engine": "PostgreSQL-PostGIS",
+      "version": "17.3",
+      "status": "ACTIVE_OBSERVED"
+    },
+    "actualApplicationDatabaseTarget": "UNVERIFIED",
+    "neonProduction": false,
+    "renderRelated": false,
+    "remoteDatabaseConnection": {
+      "environmentVariable": "DB_REMOTE_URI",
+      "exclusiveUriSource": true,
+      "failClosedIfMissing": true,
+      "secretValueDisclosed": false,
+      "connectionAuthorizedByThisRecord": false,
+      "appRuntimeBindingProvenByThisVariable": false,
+      "prohibitedFallbacks": [
+        "DATABASE_URL",
+        "DIRECT_URL",
+        "BB_PRODUCTION_READONLY_URL",
+        "NEON_URI",
+        "HARDCODED_URI"
+      ]
+    },
+    "cmsPublicApi": {
+      "http": 503,
+      "body": "NGINX_HTML",
+      "origin": "UNCONFIRMED",
+      "dynamicProductionAccepted": false
+    },
+    "productionMigrationAllowed": false,
+    "productionWritesAllowed": false,
+    "pr140MergeAllowed": false
+  },
+  "runflarePostPr149DeploymentEvidence20261123": {
+    "provider": "Runflare",
+    "projectName": "product",
+    "projectId": "37622",
+    "applicationServiceId": "87432",
+    "databaseService": {
+      "name": "maindb",
+      "serviceId": "87429",
+      "engine": "PostgreSQL-PostGIS 17.3",
+      "status": "ACTIVE_OBSERVED"
+    },
+    "pr149MainSha": "aa38b8c0a6a13de4b40cfe8b60ca7904be8349f7",
+    "deploymentVersion": "v128",
+    "deploymentStatus": "COMPLETED_ACTIVE_1_OF_1_HEALTHY",
+    "providerSelectedSourceSha": "aa38b8c0a6a13de4b40cfe8b60ca7904be8349f7",
+    "releaseScope": "PR149_DOCUMENTATION_ONLY; NO_NEW_RUNTIME_BEHAVIOR",
+    "remoteDatabaseUriVariable": "DB_REMOTE_URI",
+    "uriValueStored": false,
+    "productionDatabaseConnectionOrQuery": false,
+    "productionWritesOrMigrations": false
   }
 }

@@ -90,6 +90,13 @@ test("guest coordination sends only requested stay details and keeps the feature
     assert.match(idempotencyKey, /^damoon-[a-f0-9]{64}$/);
     assert.match(await page.locator("[data-booking-flow]").innerText(), /درخواست هماهنگی برای پذیرش ارسال شد/);
     assert.match(await page.locator("[data-booking-flow]").innerText(), /R{20}/);
+    await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async value => { window.__copiedReference = value; } } }));
+    await page.locator("[data-copy-request-reference]").click();
+    assert.equal(await page.evaluate(() => window.__copiedReference), "R".repeat(43), "the guest can copy the tracking code after an explicit click");
+    assert.equal(await page.locator("[data-copy-reference-feedback]").innerText(), "کد پیگیری کپی شد.");
+    await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async () => { throw new Error("clipboard denied"); } } }));
+    await page.locator("[data-copy-request-reference]").click();
+    assert.equal(await page.locator("[data-copy-reference-feedback]").innerText(), "کپی نشد؛ کد را انتخاب و دستی کپی کنید.", "clipboard failure gives localized manual-copy guidance");
     await page.goto(`${base}/en/rooms?checkIn=${checkIn}&checkOut=${checkOut}&adults=2&children=1&childAges=7`, { waitUntil: "domcontentloaded" });
     assert.equal(await page.locator("[data-coordination-name]").inputValue(), "", "contact data stays out of browser storage after a full navigation");
     assert.equal(await page.locator("[data-coordination-phone]").inputValue(), "", "contact phone stays out of browser storage after a full navigation");

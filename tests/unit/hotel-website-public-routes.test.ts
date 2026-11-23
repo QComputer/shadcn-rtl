@@ -6,6 +6,7 @@ import { NextRequest } from "next/server";
 
 const calls: Array<{ name: string; input: unknown }> = [];
 let websiteEnabled = true;
+let failWebsiteRead = false;
 const publishedWebsite = {
   mode: "PUBLISHED", locale: "en", propertySlug: "hotel-a", revisionNumber: 2,
   content: { title: "Hotel A", hero: { heading: "Welcome" }, introduction: { body: "Introduction" }, sections: [], contact: {} },
@@ -14,7 +15,7 @@ const publishedWebsite = {
 const publishedRooms = { mode: "PUBLISHED", locale: "en", propertySlug: "hotel-a", roomCategories: [] };
 
 mock.module(pathToFileURL(resolve("lib/hotel/content/hotel-website-public.service.ts")).href, { namedExports: {
-  getPublishedHotelWebsite: async (input: unknown) => { calls.push({ name: "website", input }); return publishedWebsite; },
+  getPublishedHotelWebsite: async (input: unknown) => { calls.push({ name: "website", input }); if (failWebsiteRead) throw new Error("synthetic database failure"); return publishedWebsite; },
   listPublishedHotelWebsiteRoomCategories: async (input: unknown) => { calls.push({ name: "rooms", input }); return publishedRooms; },
   getPublishedHotelWebsiteMedia: async (input: unknown) => { calls.push({ name: "media", input }); return { url: "https://hotel.public.blob.vercel-storage.com/image.jpg", filename: "image.jpg", mimeType: "image/jpeg" }; },
 } });
@@ -94,4 +95,15 @@ test("all public website routes fail closed while the independent rollout gate i
   }
   assert.deepEqual(calls, [], "disabled route gate prevents database-backed service access");
   websiteEnabled = true;
+});
+
+test("application service failures return no-store JSON instead of an HTML 503", { concurrency: false }, async () => {
+  calls.length = 0;
+  failWebsiteRead = true;
+  const response = await websiteGET(request("/api/hotel/v1/website/properties/hotel-a?locale=fa"), { params: Promise.resolve({ propertySlug: "hotel-a" }) });
+  assert.equal(response.status, 500);
+  assert.match(response.headers.get("content-type") ?? "", /^application\/json/);
+  assert.equal(response.headers.get("cache-control"), "no-store, max-age=0");
+  assert.deepEqual(await response.json(), { error: "UNAVAILABLE" });
+  failWebsiteRead = false;
 });

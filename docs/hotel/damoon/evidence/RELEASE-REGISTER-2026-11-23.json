@@ -3,22 +3,29 @@
   "project": "Damoon / Bazarbaaz",
   "snapshotDate": "2026-11-23",
   "repository": "https://github.com/QComputer/shadcn-rtl",
-  "mainSha": "f617e007812613a57724264d810832a6f3b13158",
+  "mainSha": "9379d82761bea87c20b86be1a96da9dcb9bd7428",
   "runflare": {
     "projectId": "37622",
     "serviceId": "87432",
-    "reportedActiveVersion": "v126",
+    "reportedActiveVersion": "v127 (active, 1/1 healthy pod)",
     "reportedActiveSourceSha": null,
-    "sourceShaConfidence": "DASHBOARD_V126_ACTIVE_1_OF_1; GIT_MAIN_CONNECTED_AUTO_PULL_ON; UNRESOLVED_REQUEST_INITIALIZED_FOR_4090A726; PR148_NOT_MERGED; PROVIDER_SOURCE_SHA_NOT_EXPOSED",
+    "sourceShaConfidence": "V127_ACTIVE_1_OF_1; LATEST_COMPLETED_GITHUBAPP_DEPLOYMENT_LOG_IDENTIFIES_9379D82761BEA87C20B86BE1A96DA9DCB9BD7428; ACTIVE_POD_SOURCE_SHA_NOT_EXPOSED; LIVE_ASSET_HASHES_MATCH; GIT_MAIN_AUTO_PULL_ON; HEALTH_REVISION_NULL",
     "healthRevision": null
   },
   "liveManifest": {
-    "accommodation.css": "788e851522eb9ababfd29c5dc56514ff27387cbb3db7863116a03ee1a0393963",
-    "accommodation.js": "28bdecc388aee1509058b73711463034485967b805793329c151951953763b74",
-    "booking.js": "1b14d05865e7ab1c5f741528e864fe3b3f1ebdff1eb91fa7e5475cd4822fb0d5"
+    "accommodation.css": "c3e3d4662b729ae0a767f604c0e54268c243138213401a1ba555b51f8778c064",
+    "accommodation.js": "223850efecc9fbd65eb35af473956747b04a46e237198b3e65712a2d72b0bb0e",
+    "booking.js": "1b14d05865e7ab1c5f741528e864fe3b3f1ebdff1eb91fa7e5475cd4822fb0d5",
+    "content.js": "727636d03129b83bd40711764dca4c8e70f9db2980829c204b02b4d14fa71c2c",
+    "app.js": "d29e0273ced081f2f0d5ceb248e50f3607b11d139de6ac6d90ec9cdeb48f9010",
+    "translations.js": "4c0ca6cf232fed0288547303192f9f6d2a7bdc8cc6c2b098a3596f1a07e62063",
+    "virtual-tour.js": "2aad2664f784eb2e5e7a934ff5dd00ea84c560e54fed602ac54968c09203ffa5"
   },
   "sourceManifestAtMain": {
-    "accommodation.css": "788e851522eb9ababfd29c5dc56514ff27387cbb3db7863116a03ee1a0393963"
+    "accommodation.css": "c3e3d4662b729ae0a767f604c0e54268c243138213401a1ba555b51f8778c064",
+    "accommodation.js": "223850efecc9fbd65eb35af473956747b04a46e237198b3e65712a2d72b0bb0e",
+    "app.js": "d29e0273ced081f2f0d5ceb248e50f3607b11d139de6ac6d90ec9cdeb48f9010",
+    "content.js": "727636d03129b83bd40711764dca4c8e70f9db2980829c204b02b4d14fa71c2c"
   },
   "prs": [
     {
@@ -77,14 +84,17 @@
     },
     {
       "pr": 148,
-      "state": "OPEN_RUNTIME_CHANGE",
-      "production": "CI_PASSED; MERGE_BLOCKED_PENDING_OLDER_RUNFLARE_REQUEST_RESOLUTION"
+      "state": "MERGED",
+      "production": "V127_ACTIVE_LATEST_DEPLOYMENT_LOG_NAMES_MAIN_SHA; LIVE_ASSETS_MATCH; STATIC_FALLBACK_PUBLIC_READ_FA_EN_AR_PASSED; LIVE_CMS_ENDPOINT_HTML_503; DYNAMIC_CMS_PRODUCTION_ACCEPTANCE_BLOCKED",
+      "head": "65f010bfdd58b3697d6edcb46c47170484d46e0b",
+      "mergeSha": "9379d82761bea87c20b86be1a96da9dcb9bd7428",
+      "ci": "SIX_RELEVANT_ACTIONS_SUCCESS; KNOWN_SUSPENDED_VERCEL_PREVIEW_BLOCKED; CODE_RABBIT_SKIPPED"
     }
   ],
   "sourceEvidence": {
-    "github": "GitHub PR/main endpoints at 2026-11-23; current main f617e007812613a57724264d810832a6f3b13158 after isolated-acceptance PR147; PR148 is open with runtime correction, exact-head checks to be refreshed after evidence update",
-    "liveAsset": "https://damoon-hotel.ir/damoon-front/release-manifest.json",
-    "provider": "Authenticated dashboard 2026-11-23: v126 active with one healthy pod; Git connection QComputer/shadcn-rtl/main and auto-pull enabled; latest available commit f617e0078126. Deploy log still has unresolved Request Initialized selecting old SHA 4090a726f29360a4db4a3dc3249d76eb2aa0f572. No new deployment initiated. Basic/deep health HTTP 200; Damoon deep DB connectivity OK. Live content.js bytes match manifest SHA a9fc9dd0e94806b26a7108cc2a91b301464ffee8f957aadf1d61715ac67441a1; PR148 is not deployed. Provider does not expose active source SHA."
+    "github": "GitHub API 2026-11-23: PR148 head 65f010bfdd58b3697d6edcb46c47170484d46e0b merged to main as 9379d82761bea87c20b86be1a96da9dcb9bd7428. Relevant Actions successful: runs 45088093180, 45088092192, 45088092271, 45088092212, 45088092180; CMS disposable PostgreSQL run 45088093245 passed. Known Vercel suspended-preview block is the only failing context; CodeRabbit skipped.",
+    "liveAsset": "Read-only HTTPS GET 2026-11-23: release-manifest.json reports PR148-exact SHA-256 values for accommodation.css, accommodation.js, app.js, content.js, translations.js and virtual-tour.js; values match source manifest at main 9379d82761bea87c20b86be1a96da9dcb9bd7428.",
+    "provider": "Authenticated Runflare portal 2026-11-23: service 87432 v127 active with 1/1 healthy pod. Latest GitHub App deployment status Completed; its provider log reads \"Reverted To commit 9379d82761bea87c20b86be1a96da9dcb9bd7428\" (Runflare commit-selection deployment control, not a Git revert). Git integration is QComputer/shadcn-rtl main with auto-pull checked. An older Request Initialized row remains in history but no current build/deployment is running. The deployment log supplies the selected commit, but the active pod record does not expose an authoritative source SHA; health revision is null."
   },
   "featureGates": {
     "publicBooking": false,
@@ -100,8 +110,19 @@
     "date": "2026-11-23",
     "sourceSha": "89e80a6e55b69c1e938674a344d60f46ed327913",
     "runflareVersion": "v124",
-    "viewports": [360, 390, 640, 768, 1024, 1440],
-    "locales": ["fa", "en", "ar"],
+    "viewports": [
+      360,
+      390,
+      640,
+      768,
+      1024,
+      1440
+    ],
+    "locales": [
+      "fa",
+      "en",
+      "ar"
+    ],
     "categoryCoordinationAndReload": "PASSED; category and check-in/out, adults, children, child ages preserved",
     "themeAndKeyboard": "PASSED; light/dark state survives reload; labeled contact input is keyboard focusable",
     "virtualTours": {
@@ -110,8 +131,16 @@
       "lobby": "PASSED; embedded scene title Lobby",
       "room303": "PASSED; embedded scene title 303"
     },
-    "health": {"basic": "HTTP 200 status ok", "deep": "HTTP 200 status ok"},
-    "tenantRouting": {"bazarbaaz.ir": 200, "damoon-hotel.ir": 200, "akashoes.ir": 200, "fastfood13.ir": 200},
+    "health": {
+      "basic": "HTTP 200 status ok",
+      "deep": "HTTP 200 status ok"
+    },
+    "tenantRouting": {
+      "bazarbaaz.ir": 200,
+      "damoon-hotel.ir": 200,
+      "akashoes.ir": 200,
+      "fastfood13.ir": 200
+    },
     "browserErrors": 0,
     "failedRequests": 0,
     "unexpectedNonGetRequests": 0,
@@ -125,9 +154,97 @@
     "workflowUrl": "https://github.com/QComputer/shadcn-rtl/actions/runs/45078447100",
     "sourceSha": "89e80a6e55b69c1e938674a344d60f46ed327913",
     "database": "workflow-owned disposable PostgreSQL 17; uniquely named DB; cleanup passed",
-    "scenarios": ["guest request without inventory/reservation/payment", "idempotency replay", "tracking in fa/en/ar", "manager reception review/update", "unauthorized access denied", "foreign tenant denied", "host/origin spoofing denied", "optimistic concurrency"],
+    "scenarios": [
+      "guest request without inventory/reservation/payment",
+      "idempotency replay",
+      "tracking in fa/en/ar",
+      "manager reception review/update",
+      "unauthorized access denied",
+      "foreign tenant denied",
+      "host/origin spoofing denied",
+      "optimistic concurrency"
+    ],
     "productionWrites": "NONE",
     "remainingAcceptance": "Owner/reception operational sign-off and separate data authorization for any live guest record; R09 privacy-retention review"
   },
-  "caveat": "Provider dashboard confirms v124 remains active after the docs-only PR146 merge and the public CSS/JS hashes match the PR145 runtime source, but the provider does not expose the deployed source SHA in this view and health revision is null. Browser acceptance was read-only; it does not accept the operational POST-to-reception workflow or create Production guest data."
+  "caveat": "PR148 is merged, CI and CMS workflow acceptance passed only on disposable PostgreSQL (run 45088093245), Runflare v127 is active, and its latest completed deployment log names main 9379d82761bea87c20b86be1a96da9dcb9bd7428; the active pod source SHA itself is not exposed. Live public assets match source. Static fallback category read was accepted in FA/EN/AR at 360/390 without horizontal overflow, but live public CMS GET returned an Nginx HTML 503 and its upstream/configuration cause is unconfirmed. Dynamic Production CMS reads and editing/publication are not accepted. No Production writes were made. This does not authorize public booking, Production writes/migrations, PR140, or indexing.",
+  "pr148CmsAcceptance": {
+    "status": "PASSED_DISPOSABLE_POSTGRES_CI",
+    "workflowRun": "45088093245",
+    "sourceSha": "65f010bfdd58b3697d6edcb46c47170484d46e0b",
+    "scenarios": [
+      "draft invisible before publication",
+      "manager draft and independent admin review/approval/publication/public read",
+      "3/17/6/3/2 quantities and 20 rooms plus 11 suites",
+      "FA/EN/AR localized content",
+      "tenant isolation",
+      "no HotelRoomType.totalAllotment public category dependency",
+      "no internal visible flag in public response",
+      "safe public read projection"
+    ],
+    "productionWrites": "NONE",
+    "productionAcceptance": "NOT_RUN_DEPLOYMENT_PENDING"
+  },
+  "pr148ProductionAcceptance": {
+    "status": "V127_ACTIVE_DEPLOYMENT_LOG_NAMES_MAIN_SHA_ACTIVE_POD_SHA_NOT_EXPOSED; ASSET_HASHES_MATCH; STATIC_FALLBACK_READ_ACCEPTED_FA_EN_AR; MOBILE_360_390_NO_OVERFLOW; LIVE_PUBLIC_CMS_ENDPOINT_HTTP_503_HTML; DYNAMIC_CMS_READ_AND_PRODUCTION_PUBLISH_NOT_ACCEPTED",
+    "liveAssetHashesMatch": true,
+    "matchedAssets": [
+      "accommodation.css",
+      "accommodation.js",
+      "app.js",
+      "content.js",
+      "translations.js",
+      "virtual-tour.js"
+    ],
+    "health": {
+      "damoonBasic": "HTTP 200 status ok",
+      "damoonDeep": "HTTP 200 status ok; database checked and ok",
+      "bazarbaazBasic": "HTTP 200 status ok",
+      "bazarbaazDeep": "HTTP 200 status ok; database checked and ok"
+    },
+    "routes": [
+      "/fa/rooms",
+      "/en/rooms",
+      "/ar/rooms",
+      "/fa/virtual-tour",
+      "/en/virtual-tour",
+      "/ar/virtual-tour",
+      "/hotel-reservations/start",
+      "/fa/hotel-reservations/start",
+      "/en/hotel-reservations/start",
+      "/ar/hotel-reservations/start"
+    ],
+    "routesResult": "ALL HTTP 200; noindex detected",
+    "browserAcceptance": "Read-only live browser: static fallback rendered five categories and 3/17/6/3/2 in FA/EN/AR; category CTA preserved category and 2026-12-01/2026-12-29, adults=3, children=1, childAges=8 through locale changes; request-only form wording visible; no form submitted. Headless widths 360 and 390 across FA/EN/AR had document width equal to viewport and no horizontal overflow; all five concept images loaded after scrolling. GET /api/hotel/v1/website/properties/damoon?locale=fa returned HTTP 503 with nginx HTML rather than the application JSON response, so dynamic CMS read/publication is not Production-accepted; upstream/config cause is unconfirmed. Separate from PR145 six-viewport acceptance and PR148 disposable-PostgreSQL CMS workflow.",
+    "publicGuestWrites": "NONE",
+    "productionGuestWrites": "NONE",
+    "mobileViewport": "PASSED_LAYOUT_360_390_FA_EN_AR; documentElement.scrollWidth equals innerWidth; no horizontal overflow; concept assets load after scrolling",
+    "publicCmsEndpoint": {
+      "url": "/api/hotel/v1/website/properties/damoon?locale=fa",
+      "http": 503,
+      "contentType": "text/html",
+      "server": "nginx/1.31.7",
+      "observedBody": "proxy-generated Loading page, not application JSON",
+      "cause": "UNCONFIRMED; do not infer production environment gate or database failure"
+    },
+    "dynamicCmsProductionAcceptance": "NOT_ACCEPTED; only disposable PostgreSQL workflow 45088093245 passed",
+    "publicTours": [
+      {
+        "scene": "VIP-01",
+        "url": "https://andarama.bazarbaaz.ir/t/vip-01"
+      },
+      {
+        "scene": "VIP-3",
+        "url": "https://andarama.bazarbaaz.ir/t/vip-3"
+      },
+      {
+        "scene": "Lobby",
+        "url": "https://andarama.bazarbaaz.ir/t/lobby"
+      },
+      {
+        "scene": "Room 303",
+        "url": "https://andarama.bazarbaaz.ir/t/303"
+      }
+    ]
+  }
 }

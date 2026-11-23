@@ -85,7 +85,7 @@
     {
       "pr": 148,
       "state": "MERGED",
-      "production": "RUNFLARE_V127_ACTIVE_SOURCE_LOG_9379D827; LIVE_PUBLIC_CATEGORY_READ_FA_EN_AR_PASSED; PRODUCTION_CMS_WRITE_NOT_TESTED",
+      "production": "V127_ACTIVE_LATEST_DEPLOYMENT_LOG_NAMES_MAIN_SHA; LIVE_ASSETS_MATCH; STATIC_FALLBACK_PUBLIC_READ_FA_EN_AR_PASSED; LIVE_CMS_ENDPOINT_HTML_503; DYNAMIC_CMS_PRODUCTION_ACCEPTANCE_BLOCKED",
       "head": "65f010bfdd58b3697d6edcb46c47170484d46e0b",
       "mergeSha": "9379d82761bea87c20b86be1a96da9dcb9bd7428",
       "ci": "SIX_RELEVANT_ACTIONS_SUCCESS; KNOWN_SUSPENDED_VERCEL_PREVIEW_BLOCKED; CODE_RABBIT_SKIPPED"
@@ -167,7 +167,7 @@
     "productionWrites": "NONE",
     "remainingAcceptance": "Owner/reception operational sign-off and separate data authorization for any live guest record; R09 privacy-retention review"
   },
-  "caveat": "PR148 is merged, CI and CMS draft/review/approval/publication/public-read acceptance passed on disposable PostgreSQL (run 45088093245), Runflare v127 is active, and its latest completed deployment log identifies main 9379d82761bea87c20b86be1a96da9dcb9bd7428. Live public category read was accepted in FA/EN/AR with no Production writes. Mobile-specific viewport acceptance and privileged Production CMS edit/publication remain untested. This does not authorize public booking, Production writes/migrations, PR140, or indexing.",
+  "caveat": "PR148 is merged, CI and CMS workflow acceptance passed only on disposable PostgreSQL (run 45088093245), Runflare v127 is active, and its latest completed deployment log names main 9379d82761bea87c20b86be1a96da9dcb9bd7428; the active pod source SHA itself is not exposed. Live public assets match source. Static fallback category read was accepted in FA/EN/AR at 360/390 without horizontal overflow, but live public CMS GET returned an Nginx HTML 503 and its upstream/configuration cause is unconfirmed. Dynamic Production CMS reads and editing/publication are not accepted. No Production writes were made. This does not authorize public booking, Production writes/migrations, PR140, or indexing.",
   "pr148CmsAcceptance": {
     "status": "PASSED_DISPOSABLE_POSTGRES_CI",
     "workflowRun": "45088093245",
@@ -186,7 +186,7 @@
     "productionAcceptance": "NOT_RUN_DEPLOYMENT_PENDING"
   },
   "pr148ProductionAcceptance": {
-    "status": "V127_ACTIVE_SOURCE_LOG_MATCHES_MAIN; ASSET_HASHES_MATCH; READ_ONLY_PUBLIC_CATEGORY_BROWSER_ACCEPTED_FA_EN_AR; HEALTH_OK; MOBILE_VIEWPORT_AND_PRODUCTION_CMS_WRITE_NOT_TESTED",
+    "status": "V127_ACTIVE_DEPLOYMENT_LOG_NAMES_MAIN_SHA_ACTIVE_POD_SHA_NOT_EXPOSED; ASSET_HASHES_MATCH; STATIC_FALLBACK_READ_ACCEPTED_FA_EN_AR; MOBILE_360_390_NO_OVERFLOW; LIVE_PUBLIC_CMS_ENDPOINT_HTTP_503_HTML; DYNAMIC_CMS_READ_AND_PRODUCTION_PUBLISH_NOT_ACCEPTED",
     "liveAssetHashesMatch": true,
     "matchedAssets": [
       "accommodation.css",
@@ -215,9 +215,18 @@
       "/ar/hotel-reservations/start"
     ],
     "routesResult": "ALL HTTP 200; noindex detected",
-    "browserAcceptance": "Read-only live browser: five categories and 3/17/6/3/2 in FA/EN/AR; category CTA preserved category and 2026-12-01/2026-12-29, adults=3, children=1, childAges=8 through locale changes; request-only form wording visible; no form submitted. Default in-app viewport only; no mobile override in this session. Separate from PR145 six-viewport acceptance and PR148 disposable-PostgreSQL CMS workflow.",
+    "browserAcceptance": "Read-only live browser: static fallback rendered five categories and 3/17/6/3/2 in FA/EN/AR; category CTA preserved category and 2026-12-01/2026-12-29, adults=3, children=1, childAges=8 through locale changes; request-only form wording visible; no form submitted. Headless widths 360 and 390 across FA/EN/AR had document width equal to viewport and no horizontal overflow; all five concept images loaded after scrolling. GET /api/hotel/v1/website/properties/damoon?locale=fa returned HTTP 503 with nginx HTML rather than the application JSON response, so dynamic CMS read/publication is not Production-accepted; upstream/config cause is unconfirmed. Separate from PR145 six-viewport acceptance and PR148 disposable-PostgreSQL CMS workflow.",
     "publicGuestWrites": "NONE",
     "productionGuestWrites": "NONE",
-    "mobileViewport": "NOT_RETESTED_IN_THIS_SESSION; PR145 SIX-VIEWPORT ACCEPTANCE IS HISTORICAL AND SEPARATE"
+    "mobileViewport": "PASSED_LAYOUT_360_390_FA_EN_AR; documentElement.scrollWidth equals innerWidth; no horizontal overflow; concept assets load after scrolling",
+    "publicCmsEndpoint": {
+      "url": "/api/hotel/v1/website/properties/damoon?locale=fa",
+      "http": 503,
+      "contentType": "text/html",
+      "server": "nginx/1.31.7",
+      "observedBody": "proxy-generated Loading page, not application JSON",
+      "cause": "UNCONFIRMED; do not infer production environment gate or database failure"
+    },
+    "dynamicCmsProductionAcceptance": "NOT_ACCEPTED; only disposable PostgreSQL workflow 45088093245 passed"
   }
 }

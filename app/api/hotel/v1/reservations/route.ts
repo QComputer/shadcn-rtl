@@ -63,7 +63,7 @@ export async function POST(request: Request) {
       ratePlan: body.ratePlan,
       input: { ...inputForFingerprint, contact: { fullName: body.contact.fullName.trim(), phone: body.contact.phone.trim(), email: body.contact.email?.trim().toLowerCase() } },
     })).digest("hex");
-    const replay = await repositories.findAnonymousHoldReplay({ scope, idempotencyKey: body.holdIdempotencyKey, requestFingerprint: fingerprint, propertySlug: body.property, roomTypeSlug: body.roomType, ratePlanCode: body.ratePlan });
+    const replay = await repositories.findAnonymousHoldReplay({ scope, idempotencyKey: body.holdIdempotencyKey, requestFingerprint: fingerprint, propertySlug: body.property, roomTypeSlug: body.roomType, ratePlanCode: body.ratePlan, ...(demo ? { publicationApprovalBypass: "DAMOON_DEMO_BOOKING" as const } : {}) });
     if (!replay || !("isReplay" in replay) || !replay.isReplay || replay.result.holdId !== body.holdId) throw new ApiError(409, "The booking hold expired or does not match this request");
 
     const hold = await repositories.findHold(scope, body.holdId);

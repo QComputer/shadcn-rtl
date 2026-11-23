@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     if (!demo && process.env.HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED !== "1") throw new ApiError(503, HOLD_GATE);
     const repositories = createPrismaHotelRepositories();
     const fingerprint = createHash("sha256").update(JSON.stringify({ organizationId: tenant.organizationId, property: input.property, roomType: input.roomType, ratePlan: input.ratePlan, input: { ...input, contact: { fullName: input.contact.fullName.trim(), phone: input.contact.phone.trim(), email: input.contact.email?.trim().toLowerCase() } } })).digest("hex");
-    const replay = await repositories.findAnonymousHoldReplay({ scope: { organizationId: tenant.organizationId }, idempotencyKey, requestFingerprint: fingerprint, propertySlug: input.property, roomTypeSlug: input.roomType, ratePlanCode: input.ratePlan });
+    const replay = await repositories.findAnonymousHoldReplay({ scope: { organizationId: tenant.organizationId }, idempotencyKey, requestFingerprint: fingerprint, propertySlug: input.property, roomTypeSlug: input.roomType, ratePlanCode: input.ratePlan, ...(demo ? { publicationApprovalBypass: "DAMOON_DEMO_BOOKING" as const } : {}) });
     if (replay?.isConflict) throw new ApiError(409, "Idempotency-Key was used with a different request");
     if (replay?.isReplay) return Response.json({ holdId: replay.result.holdId, idempotencyKey, reference: replay.result.reference, status: "ACTIVE", expiresAt: replay.result.expiresAt.toISOString(), currency: replay.result.currency, totalRate: String(replay.result.totalAmount), nightlyRates: replay.result.nightlyRates.map(String), cancellationPolicy: replay.result.policySnapshot, inventoryReserved: true }, { status: 200 });
     const availability = demo

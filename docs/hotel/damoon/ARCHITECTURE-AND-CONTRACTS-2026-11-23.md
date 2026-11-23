@@ -65,7 +65,7 @@ Future independent path (NOT public-enabled):
 
 هر feature باید از قبل مشخص کند: `(tenant authority, source data, feature flag, API contract, idempotency, persistence, public surface, tests, release receipts, recovery path)`. توسعه UI تا زمان دریافت عکس/تورِ منتشرنشده نباید معطل شود؛ ساخت داده عملیاتی و قیمت از تصاویر یا متن مفهومی ممنوع است.
 
-For guest coordination retries, once a pending idempotency key exists it is reused even if the re-entered payload differs. The existing server fingerprint contract must return `409`; the client keeps the key and gives localized guidance instead of silently rotating it and risking a duplicate. Guest names, contact details, notes, request bodies and tracking references remain out of browser storage, so a full-page locale navigation requires guests to re-enter those values. Preserving them across reloads needs a separately reviewed secure state contract.
+For guest coordination retries, once a pending idempotency key exists it is reused even if the re-entered payload differs. The existing server fingerprint contract must return `409`; the client keeps the key and gives localized guidance instead of silently rotating it and risking a duplicate. An explicit guest action to start a new request clears the prior attempt so the next submission creates a fresh key. Guest names, contact details, notes, request bodies and tracking references remain out of browser storage, so a full-page locale navigation requires guests to re-enter those values. Preserving them across reloads needs a separately reviewed secure state contract.
 
 ## OWNER_ACCOMMODATION_AMENDMENT_20261123 — Current owner-selected category baseline
 

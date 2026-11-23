@@ -108,7 +108,7 @@ test("guest coordination sends only requested stay details and keeps the feature
           ? { status: 429, contentType: "application/json", body: JSON.stringify({ error: "Too many requests" }) }
           : disabledAttempts === 3
             ? { status: 409, contentType: "application/json", body: JSON.stringify({ error: "Idempotency-key was used with a different request" }) }
-            : { status: 201, contentType: "application/json", body: JSON.stringify({ reference: "S".repeat(43), status: "RECEIVED" }) });
+            : { status: 201, contentType: "application/json", body: JSON.stringify({ reference: (disabledAttempts === 4 ? "S" : "T").repeat(43), status: "RECEIVED" }) });
     });
     await disabledPage.locator(".booking-form .booking-submit[type=submit]").click();
     await disabledPage.locator("[data-coordination-name]").fill("Guest Test");
@@ -135,6 +135,17 @@ test("guest coordination sends only requested stay details and keeps the feature
     await disabledPage.locator("[data-booking-flow]").getByText(/درخواست هماهنگی برای پذیرش ارسال شد/).waitFor({ state: "visible" });
     assert.equal(disabledAttempts, 4);
     assert.equal(new Set(retryKeys).size, 1, "ambiguous and rate-limited retries reuse the same idempotency key");
+    const previousRequestKey = retryKeys[0];
+    await disabledPage.locator("[data-flow-reset]").click();
+    await disabledPage.locator(".booking-form .booking-submit[type=submit]").click();
+    await disabledPage.locator("[data-create-coordination-request]").waitFor({ state: "visible" });
+    await disabledPage.locator("[data-coordination-name]").fill("Guest Test");
+    await disabledPage.locator("[data-coordination-phone]").fill("09123456789");
+    await disabledPage.locator("[data-coordination-phone]").press("Enter");
+    await disabledPage.locator("[data-booking-flow]").getByText(/درخواست هماهنگی برای پذیرش ارسال شد/).waitFor({ state: "visible" });
+    assert.equal(disabledAttempts, 5);
+    assert.notEqual(retryKeys[4], previousRequestKey, "an explicit new request uses a fresh idempotency key");
+    assert.equal(new Set(retryKeys.slice(0, 4)).size, 1, "retries of one request keep the original idempotency key");
     await disabledPage.close();
   } finally {
     await browser?.close();

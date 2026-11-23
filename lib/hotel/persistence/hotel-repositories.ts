@@ -173,6 +173,8 @@ export interface HotelBookingRepository {
     holdId: string
     reference: string
     now: Date
+    /** Only set after the public request has passed the exact Damoon DEMO_BOOKING host/property resolver. */
+    publicationApprovalBypass?: "DAMOON_DEMO_BOOKING"
     acceptedCancellationPolicyVersion?: number | null
     acceptedTotalRate?: string | null
   }): Promise<{ isHeld: true; holdId: string; reference: string; expiresAt: Date; totalAmount: number; currency: string; nightlyRates: readonly number[]; policySnapshot: ReservationCancellationPolicySnapshot | null; replay?: boolean } | { isHeld: false; reason: string; replay?: boolean }>

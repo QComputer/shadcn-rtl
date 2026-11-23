@@ -58,6 +58,7 @@ export async function POST(request: Request) {
       query: { propertyId: availability.property.id, window: { checkIn: input.checkIn, checkOut: input.checkOut }, occupancy: input.occupancy },
       reference: `H-${randomUUID().replaceAll("-", "").slice(0, 20).toUpperCase()}`,
       holdId: randomUUID(),
+      ...(demo ? { publicationApprovalBypass: "DAMOON_DEMO_BOOKING" as const } : {}),
       acceptedCancellationPolicyVersion: acceptedPolicyVersion ?? optionPolicyVersion,
       acceptedTotalRate: acceptedTotal,
     });

@@ -13,6 +13,7 @@ import { decideReservationTransition } from "../domain/booking-state";
 import { HOTEL_BOOKING_BASE_PROPERTY_SELECT } from "./booking-context";
 import { assertHotelOperationalReservationSchemaReady } from "./hotel-schema-readiness";
 import { hashCustomerIdentifier, normalizeCustomerPhone } from "@/lib/customer-identity/customer-identity.service";
+import { isDamoonDemoOrganizationSlug } from "./damoon-demo-booking";
 
 const id = z.string().trim().min(1).max(200);
 const MAX_TOMAN = BigInt(Number.MAX_SAFE_INTEGER);
@@ -125,6 +126,21 @@ export class HotelOperationalReservationService {
     }
   }
   async get(actor: HotelBookingActor, organizationId: string, propertyId: string) {
+    // The demo reception view reads only the isolated demo property. It deliberately
+    // bypasses operational booking gates and mutations, but keeps the normal
+    // authenticated tenant/property authorization boundary.
+    if (["ADMIN", "MANAGER", "STAFF"].includes(actor.role)) {
+      const demoProperty = await authorizeHotelBookingActor(this.db, actor, organizationId, propertyId);
+      const demoOrganization = await this.db.organization.findFirst({ where: { id: organizationId, vertical: "HOTEL", isActive: true, deletedAt: null }, select: { slug: true } });
+      if (demoProperty.slug === "damoon-demo" && isDamoonDemoOrganizationSlug(demoOrganization?.slug)) {
+        const [reservations, roomTypes, ratePlans] = await Promise.all([
+          this.db.hotelReservation.findMany({ where: { organizationId, propertyId }, include: { nights: { select: { roomId: true } }, guests: { select: { fullName: true, isPrimary: true } } }, orderBy: { createdAt: "desc" }, take: 100 }),
+          this.db.hotelRoomType.findMany({ where: { organizationId, propertyId, isActive: true, deletedAt: null }, select: { id: true, name: true } }),
+          this.db.hotelRatePlan.findMany({ where: { organizationId, propertyId, isActive: true }, select: { id: true, name: true, roomTypeId: true } }),
+        ]);
+        return json({ mode: "MANUAL", view: "reception", demoBooking: true, manualRoomManagementEnabled: false, roomTypes, ratePlans, rooms: [], history: [], confirmationPolicy: { manualConfirmationPolicy: "DISABLED", allowedOfflinePaymentMethods: [], minimumVerifiedDepositAmount: null, pendingPaymentMinutes: 0 }, reservations: reservations.map(row => ({ id: row.id, reference: row.reference, guestName: row.guests.find(guest => guest.isPrimary)?.fullName ?? "Demo Guest", status: row.status, paymentMethod: null, roomTypeId: row.roomTypeId, checkIn: dateOnly(row.checkIn), checkOut: dateOnly(row.checkOut), totalAmount: row.totalAmount, currency: row.currency, paidAmount: row.paidAmount, refundedAmount: row.refundedAmount, outstandingAmount: row.totalAmount, createdAt: row.createdAt, confirmedAt: row.confirmedAt, checkedInAt: null, checkedOutAt: null, cancelledAt: null, nights: row.nights, source: "DEMO_BOOKING", simulatedPaymentStatus: row.status === "CONFIRMED" ? "SIMULATED_SUCCESS" : "PENDING_SIMULATION" })) });
+      }
+    }
     const canUseManual = process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED === "1" && actor.role !== "CUSTOMER";
     const manualProperty = canUseManual ? await this.authorizeManual(actor, organizationId, propertyId) : null;
     const manualOnly = Boolean(manualProperty && (process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED !== "1" || process.env.HOTEL_GUEST_PORTAL_ENABLED !== "1" || manualProperty.operationalMode !== "RESERVATION"));

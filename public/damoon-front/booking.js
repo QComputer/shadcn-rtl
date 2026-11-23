@@ -24,12 +24,13 @@ import {
   validateContact,
   withStaySelection,
 } from "./booking-flow.js";
-import { isDamoonPublicBookingActivated } from "./booking-activation.js";
+import { isDamoonDemoBookingActivated, isDamoonPublicBookingActivated } from "./booking-activation.js";
 
 const STORAGE_KEY = "damoon-stay-selection-v2";
 const LEGACY_STORAGE_KEY = "damoon-stay-selection-v1";
 const COORDINATION_STORAGE_KEY = "damoon-coordination-request-v1";
 const DAMOON_PROPERTY_SLUG = "damoon-hotel";
+const DAMOON_DEMO_PROPERTY_SLUG = "damoon-demo";
 const FA_WEEKDAYS = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
 const ADULT_OPTIONS = Array.from({ length: 8 }, (_, index) => index + 1);
 const CHILD_OPTIONS = [0, 1, 2, 3, 4];
@@ -165,8 +166,11 @@ function nightsLabel(count, locale, ui) {
 }
 function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]); }
 
-export function mountBooking(slot, { routeHref = (path) => path, locale = localeForPath(window.location.pathname), coordinationOnly = true, requestOnly = false, reservationEntry = false } = {}) {
+export function mountBooking(slot, { routeHref = (path) => path, locale = localeForPath(window.location.pathname), coordinationOnly = true, requestOnly = false, reservationEntry = false, demoMode = false } = {}) {
   if (!(slot instanceof Element)) return () => {};
+  const demoModeActive = demoMode === true && isDamoonDemoBookingActivated(window.location.hostname);
+  const bookingPropertySlug = demoModeActive ? DAMOON_DEMO_PROPERTY_SLUG : DAMOON_PROPERTY_SLUG;
+  if (demoModeActive) { coordinationOnly = false; requestOnly = false; }
   const selectedRoom = roomForPath(normalizePath(window.location.pathname))?.slug;
   const provisionalCategory = accommodationCategories.some(({ slug }) => slug === selectedRoom);
   if (provisionalCategory) {
@@ -176,7 +180,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   // Public booking stays disabled until the checked-in activation record contains
   // explicit property-owner approval. This central gate prevents a public route
   // from opting into availability, holds, reservations, or payment on its own.
-  if (!isDamoonPublicBookingActivated()) requestOnly = true;
+  if (!demoModeActive && !isDamoonPublicBookingActivated()) requestOnly = true;
   const ui = { ...faUi, ...(translations[locale]?.ui || {}) };
   if (requestOnly) {
     ui.datePlanningOnly = locale === "fa" ? "تاریخ و تعداد مهمانان را برای درخواست هماهنگی با پذیرش انتخاب کنید؛ این فرم نرخ یا موجودی نشان نمی‌دهد." : locale === "ar" ? "اختر التواريخ وعدد الضيوف لإرسال طلب تنسيق إلى الاستقبال؛ لا يعرض هذا النموذج الأسعار أو التوفر." : "Choose dates and guest counts for reception coordination; this form does not show rates or availability.";
@@ -189,6 +193,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   if (reservationEntry) {
     ui.datePlanningOnly = locale === "fa" ? "این مسیر فقط درخواست هماهنگی به پذیرش می‌فرستد؛ موجودی و قیمت را بررسی نمی‌کند، اتاق نگه نمی‌دارد و پرداخت انجام نمی‌دهد." : locale === "ar" ? "يرسل هذا المسار طلب تنسيق إلى الاستقبال فقط؛ ولا يتحقق من التوفر أو الأسعار، ولا يحجز غرفة أو ينفذ دفعة." : "This route sends a coordination request to reception only. It does not check availability, confirm rates, hold a room, or take payment.";
   }
+  if (demoModeActive) ui.datePlanningOnly = locale === "fa" ? "رزرو نمایشی با قیمت و موجودی ساختگی؛ پرداخت واقعی انجام نمی‌شود و رزرو فقط برای نمایش به پذیرش ثبت می‌شود." : locale === "ar" ? "حجز تجريبي بأسعار وتوفر اصطناعيين؛ لا يتم تحصيل أي مبلغ حقيقي ويظهر الحجز التجريبي للاستقبال." : "Demo booking with synthetic prices and inventory. No real payment is collected; the demo reservation appears in reception.";
   const weekdays = weekdayLabels(locale);
   const today = todayLocalISO();
   let selection = initialSelection(today);
@@ -258,6 +263,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       <div class="booking-flow" data-booking-flow aria-live="polite"></div>
       <p class="booking-message" role="status" aria-live="polite"></p>
     </form>
+    ${!demoModeActive && !reservationEntry && !coordinationOnly ? `<p class="booking-demo-entry"><a class="booking-link" href="${escapeHtml(routeHref("/hotel-reservations/start?mode=DEMO_BOOKING"))}">${escapeHtml(locale === "fa" ? "اجرای نمایش رزرو نمایشی" : locale === "ar" ? "جرّب حجزاً تجريبياً" : "Try the booking demo")}</a></p>` : ""}
     ${requestOnly ? `<form class="booking-step" data-track-request novalidate><label class="booking-field booking-field--text"><span>${escapeHtml(requestCopy[locale]?.trackLabel || requestCopy.en.trackLabel)}</span><input data-track-reference type="text" inputmode="text" autocomplete="off" minlength="40" maxlength="64" dir="ltr" /></label><button class="booking-link" type="submit">${escapeHtml(requestCopy[locale]?.trackButton || requestCopy.en.trackButton)}</button><p data-track-result role="status" aria-live="polite"></p></form>` : ""}
     <dialog id="booking-calendar" class="booking-calendar" aria-labelledby="booking-calendar-title">
       <div class="booking-calendar__panel">
@@ -346,14 +352,14 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     const ages = childAges.length === children ? childAges : Array.from({ length: children }, () => "");
     const draft = flow.draftContact || { fullName: "", phone: "", email: "" };
     return `<section class="booking-step"><div class="booking-step__head"><h4>${escapeHtml(option.roomType?.name || "")} · ${escapeHtml(option.ratePlan?.name || "")}</h4><button type="button" class="booking-link" data-flow-back>${escapeHtml(ui.backToOptions || "Back")}</button></div>
-      <p class="booking-step__price">${escapeHtml(formatMoney(option.totalRate, option.ratePlan?.currency, locale))} · ${escapeHtml(nightsLabel((option.nights || []).length, locale, ui))}</p>
+      <p class="booking-step__price">${escapeHtml(formatMoney(option.totalRate, option.ratePlan?.currency, locale))} · ${escapeHtml(nightsLabel((option.nights || []).length, locale, ui))}${demoModeActive ? ` · ${escapeHtml(locale === "fa" ? "قیمت نمایشی" : locale === "ar" ? "سعر تجريبي" : "Demo price")}` : ""}</p>
       ${children ? `<div class="booking-child-age-block"><p class="booking-step__label">${escapeHtml(ui.childAgeRequired || "")}</p>${childAgeInputsHtml(ages)}</div>` : ""}
-      <div class="booking-guest-form"><p class="booking-step__label">${escapeHtml(ui.guestDetails || "Guest details")}</p>
+      ${demoModeActive ? `<p class="booking-policy__text">${escapeHtml(locale === "fa" ? "این نمایش از نام، شماره تماس یا اطلاعات پرداخت واقعی استفاده نمی‌کند." : locale === "ar" ? "لا يستخدم هذا العرض اسماً أو رقم هاتف أو بيانات دفع حقيقية." : "This demo does not use real names, phone numbers, or payment details.")}</p>` : `<div class="booking-guest-form"><p class="booking-step__label">${escapeHtml(ui.guestDetails || "Guest details")}</p>
         <label class="booking-field booking-field--text"><span>${escapeHtml(ui.fullName || "Full name")}</span><input data-guest-name type="text" autocomplete="name" required minlength="2" maxlength="120" value="${escapeHtml(draft.fullName || "")}" /></label>
         <label class="booking-field booking-field--text"><span>${escapeHtml(ui.phone || "Phone")}</span><input data-guest-phone type="tel" autocomplete="tel" required minlength="8" maxlength="24" dir="ltr" value="${escapeHtml(draft.phone || "")}" /></label>
         <label class="booking-field booking-field--text"><span>${escapeHtml(ui.email || "Email")}</span><input data-guest-email type="email" autocomplete="email" maxlength="200" dir="ltr" value="${escapeHtml(draft.email || "")}" /></label>
-      </div>
-      ${requestOnly ? `<p class="booking-policy__text">${escapeHtml(requestCopy[locale]?.notBooking || requestCopy.en.notBooking)}</p><label class="booking-field booking-field--text"><span>${escapeHtml(locale === "fa" ? "درخواست ویژه (اختیاری)" : locale === "ar" ? "طلبات خاصة (اختياري)" : "Special requests (optional)")}</span><textarea data-special-request maxlength="500">${escapeHtml(flow.draftSpecialRequests || "")}</textarea></label>` : `<div class="booking-policy"><p class="booking-step__label">${escapeHtml(ui.policies || "Policy")}</p><div class="booking-policy__text">${escapeHtml(summary || policy?.name || policy?.key || "—")}</div><label class="booking-policy__accept"><input type="checkbox" data-policy-accept ${policy?.key ? "" : "disabled"} ${flow.policyAccepted ? "checked" : ""} /> <span>${escapeHtml(ui.policyAcceptance || "I accept the cancellation policy.")}</span></label></div>`}
+      </div>`}
+      ${requestOnly ? `<p class="booking-policy__text">${escapeHtml(requestCopy[locale]?.notBooking || requestCopy.en.notBooking)}</p><label class="booking-field booking-field--text"><span>${escapeHtml(locale === "fa" ? "درخواست ویژه (اختیاری)" : locale === "ar" ? "طلبات خاصة (اختياري)" : "Special requests (optional)")}</span><textarea data-special-request maxlength="500">${escapeHtml(flow.draftSpecialRequests || "")}</textarea></label>` : `<div class="booking-policy"><p class="booking-step__label">${escapeHtml(ui.policies || "Policy")}</p><div class="booking-policy__text">${escapeHtml(demoModeActive ? (locale === "fa" ? "شرایط نمایشی: بدون پرداخت واقعی یا تعهد رزرو" : locale === "ar" ? "شروط تجريبية: بلا دفع حقيقي أو التزام حجز" : "Demo terms: no real payment or booking commitment") : summary || policy?.name || policy?.key || "—")}</div><label class="booking-policy__accept"><input type="checkbox" data-policy-accept ${policy?.key ? "" : "disabled"} ${flow.policyAccepted ? "checked" : ""} /> <span>${escapeHtml(demoModeActive ? (locale === "fa" ? "شرایط نمایشی را می‌پذیرم" : locale === "ar" ? "أوافق على الشروط التجريبية" : "I accept the demo terms") : ui.policyAcceptance || "I accept the cancellation policy.")}</span></label></div>`}
       <div class="booking-step__actions"><button type="button" class="booking-submit" data-create-${requestOnly ? "request" : "hold"} ${flow.busy || (!requestOnly && !policy?.key) ? "disabled" : ""}>${escapeHtml(requestOnly ? (requestCopy[locale]?.submit || requestCopy.en.submit) : (ui.holdRoom || "Reserve"))}</button></div>
     </section>`;
   }
@@ -371,6 +377,11 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     </section>`;
   }
   function confirmationPanel() {
+    if (demoModeActive && flow.hold?.reservation) {
+      const reservation = flow.hold.reservation;
+      const confirmed = reservation.status === "CONFIRMED";
+      return `<section class="booking-step booking-step--confirmed booking-step--demo" aria-live="polite"><p class="booking-demo-label">${escapeHtml(locale === "fa" ? "رزرو نمایشی؛ بدون پرداخت واقعی" : locale === "ar" ? "حجز تجريبي؛ بلا دفع حقيقي" : "Demo reservation · no real payment")}</p><h4>${escapeHtml(confirmed ? (locale === "fa" ? "رزرو نمایشی تأیید شد" : locale === "ar" ? "تم تأكيد الحجز التجريبي" : "Demo reservation confirmed") : (locale === "fa" ? "رزرو نمایشی آمادهٔ پرداخت شبیه‌سازی‌شده" : locale === "ar" ? "الحجز التجريبي جاهز لمحاكاة الدفع" : "Demo reservation ready for simulated payment"))}</h4><p><strong>${escapeHtml(locale === "fa" ? "کد نمایشی" : locale === "ar" ? "المرجع التجريبي" : "Demo reference")}:</strong> <span dir="ltr">${escapeHtml(reservation.reference)}</span></p><p><strong>${escapeHtml(locale === "fa" ? "مبلغ ساختگی" : locale === "ar" ? "المبلغ الاصطناعي" : "Synthetic amount")}:</strong> ${escapeHtml(formatMoney(reservation.totalAmount, reservation.currency, locale))}</p><p>${escapeHtml(locale === "fa" ? "هیچ وجهی دریافت نمی‌شود و این رزرو اقامت واقعی ایجاد نمی‌کند." : locale === "ar" ? "لن يتم تحصيل أي مبلغ ولا ينشئ هذا الحجز إقامة حقيقية." : "No money is collected and this demo does not create a real stay.")}</p>${confirmed ? `<p class="booking-demo-label">${escapeHtml(locale === "fa" ? "وضعیت پرداخت: شبیه‌سازی موفق" : locale === "ar" ? "حالة الدفع: محاكاة ناجحة" : "Payment status: simulated success")}</p>` : `<div class="booking-step__actions"><button type="button" class="booking-submit" data-demo-payment="SUCCESS" ${flow.busy ? "disabled" : ""}>${escapeHtml(locale === "fa" ? "شبیه‌سازی پرداخت موفق" : locale === "ar" ? "محاكاة نجاح الدفع" : "Simulate payment success")}</button><button type="button" class="booking-link" data-demo-payment="FAILURE" ${flow.busy ? "disabled" : ""}>${escapeHtml(locale === "fa" ? "شبیه‌سازی پرداخت ناموفق" : locale === "ar" ? "محاكاة فشل الدفع" : "Simulate payment failure")}</button></div>`}<div class="booking-step__actions"><button type="button" class="booking-link" data-flow-reset>${escapeHtml(locale === "fa" ? "شروع نمایش تازه" : locale === "ar" ? "بدء عرض جديد" : "Start a new demo")}</button></div></section>`;
+    }
     if (requestOnly && flow.step === "legacy-confirmed" && !flow.request) {
       const copy = requestCopy[locale] || requestCopy.en;
       return `<section class="booking-step booking-step--confirmed"><h4>${escapeHtml(copy.received)}</h4><p>${escapeHtml(copy.legacyReceiptUnavailable)}</p><div class="booking-step__actions"><button type="button" class="booking-link" data-flow-reset>${escapeHtml(copy.newRequest)}</button></div></section>`;
@@ -505,7 +516,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       flow.draftSpecialRequests = specialRequests;
       const payload = {
         kind: "coordination",
-        property: DAMOON_PROPERTY_SLUG,
+      property: bookingPropertySlug,
         checkIn: range.checkIn,
         checkOut: range.checkOut,
         occupancy: { adults, children, ...(children ? { childAges } : {}) },
@@ -565,6 +576,23 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       } catch (error) { flow.message = error instanceof Error ? error.message : "Cancellation unavailable."; flow.error = true; }
       finally { flow.busy = false; renderFlow(); }
     });
+    slot.querySelectorAll("[data-demo-payment]").forEach((button) => button.addEventListener("click", async () => {
+      const reservation = flow.hold?.reservation;
+      const outcome = button.dataset.demoPayment;
+      if (!demoModeActive || !reservation?.reference || !["SUCCESS", "FAILURE"].includes(outcome) || flow.busy) return;
+      flow.busy = true; renderFlow();
+      try {
+        const result = await postJson("/api/hotel/v1/demo-payments", { property: bookingPropertySlug, reference: reservation.reference, outcome, idempotencyKey: flow.hold.idempotencyKey });
+        if (!result.ok || result.data?.mode !== "DEMO_BOOKING" || result.data?.charged !== false) throw new Error(apiErrorMessage(result.status, result.data, "Demo payment simulation failed."));
+        reservation.status = result.data.reservationStatus;
+        reservation.paymentStatus = result.data.payment;
+        flow.error = false;
+        flow.message = result.data.payment === "SIMULATED_FAILURE"
+          ? (locale === "fa" ? "پرداخت نمایشی ناموفق بود؛ می‌توانید دوباره تلاش کنید. هیچ وجهی دریافت نشد." : locale === "ar" ? "فشلت محاكاة الدفع؛ يمكنك إعادة المحاولة. لم يتم تحصيل أي مبلغ." : "Simulated payment failed. You can retry; no money was collected.")
+          : (locale === "fa" ? "پرداخت نمایشی موفق شد؛ رزرو فقط برای نمایش در پذیرش ثبت شد." : locale === "ar" ? "نجحت محاكاة الدفع؛ وسُجل الحجز التجريبي في الاستقبال." : "Simulated payment succeeded; the demo reservation is visible to reception.");
+      } catch (error) { flow.message = error instanceof Error ? error.message : "Demo payment simulation failed."; flow.error = true; }
+      finally { flow.busy = false; renderFlow(); }
+    }));
     slot.querySelector("[data-start-sandbox-payment]")?.addEventListener("click", async () => {
       const reservation = flow.hold?.reservation;
       if (!reservation?.reference || flow.busy) return;
@@ -616,15 +644,15 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       const agesResult = collectChildAgesFromInputs();
       if (!agesResult.ok) { setMessage(ui.childAgeRequired || "Enter valid ages for each child.", true); slot.querySelector("[data-child-age]")?.focus(); return; }
       childAges = agesResult.ages;
-      const draft = { fullName: slot.querySelector("[data-guest-name]")?.value || "", phone: slot.querySelector("[data-guest-phone]")?.value || "", email: slot.querySelector("[data-guest-email]")?.value || "" };
+      const draft = demoModeActive ? { fullName: "Demo Guest", phone: "0000000000", email: "demo@example.invalid" } : { fullName: slot.querySelector("[data-guest-name]")?.value || "", phone: slot.querySelector("[data-guest-phone]")?.value || "", email: slot.querySelector("[data-guest-email]")?.value || "" };
       const contact = validateContact(draft);
       if (!contact.ok) { flow.draftContact = draft; setMessage(ui.invalidContact || "Invalid contact details.", true); renderFlow(); slot.querySelector("[data-guest-name]")?.focus(); return; }
       flow.draftContact = contact.value;
       if (requestOnly) {
         const specialRequests = slot.querySelector("[data-special-request]")?.value || "";
         flow.draftSpecialRequests = specialRequests;
-        const payload = buildGuestRequestPayload({ property: DAMOON_PROPERTY_SLUG, range, adults, children, childAges, option: flow.selected, contact: contact.value, specialRequests });
-        const fingerprint = requestAttemptFingerprint({ property: DAMOON_PROPERTY_SLUG, range, adults, children, childAges, option: flow.selected, contact: contact.value, specialRequests });
+        const payload = buildGuestRequestPayload({ property: bookingPropertySlug, range, adults, children, childAges, option: flow.selected, contact: contact.value, specialRequests });
+        const fingerprint = requestAttemptFingerprint({ property: bookingPropertySlug, range, adults, children, childAges, option: flow.selected, contact: contact.value, specialRequests });
         if (!holdAttempt.key || holdAttempt.fingerprint !== fingerprint) holdAttempt = { key: createIdempotencyKey(), fingerprint, payload };
         flow.busy = true; persist(); renderFlow();
         setMessage(locale === "fa" ? "در حال ارسال درخواست هماهنگی..." : locale === "ar" ? "جارٍ إرسال طلب التنسيق..." : "Submitting your stay request...");
@@ -652,8 +680,8 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       flow.policyAccepted = true;
       flow.busy = true; persist(); renderFlow();
       setMessage(locale === "fa" ? "در حال ثبت رزرو موقت..." : locale === "ar" ? "جارٍ إنشاء الحجز المؤقت..." : "Creating hold...");
-      const payload = buildHoldPayload({ property: DAMOON_PROPERTY_SLUG, range, adults, children, childAges, option: flow.selected, contact: contact.value });
-      const fingerprint = holdAttemptFingerprint({ property: DAMOON_PROPERTY_SLUG, range, adults, children, childAges, option: flow.selected, contact: contact.value });
+      const payload = buildHoldPayload({ property: bookingPropertySlug, range, adults, children, childAges, option: flow.selected, contact: contact.value });
+      const fingerprint = holdAttemptFingerprint({ property: bookingPropertySlug, range, adults, children, childAges, option: flow.selected, contact: contact.value });
       if (!holdAttempt.key || holdAttempt.fingerprint !== fingerprint) holdAttempt = { key: createIdempotencyKey(), fingerprint, payload };
       const submitPayload = holdAttempt.payload || payload;
       let result;
@@ -742,7 +770,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       slot.querySelector("[data-child-age]")?.focus();
       return;
     }
-    const target = buildReservationEntryUrl(new URL(routeHref("/hotel-reservations/start"), window.location.href), DAMOON_PROPERTY_SLUG, { range, adults, children, childAges: agesResult.ages });
+    const target = buildReservationEntryUrl(new URL(routeHref("/hotel-reservations/start"), window.location.href), bookingPropertySlug, { range, adults, children, childAges: agesResult.ages });
     window.location.assign(target.href);
   });
 
@@ -790,7 +818,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     flow = { step: "search", options: [], selected: null, hold: null, busy: true, message: ui.searching || "Checking availability...", error: false }; renderFlow();
     const submitButton = form.querySelector(".booking-submit[type=submit]"); if (submitButton) submitButton.disabled = true;
     try {
-      const { ok, status, data } = await postJson("/api/hotel/v1/availability/search", { property: DAMOON_PROPERTY_SLUG, checkIn: range.checkIn, checkOut: range.checkOut, occupancy: { adults, children, childAges: validatedAges } });
+      const { ok, status, data } = await postJson("/api/hotel/v1/availability/search", { property: bookingPropertySlug, checkIn: range.checkIn, checkOut: range.checkOut, occupancy: { adults, children, childAges: validatedAges } });
       const items = ok ? availableOptions(data) : [];
       if (!ok) {
         flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: apiErrorMessage(status, data, locale === "fa" ? "دریافت موجودی ناموفق بود." : locale === "ar" ? "فشل التحقق من التوفر." : "Availability check failed."), error: true };

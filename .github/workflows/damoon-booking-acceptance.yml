@@ -113,7 +113,7 @@ jobs:
       - name: Typecheck source and CI fixtures
         run: pnpm exec tsc --noEmit --pretty false
       - name: Lint changed Damoon and acceptance files
-        run: pnpm exec eslint sites/damoon/api-proxy.mjs sites/damoon/booking.js sites/damoon/tests/standalone-api-proxy.test.mjs scripts/hotel/seed-damoon-booking-e2e.mts scripts/hotel/verify-damoon-disabled-request-gate.mjs tests/e2e/damoon/booking-request-acceptance.spec.mjs tests/e2e/damoon/shared-runtime-booking-acceptance.spec.mjs playwright.damoon.config.mjs
+        run: pnpm exec eslint app/api/hotel/v1/availability/search/route.ts app/api/hotel/v1/holds/route.ts app/api/hotel/v1/reservations/route.ts app/api/hotel/v1/demo-payments/route.ts app/api/hotel/v1/demo-bookings/provision/route.ts components/hotel-operations/hotel-operational-reservations.tsx lib/hotel/services/damoon-demo-booking.ts lib/hotel/services/damoon-demo-booking.server.ts lib/hotel/services/hotel-operational-reservation.service.ts sites/damoon/api-proxy.mjs sites/damoon/booking.js sites/damoon/tests/standalone-api-proxy.test.mjs scripts/hotel/run-damoon-booking-acceptance.ps1 scripts/hotel/seed-damoon-booking-e2e.mts scripts/hotel/verify-damoon-disabled-request-gate.mjs tests/damoon-public-booking-module.test.mjs tests/e2e/damoon/booking-request-acceptance.spec.mjs tests/e2e/damoon/shared-runtime-booking-acceptance.spec.mjs tests/unit/hotel/booking-state.test.ts tests/unit/hotel/damoon-demo-booking.test.ts playwright.damoon.config.mjs
       - name: Apply repository migrations to disposable PostgreSQL
         run: pnpm exec prisma migrate deploy
       - name: Seed synthetic Damoon and foreign tenant fixtures
@@ -127,6 +127,8 @@ jobs:
         run: pnpm exec node --test sites/damoon/tests/booking-tracking-latest-submit.test.mjs
       - name: Verify shared public guest booking bundle
         run: pnpm exec node --test tests/damoon-public-booking-module.test.mjs sites/damoon/tests/booking-reservation-entry.test.mjs sites/damoon/tests/virtual-tour-security.test.mjs
+      - name: Verify demo-only tenant and confirmation guards
+        run: pnpm exec tsx --test tests/unit/hotel/booking-state.test.ts tests/unit/hotel/damoon-demo-booking.test.ts
       - name: Start real Next API backend
         shell: bash
         run: |

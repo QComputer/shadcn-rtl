@@ -21,6 +21,8 @@ $staticListenerPid = $null
 $containerId = $null
 $testFailed = $true
 $port = $null
+$nextPort = $null
+$staticPort = $null
 $script:taskExitCode = 0
 . (Join-Path $PSScriptRoot 'damoon-local-cleanup.ps1')
 
@@ -61,11 +63,15 @@ function Wait-Http([string]$Uri, [hashtable]$Headers, [System.Diagnostics.Proces
   throw "$ServiceName did not become ready within 90 seconds; see its task-scoped log under $tempRoot."
 }
 
-function Test-TaskServerCommand([string]$CommandLine, [string]$ExpectedText) {
+function Test-TaskServerCommand([string]$CommandLine, [string]$ExpectedText, [int]$ProcessId = 0) {
   $repoPrefix = $repoRoot.TrimEnd('\') + '\'
   $belongsToWorktree = $CommandLine.StartsWith($repoPrefix, [System.StringComparison]::OrdinalIgnoreCase) -or $CommandLine.Contains(" $repoPrefix")
   $matchesExpected = $CommandLine.IndexOf($ExpectedText, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
-  if ($ExpectedText -eq 'next dev' -and $CommandLine.IndexOf('\next\dist\server\lib\start-server.js', [System.StringComparison]::OrdinalIgnoreCase) -ge 0) { $matchesExpected = $true }
+  if ($ExpectedText -eq 'next dev' -and $CommandLine.IndexOf('\next\dist\server\lib\start-server.js', [System.StringComparison]::OrdinalIgnoreCase) -ge 0 -and $ProcessId) {
+    $process = Get-CimInstance Win32_Process -Filter "ProcessId = $ProcessId" -ErrorAction SilentlyContinue
+    $parent = if ($process) { Get-CimInstance Win32_Process -Filter "ProcessId = $($process.ParentProcessId)" -ErrorAction SilentlyContinue }
+    if ($parent -and $parent.Name -eq 'node.exe' -and ($parent.CommandLine.StartsWith($repoPrefix, [System.StringComparison]::OrdinalIgnoreCase) -or $parent.CommandLine.Contains(" $repoPrefix")) -and $parent.CommandLine.IndexOf('next\dist\bin\next', [System.StringComparison]::OrdinalIgnoreCase) -ge 0) { $belongsToWorktree = $true; $matchesExpected = $true }
+  }
   return $belongsToWorktree -and $matchesExpected
 }
 
@@ -73,7 +79,7 @@ function Get-TaskListenerPid([int]$ListenerPort, [string]$ExpectedText) {
   $listeners = Get-NetTCPConnection -State Listen -LocalPort $ListenerPort -ErrorAction SilentlyContinue
   foreach ($listener in $listeners) {
     $current = Get-CimInstance Win32_Process -Filter "ProcessId = $($listener.OwningProcess)" -ErrorAction SilentlyContinue
-    if ($current -and $current.Name -eq 'node.exe' -and (Test-TaskServerCommand $current.CommandLine $ExpectedText)) { return $current.ProcessId }
+    if ($current -and $current.Name -eq 'node.exe' -and (Test-TaskServerCommand $current.CommandLine $ExpectedText $current.ProcessId)) { return $current.ProcessId }
   }
   throw "Could not verify the task-owned process listening on port $ListenerPort."
 }
@@ -81,8 +87,14 @@ function Get-TaskListenerPid([int]$ListenerPort, [string]$ExpectedText) {
 function Stop-TaskProcess([int]$ProcessId, [string]$ExpectedText) {
   if (-not $ProcessId) { return }
   $current = Get-CimInstance Win32_Process -Filter "ProcessId = $ProcessId" -ErrorAction SilentlyContinue
-  if ($current -and $current.Name -eq 'node.exe' -and (Test-TaskServerCommand $current.CommandLine $ExpectedText)) {
+  if ($current -and $current.Name -eq 'node.exe' -and (Test-TaskServerCommand $current.CommandLine $ExpectedText $current.ProcessId)) {
+    $parentId = $current.ParentProcessId
     Stop-Process -Id $ProcessId -Force -ErrorAction SilentlyContinue
+    if ($ExpectedText -eq 'next dev' -and $parentId) {
+      $parent = Get-CimInstance Win32_Process -Filter "ProcessId = $parentId" -ErrorAction SilentlyContinue
+      $repoPrefix = $repoRoot.TrimEnd('\') + '\'
+      if ($parent -and $parent.Name -eq 'node.exe' -and ($parent.CommandLine.StartsWith($repoPrefix, [System.StringComparison]::OrdinalIgnoreCase) -or $parent.CommandLine.Contains(" $repoPrefix")) -and $parent.CommandLine.IndexOf('next\dist\bin\next', [System.StringComparison]::OrdinalIgnoreCase) -ge 0) { Stop-Process -Id $parentId -Force -ErrorAction SilentlyContinue }
+    }
   }
 }
 
@@ -109,6 +121,19 @@ function Assert-PortFree([int]$Candidate, [string]$Purpose) {
   }
 }
 
+function Remove-IsolatedNextOutput([string]$DirectoryName) {
+  if (-not $DirectoryName) { return }
+  if ($DirectoryName -notmatch '^\.next-damoon-e2e-[a-f0-9]{16}$') { throw 'Unexpected isolated Next output directory name.' }
+  $expected = Join-Path $repoRoot $DirectoryName
+  if ([IO.Path]::GetFullPath($expected) -ne $expected) { throw 'Invalid isolated Next output directory path.' }
+  if (Test-Path -LiteralPath $expected) {
+    $item = Get-Item -LiteralPath $expected -Force -ErrorAction Stop
+    if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Isolated Next output directory is a reparse point.' }
+    Remove-Item -LiteralPath $expected -Recurse -Force -ErrorAction Stop
+    if (Test-Path -LiteralPath $expected) { throw 'Isolated Next output directory remains after cleanup.' }
+  }
+}
+
 try {
   $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
   Set-Location $repoRoot
@@ -122,8 +147,11 @@ try {
   if (Test-LoopbackPortAvailable 55439) { $port = 55439 } else { $port = Get-AvailablePort }
   if ($port -eq 5432) { $port = Get-AvailablePort }
   Assert-PortFree $port 'disposable PostgreSQL'
-  Assert-PortFree 3000 'Next.js test server'
-  Assert-PortFree 8080 'standalone Damoon server'
+  $nextPort = Get-AvailablePort
+  $staticPort = Get-AvailablePort
+  while ($staticPort -eq $nextPort) { $staticPort = Get-AvailablePort }
+  Assert-PortFree $nextPort 'Next.js test server'
+  Assert-PortFree $staticPort 'standalone Damoon server'
 
   if (-not (Test-Path -LiteralPath $tempRoot)) { New-Item -ItemType Directory -Path $tempRoot | Out-Null }
   $tempResolved = (Resolve-Path -LiteralPath $tempRoot).Path
@@ -205,12 +233,14 @@ try {
   Set-Item Env:AUTH_SECRET (([guid]::NewGuid().ToString('N')) + ([guid]::NewGuid().ToString('N')))
   Set-Item Env:NEXTAUTH_SECRET $env:AUTH_SECRET
   Set-Item Env:AUTH_TRUST_HOST 'true'
-  Set-Item Env:NEXTAUTH_URL 'http://127.0.0.1:3000'
-  Set-Item Env:NEXTAUTH_URL_INTERNAL 'http://127.0.0.1:3000'
-  Set-Item Env:NEXT_PUBLIC_APP_URL 'http://127.0.0.1:3000'
-  Set-Item Env:DAMOON_APP_URL 'http://127.0.0.1:3000'
-  Set-Item Env:DAMOON_API_ORIGIN 'http://127.0.0.1:3000'
-  Set-Item Env:DAMOON_SHARED_RUNTIME_URL 'http://damoon-hotel.localhost:3000'
+  Set-Item Env:NEXTAUTH_URL "http://127.0.0.1:$nextPort"
+  Set-Item Env:NEXTAUTH_URL_INTERNAL "http://127.0.0.1:$nextPort"
+  Set-Item Env:NEXT_PUBLIC_APP_URL "http://127.0.0.1:$nextPort"
+  Set-Item Env:DAMOON_APP_URL "http://127.0.0.1:$nextPort"
+  Set-Item Env:DAMOON_API_ORIGIN "http://127.0.0.1:$nextPort"
+  Set-Item Env:DAMOON_NEXT_PORT ([string]$nextPort)
+  Set-Item Env:DAMOON_NEXT_DIST_DIR ".next-damoon-e2e-$suffix"
+  Set-Item Env:DAMOON_SHARED_RUNTIME_URL "http://damoon-hotel.ir:$nextPort"
   Set-Item Env:NEXT_TELEMETRY_DISABLED '1'
   Set-Item Env:MEDIA_STORAGE_ROOT (Join-Path $tempRoot 'receipts')
   Set-Item Env:DAMOON_E2E_OUTPUT_DIR (Join-Path $tempRoot 'playwright-results')
@@ -224,7 +254,7 @@ try {
   Invoke-Pnpm @('exec', 'node', 'scripts/hotel/verify-damoon-local-e2e-db.mjs')
   Invoke-Pnpm @('exec', 'tsx', '--require=./scripts/e2e/register-server-only.cjs', 'scripts/hotel/seed-damoon-booking-e2e.mts')
 
-  $allowedFixtureKeys = @('DAMOON_ORGANIZATION_ID','DAMOON_PROPERTY_ID','DAMOON_PROPERTY_SLUG','DAMOON_MANAGER_USERNAME','DAMOON_MANAGER_PASSWORD','DAMOON_ROOM_TYPE_SLUG','DAMOON_RATE_PLAN_CODE','DAMOON_FOREIGN_ORGANIZATION_ID','DAMOON_FOREIGN_PROPERTY_ID','DAMOON_FOREIGN_HOST','DAMOON_FOREIGN_MANAGER_USERNAME','DAMOON_FOREIGN_MANAGER_PASSWORD','DAMOON_PUBLIC_HOST','DAMOON_PUBLIC_HOSTS','DAMOON_STANDALONE_URL','DAMOON_E2E_PUBLIC_PORT')
+  $allowedFixtureKeys = @('DAMOON_ORGANIZATION_ID','DAMOON_PROPERTY_ID','DAMOON_DEMO_PROPERTY_ID','DAMOON_DEMO_ROOM_TYPE_ID','DAMOON_DEMO_RATE_PLAN_ID','DAMOON_PROPERTY_SLUG','DAMOON_MANAGER_USERNAME','DAMOON_MANAGER_PASSWORD','DAMOON_ROOM_TYPE_SLUG','DAMOON_RATE_PLAN_CODE','DAMOON_FOREIGN_ORGANIZATION_ID','DAMOON_FOREIGN_PROPERTY_ID','DAMOON_FOREIGN_HOST','DAMOON_FOREIGN_MANAGER_USERNAME','DAMOON_FOREIGN_MANAGER_PASSWORD','DAMOON_PUBLIC_HOST','DAMOON_PUBLIC_HOSTS','DAMOON_STANDALONE_URL','DAMOON_E2E_PUBLIC_PORT')
   $fixtureLines = Get-Content -LiteralPath $envFile
   foreach ($line in $fixtureLines) {
     $separator = $line.IndexOf('=')
@@ -234,48 +264,69 @@ try {
     if ($key -notin $allowedFixtureKeys -or $value.Contains("`n") -or $value.Contains("`r")) { throw 'Fixture environment output contained an unexpected key or value.' }
     Set-Item -Path "Env:$key" -Value $value
   }
+  Set-Item Env:DAMOON_PUBLIC_HOST "damoon-hotel.localhost:$staticPort"
+  Set-Item Env:DAMOON_PUBLIC_HOSTS "damoon-hotel.localhost:$staticPort,damoon-foreign-$suffix.test:$staticPort"
+  Set-Item Env:DAMOON_STANDALONE_URL "http://damoon-hotel.localhost:$staticPort"
+  Set-Item Env:DAMOON_E2E_PUBLIC_PORT ([string]$staticPort)
   Remove-Item Env:DAMOON_LOCAL_E2E_ENV_FILE -ErrorAction SilentlyContinue
   Invoke-Pnpm @('exec', 'node', 'scripts/hotel/verify-damoon-local-e2e-db.mjs')
 
-  Set-Item Env:NODE_ENV 'development'
+  Set-Item Env:NODE_ENV 'production'
+  Invoke-Pnpm @('exec', 'next', 'build', '--webpack')
   $nodePath = (Get-Command node -ErrorAction Stop).Source
   $nextEntry = (Resolve-Path 'node_modules/next/dist/bin/next').Path
   $nextOut = Join-Path $tempRoot 'next.stdout.log'
   $nextErr = Join-Path $tempRoot 'next.stderr.log'
-  $nextProcess = Start-Process -FilePath $nodePath -ArgumentList @($nextEntry, 'dev', '--hostname', '127.0.0.1', '--port', '3000') -WorkingDirectory $repoRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput $nextOut -RedirectStandardError $nextErr
-  Wait-Http 'http://127.0.0.1:3000/api/auth/csrf' @{} $nextProcess 'Next.js API runtime'
-  $nextListenerPid = Get-TaskListenerPid 3000 'next dev'
+  $nextProcess = Start-Process -FilePath $nodePath -ArgumentList @($nextEntry, 'start', '--hostname', '127.0.0.1', '--port', [string]$nextPort) -WorkingDirectory $repoRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput $nextOut -RedirectStandardError $nextErr
+  Wait-Http "http://127.0.0.1:$nextPort/api/auth/csrf" @{} $nextProcess 'Next.js API runtime'
+  $nextListenerPid = Get-TaskListenerPid $nextPort 'next start'
 
   Set-Item Env:NODE_ENV 'test'
-  Set-Item Env:PORT '8080'
+  Set-Item Env:PORT ([string]$staticPort)
   $staticOut = Join-Path $tempRoot 'damoon.stdout.log'
   $staticErr = Join-Path $tempRoot 'damoon.stderr.log'
   $staticEntry = (Resolve-Path 'sites/damoon/server.mjs').Path
   $staticProcess = Start-Process -FilePath $nodePath -ArgumentList @($staticEntry) -WorkingDirectory $repoRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput $staticOut -RedirectStandardError $staticErr
-  Wait-Http 'http://127.0.0.1:8080/healthz' @{ Host = $env:DAMOON_PUBLIC_HOST } $staticProcess 'Standalone Damoon server'
-  $staticListenerPid = Get-TaskListenerPid 8080 'sites\damoon\server.mjs'
+  Wait-Http "http://127.0.0.1:$staticPort/healthz" @{ Host = $env:DAMOON_PUBLIC_HOST } $staticProcess 'Standalone Damoon server'
+  $staticListenerPid = Get-TaskListenerPid $staticPort 'sites\damoon\server.mjs'
 
   Assert-DiskSpace
   if ($Grep) { Invoke-Pnpm @('exec', 'playwright', 'test', '--config=playwright.damoon.config.mjs', '--grep', $Grep) }
   else { Invoke-Pnpm @('exec', 'playwright', 'test', '--config=playwright.damoon.config.mjs') }
+  Set-Item Env:CI 'true'
+  Set-Item Env:NODE_ENV 'test'
+  Set-Item Env:DAMOON_LOCAL_E2E '1'
+  Invoke-Pnpm @('exec', 'node', '--test', 'tests/e2e/damoon/shared-runtime-booking-acceptance.spec.mjs')
   $testFailed = $false
   Write-Output "Damoon request-to-reception acceptance passed on disposable PostgreSQL 17 at loopback port $port (database $databaseName)."
 }
 catch {
   if ($script:taskExitCode -eq 0) { $script:taskExitCode = 1 }
-  [Console]::Error.WriteLine('Damoon acceptance failed; see the preceding test result.')
+  $failure = [string]$_.Exception.Message
+  $failure = $failure -replace '(?i)(postgres(?:ql)?://)[^\s@]+@', '$1[REDACTED]@'
+  [Console]::Error.WriteLine("Damoon acceptance failed: $failure")
+  foreach ($logPath in @((Join-Path $tempRoot 'next.stdout.log'), (Join-Path $tempRoot 'next.stderr.log'), (Join-Path $tempRoot 'damoon.stdout.log'), (Join-Path $tempRoot 'damoon.stderr.log'))) {
+    if (Test-Path -LiteralPath $logPath) {
+      Get-Content -LiteralPath $logPath -Tail 40 | ForEach-Object {
+        $line = [string]$_ -replace '(?i)(postgres(?:ql)?://)[^\s@]+@', '$1[REDACTED]@'
+        $line = $line -replace '(?i)(authorization|cookie|set-cookie)(:\s*|\s+)[^\s]+', '$1$2[REDACTED]'
+        [Console]::Error.WriteLine($line)
+      }
+    }
+  }
 }
 finally {
   try {
-    if (-not $staticListenerPid -and $staticProcess) { $staticListenerPid = Get-TaskListenerPid 8080 'sites\damoon\server.mjs' }
+    if (-not $staticListenerPid -and $staticProcess) { $staticListenerPid = Get-TaskListenerPid $staticPort 'sites\damoon\server.mjs' }
     Stop-TaskProcess $staticListenerPid 'sites\damoon\server.mjs'
   } catch { [Console]::Error.WriteLine("Warning: could not fully stop the task-owned Damoon process: $($_.Exception.Message)") }
   try {
-    if (-not $nextListenerPid -and $nextProcess) { $nextListenerPid = Get-TaskListenerPid 3000 'next dev' }
-    Stop-TaskProcess $nextListenerPid 'next dev'
+    if (-not $nextListenerPid -and $nextProcess) { $nextListenerPid = Get-TaskListenerPid $nextPort 'next start' }
+    Stop-TaskProcess $nextListenerPid 'next start'
   } catch { [Console]::Error.WriteLine("Warning: could not fully stop the task-owned Next.js process: $($_.Exception.Message)") }
   try { Stop-TaskContainer $containerId } catch { [Console]::Error.WriteLine("Warning: could not stop the task-owned PostgreSQL container: $($_.Exception.Message)") }
-  Remove-Item Env:POSTGRES_USER,Env:POSTGRES_PASSWORD,Env:POSTGRES_DB,Env:DAMOON_LOCAL_E2E_ENV_FILE -ErrorAction SilentlyContinue
+  try { Remove-IsolatedNextOutput $env:DAMOON_NEXT_DIST_DIR } catch { [Console]::Error.WriteLine("Warning: isolated Next output cleanup failed: $($_.Exception.Message)"); if ($script:taskExitCode -eq 0) { $script:taskExitCode = 1 } }
+  Remove-Item Env:POSTGRES_USER,Env:POSTGRES_PASSWORD,Env:POSTGRES_DB,Env:DAMOON_LOCAL_E2E_ENV_FILE,Env:DAMOON_NEXT_DIST_DIR -ErrorAction SilentlyContinue
   $script:taskExitCode = Invoke-DamoonTempCleanup -TempRoot $tempRoot -TempBase $env:TEMP -Suffix $suffix -ExitCode $script:taskExitCode
   if ($testFailed) { Write-Output 'Task-owned cleanup was attempted.' }
 }

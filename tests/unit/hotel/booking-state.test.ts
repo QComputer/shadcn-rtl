@@ -166,4 +166,13 @@ describe("reservation state machine", () => {
     const result = decide("CONFIRMED", "CHECK_IN", { type: "GUEST_CHECKED_OUT", at: NOW });
     assert.equal(!result.isAllowed && result.reason, "EVENT_DOES_NOT_MATCH_TRANSITION");
   });
+
+  it("allows simulated payment confirmation only for demo-scoped reservations", () => {
+    const event = { type: "DEMO_PAYMENT_VERIFIED" } as const;
+    const demo = guardReservationTransition({ current: "PENDING_PAYMENT", transition: "CONFIRM", event, now: NOW, isDemoBooking: true });
+    assert.equal(demo.allows, true);
+    const normal = guardReservationTransition({ current: "PENDING_PAYMENT", transition: "CONFIRM", event, now: NOW, isDemoBooking: false });
+    assert.equal(normal.allows, false);
+    assert.equal(!normal.allows && normal.reason, "DEMO_PAYMENT_CONFIRMATION_REQUIRES_DEMO_SCOPE");
+  });
 });

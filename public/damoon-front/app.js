@@ -305,7 +305,7 @@ function wireInteractions() {
   document.querySelectorAll("button[data-palette]").forEach(button => button.addEventListener("click", () => applyPalette(button.dataset.palette, document, paletteStorage)));
   const bookingSlot = document.querySelector("[data-booking-slot]");
   const reservationEntry = window.location.pathname.replace(/\/+$/, "").endsWith("/hotel-reservations/start");
-  if (bookingSlot) mountBooking(bookingSlot, { routeHref, locale, coordinationOnly: false, requestOnly: !reservationEntry, reservationEntry });
+  if (bookingSlot) mountBooking(bookingSlot, { routeHref, locale, coordinationOnly: false, requestOnly: !reservationEntry, reservationEntry, demoMode: new URLSearchParams(window.location.search).get("mode") === "DEMO_BOOKING" });
   const homeSlides = gallery.slice(1, 5);
   const homeImage = document.querySelector("[data-home-slide]");
   if (homeImage && homeSlides.length) {

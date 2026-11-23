@@ -3,31 +3,30 @@ import { ApiError, jsonError } from "@/lib/api-guards";
 import { parseJsonObject } from "@/lib/hotel/management/api-adapter";
 import { createPrismaHotelRepositories } from "@/lib/hotel/persistence/prisma-hotel-repositories";
 import { resolveHotelTenantForHost } from "@/lib/hotel/services/hotel-publication.service";
-import { searchPublishedHotelAvailability } from "@/lib/hotel/services/public-availability.service";
+import { searchPublicHotelAvailability, searchPublishedHotelAvailability } from "@/lib/hotel/services/public-availability.service";
+import { resolveDamoonDemoProperty } from "@/lib/hotel/services/damoon-demo-booking.server";
 import { anonymousHoldRequestSchema } from "@/lib/hotel/validation/hotel-contracts";
 
 const HOLD_GATE = "Anonymous hotel holds are not operationally enabled.";
 
 export async function POST(request: Request) {
   try {
-    if (process.env.HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED !== "1") throw new ApiError(503, HOLD_GATE);
     const idempotencyKey = request.headers.get("idempotency-key")?.trim();
     if (!idempotencyKey || idempotencyKey.length < 8 || idempotencyKey.length > 128) throw new ApiError(400, "A valid Idempotency-Key is required");
     const input = anonymousHoldRequestSchema.parse({ ...parseJsonObject(await request.json()), idempotencyKey });
     const host = request.headers.get("host");
     const tenant = await resolveHotelTenantForHost(host);
     if (!tenant) throw new ApiError(404, "Hotel is not available");
+    const demo = await resolveDamoonDemoProperty(host, input.property);
+    if (!demo && process.env.HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED !== "1") throw new ApiError(503, HOLD_GATE);
     const repositories = createPrismaHotelRepositories();
     const fingerprint = createHash("sha256").update(JSON.stringify({ organizationId: tenant.organizationId, property: input.property, roomType: input.roomType, ratePlan: input.ratePlan, input: { ...input, contact: { fullName: input.contact.fullName.trim(), phone: input.contact.phone.trim(), email: input.contact.email?.trim().toLowerCase() } } })).digest("hex");
     const replay = await repositories.findAnonymousHoldReplay({ scope: { organizationId: tenant.organizationId }, idempotencyKey, requestFingerprint: fingerprint, propertySlug: input.property, roomTypeSlug: input.roomType, ratePlanCode: input.ratePlan });
     if (replay?.isConflict) throw new ApiError(409, "Idempotency-Key was used with a different request");
     if (replay?.isReplay) return Response.json({ holdId: replay.result.holdId, idempotencyKey, reference: replay.result.reference, status: "ACTIVE", expiresAt: replay.result.expiresAt.toISOString(), currency: replay.result.currency, totalRate: String(replay.result.totalAmount), nightlyRates: replay.result.nightlyRates.map(String), cancellationPolicy: replay.result.policySnapshot, inventoryReserved: true }, { status: 200 });
-    const availability = await searchPublishedHotelAvailability(host, {
-      property: input.property,
-      checkIn: input.checkIn,
-      checkOut: input.checkOut,
-      occupancy: input.occupancy,
-    });
+    const availability = demo
+      ? await searchPublicHotelAvailability({ scope: { organizationId: demo.organizationId }, propertySlug: demo.propertySlug, query: { propertyId: demo.propertyId, window: { checkIn: input.checkIn, checkOut: input.checkOut }, occupancy: input.occupancy } })
+      : await searchPublishedHotelAvailability(host, { property: input.property, checkIn: input.checkIn, checkOut: input.checkOut, occupancy: input.occupancy });
     const option = availability?.options.find((candidate) => candidate.roomType.slug === input.roomType && candidate.ratePlan.code === input.ratePlan && candidate.isAvailable);
     if (!availability || !option) throw new ApiError(409, "The requested hotel inventory is not available");
     const optionPolicy = option.ratePlan.cancellationPolicy;

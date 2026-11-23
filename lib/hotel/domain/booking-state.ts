@@ -31,6 +31,7 @@ export type ReservationEvent =
   | { readonly type: "HOLD_RELEASED" }
   | { readonly type: "PAYMENT_REQUESTED" }
   | { readonly type: "PAYMENT_VERIFIED"; readonly paymentRequestPublicId: string }
+  | { readonly type: "DEMO_PAYMENT_VERIFIED" }
   | { readonly type: "PAYMENT_FAILED" }
   | { readonly type: "GUEST_CHECKED_IN"; readonly at: string }
   | { readonly type: "GUEST_CHECKED_OUT"; readonly at: string }
@@ -101,6 +102,7 @@ export function guardReservationTransition(input: {
   transition: ReservationTransition
   event: ReservationEvent
   now: string
+  isDemoBooking?: boolean
 }): TransitionGuard {
   const { current, transition, event, now } = input;
 
@@ -129,6 +131,7 @@ export function guardReservationTransition(input: {
 
     case "CONFIRM": {
       if (current !== "PENDING_PAYMENT") return deny("CONFIRMATION_REQUIRES_PAYMENT_PENDING_RESERVATION");
+      if (event.type === "DEMO_PAYMENT_VERIFIED") return input.isDemoBooking === true ? ALLOWED : deny("DEMO_PAYMENT_CONFIRMATION_REQUIRES_DEMO_SCOPE");
       // Authoritative, server-verified settlement only. A redirect event is
       // intentionally not accepted here.
       if (event.type !== "PAYMENT_VERIFIED" || !event.paymentRequestPublicId) {

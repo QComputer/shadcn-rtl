@@ -412,10 +412,16 @@ test.describe("PR64 Damoon Booking Request Acceptance", () => {
     expect(crossOriginPost.status()).toBe(403);
 
     const requestCard = managerPage.locator("article").filter({ has: managerPage.locator(`#request-status-${requestId}`) });
+    await managerPage.setViewportSize({ width: 390, height: 844 });
     await requestCard.locator(`#request-status-${requestId}`).selectOption("IN_REVIEW");
     await expect(requestCard.locator(".rounded-full").first()).toContainText("در حال بررسی");
+    await expect(requestCard.locator("[data-status-update-feedback]")).toHaveText("وضعیت درخواست به در حال بررسی تغییر کرد.");
+    const statusControl = requestCard.locator(`#request-status-${requestId}`);
+    const statusBounds = await statusControl.boundingBox();
+    expect(statusBounds && statusBounds.height).toBeGreaterThanOrEqual(44);
+    expect(statusBounds && statusBounds.x + statusBounds.width).toBeLessThanOrEqual(390);
 
-    await expect(requestCard.locator(`#request-status-${requestId}`)).toBeEnabled();
+    await expect(statusControl).toBeEnabled();
 
     await guestPage.locator('[data-track-request] [data-track-reference]').fill(reference);
     const trackResponsePromise = guestPage.waitForResponse((r) => r.url().endsWith("/api/hotel/v1/requests/status") && r.request().method() === "POST");
@@ -1052,11 +1058,11 @@ test('inventory-free request reaches reception and tracks without creating a boo
     await expect(card).toBeVisible();
     await manager.page.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (value) => { window.__damoonCopiedPhone = value; } } }); });
     await card.getByRole('button', {name:'نسخ الرقم'}).click();
-    await expect(card.getByRole('status')).toContainText('تم نسخ الرقم');
+    await expect(card.locator('span[role="status"]')).toContainText('تم نسخ الرقم');
     expect(await manager.page.evaluate(() => window.__damoonCopiedPhone)).toBe('+989121234567');
     await manager.page.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('denied'); } } }); });
     await card.getByRole('button', {name:'نسخ الرقم'}).click();
-    await expect(card.getByRole('status')).toContainText('تعذر النسخ');
+    await expect(card.locator('span[role="status"]')).toContainText('تعذر النسخ');
     await manager.page.bringToFront();
     let autoRefreshCount = 0;
     manager.page.on('request', request => { if (new URL(request.url()).pathname === requestsApi && request.method() === 'GET') autoRefreshCount += 1; });

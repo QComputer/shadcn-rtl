@@ -80,11 +80,14 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
   const [searchInput, setSearchInput] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
+  const [statusFeedback, setStatusFeedback] = useState<{ id: string; status: RequestStatus } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [copyFeedback, setCopyFeedback] = useState<{ id: string; ok: boolean } | null>(null);
   const [messages, setMessages] = useState<Record<string, string>>({});
   const [noteFeedback, setNoteFeedback] = useState<Record<string, "saved" | "error" | "conflict">>({});
+  const statusActionText = language === "fa" ? { saving: "در حال ذخیره وضعیت…", updated: "وضعیت درخواست به {status} تغییر کرد." } : language === "ar" ? { saving: "جارٍ حفظ الحالة…", updated: "تم تحديث حالة الطلب إلى {status}." } : { saving: "Saving status…", updated: "Request status updated to {status}." };
   const noteText = language === "fa" ? { save: "ذخیره یادداشت", saving: "در حال ذخیره…", saved: "ذخیره شد", unsaved: "تغییرات ذخیره‌نشده", error: "ذخیره ناموفق بود؛ متن حفظ شد.", conflict: "درخواست تغییر کرده است؛ پس از نگهداری متن، فهرست را تازه کنید." } : language === "ar" ? { save: "حفظ الملاحظة", saving: "جارٍ الحفظ…", saved: "تم الحفظ", unsaved: "تغييرات غير محفوظة", error: "تعذر الحفظ؛ تم الاحتفاظ بالنص.", conflict: "تغير الطلب؛ احتفظ بالنص ثم حدّث القائمة." } : { save: "Save note", saving: "Saving…", saved: "Saved", unsaved: "Unsaved changes", error: "Could not save; your text is preserved.", conflict: "This request changed; keep your text and refresh the list." };
   const latestLoadId = useRef(0);
   const selectedFilter = useRef<RequestFilter>("ALL");
@@ -144,7 +147,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
     if ([...dirtyMessages.current].some((id) => id !== request.id)) { setDraftWarning(true); return; }
     latestLoadId.current += 1; setLoading(false);
     const filterAtStart = selectedFilter.current;
-    setBusyId(request.id); setError("");
+    setBusyId(request.id); setStatusUpdatingId(request.id); setStatusFeedback(null); setError("");
     try {
       const response = await fetch(`${base}/${encodeURIComponent(request.id)}`, {
         method: "PATCH", credentials: "same-origin", headers: { "content-type": "application/json" },
@@ -152,6 +155,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
       });
       if (!response.ok) throw new Error(text.saveError);
       const updated = await response.json() as Pick<GuestRequest, "id" | "status" | "managerMessage" | "version">;
+      setStatusFeedback({ id: request.id, status: updated.status });
       const activeFilter = selectedFilter.current;
       if (activeFilter !== filterAtStart || (activeFilter !== "ALL" && (activeFilter === "NEEDS_ACTION" ? !["RECEIVED", "IN_REVIEW"].includes(updated.status) : updated.status !== activeFilter))) {
         setRequests((current) => current.filter((item) => item.id !== updated.id));
@@ -163,7 +167,7 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
       dirtyMessages.current.delete(request.id);
       setMessages((current) => ({ ...current, [request.id]: updated.managerMessage || "" }));
     } catch { setError(text.saveError); }
-    finally { setBusyId(null); }
+    finally { setBusyId(null); setStatusUpdatingId(null); }
   };
 
   const saveNote = async (request: GuestRequest) => {
@@ -307,11 +311,11 @@ export function HotelGuestBookingRequests({ organizationId, propertyId, locale }
           <div className="flex flex-wrap items-center gap-2"><button type="button" className="min-h-11 rounded-md border px-3 text-sm" disabled={Boolean(busyId) || (messages[request.id] ?? request.managerMessage ?? "") === (request.managerMessage ?? "")} onClick={() => void saveNote(request)}>{busyId === request.id ? noteText.saving : noteText.save}</button>{(noteFeedback[request.id] || (messages[request.id] ?? request.managerMessage ?? "") !== (request.managerMessage ?? "")) && <span role="status" className="text-sm">{noteFeedback[request.id] === "conflict" ? noteText.conflict : noteFeedback[request.id] === "error" ? noteText.error : (messages[request.id] ?? request.managerMessage ?? "") !== (request.managerMessage ?? "") ? noteText.unsaved : noteFeedback[request.id] === "saved" ? noteText.saved : ""}</span>}</div>
           {nextStatuses.length > 0 && <div className="flex flex-wrap items-center gap-2">
             <label className="sr-only" htmlFor={`request-status-${request.id}`}>{text.update}</label>
-            <select id={`request-status-${request.id}`} className="rounded-md border bg-background px-3 py-2 text-sm" value="" disabled={busyId === request.id} onChange={(event) => { const value = event.target.value as RequestStatus; if (value) void update(request, value); }}>
+            <select id={`request-status-${request.id}`} className="min-h-11 rounded-md border bg-background px-3 py-2 text-sm" value="" disabled={busyId === request.id} onChange={(event) => { const value = event.target.value as RequestStatus; if (value) void update(request, value); }}>
               <option value="" disabled>{text.update}</option>
               {nextStatuses.map((status) => <option key={status} value={status}>{text[statusLabelKey[status]]}</option>)}
             </select>
-            {busyId === request.id && <span className="text-sm text-muted-foreground" role="status">…</span>}
+            <p data-status-update-feedback role="status" aria-live="polite" aria-atomic="true" className="text-sm text-muted-foreground">{statusUpdatingId === request.id ? statusActionText.saving : statusFeedback?.id === request.id ? statusActionText.updated.replace("{status}", text[statusLabelKey[statusFeedback.status]]) : ""}</p>
           </div>}
           <RequestActivity key={`${request.id}-${request.version}`} base={base} request={request} language={language} />
         </article>;

@@ -67,6 +67,8 @@ Future independent path (NOT public-enabled):
 
 For guest coordination retries, once a pending idempotency key exists it is reused even if the re-entered payload differs. The existing server fingerprint contract must return `409`; the client keeps the key and gives localized guidance instead of silently rotating it and risking a duplicate. An explicit guest action to start a new request clears the prior attempt so the next submission creates a fresh key. Guest names, contact details, notes, request bodies and tracking references remain out of browser storage, so a full-page locale navigation requires guests to re-enter those values. Preserving them across reloads needs a separately reviewed secure state contract.
 
+The guest may copy a tracking reference only through an explicit accessible control. Clipboard denial produces localized manual-copy guidance; the reference is not persisted to browser storage.
+
 ## OWNER_ACCOMMODATION_AMENDMENT_20261123 — Current owner-selected category baseline
 
 The implementation now targets **3 single rooms, 17 double rooms, 6 three-person suites, 3 four-person suites and 2 five-person suites**, aggregate **20 rooms + 11 suites = 31 units**. This is the owner-selected editable **product default**, not certified physical capacity. Dashboard/website category edits must follow existing tenant-scoped publication/revision rules, preserve slugs/CTAs and remain separate from operational room inventory. Refer to `OWNER-DECISION-ACCOMMODATION-BASELINE-2026-11-23.md` and `ACCOMMODATION-ADMIN-AND-CONTENT-CONTRACT-2026-11-23.md`. No Production writes, migration, PR140 merge or booking activation are authorized.

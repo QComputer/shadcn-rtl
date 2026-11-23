@@ -40,6 +40,11 @@ const requestCopy = {
   en: { submit: "Send a stay coordination request", notBooking: "This form sends a coordination request to reception only. It does not select or hold a room, confirm a booking, or take payment.", unavailable: "Stay coordination requests are not enabled yet.", received: "Coordination request sent to reception", reference: "Secure tracking reference", keepReference: "Keep this reference to check your request later.", legacyReceiptUnavailable: "A previous request was sent, but its tracking reference was not kept in this browser. To avoid creating a duplicate, do not submit it again. Use the tracking form if you have the reference, or contact reception.", newRequest: "Start a new request", status: "Request status", check: "Check status", checking: "Checking status...", trackLabel: "Track with secure reference", trackButton: "Show status", trackError: "No request was found for this reference.", statuses: { RECEIVED: "Received", IN_REVIEW: "Under review", OPTION_OFFERED: "An option is ready for your review", UNAVAILABLE: "Unavailable for these dates", DECLINED: "Declined", CLOSED: "Closed" } },
   ar: { submit: "إرسال طلب تنسيق الإقامة", notBooking: "يرسل هذا النموذج طلب تنسيق إلى الاستقبال فقط. لا يختار غرفة ولا يحجزها ولا يؤكد الحجز أو يستلم دفعة.", unavailable: "طلبات تنسيق الإقامة غير مفعلة حالياً.", received: "تم إرسال طلب التنسيق إلى الاستقبال", reference: "رمز متابعة آمن", keepReference: "احتفظ بهذا الرمز لمتابعة طلبك لاحقاً.", legacyReceiptUnavailable: "تم إرسال طلب سابق، لكن رمز المتابعة لم يُحفظ في هذا المتصفح. لتجنب إنشاء طلب مكرر، لا ترسله مرة أخرى. استخدم نموذج المتابعة إذا كان الرمز متوفراً لديك، أو تواصل مع الاستقبال.", newRequest: "بدء طلب جديد", status: "حالة الطلب", check: "تحقق من الحالة", checking: "جارٍ التحقق من الحالة...", trackLabel: "المتابعة باستخدام الرمز الآمن", trackButton: "عرض الحالة", trackError: "لم يتم العثور على طلب بهذا الرمز.", statuses: { RECEIVED: "تم الاستلام", IN_REVIEW: "قيد المراجعة", OPTION_OFFERED: "الخيار جاهز لمراجعتك", UNAVAILABLE: "غير متاح في هذه التواريخ", DECLINED: "مرفوض", CLOSED: "مغلق" } },
 };
+const requestReferenceCopy = {
+  fa: { copy: "کپی کد پیگیری", copied: "کد پیگیری کپی شد.", failed: "کپی نشد؛ کد را انتخاب و دستی کپی کنید." },
+  en: { copy: "Copy tracking code", copied: "Tracking code copied.", failed: "Could not copy. Select the code and copy it manually." },
+  ar: { copy: "نسخ رمز المتابعة", copied: "تم نسخ رمز المتابعة.", failed: "تعذر النسخ. حدد الرمز وانسخه يدوياً." },
+};
 const requestConflictCopy = {
   fa: "این کلید قبلاً با اطلاعات دیگری استفاده شده است؛ برای جلوگیری از درخواست تکراری، آن را دوباره ارسال نکنید و با پذیرش تماس بگیرید.",
   en: "This request key was already used with different details. To avoid a duplicate, do not submit a new request; contact reception.",
@@ -370,7 +375,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       const request = flow.request;
       const status = flow.requestStatus || request.status;
       const copy = requestCopy[locale] || requestCopy.en;
-      return `<section class="booking-step booking-step--confirmed"><h4>${escapeHtml(copy.received)}</h4><p><strong>${escapeHtml(copy.reference)}:</strong> <span dir="ltr">${escapeHtml(request.reference)}</span></p><p>${escapeHtml(copy.keepReference)}</p><p><strong>${escapeHtml(copy.status)}:</strong> ${escapeHtml(copy.statuses[status] || status)}</p>${request.managerMessage ? `<p class="booking-policy__text">${escapeHtml(request.managerMessage)}</p>` : ""}<div class="booking-step__actions"><button type="button" class="booking-link" data-check-request-status ${flow.busy ? "disabled" : ""}>${escapeHtml(copy.check)}</button><button type="button" class="booking-link" data-flow-reset>${escapeHtml(copy.newRequest)}</button></div></section>`;
+      return `<section class="booking-step booking-step--confirmed"><h4>${escapeHtml(copy.received)}</h4><p><strong>${escapeHtml(copy.reference)}:</strong> <span dir="ltr">${escapeHtml(request.reference)}</span></p><p>${escapeHtml(copy.keepReference)}</p><button type="button" class="booking-link" data-copy-request-reference>${escapeHtml(requestReferenceCopy[locale]?.copy || requestReferenceCopy.en.copy)}</button><p data-copy-reference-feedback role="status" aria-live="polite"></p><p><strong>${escapeHtml(copy.status)}:</strong> ${escapeHtml(copy.statuses[status] || status)}</p>${request.managerMessage ? `<p class="booking-policy__text">${escapeHtml(request.managerMessage)}</p>` : ""}<div class="booking-step__actions"><button type="button" class="booking-link" data-check-request-status ${flow.busy ? "disabled" : ""}>${escapeHtml(copy.check)}</button><button type="button" class="booking-link" data-flow-reset>${escapeHtml(copy.newRequest)}</button></div></section>`;
     }
     const h = flow.hold; if (!h) return "";
     const expires = h.expiresAt ? new Date(h.expiresAt) : null;
@@ -442,6 +447,17 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     return parseChildAges(inputs.map((i) => i.value), children);
   }
   function bindFlow() {
+    slot.querySelector("[data-copy-request-reference]")?.addEventListener("click", async () => {
+      const reference = flow.request?.reference;
+      const feedback = slot.querySelector("[data-copy-reference-feedback]");
+      if (!reference || !feedback) return;
+      try {
+        await navigator.clipboard.writeText(reference);
+        feedback.textContent = requestReferenceCopy[locale]?.copied || requestReferenceCopy.en.copied;
+      } catch {
+        feedback.textContent = requestReferenceCopy[locale]?.failed || requestReferenceCopy.en.failed;
+      }
+    });
     const contactInputs = [
       ["[data-coordination-name]", "fullName"],
       ["[data-coordination-phone]", "phone"],

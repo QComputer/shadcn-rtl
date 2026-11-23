@@ -51,6 +51,7 @@ Future independent path (NOT public-enabled):
 
 ## مدیریت/رزرو عملیاتی جداست
 
+- پاسخ جست‌وجوی تاریخ‌محور علاوه بر گزینه‌ها، رتبه و کدهای دلیل توصیهٔ قطعی/توضیح‌پذیر را فقط از اتاق‌ها و نرخ‌های تأییدشده برمی‌گرداند؛ توصیه موجودی را رزرو نمی‌کند و تضمین رزرو نیست.
 - قراردادهای مشترک `HotelProperty`, `HotelRoomType`, physical room, nightly inventory, rate plan, dated maintenance، `HotelGuestBookingRequest` و lifecycle در Backend و Prisma وجود دارند؛ **وجود مدل‌ها دلیل populated بودن Production نیست**.
 - `docs/hotel/operations/RECEPTION-MANUAL-ROOM-MANAGEMENT-2026-11-21.md` مرحله‌بندی مدیریت اتاق/پذیرش دستی را شرح می‌دهد. وضعیت کد جاری در `COMPLETION-CHECKLIST` جدیدتر است؛ برای شکاف دستی بدون نرخ و ویرایش پس از ثبت، هنوز کار مستقل لازم است.
 - PR140 برای کسر هم‌زمان maintenance از type-level capacity و Quote/Hold/Availability مطرح است اما ON HOLD. نباید فعال‌سازی فروش عمومی از این نقص عبور کند.

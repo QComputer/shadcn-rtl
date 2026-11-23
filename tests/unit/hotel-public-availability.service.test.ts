@@ -25,9 +25,11 @@ test("returns a TOMAN informational quote without reserving inventory", async ()
   assert.equal(result.inventoryReserved, false);
   assert.equal(result.options[0]?.availableRoomCount, 2, "explicit aggregate allotment supports inventory without physical rooms");
   assert.equal(result.options[0]?.totalRate, 250000);
+  assert.deepEqual(result.recommendations, [{ roomTypeId: "room-1", rank: 1, reasonCodes: ["FLEXIBLE_CANCELLATION", "SMALLEST_SUFFICIENT_CAPACITY", "ONLY_AVAILABLE_OPTION"] }]);
   const serialized = serializePublicAvailability(result);
   assert.equal(serialized.options[0]?.totalRate, "250000");
   assert.equal(serialized.options[0]?.ratePlan.cancellationPolicy, null);
+  assert.deepEqual(serialized.recommendations, result.recommendations);
 });
 
 test("positive nightly inventory does not make an unconfigured room type available", async () => {
@@ -36,6 +38,7 @@ test("positive nightly inventory does not make an unconfigured room type availab
   }));
   assert.ok(result);
   assert.equal(result.options.some((option) => option.isAvailable), false);
+  assert.deepEqual(result.recommendations, []);
 });
 
 test("configured rooms with none in service do not fall back to aggregate allotment", async () => {

@@ -4,6 +4,7 @@ import { before, mock, test } from "node:test";
 class TestApiError extends Error { constructor(public status: number, message: string) { super(message); } }
 let knownHost = true;
 let rateCalls = 0;
+let serviceCalls = 0;
 let blocked = false;
 let storeUnavailable = false;
 const observedBuckets: Array<{ organizationId: string; endpoint: string }> = [];
@@ -31,7 +32,7 @@ mock.module("@/lib/hotel/validation/hotel-contracts", { namedExports: {
 } });
 mock.module("@/lib/hotel/management/api-adapter", { namedExports: { parseJsonObject: (value: unknown) => value } });
 mock.module("@/lib/hotel/guest-booking-request.server", { namedExports: {
-  submitHotelGuestBookingRequest: async () => ({ reference: "ref", status: "RECEIVED", availabilityHint: "AVAILABLE", replay: false }),
+  submitHotelGuestBookingRequest: async () => { serviceCalls++; return { reference: "ref", status: "RECEIVED", availabilityHint: "AVAILABLE", replay: false }; },
   readHotelGuestBookingRequestStatus: async () => ({ status: "RECEIVED" }),
 } });
 
@@ -57,6 +58,21 @@ test("unknown tenant hosts are rejected before writing a rate counter", async ()
   assert.equal(response.status, 404);
   assert.equal(rateCalls, beforeCalls);
   knownHost = true;
+});
+
+test("guest request creation rejects missing or malformed idempotency keys before rate limiting or service access", async () => {
+  const beforeRateCalls = rateCalls;
+  const beforeServiceCalls = serviceCalls;
+  const body = JSON.stringify({ any: "bounded body" });
+  for (const key of [undefined, "too-short", "x".repeat(129)]) {
+    const headers = key === undefined ? {} : { "idempotency-key": key };
+    const candidate = request("/api/hotel/v1/requests", body, "hotel.example", headers);
+    if (key === undefined) candidate.headers.delete("idempotency-key");
+    const response = await createPost(candidate);
+    assert.equal(response.status, 400);
+  }
+  assert.equal(rateCalls, beforeRateCalls);
+  assert.equal(serviceCalls, beforeServiceCalls);
 });
 
 test("guest request endpoints reject bodies over 24 KiB before rate limiting", async () => {

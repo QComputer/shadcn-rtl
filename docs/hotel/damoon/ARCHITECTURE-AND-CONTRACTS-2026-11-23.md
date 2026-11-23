@@ -65,6 +65,8 @@ Future independent path (NOT public-enabled):
 
 هر feature باید از قبل مشخص کند: `(tenant authority, source data, feature flag, API contract, idempotency, persistence, public surface, tests, release receipts, recovery path)`. توسعه UI تا زمان دریافت عکس/تورِ منتشرنشده نباید معطل شود؛ ساخت داده عملیاتی و قیمت از تصاویر یا متن مفهومی ممنوع است.
 
+For guest coordination retries, once a pending idempotency key exists it is reused even if the re-entered payload differs. The existing server fingerprint contract must return `409`; the client keeps the key and gives localized guidance instead of silently rotating it and risking a duplicate. Guest names, contact details, notes, request bodies and tracking references remain out of browser storage, so a full-page locale navigation requires guests to re-enter those values. Preserving them across reloads needs a separately reviewed secure state contract.
+
 ## OWNER_ACCOMMODATION_AMENDMENT_20261123 — Current owner-selected category baseline
 
 The implementation now targets **3 single rooms, 17 double rooms, 6 three-person suites, 3 four-person suites and 2 five-person suites**, aggregate **20 rooms + 11 suites = 31 units**. This is the owner-selected editable **product default**, not certified physical capacity. Dashboard/website category edits must follow existing tenant-scoped publication/revision rules, preserve slugs/CTAs and remain separate from operational room inventory. Refer to `OWNER-DECISION-ACCOMMODATION-BASELINE-2026-11-23.md` and `ACCOMMODATION-ADMIN-AND-CONTENT-CONTRACT-2026-11-23.md`. No Production writes, migration, PR140 merge or booking activation are authorized.

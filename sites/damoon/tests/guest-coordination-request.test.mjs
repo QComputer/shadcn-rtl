@@ -46,7 +46,7 @@ test("guest coordination sends only requested stay details and keeps the feature
     await page.setViewportSize({ width: 390, height: 844 });
     const checkIn = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10);
     const checkOut = new Date(Date.now() + 12 * 86400000).toISOString().slice(0, 10);
-    await page.goto(`${base}/en/rooms?checkIn=${checkIn}&checkOut=${checkOut}&adults=2&children=1&childAges=7`, { waitUntil: "networkidle" });
+    await page.goto(`${base}/en/rooms?checkIn=${checkIn}&checkOut=${checkOut}&adults=2&children=1&childAges=7`, { waitUntil: "domcontentloaded" });
 
     const availabilityRequests = [];
     page.on("request", request => {
@@ -57,12 +57,15 @@ test("guest coordination sends only requested stay details and keeps the feature
     await page.locator("[data-coordination-name]").fill("Guest Test");
     await page.locator("[data-coordination-phone]").fill("09123456789");
     await page.locator("[data-coordination-note]").fill("Please contact me in the afternoon");
-    await page.goto(`${base}/fa/rooms?checkIn=${checkIn}&checkOut=${checkOut}&adults=2&children=1&childAges=7`, { waitUntil: "networkidle" });
+    await page.goto(`${base}/fa/rooms?checkIn=${checkIn}&checkOut=${checkOut}&adults=2&children=1&childAges=7`, { waitUntil: "domcontentloaded" });
     await page.locator("[data-create-coordination-request]").waitFor({ state: "visible" });
     const bookingBounds = await page.locator(".booking-strip").boundingBox();
     assert.ok(bookingBounds && bookingBounds.x >= 0 && bookingBounds.x + bookingBounds.width <= 390, "the coordination form stays within the mobile viewport");
-    assert.equal(await page.locator("[data-coordination-name]").inputValue(), "Guest Test", "contact details survive a locale navigation");
-    assert.equal(await page.locator("[data-coordination-note]").inputValue(), "Please contact me in the afternoon", "special requests survive a locale navigation");
+    assert.equal(await page.locator("[data-coordination-name]").inputValue(), "", "contact details are not restored from browser storage after a full locale navigation");
+    assert.equal(await page.locator("[data-coordination-note]").inputValue(), "", "special requests are not restored from browser storage after a full locale navigation");
+    await page.locator("[data-coordination-name]").fill("Guest Test");
+    await page.locator("[data-coordination-phone]").fill("09123456789");
+    await page.locator("[data-coordination-note]").fill("Please contact me in the afternoon");
 
     let requestPayload;
     let idempotencyKey;
@@ -87,12 +90,13 @@ test("guest coordination sends only requested stay details and keeps the feature
     assert.match(idempotencyKey, /^damoon-[a-f0-9]{64}$/);
     assert.match(await page.locator("[data-booking-flow]").innerText(), /درخواست هماهنگی برای پذیرش ارسال شد/);
     assert.match(await page.locator("[data-booking-flow]").innerText(), /R{20}/);
-    await page.goto(`${base}/en/rooms?checkIn=${checkIn}&checkOut=${checkOut}&adults=2&children=1&childAges=7`, { waitUntil: "networkidle" });
-    assert.match(await page.locator("[data-booking-flow]").innerText(), /coordination request sent to reception/i, "the secure tracking reference and status survive a locale navigation");
-    assert.match(await page.locator("[data-booking-flow]").innerText(), /R{20}/);
+    await page.goto(`${base}/en/rooms?checkIn=${checkIn}&checkOut=${checkOut}&adults=2&children=1&childAges=7`, { waitUntil: "domcontentloaded" });
+    assert.equal(await page.locator("[data-coordination-name]").inputValue(), "", "contact data stays out of browser storage after a full navigation");
+    assert.equal(await page.locator("[data-coordination-phone]").inputValue(), "", "contact phone stays out of browser storage after a full navigation");
+    assert.doesNotMatch(await page.locator("[data-booking-flow]").innerText(), /R{20}/, "tracking reference is not restored from browser storage");
 
     const disabledPage = await browser.newPage();
-    await disabledPage.goto(`${base}/en/rooms?checkIn=${checkIn}&checkOut=${checkOut}`, { waitUntil: "networkidle" });
+    await disabledPage.goto(`${base}/en/rooms?checkIn=${checkIn}&checkOut=${checkOut}`, { waitUntil: "domcontentloaded" });
     const retryKeys = [];
     let disabledAttempts = 0;
     await disabledPage.route("**/api/hotel/v1/requests", route => {
@@ -102,7 +106,9 @@ test("guest coordination sends only requested stay details and keeps the feature
         ? { status: 503, contentType: "application/json", body: JSON.stringify({ error: "Stay requests are not enabled" }) }
         : disabledAttempts === 2
           ? { status: 429, contentType: "application/json", body: JSON.stringify({ error: "Too many requests" }) }
-          : { status: 201, contentType: "application/json", body: JSON.stringify({ reference: "S".repeat(43), status: "RECEIVED" }) });
+          : disabledAttempts === 3
+            ? { status: 409, contentType: "application/json", body: JSON.stringify({ error: "Idempotency-key was used with a different request" }) }
+            : { status: 201, contentType: "application/json", body: JSON.stringify({ reference: "S".repeat(43), status: "RECEIVED" }) });
     });
     await disabledPage.locator(".booking-form .booking-submit[type=submit]").click();
     await disabledPage.locator("[data-coordination-name]").fill("Guest Test");
@@ -110,15 +116,24 @@ test("guest coordination sends only requested stay details and keeps the feature
     await disabledPage.locator("[data-create-coordination-request]").click();
     await disabledPage.locator(".booking-message").getByText(/not enabled yet/i).waitFor({ state: "visible" });
     assert.equal(await disabledPage.locator("[data-coordination-name]").inputValue(), "Guest Test", "a disabled feature keeps the entered form available for retry");
-    await disabledPage.goto(`${base}/fa/rooms?checkIn=${checkIn}&checkOut=${checkOut}`, { waitUntil: "networkidle" });
+    await disabledPage.goto(`${base}/fa/rooms?checkIn=${checkIn}&checkOut=${checkOut}`, { waitUntil: "domcontentloaded" });
     await disabledPage.locator("[data-create-coordination-request]").waitFor({ state: "visible" });
-    assert.equal(await disabledPage.locator("[data-coordination-phone]").inputValue(), "09123456789", "retry details survive a second locale navigation");
+    assert.equal(await disabledPage.locator("[data-coordination-name]").inputValue(), "", "name is not restored from browser storage after locale navigation");
+    assert.equal(await disabledPage.locator("[data-coordination-phone]").inputValue(), "", "phone is not restored from browser storage after locale navigation");
+    await disabledPage.locator("[data-coordination-name]").fill("Guest Test");
+    await disabledPage.locator("[data-coordination-phone]").fill("09123456789");
     await disabledPage.locator("[data-coordination-phone]").press("Enter");
     await disabledPage.locator(".booking-message").getByText(/درخواست‌های زیادی ثبت شده است/).waitFor({ state: "visible" });
     assert.equal(await disabledPage.locator("[data-coordination-name]").inputValue(), "Guest Test", "rate limiting preserves the editable draft");
+    const originalNote = await disabledPage.locator("[data-coordination-note]").inputValue();
+    await disabledPage.locator("[data-coordination-note]").fill("Changed after an uncertain submission");
+    await disabledPage.locator("[data-coordination-phone]").press("Enter");
+    await disabledPage.locator(".booking-message").getByText(/قبلاً با اطلاعات دیگری استفاده شده است/).waitFor({ state: "visible" });
+    assert.equal(new Set(retryKeys).size, 1, "a payload conflict does not silently mint a new idempotency key");
+    await disabledPage.locator("[data-coordination-note]").fill(originalNote);
     await disabledPage.locator("[data-coordination-phone]").press("Enter");
     await disabledPage.locator("[data-booking-flow]").getByText(/درخواست هماهنگی برای پذیرش ارسال شد/).waitFor({ state: "visible" });
-    assert.equal(disabledAttempts, 3);
+    assert.equal(disabledAttempts, 4);
     assert.equal(new Set(retryKeys).size, 1, "ambiguous and rate-limited retries reuse the same idempotency key");
     await disabledPage.close();
   } finally {

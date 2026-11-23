@@ -69,7 +69,6 @@ jobs:
       HOTEL_SMS_ENABLED: "0"
       CUSTOMER_AUTH_SMS_WORKER_ENABLED: "0"
       DAMOON_E2E_ENABLED: "1"
-      DAMOON_LOCAL_E2E: "1"
       DAMOON_APP_URL: http://127.0.0.1:3000
       DAMOON_SHARED_RUNTIME_URL: http://damoon-hotel.ir:3000
       NEXT_TELEMETRY_DISABLED: "1"
@@ -136,7 +135,7 @@ jobs:
           set -euo pipefail
           export HOTEL_PUBLICATION_OPERATIONAL_ENABLED=1
           export HOTEL_GUEST_BOOKING_REQUEST_ENABLED=1
-          nohup env NODE_ENV=development ./node_modules/.bin/next dev --hostname 0.0.0.0 --port 3000 > "$RUNNER_TEMP/damoon-next.log" 2>&1 &
+          nohup env NODE_ENV=development DAMOON_LOCAL_E2E=1 ./node_modules/.bin/next dev --hostname 0.0.0.0 --port 3000 > "$RUNNER_TEMP/damoon-next.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/damoon-next.pid"
       - name: Wait for authenticated API backend
         shell: bash

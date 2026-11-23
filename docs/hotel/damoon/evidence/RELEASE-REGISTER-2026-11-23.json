@@ -8,8 +8,8 @@
     "projectId": "37622",
     "serviceId": "87432",
     "reportedActiveVersion": "v127 (active, 1/1 healthy pod)",
-    "reportedActiveSourceSha": "9379d82761bea87c20b86be1a96da9dcb9bd7428",
-    "sourceShaConfidence": "SERVICE_V127_ACTIVE_1_OF_1; LATEST_GITHUBAPP_DEPLOYMENT_COMPLETED; PROVIDER_LOG_IDENTIFIES_9379D82761BEA87C20B86BE1A96DA9DCB9BD7428; GIT_MAIN_AUTO_PULL_ON; HEALTH_REVISION_NULL",
+    "reportedActiveSourceSha": null,
+    "sourceShaConfidence": "V127_ACTIVE_1_OF_1; LATEST_COMPLETED_GITHUBAPP_DEPLOYMENT_LOG_IDENTIFIES_9379D82761BEA87C20B86BE1A96DA9DCB9BD7428; ACTIVE_POD_SOURCE_SHA_NOT_EXPOSED; LIVE_ASSET_HASHES_MATCH; GIT_MAIN_AUTO_PULL_ON; HEALTH_REVISION_NULL",
     "healthRevision": null
   },
   "liveManifest": {
@@ -94,7 +94,7 @@
   "sourceEvidence": {
     "github": "GitHub API 2026-11-23: PR148 head 65f010bfdd58b3697d6edcb46c47170484d46e0b merged to main as 9379d82761bea87c20b86be1a96da9dcb9bd7428. Relevant Actions successful: runs 45088093180, 45088092192, 45088092271, 45088092212, 45088092180; CMS disposable PostgreSQL run 45088093245 passed. Known Vercel suspended-preview block is the only failing context; CodeRabbit skipped.",
     "liveAsset": "Read-only HTTPS GET 2026-11-23: release-manifest.json reports PR148-exact SHA-256 values for accommodation.css, accommodation.js, app.js, content.js, translations.js and virtual-tour.js; values match source manifest at main 9379d82761bea87c20b86be1a96da9dcb9bd7428.",
-    "provider": "Authenticated Runflare portal 2026-11-23: service 87432 v127 active with 1/1 healthy pod. Latest GitHub App deployment status Completed; its provider log reads \"Reverted To commit 9379d82761bea87c20b86be1a96da9dcb9bd7428\" (Runflare commit-selection deployment control, not a Git revert). Git integration is QComputer/shadcn-rtl main with auto-pull checked. An older Request Initialized row remains in history but no current build/deployment is running. Provider health revision is null."
+    "provider": "Authenticated Runflare portal 2026-11-23: service 87432 v127 active with 1/1 healthy pod. Latest GitHub App deployment status Completed; its provider log reads \"Reverted To commit 9379d82761bea87c20b86be1a96da9dcb9bd7428\" (Runflare commit-selection deployment control, not a Git revert). Git integration is QComputer/shadcn-rtl main with auto-pull checked. An older Request Initialized row remains in history but no current build/deployment is running. The deployment log supplies the selected commit, but the active pod record does not expose an authoritative source SHA; health revision is null."
   },
   "featureGates": {
     "publicBooking": false,

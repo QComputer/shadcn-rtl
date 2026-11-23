@@ -257,7 +257,7 @@ test("Damoon DEMO_BOOKING completes simulated payment and is visible in authoriz
     assert.deepEqual(rows[0].guests.map(row => row.fullName), ["Demo Guest"]);
     assert.equal(await prisma.hotelBookingHold.count({ where: { organizationId: orgId, propertyId, status: "CONSUMED" } }), 1);
     assert.equal(await prisma.paymentRequest.count({ where: { organizationId: orgId } }), paymentsBefore, "simulated payment creates no payment request");
-    assert.equal(await prisma.hotelPaymentAllocation.count({ where: { organizationId: orgId, reservationId: rows[0].id } }), 0, "simulated payment creates no ledger allocation");
+    assert.equal(await prisma.hotelPaymentAllocation.count({ where: { organizationId: orgId, hotelReservationId: rows[0].id } }), 0, "simulated payment creates no ledger allocation");
 
     const manager = await browser.newContext();
     managerContext = manager;

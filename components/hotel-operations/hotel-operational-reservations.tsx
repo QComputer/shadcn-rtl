@@ -36,6 +36,7 @@ export function HotelOperationalReservations({ organizationId, propertyId, local
   const router = useRouter();
   const t = labels[locale as keyof typeof labels] ?? labels.fa;
   const endpoint = useMemo(() => `/api/organizations/${encodeURIComponent(organizationId)}/hotels/${encodeURIComponent(propertyId)}/reservations`, [organizationId, propertyId]);
+  const readEndpoint = centerMode ? `${endpoint}?view=center` : endpoint;
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -82,13 +83,13 @@ export function HotelOperationalReservations({ organizationId, propertyId, local
   }, [snapshot, today]);
 
   const load = useCallback(async () => {
-    const response = await fetch(endpoint, { cache: "no-store", credentials: "same-origin" });
+    const response = await fetch(readEndpoint, { cache: "no-store", credentials: "same-origin" });
     const body = await response.json().catch(() => null);
     if (!response.ok) throw new Error(body?.error || t.error);
     setSnapshot(body as Snapshot);
     setRoomTypeId((value) => body.roomTypes?.some((item: RoomType) => item.id === value) ? value : (body.roomTypes?.[0]?.id ?? ""));
     setRatePlanId((value) => body.ratePlans?.some((item: RatePlan) => item.id === value) ? value : (body.ratePlans?.[0]?.id ?? ""));
-  }, [endpoint, t.error]);
+  }, [readEndpoint, t.error]);
 
   useEffect(() => {
     let active = true;

@@ -182,6 +182,13 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     assert.ok(guestView.history?.every(row => row.resultJson?.actorUserId === customer.id), "guest history excludes other actors");
     const staffView = await service.get(receptionist, a.id, pa.id) as OperationalResult;
     assert.ok(staffView.history?.some(row => row.resultJson?.reservation?.id === reserve.reservation!.id));
+    process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED = "0";
+    process.env.HOTEL_GUEST_PORTAL_ENABLED = "0";
+    const centerView = await service.get(receptionist, a.id, pa.id, true) as OperationalResult;
+    assert.equal((centerView as unknown as { mode: string }).mode, "MANUAL", "the authenticated reservation center read is independent of public booking gates");
+    assert.ok(centerView.reservations?.some(row => row.id === reserve.reservation!.id), "the public quote gate does not hide authorized reception reservations");
+    process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED = "1";
+    process.env.HOTEL_GUEST_PORTAL_ENABLED = "1";
     await assert.rejects(() => service.execute(receptionist, a.id, pa.id, { action: "confirm-reservation", reservationId: reserve.reservation.id }, `confirm-disabled-${token}`), /disabled|select an enabled/i);
     await service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION", manualConfirmationPolicy: "CASH_ON_ARRIVAL", allowedOfflinePaymentMethods: ["CASH", "BANK_TRANSFER"], minimumVerifiedDepositAmount: null });
     await assert.rejects(() => service.execute(otherGuest, a.id, pa.id, { action: "select-payment-method", reservationId: reserve.reservation.id, method: "CASH" }, `other-select-${token}`), /not found/i);

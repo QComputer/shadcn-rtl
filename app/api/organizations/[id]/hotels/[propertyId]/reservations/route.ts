@@ -11,7 +11,8 @@ async function actor(request: NextRequest) {
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string; propertyId: string }> }) {
   try {
     const { id, propertyId } = await params;
-    return NextResponse.json(await new HotelOperationalReservationService().get(await actor(request), id, propertyId), { headers: { "Cache-Control": "private, no-store" } });
+    const receptionCenter = new URL(request.url).searchParams.get("view") === "center";
+    return NextResponse.json(await new HotelOperationalReservationService().get(await actor(request), id, propertyId, receptionCenter), { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) { return jsonError(error); }
 }
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string; propertyId: string }> }) {

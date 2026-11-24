@@ -812,9 +812,9 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   assert.equal((manualAudit.resultJson as { source?: string }).source, "PHONE", "reservation source is retained in staff-only history");
   const manualItem = manualSection.getByRole("listitem").filter({ hasText: manualDbRow.reference });
   await manualItem.getByRole("button", { name: "ثبت ورود" }).click();
-  await manualItem.getByText("CHECKED_IN").waitFor({ state: "visible", timeout: 30_000 });
+  await manualItem.getByText("ورود ثبت‌شده").waitFor({ state: "visible", timeout: 30_000 });
   await manualItem.getByRole("button", { name: "ثبت خروج" }).click();
-  await manualItem.getByText("CHECKED_OUT").waitFor({ state: "visible", timeout: 30_000 });
+  await manualItem.getByText("خروج ثبت‌شده").waitFor({ state: "visible", timeout: 30_000 });
 
   stage = "browser-reservation-center-search-details-and-calendar";
   await page.goto(`${baseUrl}/fa/dashboard/hotel-operations/${orgAId}/${propertyAId}/reservations`, { waitUntil: "domcontentloaded" });

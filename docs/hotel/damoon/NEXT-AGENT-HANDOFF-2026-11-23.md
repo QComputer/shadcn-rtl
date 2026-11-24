@@ -8,9 +8,9 @@
 
 # Damoon | هَندآف اجرایی Agentها (نسخه فشرده و قابل کپی)
 
-## نقطهٔ ادامه پس از PR166 — ۲۰۲۶-۱۱-۲۵
+## handoff پس از PR167 — ۲۰۲۶-۱۱-۲۵
 
-شاخهٔ محلی `codex/damoon-res-center-live-readiness-20261124` از main `70c0069b8cdb925ac9da0334a515cf94d936daa5` شامل اصلاح پیوند guest-demo در property operations، discovery property دامون با حذف synthetic `damoon-demo` و پاسخ fail-closed به multi-operational-property، و جداسازی missing maintenance table از reads مستقل عملیات است. هفت تست unit، full TypeScript check و ESLint متمرکز پاس شده‌اند. Disposable PostgreSQL/browser acceptance باید در CI اجرا شود؛ production database binding/schema، migration و Runflare live status با این کار بررسی یا تغییر نشده‌اند. تغییرات inherited Leaflet CSS/JS و `sites/damoon/theme-tokens.css` همچنان خارج از مالکیت این شاخه‌اند. تا زمان تأیید CI این تغییرات merge/deploy نشده تلقی شوند.
+PR167 با head `85d47064536825e1297ff684e76b05d65fa152c5` و merge/main `b7ef6c3888302768c3a1dd0a23c386108611dce` ادغام شده است. همهٔ checkهای اجرایی exact-head موفق بودند: RunFlare TypeScript، focused regressions، migration-gap upgrade، request-to-reception و Hotel Phase 1 PostgreSQL/browser. Vercel Preview exception شناخته‌شدهٔ suspended-preview است. Live GETها: health HTTP 200/status=ok ولی revision=null؛ demo-start path HTTP 200/static HTML، که اثبات اجرای flow یا منبع deployment نیست. Runflare version/source و browser acceptance تأیید نشده‌اند. هیچ Production DB access، migration، write یا manual deployment انجام نشد. سه فایل موروثی Leaflet CSS/JS و `sites/damoon/theme-tokens.css` در checkout قبلی همچنان خارج از مالکیت کار بوده‌اند و نباید پاک شوند.
 
 > **وضعیت نهایی PR165، ۲۰۲۶-۱۱-۲۴:** ادغام در `2308cbaf00746f9e2a038741fdada820f04c5dd8`، head دقیق PR `92e9018f1958d01d3240bc3e6514b61e8c928469`. تمام checkهای اجرایی موفق؛ Vercel Preview استثنای شناخته‌شدهٔ تعلیق بود. Runflare و Production acceptance هنوز تأیید نشده‌اند؛ هیچ deployment دستی یا تغییر Production انجام نشد.
 

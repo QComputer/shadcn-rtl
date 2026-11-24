@@ -389,6 +389,13 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   assert.equal(ratePlanResult.response.status, 201);
   assert.ok(ratePlanResult.data?.ratePlan.id);
   const ratePlanId = ratePlanResult.data!.ratePlan.id;
+  stage = "update-rate-plan-base-nightly-rate";
+  const updatedRatePlan = await apiJson<{ ratePlan: { id: string; baseNightlyRate: string } }>(`/api/organizations/${orgAId}/hotels/${propertyAId}/rate-plans/${ratePlanId}`, cookie, "PATCH", {
+    baseNightlyRate: "260000",
+  });
+  assert.equal(updatedRatePlan.response.status, 200);
+  assert.equal(updatedRatePlan.data?.ratePlan.id, ratePlanId);
+  assert.equal(updatedRatePlan.data?.ratePlan.baseNightlyRate, "260000");
   const from = "2027-06-10";
   const to = "2027-06-12";
   const rateResult = await apiJson<{ nightlyRate: { id: string; nightlyRate: string } }>(`/api/organizations/${orgAId}/hotels/${propertyAId}/rate-plans/${ratePlanId}/nightly-rates`, cookie, "PUT", { from, to, nightlyRate: "275000", minNights: 1 });
@@ -415,7 +422,7 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   assert.equal(operations.data?.range.nights, 2);
   assert.ok(operations.data?.roomTypes.some((roomType) => roomType.id === roomTypeId && roomType.rooms.length === 2), "operations reload includes both configured physical rooms");
   assert.deepEqual(operations.data?.roomTypes.find((roomType) => roomType.id === roomTypeId)?.physicalCapacity, { configuredRooms: 2, sellableRooms: 2 });
-  assert.ok(operations.data?.ratePlans.some((plan) => plan.id === ratePlanId && plan.baseNightlyRate === "250000" && plan.nightlyRates.some((rate) => rate.nightlyRate === "275000")));
+  assert.ok(operations.data?.ratePlans.some((plan) => plan.id === ratePlanId && plan.baseNightlyRate === "260000" && plan.nightlyRates.some((rate) => rate.nightlyRate === "275000")));
   assert.equal(operations.data?.inventory.length, 2);
   assert.ok(operations.data?.inventory.every((night) => night.roomTypeId === roomTypeId && night.allotment === 3 && night.available === 2));
   assert.ok(operations.data?.cancellationPolicies.some((policy) => policy.id === policyResult.data!.policy.id && policy.isActive));

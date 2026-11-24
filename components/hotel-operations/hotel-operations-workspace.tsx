@@ -63,7 +63,7 @@ const labels = {
     add: "افزودن", save: "ذخیره", update: "ذخیره تغییرات", cancel: "لغو ویرایش", edit: "ویرایش",
     slug: "شناسه نوع اتاق", name: "نام", description: "توضیحات", adults: "بزرگسالان", children: "کودکان", occupancy: "ظرفیت کل", beds: "تخت", bedKind: "نوع تخت", bedCount: "تعداد", bedKinds: { single: "یک‌نفره", double: "دو‌نفره", queen: "کوئین", king: "کینگ", sofa: "مبل تخت‌خواب‌شو", bunk: "دوطبقه", crib: "تخت کودک" },
     roomType: "نوع اتاق", code: "کد اتاق", floor: "طبقه", unavailable: "خارج از سرویس", active: "فعال", room: "اتاق",
-    planCode: "کد طرح نرخ", planName: "نام طرح", baseRate: "نرخ پایه (تومان)", createPlan: "ایجاد طرح نرخ", planValidity: "اعتبار طرح",
+    planCode: "کد طرح نرخ", planName: "نام طرح", baseRate: "نرخ پایه (تومان)", createPlan: "ایجاد طرح نرخ", editPlan: "ویرایش طرح نرخ", updatePlan: "ذخیره نرخ طرح", planValidity: "اعتبار طرح",
     policies: "قوانین لغو", policyKey: "شناسه قانون لغو", policyName: "نام قانون لغو", cutoff: "مهلت لغو رایگان (ساعت)", retention: "میزان کسر در لغو دیرهنگام (۰ تا ۱)", createPolicy: "ثبت قانون لغو", selectPolicy: "قانون لغو را انتخاب کنید", noPolicy: "قانون لغو تنظیم نشده؛ نرخ به مسیر رزرو مهمان متصل نمی‌شود.", inactivePolicy: "غیرفعال", policyRequired: "برای قابل رزرو شدن نرخ، یک قانون لغو فعال ایجاد و به طرح نرخ متصل کنید.",
     from: "از (شامل)", to: "تا (غیرشامل)", nightlyRate: "نرخ شبانه (تومان)", saveNightly: "ذخیره نرخ این بازه",
     date: "تاریخ شب", allotment: "ظرفیت کل", allotmentDelta: "تغییر ظرفیت", outDelta: "تغییر خارج از سرویس", reason: "دلیل ثبت", initialize: "ساخت شب‌های ظرفیتِ موجودنیست", adjust: "ثبت تغییر ظرفیت", refresh: "بارگذاری دوباره",
@@ -79,7 +79,7 @@ const labels = {
     add: "Add", save: "Save", update: "Save changes", cancel: "Cancel edit", edit: "Edit",
     slug: "Room type slug", name: "Name", description: "Description", adults: "Adults", children: "Children", occupancy: "Max occupancy", beds: "Bed", bedKind: "Bed type", bedCount: "Count", bedKinds: { single: "Single", double: "Double", queen: "Queen", king: "King", sofa: "Sofa bed", bunk: "Bunk", crib: "Crib" },
     roomType: "Room type", code: "Room code", floor: "Floor", unavailable: "Out of service", active: "Active", room: "Room",
-    planCode: "Rate plan code", planName: "Rate plan name", baseRate: "Base nightly rate (Toman)", createPlan: "Create rate plan", planValidity: "Plan validity",
+    planCode: "Rate plan code", planName: "Rate plan name", baseRate: "Base nightly rate (Toman)", createPlan: "Create rate plan", editPlan: "Edit rate plan", updatePlan: "Save rate plan", planValidity: "Plan validity",
     policies: "Cancellation policies", policyKey: "Cancellation policy key", policyName: "Cancellation policy name", cutoff: "Free cancellation cutoff (hours)", retention: "Late cancellation retention (0 to 1)", createPolicy: "Create cancellation policy", selectPolicy: "Select a cancellation policy", noPolicy: "No cancellation policy is configured; this rate cannot be used in the guest reservation flow.", inactivePolicy: "Inactive", policyRequired: "Create and attach an active cancellation policy before this rate can be reserved by guests.",
     from: "From (inclusive)", to: "To (exclusive)", nightlyRate: "Nightly rate (Toman)", saveNightly: "Save nightly-rate range",
     date: "Night date", allotment: "Allotment", allotmentDelta: "Allotment change", outDelta: "Out-of-service change", reason: "Reason", initialize: "Initialize missing nights", adjust: "Save inventory adjustment", refresh: "Reload",
@@ -95,7 +95,7 @@ const labels = {
     add: "إضافة", save: "حفظ", update: "حفظ التغييرات", cancel: "إلغاء التعديل", edit: "تعديل",
     slug: "معرّف نوع الغرفة", name: "الاسم", description: "الوصف", adults: "البالغون", children: "الأطفال", occupancy: "السعة القصوى", beds: "السرير", bedKind: "نوع السرير", bedCount: "العدد", bedKinds: { single: "مفرد", double: "مزدوج", queen: "كوين", king: "كينغ", sofa: "سرير أريكة", bunk: "طابقي", crib: "سرير أطفال" },
     roomType: "نوع الغرفة", code: "رمز الغرفة", floor: "الطابق", unavailable: "خارج الخدمة", active: "نشطة", room: "غرفة",
-    planCode: "رمز خطة السعر", planName: "اسم الخطة", baseRate: "السعر الأساسي لليلة (تومان)", createPlan: "إنشاء خطة سعر", planValidity: "صلاحية الخطة",
+    planCode: "رمز خطة السعر", planName: "اسم الخطة", baseRate: "السعر الأساسي لليلة (تومان)", createPlan: "إنشاء خطة سعر", editPlan: "تعديل خطة السعر", updatePlan: "حفظ خطة السعر", planValidity: "صلاحية الخطة",
     policies: "سياسات الإلغاء", policyKey: "معرّف سياسة الإلغاء", policyName: "اسم سياسة الإلغاء", cutoff: "مهلة الإلغاء المجاني (ساعات)", retention: "الاقتطاع عند الإلغاء المتأخر (من ٠ إلى ١)", createPolicy: "إنشاء سياسة إلغاء", selectPolicy: "اختر سياسة إلغاء", noPolicy: "لم يتم إعداد سياسة إلغاء؛ لا يمكن استخدام هذا السعر في مسار حجز الضيوف.", inactivePolicy: "غير نشطة", policyRequired: "أنشئ سياسة إلغاء نشطة واربطها بخطة السعر قبل أن يتمكن الضيف من الحجز.",
     from: "من (شامل)", to: "إلى (غير شامل)", nightlyRate: "سعر الليلة (تومان)", saveNightly: "حفظ أسعار الفترة",
     date: "تاريخ الليلة", allotment: "السعة", allotmentDelta: "تغيير السعة", outDelta: "تغيير خارج الخدمة", reason: "سبب التغيير", initialize: "إنشاء الليالي المفقودة", adjust: "حفظ تعديل المخزون", refresh: "إعادة التحميل",
@@ -159,6 +159,7 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
   const [roomUnavailable, setRoomUnavailable] = useState(false);
   const [roomActive, setRoomActive] = useState(true);
   const [planTypeId, setPlanTypeId] = useState("");
+  const [editingRatePlanId, setEditingRatePlanId] = useState<string | null>(null);
   const [planCode, setPlanCode] = useState("");
   const [planName, setPlanName] = useState("");
   const [baseRate, setBaseRate] = useState("");
@@ -329,8 +330,32 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
   }
   async function createRatePlan(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = await mutate("/rate-plans", "POST", { roomTypeId: planTypeId, code: planCode, name: planName, baseNightlyRate: baseRate, cancellationPolicyId: ratePolicyId });
+    const path = editingRatePlanId ? `/rate-plans/${encodeURIComponent(editingRatePlanId)}` : "/rate-plans";
+    const payload = {
+      ...(editingRatePlanId ? {} : { roomTypeId: planTypeId }),
+      code: planCode,
+      name: planName,
+      baseNightlyRate: baseRate,
+      ...(ratePolicyId ? { cancellationPolicyId: ratePolicyId } : {}),
+    };
+    const result = await mutate(path, editingRatePlanId ? "PATCH" : "POST", payload);
     if (result?.ratePlan?.id) setRatePlanId(result.ratePlan.id);
+    if (result) resetRatePlanForm();
+  }
+  function startRatePlanEdit(plan: RatePlan) {
+    setEditingRatePlanId(plan.id);
+    setPlanTypeId(plan.roomTypeId);
+    setPlanCode(plan.code);
+    setPlanName(plan.name);
+    setBaseRate(plan.baseNightlyRate);
+    setRatePolicyId(plan.cancellationPolicyId ?? "");
+  }
+  function resetRatePlanForm() {
+    setEditingRatePlanId(null);
+    setPlanCode("");
+    setPlanName("");
+    setBaseRate("");
+    setRatePolicyId("");
   }
   async function createCancellationPolicy(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -456,7 +481,7 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
 
     <section className="space-y-4 rounded-xl border bg-card p-4">
       <h2 className="text-lg font-semibold">{text.rates}</h2>
-      <ul className="space-y-2 text-sm">{(activeData?.ratePlans ?? []).map((plan) => <li key={plan.id} className="rounded-lg border p-3">{plan.name} · {plan.baseNightlyRate} {plan.currency}{plan.validFrom || plan.validTo ? <p className="mt-1 text-xs text-muted-foreground">{text.planValidity}: {plan.validFrom ?? "—"} – {plan.validTo ?? "—"}</p> : null}{!plan.cancellationPolicyId ? <p className="mt-1 text-xs text-amber-700">{text.noPolicy}</p> : null}<ul className="mt-2 text-xs text-muted-foreground">{plan.nightlyRates.map((rate) => <li key={rate.id}>{rate.from} – {rate.to}: {rate.nightlyRate ?? "—"}</li>)}</ul></li>)}</ul>
+      <ul className="space-y-2 text-sm">{(activeData?.ratePlans ?? []).map((plan) => <li key={plan.id} className="rounded-lg border p-3"><div className="flex flex-wrap items-start justify-between gap-2"><h3 className="font-medium">{plan.name} · {plan.baseNightlyRate} {plan.currency}</h3><Button type="button" size="sm" variant="outline" aria-label={`${text.editPlan}: ${plan.name}`} onClick={() => startRatePlanEdit(plan)}>{text.editPlan}</Button></div>{plan.validFrom || plan.validTo ? <p className="mt-1 text-xs text-muted-foreground">{text.planValidity}: {plan.validFrom ?? "—"} – {plan.validTo ?? "—"}</p> : null}{!plan.cancellationPolicyId ? <p className="mt-1 text-xs text-amber-700">{text.noPolicy}</p> : null}<ul className="mt-2 text-xs text-muted-foreground">{plan.nightlyRates.map((rate) => <li key={rate.id}>{rate.from} – {rate.to}: {rate.nightlyRate ?? "—"}</li>)}</ul></li>)}</ul>
       <div className="rounded-lg border p-3">
         <h3 className="font-medium">{text.policies}</h3>
         <ul className="my-2 space-y-1 text-sm">{(activeData?.cancellationPolicies ?? []).map((policy) => <li key={policy.id}>{policy.name} · {policy.freeCancellationCutoffHours}h · {policy.fullCancellationRetention}{policy.isActive ? "" : ` · ${text.inactivePolicy}`}</li>)}</ul>
@@ -471,9 +496,9 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
       <form onSubmit={createRatePlan} className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1 text-sm"><span>{text.roomType}</span><select className="h-10 min-w-0 w-full rounded-md border bg-background px-3" value={planTypeId} onChange={(event) => setPlanTypeId(event.target.value)} required>{(activeData?.roomTypes ?? []).map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}</select></label>
         <Field label={text.planCode} value={planCode} setValue={setPlanCode} required /><Field label={text.planName} value={planName} setValue={setPlanName} required /><Field label={text.baseRate} value={baseRate} setValue={setBaseRate} type="number" required />
-        <label className="space-y-1 text-sm"><span>{text.policies}</span><select className="h-10 min-w-0 w-full rounded-md border bg-background px-3" value={ratePolicyId} onChange={(event) => setRatePolicyId(event.target.value)} required><option value="">{text.selectPolicy}</option>{(activeData?.cancellationPolicies ?? []).filter((policy) => policy.isActive).map((policy) => <option key={policy.id} value={policy.id}>{policy.name}</option>)}</select></label>
-        <p className="text-xs text-muted-foreground sm:col-span-2">{text.policyRequired}</p>
-        <Button type="submit" disabled={busy || !planTypeId || !baseRate || !ratePolicyId}>{text.createPlan}</Button>
+        <label className="space-y-1 text-sm"><span>{text.policies}</span><select className="h-10 min-w-0 w-full rounded-md border bg-background px-3" value={ratePolicyId} onChange={(event) => setRatePolicyId(event.target.value)} required={!editingRatePlanId}><option value="">{text.selectPolicy}</option>{(activeData?.cancellationPolicies ?? []).filter((policy) => policy.isActive).map((policy) => <option key={policy.id} value={policy.id}>{policy.name}</option>)}</select></label>
+        {!editingRatePlanId ? <p className="text-xs text-muted-foreground sm:col-span-2">{text.policyRequired}</p> : null}
+        <div className="flex flex-wrap gap-2"><Button type="submit" disabled={busy || !planTypeId || !baseRate || (!editingRatePlanId && !ratePolicyId)}>{editingRatePlanId ? text.updatePlan : text.createPlan}</Button>{editingRatePlanId ? <Button type="button" variant="outline" onClick={resetRatePlanForm}>{text.cancel}</Button> : null}</div>
       </form>
       <form onSubmit={saveNightlyRate} className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1 text-sm"><span>{text.planName}</span><select className="h-10 min-w-0 w-full rounded-md border bg-background px-3" value={ratePlanId} onChange={(event) => setRatePlanId(event.target.value)} required>{(activeData?.ratePlans ?? []).map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {plan.code}</option>)}</select></label>

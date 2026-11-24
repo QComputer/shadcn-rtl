@@ -310,6 +310,7 @@ after(async () => {
       await db.hotelInventoryIdempotency.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelNightlyRate.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelRatePlan.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
+      await db.hotelRoomMaintenanceBlock.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelRoom.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelRoomType.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelProperty.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
@@ -376,6 +377,12 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   const secondRoomResult = await apiJson<{ room: { id: string; code: string } }>(`/api/organizations/${orgAId}/hotels/${propertyAId}/rooms`, cookie, "POST", { roomTypeId, code: `${suffix.slice(0, 5)}-102`, floor: "1" });
   assert.equal(secondRoomResult.response.status, 201);
   assert.ok(secondRoomResult.data?.room.id);
+  await db.hotelRoomMaintenanceBlock.create({ data: {
+    organizationId: orgAId, propertyId: propertyAId, roomId: roomResult.data!.room.id,
+    from: new Date("2027-08-08T00:00:00.000Z"), to: new Date("2027-08-10T00:00:00.000Z"),
+    reason: "Synthetic browser acceptance maintenance", idempotencyKey: `browser-maintenance-${suffix}`,
+    requestFingerprint: `browser-maintenance-fingerprint-${suffix}`, createdBy: managerUserId,
+  } });
 
   stage = "create-cancellation-policy";
   const policyResult = await apiJson<{ policy: { id: string; key: string } }>(`/api/organizations/${orgAId}/hotels/${propertyAId}/cancellation-policies`, cookie, "POST", { key: `${suffix.slice(0, 8)}-preview`, name: `${prefix} Preview cancellation`, freeCancellationCutoffHours: 48, fullCancellationRetention: 0 });

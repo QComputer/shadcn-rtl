@@ -870,7 +870,7 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
     await page.getByText(`${uiName} (${uiSlug})`, { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
     const layout = await page.evaluate(() => ({
       documentFits: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
-      workspaceDirection: document.querySelector("main > div")?.getAttribute("dir") ?? null,
+      workspaceDirection: document.querySelector("main [dir]")?.getAttribute("dir") ?? document.querySelector("main")?.getAttribute("dir") ?? document.documentElement.getAttribute("dir"),
       overflowing: Array.from(document.querySelectorAll("main *")).filter((element) => element.getBoundingClientRect().width > innerWidth).slice(0, 12).map((element) => ({ tag: element.tagName, classes: element.className, width: Math.round(element.getBoundingClientRect().width) })),
     }));
     assert.equal(layout.documentFits, true, `${locale} mobile page has no horizontal document overflow: ${JSON.stringify(layout.overflowing)}`);

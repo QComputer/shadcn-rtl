@@ -4,9 +4,9 @@ import { auth } from "@/lib/auth";
 import { listHotelOperationsOrganizations } from "@/lib/hotel/management/hotel-operations-dashboard-context.server";
 
 const labels = {
-  fa: { title: "عملیات هتل", intro: "اتاق‌ها، نرخ‌ها و ظرفیت هر ملک را مدیریت کنید.", open: "مدیریت عملیات", empty: "ملک فعالی برای عملیات هتل در دسترس نیست." },
-  en: { title: "Hotel operations", intro: "Manage rooms, rates, and inventory for each property.", open: "Open operations", empty: "No active Hotel properties are available for operations." },
-  ar: { title: "عمليات الفندق", intro: "أدر الغرف والأسعار والمخزون لكل عقار.", open: "فتح العمليات", empty: "لا توجد عقارات فندقية نشطة متاحة." },
+  fa: { title: "عملیات هتل", intro: "اتاق‌ها، نرخ‌ها و ظرفیت هر ملک را مدیریت کنید.", open: "مدیریت عملیات", reservations: "رزرواسیون", empty: "ملک فعالی برای عملیات هتل در دسترس نیست." },
+  en: { title: "Hotel operations", intro: "Manage rooms, rates, and inventory for each property.", open: "Open operations", reservations: "Reservations", empty: "No active Hotel properties are available for operations." },
+  ar: { title: "عمليات الفندق", intro: "أدر الغرف والأسعار والمخزون لكل عقار.", open: "فتح العمليات", reservations: "الحجوزات", empty: "لا توجد عقارات فندقية نشطة متاحة." },
 } as const;
 
 export default async function HotelOperationsDashboardPage({
@@ -38,9 +38,14 @@ export default async function HotelOperationsDashboardPage({
         <h2 className="text-lg font-semibold">{organization.name}</h2>
         {organization.properties.length === 0 ? <p className="text-sm text-muted-foreground">{text.empty}</p> :
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{organization.properties.map((property) =>
-            <li key={property.id}><Link className="block rounded-lg border p-4 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href={`/${locale}/dashboard/hotel-operations/${encodeURIComponent(organization.id)}/${encodeURIComponent(property.id)}`}>
-              <span className="block font-medium">{property.name}</span><span className="mt-1 block text-sm text-muted-foreground">{text.open}</span>
-            </Link></li>,
+            <li key={property.id} className="space-y-2 rounded-lg border p-4">
+              <span className="block font-medium">{property.name}</span>
+              <div className="flex flex-wrap gap-2"><Link className="inline-flex min-h-10 items-center rounded-md border px-3 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href={`/${locale}/dashboard/hotel-operations/${encodeURIComponent(organization.id)}/${encodeURIComponent(property.id)}`}>
+                {text.open}
+              </Link><Link className="inline-flex min-h-10 items-center rounded-md bg-primary px-3 text-sm text-primary-foreground hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href={`/${locale}/dashboard/hotel-operations/${encodeURIComponent(organization.id)}/${encodeURIComponent(property.id)}/reservations`}>
+                {text.reservations}
+              </Link></div>
+            </li>,
           )}</ul>}
       </section>,
     )}

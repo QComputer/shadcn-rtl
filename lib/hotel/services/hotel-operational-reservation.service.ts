@@ -134,7 +134,7 @@ export class HotelOperationalReservationService {
       const demoOrganization = await this.db.organization.findFirst({ where: { id: organizationId, vertical: "HOTEL", isActive: true, deletedAt: null }, select: { slug: true } });
       if (demoProperty.slug === "damoon-demo" && isDamoonDemoOrganizationSlug(demoOrganization?.slug)) {
         const [reservations, roomTypes, ratePlans] = await Promise.all([
-          this.db.hotelReservation.findMany({ where: { organizationId, propertyId }, include: { nights: { select: { roomId: true } }, guests: { select: { fullName: true, isPrimary: true } } }, orderBy: { createdAt: "desc" }, take: 100 }),
+          this.db.hotelReservation.findMany({ where: { organizationId, propertyId }, include: { nights: { select: { date: true, roomId: true } }, guests: { select: { fullName: true, isPrimary: true } } }, orderBy: { createdAt: "desc" }, take: 100 }),
           this.db.hotelRoomType.findMany({ where: { organizationId, propertyId, isActive: true, deletedAt: null }, select: { id: true, name: true } }),
           this.db.hotelRatePlan.findMany({ where: { organizationId, propertyId, isActive: true }, select: { id: true, name: true, roomTypeId: true } }),
         ]);
@@ -152,7 +152,7 @@ export class HotelOperationalReservationService {
     const manualMeta = manualRows.flatMap(row => { const value = row.resultJson as Record<string, unknown> | null; return value && typeof value === "object" && typeof value.reservationId === "string" ? [{ id: value.reservationId, source: typeof value.source === "string" ? value.source : null }] : []; });
     const manualIds = manualMeta.map(item => item.id);
     const reservationIds = [...new Set([...ids, ...manualIds])];
-    const reservations = await this.db.hotelReservation.findMany({ where: { organizationId, propertyId, id: { in: reservationIds } }, include: { nights: { select: { roomId: true } }, guests: { select: { fullName: true, isPrimary: true } } }, orderBy: { createdAt: "desc" }, take: 100 });
+    const reservations = await this.db.hotelReservation.findMany({ where: { organizationId, propertyId, id: { in: reservationIds } }, include: { nights: { select: { date: true, roomId: true } }, guests: { select: { fullName: true, isPrimary: true } } }, orderBy: { createdAt: "desc" }, take: 100 });
     const roomTypes = await this.db.hotelRoomType.findMany({ where: { organizationId, propertyId, isActive: true, deletedAt: null }, select: { id: true, name: true } });
     const ratePlans = await this.db.hotelRatePlan.findMany({ where: { organizationId, propertyId, isActive: true }, select: { id: true, name: true, roomTypeId: true } });
     const rooms = actor.role === "CUSTOMER" ? [] : await this.db.hotelRoom.findMany({ where: { organizationId, propertyId, isActive: true, deletedAt: null, isOutOfService: false }, select: { id: true, code: true, roomTypeId: true } });

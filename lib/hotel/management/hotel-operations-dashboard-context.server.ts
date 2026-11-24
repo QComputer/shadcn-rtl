@@ -108,3 +108,29 @@ export async function getHotelOperationsOrganization(input: {
   });
   return organizations[0] ?? null;
 }
+
+/** Minimal server page context for the reservation center; STAFF authority is rechecked by its APIs. */
+export async function getHotelReservationCenterContext(input: {
+  userId: string;
+  sessionOrganizationId?: string | null;
+  sessionRole: UserRole;
+  organizationId: string;
+  propertyId: string;
+}) {
+  const allowedRoles = ["ADMIN", "MANAGER", "STAFF", "SUPER_ADMIN"] as const;
+  if (!allowedRoles.includes(input.sessionRole as (typeof allowedRoles)[number])) return null;
+  if (input.sessionRole !== "SUPER_ADMIN" && input.sessionOrganizationId !== input.organizationId) return null;
+  const user = await prisma.user.findFirst({ where: { id: input.userId, role: input.sessionRole, isActive: true, deletedAt: null }, select: { id: true } });
+  if (!user) return null;
+  const membership = input.sessionRole === "SUPER_ADMIN" ? true : await prisma.organizationMember.findFirst({
+    where: { userId: input.userId, organizationId: input.organizationId, isActive: true, role: { in: ["ADMIN", "MANAGER", "STAFF"] }, organization: { vertical: "HOTEL", isActive: true, deletedAt: null, capabilities: { some: { key: "HOTEL_BOOKING", status: "ACTIVE", enabledAt: { not: null } } } } },
+    select: { id: true, role: true },
+  });
+  if (!membership) return null;
+  const [organization, property] = await Promise.all([
+    prisma.organization.findFirst({ where: { id: input.organizationId, vertical: "HOTEL", isActive: true, deletedAt: null, capabilities: { some: { key: "HOTEL_BOOKING", status: "ACTIVE", enabledAt: { not: null } } }, ...(input.sessionRole === "SUPER_ADMIN" ? {} : { members: { some: { userId: input.userId, isActive: true, role: { in: ["ADMIN", "MANAGER", "STAFF"] } } } }) }, select: { id: true, name: true } }),
+    prisma.hotelProperty.findFirst({ where: { id: input.propertyId, organizationId: input.organizationId, isActive: true, deletedAt: null }, select: { id: true, name: true, timezone: true } }),
+  ]);
+  if (!organization || !property) return null;
+  return { organization, property };
+}

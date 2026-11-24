@@ -147,6 +147,12 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
     requiredCapability: "HOTEL_BOOKING",
   },
 
+  "/dashboard/hotel-operations/[organizationId]/[propertyId]/reservations": {
+    allowedRoles: ["ADMIN", "MANAGER", "STAFF", "SUPER_ADMIN"],
+    requiresOrgMembership: true,
+    requiredCapability: "HOTEL_BOOKING",
+  },
+
   "/dashboard/hotel-website": {
     allowedRoles: ORG_MANAGEMENT_ROLES,
     requiresOrgMembership: true,

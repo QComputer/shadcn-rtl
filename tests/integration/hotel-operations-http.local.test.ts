@@ -816,6 +816,45 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   await manualItem.getByRole("button", { name: "ثبت خروج" }).click();
   await manualItem.getByText("CHECKED_OUT").waitFor({ state: "visible", timeout: 30_000 });
 
+  stage = "browser-reservation-center-search-details-and-calendar";
+  await page.goto(`${baseUrl}/fa/dashboard/hotel-operations/${orgAId}/${propertyAId}/reservations`, { waitUntil: "domcontentloaded" });
+  await page.getByRole("heading", { name: /مرکز رزرواسیون/ }).waitFor({ state: "visible", timeout: 30_000 });
+  const center = page.getByRole("region", { name: "مرکز رزرواسیون" });
+  await center.getByLabel("جست‌وجو با نام مهمان یا کد رزرو").fill(`Manual Guest ${suffix.slice(0, 8)}`);
+  const centerItem = center.getByRole("listitem").filter({ hasText: manualDbRow.reference });
+  await centerItem.getByRole("button", { name: "جزئیات" }).click();
+  const details = page.getByRole("complementary", { name: "جزئیات رزرو انتخاب‌شده" });
+  await details.getByText(`Manual Guest ${suffix.slice(0, 8)}`).waitFor({ state: "visible" });
+  await center.getByLabel("فیلتر وضعیت").selectOption("CHECKED_OUT");
+  await centerItem.getByText("خروج ثبت‌شده").waitFor({ state: "visible" });
+
+  const calendar = page.getByRole("region", { name: "تقویم اشغال اتاق‌ها" });
+  await calendar.getByLabel("تاریخ شروع").fill("2027-08-08");
+  await calendar.getByRole("cell").filter({ hasText: "تعمیرات" }).first().waitFor({ state: "visible", timeout: 30_000 });
+  await calendar.getByRole("row").filter({ hasText: manualRoom.code }).waitFor({ state: "visible" });
+  assert.equal(await calendar.getAttribute("dir"), "rtl", "the reservation calendar uses Persian RTL presentation");
+  for (const locale of ["en", "ar"] as const) {
+    await page.goto(`${baseUrl}/${locale}/dashboard/hotel-operations/${orgAId}/${propertyAId}/reservations`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: locale === "en" ? /Reservation center/ : /مركز الحجوزات/ }).waitFor({ state: "visible", timeout: 30_000 });
+    const localizedCenter = page.getByRole("region", { name: locale === "en" ? "Reservation center" : "مركز الحجوزات" });
+    assert.equal(await localizedCenter.getAttribute("dir"), locale === "en" ? "ltr" : "rtl", `${locale} reservation center uses the expected direction`);
+    await page.getByRole("region", { name: locale === "en" ? "Room occupancy calendar" : "تقويم إشغال الغرف" }).waitFor({ state: "visible", timeout: 30_000 });
+  }
+  const staffContext = await browser.newContext({ viewport: { width: 1280, height: 850 } });
+  await staffContext.addCookies(staffLogin.cookies.map((value) => {
+    const separator = value.indexOf("=");
+    return { name: value.slice(0, separator), value: value.slice(separator + 1), url: baseUrl };
+  }).filter((entry) => entry.name && entry.value));
+  const staffPage = await staffContext.newPage();
+  await staffPage.goto(`${baseUrl}/fa/dashboard/hotel-operations/${orgAId}/${propertyAId}/reservations`, { waitUntil: "domcontentloaded" });
+  await staffPage.getByRole("heading", { name: /مرکز رزرواسیون/ }).waitFor({ state: "visible", timeout: 30_000 });
+  await staffPage.getByRole("region", { name: "تقویم اشغال اتاق‌ها" }).waitFor({ state: "visible", timeout: 30_000 });
+  await staffContext.close();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${baseUrl}/fa/dashboard/hotel-operations/${orgAId}/${propertyAId}/reservations`, { waitUntil: "domcontentloaded" });
+  await page.getByRole("heading", { name: /مرکز رزرواسیون/ }).waitFor({ state: "visible", timeout: 30_000 });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true, "reservation center avoids page-level horizontal overflow on mobile");
+
   stage = "browser-mobile-fa-ar-layout";
   await page.setViewportSize({ width: 390, height: 844 });
   for (const locale of ["fa", "ar"] as const) {

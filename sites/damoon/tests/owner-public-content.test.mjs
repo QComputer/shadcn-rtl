@@ -158,7 +158,13 @@ test("Damoon public content uses owner-confirmed hospitality facts in fa/en/ar",
   assert.match(publicBooking, /booking-activation\.js/);
   assert.match(publicBookingActivation, /enabled: false/);
   assert.ok(publicManifest.files["booking-activation.js"], "release manifest includes the disabled public booking activation gate");
-  assert.match(publicApp, /Request stay coordination/);
+  assert.match(publicBookingActivation, /Request stay coordination/);
+  assert.match(publicApp, /getDamoonReservationPageCopy/);
+  assert.match(publicApp, /demo-booking/);
+  for (const asset of ["app.js", "booking.js", "booking-activation.js"]) {
+    const bytes = await readFile(resolve(publicRoot, asset));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), publicManifest.files[asset], `release manifest matches generated ${asset}`);
+  }
   assert.match(publicApp, /<source type="image\/webp" srcset="\/damoon-front\/assets\/hero-reference-v2-640\.webp 640w, \/damoon-front\/assets\/hero-reference-v2-1280\.webp 1280w, \/damoon-front\/assets\/hero-reference-v2-1920\.webp 1920w"/);
   for (const width of [640, 1280, 1920]) assert.ok(publicManifest.files[`assets/hero-reference-v2-${width}.webp`], `release manifest includes ${width}px responsive hero asset`);
   for (const asset of ["content.js", "translations.js", "hospitality.js", "hospitality.css"]) {

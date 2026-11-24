@@ -24,7 +24,7 @@ for (const f of files) {
   }
   await writeFile(join(output,f),text);
 }
-await writeFile(join(root,'theme-tokens.css'),paletteStyles());
+if (!process.argv.includes('--preserve-source-theme-tokens')) await writeFile(join(root,'theme-tokens.css'),paletteStyles());
 await writeFile(join(output,'theme-tokens.css'),paletteStyles());
 if (!directPublic) await cp(join(root,'assets'), join(output,'assets'), { recursive: true });
 let leafletDist;

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { HotelOfflinePayments } from "@/components/hotel-operations/hotel-offline-payments";
 import { HotelGuestOfflinePayment } from "@/components/hotel-operations/hotel-guest-offline-payment";
 import { HotelOfflinePolicySettings } from "@/components/hotel-operations/hotel-offline-policy-settings";
+import { getReservationCenterReadinessIssues } from "@/lib/hotel/management/reservation-center-readiness";
 
 type RoomType = { id: string; name: string };
 type RatePlan = { id: string; name: string; roomTypeId: string };
@@ -159,6 +160,20 @@ export function HotelOperationalReservations({ organizationId, propertyId, local
   }
 
   const rtl = locale === "fa" || locale === "ar";
+  const readinessCopy = locale === "en"
+    ? { title: "Manual reservation readiness", disabled: "Manual telephone and walk-in reservations are disabled for this property. Ask an authorized manager to review the existing setting." }
+    : locale === "ar"
+      ? { title: "جاهزية الحجز اليدوي", disabled: "حجوزات الهاتف والحضور المباشر معطلة لهذا العقار. اطلب من مدير مخول مراجعة الإعداد الحالي." }
+      : { title: "آمادگی ثبت رزرو دستی", disabled: "ثبت رزرو تلفنی و حضوری برای این ملک غیرفعال است. از مدیر مجاز بخواهید تنظیم موجود را بررسی کند." };
+  const readinessIssues = snapshot && centerMode && mode === "reception"
+    ? getReservationCenterReadinessIssues({
+      roomTypeCount: snapshot.roomTypes.length,
+      ratePlanCount: plans.length,
+      selectedRoomHasPhysicalRooms: snapshot.rooms.some((room) => room.roomTypeId === roomTypeId),
+      manualRoomManagementEnabled: snapshot.manualRoomManagementEnabled,
+    })
+    : [];
+  const showReservationInputs = !centerMode || mode !== "reception" || snapshot?.manualRoomManagementEnabled === true;
   return <section className="min-w-0 max-w-full space-y-5 rounded-xl border bg-card p-4 sm:p-6 [overflow-wrap:anywhere]" dir={rtl ? "rtl" : "ltr"} aria-label={centerMode ? t.centerTitle : t.title}>
     {demoSetup?.available ? <aside className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-950" aria-label={locale === "fa" ? "نمایش رزرو دامون" : locale === "ar" ? "عرض حجز دامون" : "Damoon booking demo"}>
       <p className="font-semibold">{locale === "fa" ? "نمایش رزرو دامون · اطلاعات و موجودی ساختگی" : locale === "ar" ? "عرض حجز دامون · بيانات وتوفر اصطناعيان" : "Damoon booking demo · synthetic data and inventory"}</p>
@@ -167,11 +182,17 @@ export function HotelOperationalReservations({ organizationId, propertyId, local
     </aside> : null}
     <header className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-xl font-semibold">{centerMode ? t.centerTitle : t.title}</h1><Button type="button" variant="outline" disabled={busy} onClick={() => void run(load)}>{t.refresh}</Button></header>
     {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+    {readinessIssues.length > 0 ? <aside role="status" aria-live="polite" aria-label={readinessCopy.title} className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+      <h2 className="font-semibold">{readinessCopy.title}</h2>
+      <ul className="list-inside list-disc space-y-1">
+        {readinessIssues.map((issue) => <li key={issue}>{issue === "NO_ROOM_TYPES" ? t.noRooms : issue === "NO_RATE_PLANS" ? t.noRates : issue === "NO_PHYSICAL_ROOMS" ? t.noPhysicalRooms : readinessCopy.disabled}</li>)}
+      </ul>
+    </aside> : null}
     {centerMode && mode === "reception" ? <div className="grid min-w-0 gap-3 sm:grid-cols-3" aria-label={t.centerTitle}>
       {[ [t.arrivalsToday, summary.arrivals], [t.departuresToday, summary.departures], [t.occupiedToday, summary.occupied] ].map(([label, value]) => <article key={String(label)} className="min-w-0 rounded-lg border bg-background p-3"><p className="text-sm text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-semibold" dir="auto">{value}</p></article>)}
     </div> : null}
     {mode === "reception" && canConfigure && !centerMode && snapshot?.mode !== "MANUAL" && snapshot?.confirmationPolicy ? <HotelOfflinePolicySettings key={JSON.stringify(snapshot.confirmationPolicy)} organizationId={organizationId} propertyId={propertyId} locale={locale} initialValues={snapshot.confirmationPolicy} apiWired onSaved={() => void run(load)} /> : null}
-    <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    {showReservationInputs ? <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <label className="min-w-0 space-y-1 text-sm"><span>{t.dates}</span><Input type="date" value={checkInDate} onChange={(e) => { setCheckInDate(e.target.value); invalidateQuote(); }} /></label>
       <label className="min-w-0 space-y-1 text-sm"><span>{t.checkout}</span><Input type="date" value={checkOutDate} onChange={(e) => { setCheckOutDate(e.target.value); invalidateQuote(); }} /></label>
       <label className="min-w-0 space-y-1 text-sm"><span>{t.room}</span><select className="h-10 w-full min-w-0 rounded-md border bg-background px-3" value={roomTypeId} onChange={(e) => { setRoomTypeId(e.target.value); setRatePlanId(""); invalidateQuote(); }}>{(snapshot?.roomTypes ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
@@ -179,7 +200,7 @@ export function HotelOperationalReservations({ organizationId, propertyId, local
       <label className="space-y-1 text-sm"><span>{t.adults}</span><Input type="number" min={1} max={12} value={adults} onChange={(e) => { setAdults(Math.max(1, Math.min(12, Number(e.target.value) || 1))); invalidateQuote(); }} /></label>
       <label className="space-y-1 text-sm"><span>{t.kids}</span><Input type="number" min={0} max={8} value={childAges.length} onChange={(e) => { const n = Math.max(0, Math.min(8, Number(e.target.value) || 0)); setChildAges((ages) => Array.from({ length: n }, (_, i) => ages[i] ?? null)); invalidateQuote(); }} /></label>
       {childAges.map((age, i) => <label key={i} className="space-y-1 text-sm"><span>{t.age} {i + 1}</span><Input type="number" min={0} max={17} value={age ?? ""} onChange={(e) => { const value = e.target.value === "" ? null : Math.max(0, Math.min(17, Number(e.target.value))); setChildAges((ages) => ages.map((old, j) => i === j ? value : old)); invalidateQuote(); }} /></label>)}
-    </div>
+    </div> : null}
     {mode === "reception" && snapshot?.manualRoomManagementEnabled ? <section className="space-y-3 rounded-lg border p-3" aria-label={t.manualTitle}>
       <h2 className="font-semibold">{t.manualTitle}</h2><p className="text-sm text-muted-foreground">{t.manualInfo}</p>
       <div className="grid min-w-0 gap-3 sm:grid-cols-2">

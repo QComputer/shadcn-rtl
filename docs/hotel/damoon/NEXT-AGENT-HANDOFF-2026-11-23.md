@@ -8,6 +8,12 @@
 
 # Damoon | هَندآف اجرایی Agentها (نسخه فشرده و قابل کپی)
 
+## live PMS check و ادامهٔ کار — ۲۰۲۶-۱۱-۲۵
+
+در manager-authenticated browser، Reservation Center دمو و رزروهای مصنوعی دیده شدند و demo guest link به route محلی‌سازی‌شدهٔ `hotel-reservations/start?mode=DEMO_BOOKING` اشاره می‌کرد. در operational property: reservation list خالی، room types/rate plans/physical rooms خالی، manual intake غیرفعال و occupancy board به‌درستی unavailable به‌علت schema تعمیرات بود. Legacy guest portal هنوز خطای English و empty-list نشان داد، هرچند PR167 همین حالت را در source اصلاح کرده است؛ Runflare source/version از dashboard در دسترس این نوبت تأیید نشد. Health GET 200/ok با `revision=null` به‌تنهایی deployment proof نیست. Production database و migration دست‌نخورده‌اند.
+
+Branch `codex/damoon-pms-live-readiness-guidance-20261125` این UX gap را رفع می‌کند: وقتی setup عملیاتی ناقص یا manual intake غیرفعال است، Reservation Center پیام سه‌زبانه می‌دهد و ورودی‌های ثبت دستی که کار نمی‌کنند را پنهان می‌کند. Unit 4/4، ESLint متمرکز و full TypeScript محلی موفق‌اند؛ hosted disposable PostgreSQL/browser acceptance هنوز باید اجرا شود. هیچ gate روشن یا data mutation نشده است.
+
 ## handoff پس از PR167 — ۲۰۲۶-۱۱-۲۵
 
 PR167 با head `85d47064536825e1297ff684e76b05d65fa152c5` و merge/main `b7ef6c3888302768c3a1dd0a23c386108611dce` ادغام شده است. همهٔ checkهای اجرایی exact-head موفق بودند: RunFlare TypeScript، focused regressions، migration-gap upgrade، request-to-reception و Hotel Phase 1 PostgreSQL/browser. Vercel Preview exception شناخته‌شدهٔ suspended-preview است. Live GETها: health HTTP 200/status=ok ولی revision=null؛ demo-start path HTTP 200/static HTML، که اثبات اجرای flow یا منبع deployment نیست. Runflare version/source و browser acceptance تأیید نشده‌اند. هیچ Production DB access، migration، write یا manual deployment انجام نشد. سه فایل موروثی Leaflet CSS/JS و `sites/damoon/theme-tokens.css` در checkout قبلی همچنان خارج از مالکیت کار بوده‌اند و نباید پاک شوند.

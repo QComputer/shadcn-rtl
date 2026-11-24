@@ -4,6 +4,14 @@
 
 # Damoon | قرارداد پذیرش جریان درخواست مهمان تا پذیرش
 
+## live PMS read-only observation — ۲۰۲۶-۱۱-۲۵
+
+- Manager-authenticated browser showed the demo Reservation Center, filters, synthetic demo records and the correct localized guest-demo URL pattern. No Production mutations were performed.
+- The operational property showed no reservations, room types, rate plans or physical rooms; manual reception intake was disabled. The calendar explicitly reported maintenance data unavailable and treated capacity as unknown.
+- The legacy guest portal still rendered the English disabled-portal message and an empty request list. This conflicts with PR167 source behavior; Runflare source/version and deployment status were not verified, so do not attribute cause to a code regression or claim the live fix deployed.
+- Live health GET was HTTP 200/status=ok with no revision SHA. It does not prove PR167 deployment. Production schema/migration acceptance remains blocked.
+- Follow-up UX on branch `codex/damoon-pms-live-readiness-guidance-20261125`: operational center readiness messages explain missing room types/rates/physical rooms and disabled manual intake; entry controls are hidden while manual intake is disabled. Local unit (4/4), ESLint and TypeScript pass; hosted browser/PostgreSQL acceptance is pending.
+
 ## پذیرش defect follow-up — PR167، ۲۰۲۶-۱۱-۲۵
 
 - پیوند guest demo در property operations با route `DEMO_BOOKING` برای هر یک از localeهای FA/EN/AR ساخته می‌شود؛ شناسه‌های Production در URL reusable وارد نمی‌شوند. سایر propertyها همچنان مسیر legacy خود را می‌بینند.

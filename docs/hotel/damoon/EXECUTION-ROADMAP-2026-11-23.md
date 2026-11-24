@@ -4,6 +4,8 @@
 
 # Damoon | نقشه راه اجرایی قطعی با گیت‌های پذیرش
 
+**Live PMS observation — 2026-11-25:** the authenticated manager session showed the demo Reservation Center and its synthetic records, while the operational property had no configured room types/rates/physical rooms and manual intake was disabled. The occupancy board remains correctly blocked by unavailable maintenance data. Runflare deployment identity is unverified; do not treat the healthy HTTP endpoint as deployment proof. Branch `codex/damoon-pms-live-readiness-guidance-20261125` adds localized readiness feedback for empty operational setup; do not enable gates or mutate Production. Hosted browser/PostgreSQL acceptance remains pending.
+
 **وضعیت فعلی — ۲۰۲۶-۱۱-۲۵:** PR167 در `b7ef6c3888302768c3a1dd0a23c386108611dce` ادغام شده؛ تمام CI اجرایی exact-head پاس شده. Production health فقط HTTP 200/status=ok را با revision نامشخص تأیید می‌کند؛ deployment source/version و live browser acceptance تأیید نشده‌اند. خطای maintenance schema در Production رفع‌شده تلقی نمی‌شود؛ migration همچنان بدون مجوز اجرا نشده است.
 
 **تصمیم:** سرعت بالا با PRهای کوچک، CI الزام‌آور، انتشار خودکار قابل ردیابی و توقف فقط روی شکست واقعی/داده حساس/تعارض مالک. Snapshot تاریخی roadmap حفظ شده است؛ آخرین main ثبت‌شده در این الحاقیه `b7ef6c3888302768c3a1dd0a23c386108611dce`; اولویت تحویل اول = **سایت عمومی معتبر + هماهنگی اقامت قابل استفاده توسط پذیرش**؛ تحویل دوم = رزرو قطعی/پرداخت.

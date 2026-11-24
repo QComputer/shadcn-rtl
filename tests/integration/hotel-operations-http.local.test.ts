@@ -860,6 +860,19 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
     assert.equal(await demoLink.getAttribute("href"), `https://damoon-hotel.ir/${locale}/hotel-reservations/start?mode=DEMO_BOOKING`, `${locale} demo link uses the approved booking route`);
     assert.equal(await demoLink.getAttribute("target"), "_blank");
   }
+  stage = "browser-center-explains-empty-operational-setup";
+  await page.route(`**/api/organizations/${orgAId}/hotels/${propertyAId}/reservations*`, async (route) => {
+    if (route.request().method() !== "GET") { await route.continue(); return; }
+    const response = await route.fetch();
+    const snapshot = await response.json() as Record<string, unknown>;
+    await route.fulfill({ response, json: { ...snapshot, roomTypes: [], ratePlans: [], rooms: [], manualRoomManagementEnabled: false } });
+  });
+  await page.goto(`${baseUrl}/fa/dashboard/hotel-operations/${orgAId}/${propertyAId}/reservations`, { waitUntil: "domcontentloaded" });
+  const readiness = page.getByRole("status", { name: "آمادگی ثبت رزرو دستی" });
+  await readiness.getByText("نوع اتاقی برای رزرو تنظیم نشده است؛ لطفاً با پذیرش تماس بگیرید.").waitFor({ state: "visible", timeout: 30_000 });
+  await readiness.getByText("ثبت رزرو تلفنی و حضوری برای این ملک غیرفعال است. از مدیر مجاز بخواهید تنظیم موجود را بررسی کند.").waitFor({ state: "visible" });
+  assert.equal(await page.getByLabel("تاریخ ورود").count(), 0, "the center hides inactive reservation-entry fields when manual intake is disabled");
+  await page.unroute(`**/api/organizations/${orgAId}/hotels/${propertyAId}/reservations*`);
   const staffContext = await browser.newContext({ viewport: { width: 1280, height: 850 } });
   await staffContext.addCookies(staffLogin.cookies.map((value) => {
     const separator = value.indexOf("=");

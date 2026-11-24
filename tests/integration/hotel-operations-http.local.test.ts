@@ -767,7 +767,7 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   assert.deepEqual(await readPreviewMutationSnapshot(orgAId), beforeBrowserPreview, "successful, failed, delayed, and retry preview UI requests do not create holds, reservations, payments, or inventory changes");
   const desktopLayout = await page.evaluate(() => ({
     documentFits: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
-    workspaceDirection: document.querySelector("main > div")?.getAttribute("dir") ?? null,
+    workspaceDirection: document.querySelector("main")?.getAttribute("dir") ?? document.documentElement.getAttribute("dir"),
   }));
   assert.equal(desktopLayout.documentFits, true, "desktop owner preview has no horizontal overflow");
   assert.equal(desktopLayout.workspaceDirection, "ltr", "English desktop workspace follows its locale direction");

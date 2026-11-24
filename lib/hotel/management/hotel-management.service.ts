@@ -7,6 +7,8 @@ import { searchPublicHotelAvailability, serializePublicAvailability } from "@/li
 import type { AvailabilityQuery } from "@/lib/hotel/domain/types";
 import { enumerateStayNights } from "@/lib/hotel/domain/stay-dates";
 import { buildHotelRoomBoard } from "@/lib/hotel/management/room-board";
+import { authorizeHotelBookingActor } from "@/lib/hotel/services/booking-context";
+import { isDamoonDemoOrganizationSlug } from "@/lib/hotel/services/damoon-demo-booking";
 
 export type HotelManagementPrincipal = {
   readonly userId: string;
@@ -177,6 +179,42 @@ export class HotelManagementService {
         return { ...night, date: night.date.toISOString().slice(0, 10), available: Math.max(0, Math.min(stockRemaining, roomRemaining)) };
       }),
       cancellationPolicies: cancellationPolicies.map((policy) => ({ ...policy, fullCancellationRetention: policy.fullCancellationRetention / 10000 })),
+    };
+  }
+
+  /** Reservation-center read model. Staff can read occupancy, but not the wider management configuration payload. */
+  async getOccupancyBoard(principal: HotelManagementPrincipal, scope: HotelManagementScope, propertyId: string, range: { from: Date; to: Date }) {
+    const property = await authorizeHotelBookingActor(this.db, principal, scope.organizationId, propertyId);
+    const fromTime = range.from.getTime();
+    const toTime = range.to.getTime();
+    const dayMs = 86_400_000;
+    const nightCount = (toTime - fromTime) / dayMs;
+    const isUtcDate = (date: Date) => Number.isFinite(date.getTime()) && date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0 && date.getUTCMilliseconds() === 0;
+    if (!isUtcDate(range.from) || !isUtcDate(range.to) || !Number.isInteger(nightCount) || nightCount < 1 || nightCount > 31) throw new HotelManagementValidationError("Occupancy range must be 1 to 31 whole property nights");
+
+    const [organization, rooms, reservations, maintenanceBlocks] = await Promise.all([
+      this.db.organization.findFirst({ where: { id: scope.organizationId, vertical: "HOTEL", isActive: true, deletedAt: null }, select: { slug: true } }),
+      this.db.hotelRoom.findMany({ where: { organizationId: scope.organizationId, propertyId, isActive: true, deletedAt: null }, orderBy: [{ roomTypeId: "asc" }, { code: "asc" }], select: { id: true, code: true, roomTypeId: true, isOutOfService: true } }),
+      this.db.hotelReservation.findMany({ where: { organizationId: scope.organizationId, propertyId, status: { in: ["CONFIRMED", "CHECKED_IN"] }, checkIn: { lt: range.to }, checkOut: { gt: range.from } }, orderBy: [{ checkIn: "asc" }, { reference: "asc" }], select: { reference: true, status: true, nights: { where: { date: { gte: range.from, lt: range.to } }, select: { date: true, roomId: true } } } }),
+      // Failure to read maintenance must fail the whole board; an unknown block state is never shown as vacant.
+      this.db.hotelRoomMaintenanceBlock.findMany({ where: { organizationId: scope.organizationId, propertyId, releasedAt: null, from: { lt: range.to }, to: { gt: range.from } }, select: { roomId: true, from: true, to: true } }),
+    ]);
+    const roomBoard = buildHotelRoomBoard({
+      from: range.from.toISOString().slice(0, 10),
+      to: range.to.toISOString().slice(0, 10),
+      rooms,
+      reservations: reservations.map((reservation) => ({
+        reference: reservation.reference,
+        status: reservation.status as "CONFIRMED" | "CHECKED_IN",
+        nights: reservation.nights.map((night) => ({ date: night.date.toISOString().slice(0, 10), roomId: night.roomId })),
+      })),
+      maintenanceBlocks: maintenanceBlocks.map((block) => ({ roomId: block.roomId, from: block.from.toISOString().slice(0, 10), to: block.to.toISOString().slice(0, 10) })),
+    });
+    return {
+      property: { id: property.id, name: property.name, timezone: property.timezone },
+      range: { from: range.from.toISOString().slice(0, 10), to: range.to.toISOString().slice(0, 10), nights: nightCount },
+      roomBoard,
+      demoProperty: property.slug === "damoon-demo" && isDamoonDemoOrganizationSlug(organization?.slug),
     };
   }
 

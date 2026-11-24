@@ -199,6 +199,11 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
     const serialized = JSON.stringify(operations);
     assert.doesNotMatch(serialized, /email|phone|guest|payment|password|token/i, "read model excludes PII and payment details");
 
+    const staffBoard = await service.getOccupancyBoard(principal(staffA.id, "STAFF", organizationA.id), { organizationId: organizationA.id }, property.id, days("2027-08-01", "2027-08-15"));
+    assert.deepEqual(Object.keys(staffBoard).sort(), ["demoProperty", "property", "range", "roomBoard"]);
+    assert.equal(staffBoard.property.timezone, "Asia/Tehran");
+    assert.deepEqual(staffBoard.roomBoard.rooms.find((room) => room.id === physicalRoom.id)?.nights.filter((night) => night.date >= "2027-08-08" && night.date < "2027-08-10").map((night) => night.status), ["MAINTENANCE", "MAINTENANCE"], "reception read model returns maintenance state");
+
     await assert.rejects(() => service.getOperations(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationB.id }, foreignProperty.id, days("2027-08-01", "2027-08-02")), HotelManagementAuthorizationError, "cross-tenant scope is denied");
     await assert.rejects(() => service.getOperations(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, foreignProperty.id, days("2027-08-01", "2027-08-02")), HotelManagementAuthorizationError, "foreign property in an owned organization scope is denied");
     await assert.rejects(() => service.getOperations(principal(staffA.id, "STAFF", organizationA.id), { organizationId: organizationA.id }, property.id, days("2027-08-01", "2027-08-02")), HotelManagementAuthorizationError, "staff role is not an operations manager");
@@ -206,6 +211,8 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
     await assert.rejects(() => service.getOperations(principal(inactiveOrgAdmin.id, "ADMIN", inactiveOrganization.id), { organizationId: inactiveOrganization.id }, property.id, days("2027-08-01", "2027-08-02")), HotelManagementAuthorizationError, "inactive organization is denied");
     await assert.rejects(() => service.getOperations(principal(unenabledAdmin.id, "ADMIN", unenabledOrganization.id), { organizationId: unenabledOrganization.id }, property.id, days("2027-08-01", "2027-08-02")), HotelManagementAuthorizationError, "capability without enabledAt is denied");
     await assert.rejects(() => service.getOperations(principal(noCapabilityAdmin.id, "ADMIN", noCapabilityOrganization.id), { organizationId: noCapabilityOrganization.id }, property.id, days("2027-08-01", "2027-08-02")), HotelManagementAuthorizationError, "missing capability is denied");
+    await assert.rejects(() => service.getOccupancyBoard(principal(staffA.id, "STAFF", organizationA.id), { organizationId: organizationB.id }, foreignProperty.id, days("2027-08-01", "2027-08-02")), /forbidden/i, "cross-tenant occupancy reads are denied with the existing authorization contract");
+    await assert.rejects(() => service.getOccupancyBoard(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, property.id, days("2027-08-01", "2027-09-02")), HotelManagementValidationError, "occupancy date navigation is bounded to 31 nights");
     await assert.rejects(() => service.getOperations(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, property.id, days("2027-08-01", "2027-09-02")), HotelManagementValidationError, "read range is capped at 31 nights");
     await assert.rejects(() => service.getOperations(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, property.id, { from: new Date(Number.NaN), to: date("2027-03-02") }), HotelManagementValidationError, "invalid calendar date is rejected");
     await service.releaseRoomMaintenanceBlock(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, property.id, maintenance.id);

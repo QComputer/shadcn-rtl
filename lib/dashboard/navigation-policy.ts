@@ -227,6 +227,7 @@ export const DASHBOARD_ROUTE_POLICY = {
   "/hotel-website/[organizationId]/[propertyId]/preview/[revisionId]": ROLE_NAVIGATION_POLICY.hotelWebsite,
   "/hotel-operations": ROLE_NAVIGATION_POLICY.hotelOperations,
   "/hotel-operations/[organizationId]/[propertyId]": ROLE_NAVIGATION_POLICY.hotelOperations,
+  "/hotel-operations/[organizationId]/[propertyId]/reservations": ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
   "/pilots": ROLE_NAVIGATION_POLICY.pilots,
   "/pilots/[organizationId]": ROLE_NAVIGATION_POLICY.pilots,
 } as const satisfies Record<string, readonly DashboardRole[]>

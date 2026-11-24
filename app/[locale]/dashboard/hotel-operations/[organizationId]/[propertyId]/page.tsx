@@ -26,9 +26,11 @@ export default async function HotelOperationsPropertyPage({
   if (!organization || !property) notFound();
 
   return <main className="mx-auto min-w-0 w-full max-w-[1600px] space-y-4 p-3 sm:p-6">
-    <Link className="inline-flex rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href={`/${locale}/dashboard/hotel-operations${organization.role === "SUPER_ADMIN" ? `?organizationId=${encodeURIComponent(organization.id)}` : ""}`}>
+    <div className="flex flex-wrap items-center justify-between gap-2"><Link className="inline-flex min-h-10 items-center rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href={`/${locale}/dashboard/hotel-operations${organization.role === "SUPER_ADMIN" ? `?organizationId=${encodeURIComponent(organization.id)}` : ""}`}>
       ← {locale === "en" ? "All properties" : locale === "ar" ? "كل العقارات" : "بازگشت به املاک"}
-    </Link>
+    </Link><Link className="inline-flex min-h-10 items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href={`/${locale}/dashboard/hotel-operations/${encodeURIComponent(organization.id)}/${encodeURIComponent(property.id)}/reservations`}>
+      {locale === "en" ? "Reservation center" : locale === "ar" ? "مركز الحجوزات" : "رزرواسیون"}
+    </Link></div>
     <HotelGuestBookingRequests organizationId={organization.id} propertyId={property.id} locale={locale} />
     <HotelRequestReception organizationId={organization.id} propertyId={property.id} locale={locale} canConfigure={organization.role === "ADMIN" || organization.role === "SUPER_ADMIN"} showGuestPortal={false} />
     <HotelDraftAccommodations

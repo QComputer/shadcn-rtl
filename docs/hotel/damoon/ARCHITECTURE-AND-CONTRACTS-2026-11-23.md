@@ -53,6 +53,14 @@ Future independent path (NOT public-enabled):
 
 ## مدیریت/رزرو عملیاتی جداست
 
+### قرارداد Reservation Center — ۲۰۲۶-۱۱-۲۴
+
+- مسیر dashboard با عضویت فعال سازمان Hotel، capability `HOTEL_BOOKING` و property فعال محدود می‌شود؛ نقش‌های ADMIN/MANAGER/STAFF/SUPER_ADMIN مجازند. STAFF از همان booking-actor authorization مجاز به GET رزرو و occupancy است؛ role تنها authority نیست.
+- `GET /api/organizations/{organizationId}/hotels/{propertyId}/occupancy?from=YYYY-MM-DD&to=YYYY-MM-DD` پاسخ فقط‌خواندنی شامل property identity محدود، بازهٔ حداکثر ۳۱ شب و room board می‌دهد. PII، نرخ و inventory config برنمی‌گردد. درخواست maintenance هم جزو read اجباری است؛ اگر schema/table در دسترس نباشد، کل board شکست می‌خورد تا ظرفیت نامعلوم به اتاق خالی تعبیر نشود.
+- نمایش تقویم هفت روز است و مرز تاریخ ISO را برای API حفظ می‌کند؛ برچسب FA از تقویم فارسی در timezone UTC برای جلوگیری از جابه‌جایی روز استفاده می‌کند. رزروهای demo با نشان مستقل مشخص می‌شوند.
+- ایجاد تلفنی/حضوری، تخصیص، check-in/out و لغو از API و تراکنش‌های رزرو موجود می‌گذرند. این dashboard امکان عمومی reservation/payment را فعال نمی‌کند و schema/migration جدیدی ندارد.
+- Implementation and browser-test correction source `0607a8798a4667eecac781b1d11946f4469432a2` (مرکز read رزرو نیز از `GET .../reservations?view=center` استفاده می‌کند تا فهرست پذیرش به gate عمومی وابسته نباشد؛ mutationها همچنان قرارداد/gate موجود را دارند؛ min-width و شکستن متن برای موبایل تنظیم شده و جدول تقویم داخل ناحیهٔ اسکرول خود باقی می‌ماند). Hosted PostgreSQL scenarios passed; the first browser run found an outdated direct-child RTL selector in a legacy workspace assertion after the Reservation Center scenarios passed. The selector now follows the actual nested `dir` wrapper; final hosted rerun is pending.
+
 - پاسخ جست‌وجوی تاریخ‌محور علاوه بر گزینه‌ها، رتبه و کدهای دلیل توصیهٔ قطعی/توضیح‌پذیر را فقط از اتاق‌ها و نرخ‌های تأییدشده برمی‌گرداند؛ توصیه موجودی را رزرو نمی‌کند و تضمین رزرو نیست.
 - قراردادهای مشترک `HotelProperty`, `HotelRoomType`, physical room, nightly inventory, rate plan, dated maintenance، `HotelGuestBookingRequest` و lifecycle در Backend و Prisma وجود دارند؛ **وجود مدل‌ها دلیل populated بودن Production نیست**.
 - `docs/hotel/operations/RECEPTION-MANUAL-ROOM-MANAGEMENT-2026-11-21.md` مرحله‌بندی مدیریت اتاق/پذیرش دستی را شرح می‌دهد. وضعیت کد جاری در `COMPLETION-CHECKLIST` جدیدتر است؛ برای شکاف دستی بدون نرخ و ویرایش پس از ثبت، هنوز کار مستقل لازم است.

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { HotelOperationalReservations } from "@/components/hotel-operations/hotel-operational-reservations";
 import { auth } from "@/lib/auth";
@@ -53,6 +54,9 @@ export default async function HotelReservationsPage({ params, searchParams }: {
     redirect(`/${locale}/login?callbackUrl=${encodeURIComponent(path)}`);
   }
   return <main className="mx-auto min-w-0 w-full max-w-5xl p-4 sm:p-6">
+    {["ADMIN", "MANAGER", "STAFF", "SUPER_ADMIN"].includes(session.user.role ?? "") ? <Link className="mb-4 inline-flex min-h-10 items-center rounded-md border px-4 py-2 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href={`/${locale}/dashboard/hotel-operations/${encodeURIComponent(organizationId)}/${encodeURIComponent(propertyId)}/reservations`}>
+      {locale === "en" ? "Open reservation center" : locale === "ar" ? "فتح مركز الحجوزات" : "ورود به مرکز رزرواسیون"}
+    </Link> : null}
     <HotelOperationalReservations key={`${organizationId}:${propertyId}:${session.user.id}`} organizationId={organizationId} propertyId={propertyId} locale={locale} mode={session.user.role === "CUSTOMER" ? "guest" : "reception"} canConfigure={session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN"} initialStay={initialStay(search)} requestId={requestId.length <= 200 ? requestId : undefined} />
   </main>;
 }

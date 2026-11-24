@@ -310,6 +310,7 @@ after(async () => {
       await db.hotelInventoryIdempotency.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelNightlyRate.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelRatePlan.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
+      await db.hotelRoomMaintenanceBlock.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelRoom.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelRoomType.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelProperty.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
@@ -376,6 +377,12 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   const secondRoomResult = await apiJson<{ room: { id: string; code: string } }>(`/api/organizations/${orgAId}/hotels/${propertyAId}/rooms`, cookie, "POST", { roomTypeId, code: `${suffix.slice(0, 5)}-102`, floor: "1" });
   assert.equal(secondRoomResult.response.status, 201);
   assert.ok(secondRoomResult.data?.room.id);
+  await db.hotelRoomMaintenanceBlock.create({ data: {
+    organizationId: orgAId, propertyId: propertyAId, roomId: roomResult.data!.room.id,
+    from: new Date("2027-08-08T00:00:00.000Z"), to: new Date("2027-08-10T00:00:00.000Z"),
+    reason: "Synthetic browser acceptance maintenance", idempotencyKey: `browser-maintenance-${suffix}`,
+    requestFingerprint: `browser-maintenance-fingerprint-${suffix}`, createdBy: managerUserId,
+  } });
 
   stage = "create-cancellation-policy";
   const policyResult = await apiJson<{ policy: { id: string; key: string } }>(`/api/organizations/${orgAId}/hotels/${propertyAId}/cancellation-policies`, cookie, "POST", { key: `${suffix.slice(0, 8)}-preview`, name: `${prefix} Preview cancellation`, freeCancellationCutoffHours: 48, fullCancellationRetention: 0 });
@@ -767,7 +774,7 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   assert.deepEqual(await readPreviewMutationSnapshot(orgAId), beforeBrowserPreview, "successful, failed, delayed, and retry preview UI requests do not create holds, reservations, payments, or inventory changes");
   const desktopLayout = await page.evaluate(() => ({
     documentFits: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
-    workspaceDirection: document.querySelector("main > div")?.getAttribute("dir") ?? null,
+    workspaceDirection: document.querySelector("main")?.getAttribute("dir") ?? document.documentElement.getAttribute("dir"),
   }));
   assert.equal(desktopLayout.documentFits, true, "desktop owner preview has no horizontal overflow");
   assert.equal(desktopLayout.workspaceDirection, "ltr", "English desktop workspace follows its locale direction");
@@ -812,9 +819,48 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   assert.equal((manualAudit.resultJson as { source?: string }).source, "PHONE", "reservation source is retained in staff-only history");
   const manualItem = manualSection.getByRole("listitem").filter({ hasText: manualDbRow.reference });
   await manualItem.getByRole("button", { name: "ثبت ورود" }).click();
-  await manualItem.getByText("CHECKED_IN").waitFor({ state: "visible", timeout: 30_000 });
+  await manualItem.getByText("ورود ثبت‌شده").waitFor({ state: "visible", timeout: 30_000 });
   await manualItem.getByRole("button", { name: "ثبت خروج" }).click();
-  await manualItem.getByText("CHECKED_OUT").waitFor({ state: "visible", timeout: 30_000 });
+  await manualItem.getByText("خروج ثبت‌شده").waitFor({ state: "visible", timeout: 30_000 });
+
+  stage = "browser-reservation-center-search-details-and-calendar";
+  await page.goto(`${baseUrl}/fa/dashboard/hotel-operations/${orgAId}/${propertyAId}/reservations`, { waitUntil: "domcontentloaded" });
+  await page.getByRole("heading", { name: "مرکز رزرواسیون", exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+  const center = page.getByRole("region", { name: "مرکز رزرواسیون" });
+  await center.getByLabel("جست‌وجو با نام مهمان یا کد رزرو").fill(`Manual Guest ${suffix.slice(0, 8)}`);
+  const centerItem = center.getByRole("listitem").filter({ hasText: manualDbRow.reference });
+  await centerItem.getByRole("button", { name: "جزئیات" }).click();
+  const details = page.getByRole("complementary", { name: "جزئیات رزرو انتخاب‌شده" });
+  await details.getByText(`Manual Guest ${suffix.slice(0, 8)}`).waitFor({ state: "visible" });
+  await center.getByLabel("فیلتر وضعیت").selectOption("CHECKED_OUT");
+  await centerItem.getByText("خروج ثبت‌شده").waitFor({ state: "visible" });
+
+  const calendar = page.getByRole("region", { name: "تقویم اشغال اتاق‌ها" });
+  await calendar.getByLabel("تاریخ شروع").fill("2027-08-08");
+  await calendar.getByRole("cell").filter({ hasText: "تعمیرات" }).first().waitFor({ state: "visible", timeout: 30_000 });
+  await calendar.getByRole("row").filter({ hasText: manualRoom.code }).waitFor({ state: "visible" });
+  assert.equal(await calendar.getAttribute("dir"), "rtl", "the reservation calendar uses Persian RTL presentation");
+  for (const locale of ["en", "ar"] as const) {
+    await page.goto(`${baseUrl}/${locale}/dashboard/hotel-operations/${orgAId}/${propertyAId}/reservations`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: locale === "en" ? "Reservation center" : "مركز الحجوزات", exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+    const localizedCenter = page.getByRole("region", { name: locale === "en" ? "Reservation center" : "مركز الحجوزات" });
+    assert.equal(await localizedCenter.getAttribute("dir"), locale === "en" ? "ltr" : "rtl", `${locale} reservation center uses the expected direction`);
+    await page.getByRole("region", { name: locale === "en" ? "Room occupancy calendar" : "تقويم إشغال الغرف" }).waitFor({ state: "visible", timeout: 30_000 });
+  }
+  const staffContext = await browser.newContext({ viewport: { width: 1280, height: 850 } });
+  await staffContext.addCookies(staffLogin.cookies.map((value) => {
+    const separator = value.indexOf("=");
+    return { name: value.slice(0, separator), value: value.slice(separator + 1), url: baseUrl };
+  }).filter((entry) => entry.name && entry.value));
+  const staffPage = await staffContext.newPage();
+  await staffPage.goto(`${baseUrl}/fa/dashboard/hotel-operations/${orgAId}/${propertyAId}/reservations`, { waitUntil: "domcontentloaded" });
+  await staffPage.getByRole("heading", { name: "مرکز رزرواسیون", exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+  await staffPage.getByRole("region", { name: "تقویم اشغال اتاق‌ها" }).waitFor({ state: "visible", timeout: 30_000 });
+  await staffContext.close();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${baseUrl}/fa/dashboard/hotel-operations/${orgAId}/${propertyAId}/reservations`, { waitUntil: "domcontentloaded" });
+  await page.getByRole("heading", { name: "مرکز رزرواسیون", exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true, "reservation center avoids page-level horizontal overflow on mobile");
 
   stage = "browser-mobile-fa-ar-layout";
   await page.setViewportSize({ width: 390, height: 844 });
@@ -824,7 +870,7 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
     await page.getByText(`${uiName} (${uiSlug})`, { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
     const layout = await page.evaluate(() => ({
       documentFits: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
-      workspaceDirection: document.querySelector("main > div")?.getAttribute("dir") ?? null,
+      workspaceDirection: document.querySelector("main [dir]")?.getAttribute("dir") ?? document.querySelector("main")?.getAttribute("dir") ?? document.documentElement.getAttribute("dir"),
       overflowing: Array.from(document.querySelectorAll("main *")).filter((element) => element.getBoundingClientRect().width > innerWidth).slice(0, 12).map((element) => ({ tag: element.tagName, classes: element.className, width: Math.round(element.getBoundingClientRect().width) })),
     }));
     assert.equal(layout.documentFits, true, `${locale} mobile page has no horizontal document overflow: ${JSON.stringify(layout.overflowing)}`);

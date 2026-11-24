@@ -360,7 +360,7 @@
     }
   },
   "reservationCenterImplementation20261124": {
-    "implementationCommit": "54d899a62e790b52ba3cca592f95e53d6d95082f",
+    "implementationCommit": "6de206ba94cf3d08ec7ae5f2957163d330f733be",
     "baseMainSha": "98896a24126d0c482d4fae434bf5c36f7c20143b",
     "state": "CODE_IMPLEMENTED_LOCAL_TYPECHECK_ESLINT_UNIT_PASS_HOSTED_PG_BROWSER_PENDING",
     "receptionCenterReadIndependentOfPublicBookingFlags": true,

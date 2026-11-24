@@ -8,7 +8,7 @@
 
 ### محدوده و شواهد فعلی
 
-- Source commit: `54d899a62e790b52ba3cca592f95e53d6d95082f`، بر پایهٔ main `98896a24126d0c482d4fae434bf5c36f7c20143b`.
+- Source commit: `6de206ba94cf3d08ec7ae5f2957163d330f733be`، بر پایهٔ main `98896a24126d0c482d4fae434bf5c36f7c20143b`.
 - شواهد محلی: TypeScript موفق، ESLint محدودشده موفق و ۵ تست واحد ناوبری/room-board موفق. PostgreSQL موقت محلی روی پورت محافظت‌شدهٔ `127.0.0.1:55439` در دسترس نبود؛ پذیرش PostgreSQL و مرورگر در hosted CI منتظر است.
 - عملیات از API رزرو موجود استفاده می‌کنند؛ occupancy از یک GET محدود read model می‌آید. Migration و تغییر Production data نداریم.
 

@@ -4,14 +4,14 @@
 
 # Damoon | معماری اجرایی و قراردادهای مشترک
 
-## قراردادهای تکمیلی Reservation Center — ۲۰۲۶-۱۱-۲۵ (در حال توسعه)
+## قراردادهای تکمیلی Reservation Center — PR167 ادغام‌شده، ۲۰۲۶-۱۱-۲۵
 
 - پیوند مهمان property فقط وقتی organization slug و property slug هر دو با پیکربندی demo دامون منطبق باشند، به host allowlistشدهٔ `damoon-hotel.ir` و route محلی‌سازی‌شدهٔ `hotel-reservations/start?mode=DEMO_BOOKING` می‌رود؛ شناسهٔ Production در کد reusable hardcode نمی‌شود. مسیر legacy برای propertyهای دیگر تغییر نمی‌کند.
 - discovery legacy فقط اگر پس از حذف property مصنوعی `damoon-demo` برای سازمان دامون دقیقاً یک property عملیاتی باقی بماند، همان property را برمی‌گرداند. چند property عملیاتی یا صفر نتیجه، disabled است؛ انتخاب اولین ردیف مجاز نیست. domain verification و capability checks قبل از resolution حفظ می‌شوند.
 - `getOperations` داده‌های مستقل را حتی در نبود جدول maintenance برمی‌گرداند و `maintenanceStatus=UNAVAILABLE`، `roomBoard=null`، `maintenanceBlocks=null` و sellable availability نامعلوم می‌دهد. فقط خطای دقیق missing relation قابل degradation است؛ سایر DB errors همچنان خطا هستند. availability preview، occupancy board، room assignment و check-in نیازمند خواندن موفق maintenance هستند. این قرارداد جایگزین یا تأیید Production migration نیست.
-- این بندها در شاخهٔ `codex/damoon-res-center-live-readiness-20261124` کد محلی‌اند؛ merge، deployment و Production acceptance هنوز اثبات نشده‌اند.
+- این قراردادها در PR167 پیاده‌سازی شدند؛ exact head `85d47064536825e1297ff684e76b05d65fa152c5` و merge `b7ef6c3888302768c3a1dd0a23c386108611dce`. CI اجرایی و تست‌های disposable PostgreSQL/browser پاس شدند. این شواهد deployment یا Production live acceptance نیستند. Health HTTP 200/status=ok با revision=null و static HTML برای demo-start GET، source/version استقرار را اثبات نکردند.
 
-**مبنای مشاهده:** مخزن `QComputer/shadcn-rtl`، آخرین main ادغام‌شده `9379d82761bea87c20b86be1a96da9dcb9bd7428`؛ برای وضعیت deployment/Production به release register رجوع کنید.
+**مبنای مشاهده:** مخزن `QComputer/shadcn-rtl`، آخرین main تأییدشده در این handoff `b7ef6c3888302768c3a1dd0a23c386108611dce`؛ برای وضعیت deployment/Production به release register رجوع کنید. این SHA به‌تنهایی اثبات deployment نیست.
 
 ## تصویر معماری فعلی
 

@@ -4,12 +4,13 @@
 
 # Damoon | قرارداد پذیرش جریان درخواست مهمان تا پذیرش
 
-## پذیرش defect follow-up — ۲۰۲۶-۱۱-۲۵ (در حال اجرا)
+## پذیرش defect follow-up — PR167، ۲۰۲۶-۱۱-۲۵
 
 - پیوند guest demo در property operations با route `DEMO_BOOKING` برای هر یک از localeهای FA/EN/AR ساخته می‌شود؛ شناسه‌های Production در URL reusable وارد نمی‌شوند. سایر propertyها همچنان مسیر legacy خود را می‌بینند.
-- آزمون واحد محلی: پنج مورد guest discovery/locale link/classifier و دو مورد Hotel Operations partial-schema pass-through/error-propagation (۷/۷) پاس شدند. `pnpm run typecheck` و ESLint متمرکز نیز پاس شدند.
-- موارد موردنیاز برای CI: API discovery single operational، operational+demo، multiple operational؛ Hotel Operations partial-schema reads، fail-closed availability/occupancy/assignment/check-in؛ و disposable PostgreSQL/browser. اجرای Production acceptance انجام نشده و Production schema همچنان نامعلوم است.
-- این work هنوز کد ادغام‌نشده است. هیچ درخواست مهمان، رزرو، migration یا Production write ساخته/اجرا نشده است.
+- unit regressions (۷/۷)، TypeScript و ESLint متمرکز محلی موفق شدند. Exact-head hosted checks نیز موفق شدند: request-to-reception browser acceptance، Hotel Phase 1 disposable PostgreSQL/browser، focused regressions، TypeScript و migration-gap upgrade.
+- PR167 head `85d47064536825e1297ff684e76b05d65fa152c5`; merge/main `b7ef6c3888302768c3a1dd0a23c386108611dce`. Vercel Preview مسدودشده استثنای suspended-preview است.
+- Production read-only HTTP health GET: 200/status=ok با revision نامشخص؛ demo-start GET پاسخ static HTML داده و browser workflow/Runflare source release را ثابت نمی‌کند. Live interactive acceptance، Runflare deployment version/source و Production schema همچنان نامعلوم‌اند.
+- هیچ Production database read/write/migration، booking mutation یا manual deployment انجام نشده است.
 
 ## پذیرش مرکز رزرواسیون — الحاقیهٔ ۲۰۲۶-۱۱-۲۴
 

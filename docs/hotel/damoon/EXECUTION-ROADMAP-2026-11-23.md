@@ -61,6 +61,6 @@ M3 آماده‌سازی عملیاتی رزرو/دیتابیس (شاخه مست
 ## الحاقیه ۲۰۲۶-۱۱-۲۴ — مرکز رزرواسیون
 
 - **هدف تحویل:** یک dashboard قابل استفاده برای مدیر و STAFF مجاز، با ناوبری مستقیم، manual reservation موجود، سرچ و فیلتر وضعیت/نوع، پنل جزئیات، ورود/خروج امروز و occupancy calendar هفت‌روزه با جابه‌جایی تاریخ.
-- **وضعیت کد:** پیاده‌سازی نهایی `01cd737fc5d26411507c52c0b30eada4f1dded00`; TypeScript، ESLint بدون هشدار و ۵ تست واحد محلی پاس شده‌اند. PR و hosted acceptance هنوز pending است.
+- **وضعیت کد:** پیاده‌سازی نهایی `37bd23e8fb3ed9ffed00423c4ffc8a5f44029f96`; TypeScript، ESLint بدون هشدار و ۵ تست واحد محلی پاس شده‌اند. PR و hosted acceptance هنوز pending است.
 - **قرارداد دسترسی:** mutationها از همان سرویس/تراکنش قبلی استفاده می‌کنند. `GET .../reservations?view=center` فهرست مجاز پذیرش را مستقل از gate عمومی می‌خواند؛ `GET /api/organizations/{id}/hotels/{propertyId}/occupancy` فقط board را برمی‌گرداند و عضویت/tenant/property را دوباره بررسی می‌کند؛ خروجی تعمیرات نامعلوم را به VACANT تبدیل نمی‌کند. schema change ندارد.
 - **دروازه‌های ادامه:** GitHub CI باید PostgreSQL/browser acceptance روی disposable fixtures برای manager و reception، tenant isolation، jalali labels، سه locale و mobile layout را بگذراند. Production data/migration, public booking, inventory activation و payments خارج از این milestone هستند.

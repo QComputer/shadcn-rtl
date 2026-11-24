@@ -632,7 +632,10 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   const amenityForm = page.locator("form").filter({ has: page.getByLabel("Amenity key") });
   await amenityForm.getByLabel("Amenity key").fill(uiAmenityKey);
   await amenityForm.getByLabel("Amenity name").fill(uiAmenityLabel);
+  const amenityCreateResponse = page.waitForResponse((response) => response.url().endsWith("/amenities") && response.request().method() === "POST");
   await amenityForm.getByRole("button", { name: "Add amenity" }).click();
+  const amenityCreateResult = await amenityCreateResponse;
+  assert.equal(amenityCreateResult.status(), 201, `amenity creation should succeed: ${await amenityCreateResult.text()}`);
   const persistedAmenity = await db.hotelAmenity.findFirst({ where: { organizationId: orgAId, propertyId: propertyAId, key: uiAmenityKey } });
   assert.ok(persistedAmenity, "manager-created property amenity persists in the tenant and property scope");
   const roomTypeSection = page.getByRole("heading", { name: "Room types" }).locator("xpath=ancestor::section[1]");

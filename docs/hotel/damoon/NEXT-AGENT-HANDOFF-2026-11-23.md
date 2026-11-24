@@ -12,7 +12,7 @@
 
 در manager-authenticated browser، Reservation Center دمو و رزروهای مصنوعی دیده شدند و demo guest link به route محلی‌سازی‌شدهٔ `hotel-reservations/start?mode=DEMO_BOOKING` اشاره می‌کرد. در operational property: reservation list خالی، room types/rate plans/physical rooms خالی، manual intake غیرفعال و occupancy board به‌درستی unavailable به‌علت schema تعمیرات بود. Legacy guest portal هنوز خطای English و empty-list نشان داد، هرچند PR167 همین حالت را در source اصلاح کرده است؛ Runflare source/version از dashboard در دسترس این نوبت تأیید نشد. Health GET 200/ok با `revision=null` به‌تنهایی deployment proof نیست. Production database و migration دست‌نخورده‌اند.
 
-Branch `codex/damoon-pms-live-readiness-guidance-20261125` این UX gap را رفع می‌کند: وقتی setup عملیاتی ناقص یا manual intake غیرفعال است، Reservation Center پیام سه‌زبانه می‌دهد و ورودی‌های ثبت دستی که کار نمی‌کنند را پنهان می‌کند. Unit 4/4، ESLint متمرکز و full TypeScript محلی موفق‌اند؛ hosted disposable PostgreSQL/browser acceptance هنوز باید اجرا شود. هیچ gate روشن یا data mutation نشده است.
+Branch `codex/damoon-pms-live-readiness-guidance-20261125` این UX gap را رفع می‌کند: وقتی setup عملیاتی ناقص یا manual intake غیرفعال است، Reservation Center پیام سه‌زبانه می‌دهد و ورودی‌های ثبت دستی که کار نمی‌کنند را پنهان می‌کند. Unit 4/4، ESLint، full TypeScript، focused regressions، Hotel Phase 1 PostgreSQL/browser و request-to-reception پاس شدند. PR169 با head `34f15fe0db70d73d4a001a4ba7cc9067fcb6d099` در merge/main `fe6488f8c9ca0decf64de32c1f14b330e48e2153` ادغام شد؛ Vercel Preview استثنای تعلیق بود. Runflare version/source و live acceptance پس از merge هنوز نامعلوم‌اند. هیچ gate روشن یا data mutation نشده است.
 
 ## handoff پس از PR167 — ۲۰۲۶-۱۱-۲۵
 

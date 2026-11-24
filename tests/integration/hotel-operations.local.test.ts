@@ -171,6 +171,7 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
     const maintenance = await service.createRoomMaintenanceBlock(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, maintenanceInput);
     const maintenanceReplay = await service.createRoomMaintenanceBlock(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, maintenanceInput);
     assert.equal(maintenanceReplay.id, maintenance.id, "replayed maintenance command returns its original block");
+    assert.equal((await initialize(days("2027-08-08", "2027-08-10"), 5, `hotel-ops-maintenance-inventory-${suffix}`)).createdCount, 2);
     await assert.rejects(() => service.createRoomMaintenanceBlock(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, { ...maintenanceInput, from: "2027-08-09", to: "2027-08-11", idempotencyKey: `maintenance-overlap-${suffix}` }), HotelManagementConflictError, "overlapping dated maintenance blocks for one physical room are rejected");
     const assignedNight = await db.hotelReservationRoom.findFirstOrThrow({ where: { organizationId: organizationA.id, roomId: physicalRoom.id, date: date("2027-08-04") } });
     await assert.rejects(() => db.hotelReservationRoom.update({ where: { id: assignedNight.id }, data: { date: date("2027-08-08") } }), undefined, "database guard prevents later assignment into scheduled maintenance");
@@ -191,7 +192,7 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
     assert.equal(committedNight?.available, 1, "closed-to-arrival/departure stay-through flags do not erase remaining capacity");
     assert.equal(committedNight?.closedToArrival, true);
     assert.equal(committedNight?.closedToDeparture, true);
-    assert.equal(operations.inventory.find((night) => night.date === "2027-08-08")?.available, 0, "scheduled maintenance reduces sellable rooms for the affected night");
+    assert.equal(operations.inventory.find((night) => night.date === "2027-08-08")?.available, 3, "scheduled maintenance removes its physical room from sellable capacity");
     const boardRoom = operations.roomBoard.rooms.find((room) => room.id === physicalRoom.id);
     assert.deepEqual(boardRoom?.nights.find((night) => night.date === "2027-08-04"), { date: "2027-08-04", status: "RESERVED", reference: `BOARD-${suffix}` });
     assert.deepEqual(boardRoom?.nights.filter((night) => night.date >= "2027-08-08" && night.date < "2027-08-10").map((night) => night.status), ["MAINTENANCE", "MAINTENANCE"]);

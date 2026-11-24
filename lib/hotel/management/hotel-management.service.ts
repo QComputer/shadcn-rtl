@@ -121,14 +121,30 @@ export class HotelManagementService {
     if (!isUtcDate(range.from) || !isUtcDate(range.to) || !Number.isInteger(nightCount) || nightCount < 1 || nightCount > 31) throw new HotelManagementValidationError("Operations range must be 1 to 31 whole property nights");
     const property = await this.db.hotelProperty.findFirst({ where: { id: propertyId, organizationId: scope.organizationId, isActive: true, deletedAt: null }, select: { id: true, slug: true, name: true, timezone: true, currency: true, checkInTime: true, checkOutTime: true, minStayNights: true, maxStayNights: true } });
     if (!property) throw new HotelManagementAuthorizationError("Property is outside the active organization scope");
-    const [roomTypes, ratePlans, inventory, cancellationPolicies, physicalCapacities, reservations, maintenanceBlocks] = await Promise.all([
-      this.db.hotelRoomType.findMany({ where: { organizationId: scope.organizationId, propertyId, isActive: true, deletedAt: null }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }], select: { id: true, slug: true, name: true, description: true, maxAdults: true, maxChildren: true, maxOccupancy: true, beds: true, totalAllotment: true, rooms: { where: { organizationId: scope.organizationId, propertyId, isActive: true, deletedAt: null }, orderBy: { code: "asc" }, select: { id: true, code: true, floor: true, isOutOfService: true, isActive: true } } } }),
+    const [roomTypes, ratePlans, inventory, cancellationPolicies, physicalCapacities, reservations, maintenanceBlocks, amenities] = await Promise.all([
+      this.db.hotelRoomType.findMany({
+        where: { organizationId: scope.organizationId, propertyId, isActive: true, deletedAt: null },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        select: {
+          id: true, slug: true, name: true, description: true, maxAdults: true, maxChildren: true, maxOccupancy: true, beds: true, totalAllotment: true,
+          amenities: {
+            where: { organizationId: scope.organizationId, amenity: { is: { organizationId: scope.organizationId, propertyId } } },
+            select: { amenity: { select: { id: true, key: true, label: true, isActive: true } } },
+          },
+          rooms: {
+            where: { organizationId: scope.organizationId, propertyId, isActive: true, deletedAt: null },
+            orderBy: { code: "asc" },
+            select: { id: true, code: true, floor: true, isOutOfService: true, isActive: true },
+          },
+        },
+      }),
       this.db.hotelRatePlan.findMany({ where: { organizationId: scope.organizationId, propertyId, isActive: true }, orderBy: [{ roomTypeId: "asc" }, { code: "asc" }], select: { id: true, roomTypeId: true, code: true, name: true, currency: true, baseNightlyRate: true, minNights: true, maxNights: true, isRefundable: true, validFrom: true, validTo: true, cancellationPolicyId: true, nightlyRates: { where: { from: { lt: range.to }, to: { gt: range.from } }, orderBy: [{ from: "asc" }, { to: "asc" }], select: { id: true, from: true, to: true, nightlyRate: true, minNights: true, maxNights: true } } } }),
       this.db.hotelInventory.findMany({ where: { organizationId: scope.organizationId, propertyId, roomType: { isActive: true, deletedAt: null }, date: { gte: range.from, lt: range.to } }, orderBy: [{ date: "asc" }, { roomTypeId: "asc" }], select: { id: true, roomTypeId: true, date: true, allotment: true, booked: true, held: true, outOfService: true, closedToArrival: true, closedToDeparture: true } }),
       this.db.hotelCancellationPolicy.findMany({ where: { organizationId: scope.organizationId, propertyId }, orderBy: [{ isActive: "desc" }, { name: "asc" }], select: { id: true, key: true, name: true, freeCancellationCutoffHours: true, fullCancellationRetention: true, isActive: true, version: true } }),
       this.db.$queryRaw<Array<{ roomTypeId: string; configuredRooms: number; availableRooms: number }>>(Prisma.sql`SELECT "roomTypeId", COUNT(*)::int AS "configuredRooms", COUNT(*) FILTER (WHERE "isActive"=true AND "deletedAt" IS NULL AND "isOutOfService"=false)::int AS "availableRooms" FROM "HotelRoom" WHERE "organizationId"=${scope.organizationId} AND "propertyId"=${propertyId} GROUP BY "roomTypeId"`),
       this.db.hotelReservation.findMany({ where: { organizationId: scope.organizationId, propertyId, status: { in: ["CONFIRMED", "CHECKED_IN"] }, checkIn: { lt: range.to }, checkOut: { gt: range.from } }, orderBy: [{ checkIn: "asc" }, { reference: "asc" }], select: { reference: true, status: true, nights: { where: { date: { gte: range.from, lt: range.to } }, select: { date: true, roomId: true } } } }),
       this.db.hotelRoomMaintenanceBlock.findMany({ where: { organizationId: scope.organizationId, propertyId, releasedAt: null, from: { lt: range.to }, to: { gt: range.from } }, orderBy: [{ from: "asc" }, { roomId: "asc" }], select: { id: true, roomId: true, from: true, to: true, reason: true, room: { select: { code: true } } } }),
+      this.db.hotelAmenity.findMany({ where: { organizationId: scope.organizationId, propertyId, isActive: true }, orderBy: [{ label: "asc" }, { key: "asc" }], select: { id: true, key: true, label: true } }),
     ]);
     const roomBoard = buildHotelRoomBoard({
       from: range.from.toISOString().slice(0, 10),
@@ -146,8 +162,9 @@ export class HotelManagementService {
       range: { from: range.from.toISOString().slice(0, 10), to: range.to.toISOString().slice(0, 10), nights: nightCount },
       roomTypes: roomTypes.map((roomType) => {
         const physical = physicalCapacities.find((capacity) => capacity.roomTypeId === roomType.id);
-        return { ...roomType, physicalCapacity: { configuredRooms: physical?.configuredRooms ?? 0, sellableRooms: physical?.availableRooms ?? 0 } };
+        return { ...roomType, amenities: roomType.amenities.map((link) => link.amenity), physicalCapacity: { configuredRooms: physical?.configuredRooms ?? 0, sellableRooms: physical?.availableRooms ?? 0 } };
       }),
+      amenities,
       roomBoard,
       manualRoomManagementEnabled: process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED === "1",
       maintenanceBlocks: maintenanceBlocks.map((block) => ({ id: block.id, roomId: block.roomId, roomCode: block.room.code, from: block.from.toISOString().slice(0, 10), to: block.to.toISOString().slice(0, 10), reason: block.reason })),

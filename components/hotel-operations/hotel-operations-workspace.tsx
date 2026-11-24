@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 type Room = { id: string; code: string; floor: string | null; isOutOfService: boolean; isActive: boolean };
+type Amenity = { id: string; key: string; label: string; isActive?: boolean };
 type RoomType = {
   id: string; slug: string; name: string; description: string | null; maxAdults: number;
-  maxChildren: number; maxOccupancy: number; beds: unknown; rooms: Room[];
+  maxChildren: number; maxOccupancy: number; beds: unknown; rooms: Room[]; amenities: Amenity[];
   physicalCapacity: { configuredRooms: number; sellableRooms: number };
 };
 type RatePlan = {
@@ -32,6 +33,7 @@ type OperationsData = {
   property: { id: string; name: string; slug: string; timezone: string; currency: string };
   range: { from: string; to: string; nights: number };
   roomTypes: RoomType[];
+  amenities: Amenity[];
   ratePlans: RatePlan[];
   inventory: InventoryNight[];
   roomBoard: RoomBoard;
@@ -61,7 +63,7 @@ const labels = {
     loading: "در حال بارگذاری…", loadError: "اطلاعات عملیات بارگذاری نشد.", saveError: "ذخیره انجام نشد.",
     roomTypes: "انواع اتاق", rooms: "اتاق‌های فیزیکی", roomBoard: "وضعیت روزانه اتاق‌ها", boardDate: "تاریخ", boardRoom: "اتاق", vacant: "خالی", reserved: "رزروشده", occupied: "اشغال‌شده", unassigned: "شب رزرو بدون تخصیص اتاق فیزیکی", outOfServiceNote: "علامت خارج از سرویس برای همه تاریخ‌های نمایش‌داده‌شده اعمال می‌شود.", outOfServiceConflict: "تخصیص فعال با علامت خارج از سرویس", maintenance: "تعمیرات زمان‌بندی‌شده", maintenanceConflict: "تعمیرات با رزرو فعال تداخل دارد", maintenanceInvalid: "تاریخ پایان باید بعد از تاریخ شروع باشد و دلیل تعمیرات را وارد کنید.", maintenanceFrom: "شروع (شامل)", maintenanceTo: "پایان (غیرشامل)", maintenanceReason: "دلیل تعمیرات", createMaintenance: "ثبت تعمیرات", releaseMaintenance: "پایان تعمیرات", maintenanceGateClosed: "ثبت و پایان تعمیرات تا تأیید بهره‌برداری غیرفعال است.", rates: "نرخ‌ها", inventory: "ظرفیت شبانه",
     add: "افزودن", save: "ذخیره", update: "ذخیره تغییرات", cancel: "لغو ویرایش", edit: "ویرایش",
-    slug: "شناسه نوع اتاق", name: "نام", description: "توضیحات", adults: "بزرگسالان", children: "کودکان", occupancy: "ظرفیت کل", beds: "تخت", bedKind: "نوع تخت", bedCount: "تعداد", bedKinds: { single: "یک‌نفره", double: "دو‌نفره", queen: "کوئین", king: "کینگ", sofa: "مبل تخت‌خواب‌شو", bunk: "دوطبقه", crib: "تخت کودک" },
+    slug: "شناسه نوع اتاق", name: "نام", description: "توضیحات", adults: "بزرگسالان", children: "کودکان", occupancy: "ظرفیت کل", beds: "تخت", bedKind: "نوع تخت", bedCount: "تعداد", bedKinds: { single: "یک‌نفره", double: "دو‌نفره", queen: "کوئین", king: "کینگ", sofa: "مبل تخت‌خواب‌شو", bunk: "دوطبقه", crib: "تخت کودک" }, amenities: "امکانات تأییدشده", amenityKey: "شناسه امکان", amenityLabel: "نام امکان", addAmenity: "افزودن امکان", saveAmenities: "ذخیره امکانات نوع اتاق", noAmenities: "امکانی ثبت نشده است؛ فقط موارد تأییدشده هتل را اضافه کنید.",
     roomType: "نوع اتاق", code: "کد اتاق", floor: "طبقه", unavailable: "خارج از سرویس", active: "فعال", room: "اتاق",
     planCode: "کد طرح نرخ", planName: "نام طرح", baseRate: "نرخ پایه (تومان)", createPlan: "ایجاد طرح نرخ", editPlan: "ویرایش طرح نرخ", updatePlan: "ذخیره نرخ طرح", planValidity: "اعتبار طرح",
     policies: "قوانین لغو", policyKey: "شناسه قانون لغو", policyName: "نام قانون لغو", cutoff: "مهلت لغو رایگان (ساعت)", retention: "میزان کسر در لغو دیرهنگام (۰ تا ۱)", createPolicy: "ثبت قانون لغو", selectPolicy: "قانون لغو را انتخاب کنید", noPolicy: "قانون لغو تنظیم نشده؛ نرخ به مسیر رزرو مهمان متصل نمی‌شود.", inactivePolicy: "غیرفعال", policyRequired: "برای قابل رزرو شدن نرخ، یک قانون لغو فعال ایجاد و به طرح نرخ متصل کنید.",
@@ -77,7 +79,7 @@ const labels = {
     loading: "Loading…", loadError: "Could not load operations.", saveError: "Save failed.",
     roomTypes: "Room types", rooms: "Physical rooms", roomBoard: "Daily room board", boardDate: "Date", boardRoom: "Room", vacant: "Vacant", reserved: "Reserved", occupied: "Occupied", unassigned: "Reservation nights without a physical room assignment", outOfServiceNote: "The out-of-service flag applies to every displayed date.", outOfServiceConflict: "Active allocation conflicts with out-of-service flag", maintenance: "Scheduled maintenance", maintenanceConflict: "Maintenance conflicts with an active reservation", maintenanceInvalid: "End date must be after the start date, and a reason is required.", maintenanceFrom: "Start (inclusive)", maintenanceTo: "End (exclusive)", maintenanceReason: "Maintenance reason", createMaintenance: "Schedule maintenance", releaseMaintenance: "Release maintenance", maintenanceGateClosed: "Maintenance changes are disabled until operations are approved.", rates: "Rates", inventory: "Nightly inventory",
     add: "Add", save: "Save", update: "Save changes", cancel: "Cancel edit", edit: "Edit",
-    slug: "Room type slug", name: "Name", description: "Description", adults: "Adults", children: "Children", occupancy: "Max occupancy", beds: "Bed", bedKind: "Bed type", bedCount: "Count", bedKinds: { single: "Single", double: "Double", queen: "Queen", king: "King", sofa: "Sofa bed", bunk: "Bunk", crib: "Crib" },
+    slug: "Room type slug", name: "Name", description: "Description", adults: "Adults", children: "Children", occupancy: "Max occupancy", beds: "Bed", bedKind: "Bed type", bedCount: "Count", bedKinds: { single: "Single", double: "Double", queen: "Queen", king: "King", sofa: "Sofa bed", bunk: "Bunk", crib: "Crib" }, amenities: "Verified amenities", amenityKey: "Amenity key", amenityLabel: "Amenity name", addAmenity: "Add amenity", saveAmenities: "Save room type amenities", noAmenities: "No amenities are listed. Add only hotel-confirmed amenities.",
     roomType: "Room type", code: "Room code", floor: "Floor", unavailable: "Out of service", active: "Active", room: "Room",
     planCode: "Rate plan code", planName: "Rate plan name", baseRate: "Base nightly rate (Toman)", createPlan: "Create rate plan", editPlan: "Edit rate plan", updatePlan: "Save rate plan", planValidity: "Plan validity",
     policies: "Cancellation policies", policyKey: "Cancellation policy key", policyName: "Cancellation policy name", cutoff: "Free cancellation cutoff (hours)", retention: "Late cancellation retention (0 to 1)", createPolicy: "Create cancellation policy", selectPolicy: "Select a cancellation policy", noPolicy: "No cancellation policy is configured; this rate cannot be used in the guest reservation flow.", inactivePolicy: "Inactive", policyRequired: "Create and attach an active cancellation policy before this rate can be reserved by guests.",
@@ -93,7 +95,7 @@ const labels = {
     loading: "جارٍ التحميل…", loadError: "تعذر تحميل العمليات.", saveError: "تعذر الحفظ.",
     roomTypes: "أنواع الغرف", rooms: "الغرف الفعلية", roomBoard: "حالة الغرف اليومية", boardDate: "التاريخ", boardRoom: "الغرفة", vacant: "شاغرة", reserved: "محجوزة", occupied: "مشغولة", unassigned: "ليالي حجز بلا تخصيص غرفة فعلية", outOfServiceNote: "تُطبّق علامة خارج الخدمة على جميع التواريخ المعروضة.", outOfServiceConflict: "تخصيص نشط يتعارض مع علامة خارج الخدمة", maintenance: "الصيانة المجدولة", maintenanceConflict: "تتعارض الصيانة مع حجز نشط", maintenanceInvalid: "يجب أن يكون تاريخ النهاية بعد البداية وإدخال سبب الصيانة.", maintenanceFrom: "البداية (شاملة)", maintenanceTo: "النهاية (غير شاملة)", maintenanceReason: "سبب الصيانة", createMaintenance: "جدولة الصيانة", releaseMaintenance: "إنهاء الصيانة", maintenanceGateClosed: "تغييرات الصيانة معطلة حتى اعتماد التشغيل.", rates: "الأسعار", inventory: "مخزون الليالي",
     add: "إضافة", save: "حفظ", update: "حفظ التغييرات", cancel: "إلغاء التعديل", edit: "تعديل",
-    slug: "معرّف نوع الغرفة", name: "الاسم", description: "الوصف", adults: "البالغون", children: "الأطفال", occupancy: "السعة القصوى", beds: "السرير", bedKind: "نوع السرير", bedCount: "العدد", bedKinds: { single: "مفرد", double: "مزدوج", queen: "كوين", king: "كينغ", sofa: "سرير أريكة", bunk: "طابقي", crib: "سرير أطفال" },
+    slug: "معرّف نوع الغرفة", name: "الاسم", description: "الوصف", adults: "البالغون", children: "الأطفال", occupancy: "السعة القصوى", beds: "السرير", bedKind: "نوع السرير", bedCount: "العدد", bedKinds: { single: "مفرد", double: "مزدوج", queen: "كوين", king: "كينغ", sofa: "سرير أريكة", bunk: "طابقي", crib: "سرير أطفال" }, amenities: "المرافق المؤكدة", amenityKey: "معرّف المرفق", amenityLabel: "اسم المرفق", addAmenity: "إضافة مرفق", saveAmenities: "حفظ مرافق نوع الغرفة", noAmenities: "لا توجد مرافق مسجلة؛ أضف المرافق المؤكدة للفندق فقط.",
     roomType: "نوع الغرفة", code: "رمز الغرفة", floor: "الطابق", unavailable: "خارج الخدمة", active: "نشطة", room: "غرفة",
     planCode: "رمز خطة السعر", planName: "اسم الخطة", baseRate: "السعر الأساسي لليلة (تومان)", createPlan: "إنشاء خطة سعر", editPlan: "تعديل خطة السعر", updatePlan: "حفظ خطة السعر", planValidity: "صلاحية الخطة",
     policies: "سياسات الإلغاء", policyKey: "معرّف سياسة الإلغاء", policyName: "اسم سياسة الإلغاء", cutoff: "مهلة الإلغاء المجاني (ساعات)", retention: "الاقتطاع عند الإلغاء المتأخر (من ٠ إلى ١)", createPolicy: "إنشاء سياسة إلغاء", selectPolicy: "اختر سياسة إلغاء", noPolicy: "لم يتم إعداد سياسة إلغاء؛ لا يمكن استخدام هذا السعر في مسار حجز الضيوف.", inactivePolicy: "غير نشطة", policyRequired: "أنشئ سياسة إلغاء نشطة واربطها بخطة السعر قبل أن يتمكن الضيف من الحجز.",
@@ -153,6 +155,9 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
   const [typeBedKind, setTypeBedKind] = useState("queen");
   const [typeBedCount, setTypeBedCount] = useState("1");
   const [preservedBeds, setPreservedBeds] = useState<Array<Record<string, unknown>>>([]);
+  const [selectedAmenityIds, setSelectedAmenityIds] = useState<string[]>([]);
+  const [amenityKey, setAmenityKey] = useState("");
+  const [amenityLabel, setAmenityLabel] = useState("");
   const [roomTypeId, setRoomTypeId] = useState("");
   const [roomCode, setRoomCode] = useState("");
   const [roomFloor, setRoomFloor] = useState("");
@@ -291,9 +296,10 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
     setTypeBedKind(typeof first?.kind === "string" ? first.kind : "queen");
     setTypeBedCount(String(typeof first?.count === "number" ? first.count : 1));
     setPreservedBeds(beds.slice(1));
+    setSelectedAmenityIds(item.amenities.map((amenity) => amenity.id));
   }
   function resetTypeForm() {
-    setEditingTypeId(null); setTypeSlug(""); setTypeName(""); setTypeDescription(""); setTypeAdults("2"); setTypeChildren("0"); setTypeOccupancy("2"); setTypeBedKind("queen"); setTypeBedCount("1"); setPreservedBeds([]);
+    setEditingTypeId(null); setTypeSlug(""); setTypeName(""); setTypeDescription(""); setTypeAdults("2"); setTypeChildren("0"); setTypeOccupancy("2"); setTypeBedKind("queen"); setTypeBedCount("1"); setPreservedBeds([]); setSelectedAmenityIds([]);
   }
   async function saveType(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -304,7 +310,21 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
     const beds = [{ ...(previous[0] ?? {}), kind: typeBedKind, count }, ...preservedBeds];
     const payload = { name: typeName, description: typeDescription, maxAdults: Number(typeAdults), maxChildren: Number(typeChildren), maxOccupancy: Number(typeOccupancy), beds };
     const result = await mutate(`/room-types${editingTypeId ? `/${encodeURIComponent(editingTypeId)}` : ""}`, editingTypeId ? "PATCH" : "POST", editingTypeId ? payload : { ...payload, slug: typeSlug });
-    if (result) resetTypeForm();
+    const roomTypeId = editingTypeId ?? result?.roomType?.id;
+    if (result && roomTypeId) {
+      setEditingTypeId(roomTypeId);
+      const linked = await mutate(`/room-types/${encodeURIComponent(roomTypeId)}/amenities`, "PUT", { amenityIds: selectedAmenityIds });
+      if (linked) resetTypeForm();
+    }
+  }
+  async function createAmenity(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const result = await mutate("/amenities", "POST", { key: amenityKey, label: amenityLabel });
+    if (result?.amenity?.id) {
+      setSelectedAmenityIds((ids) => ids.includes(result.amenity.id) ? ids : [...ids, result.amenity.id]);
+      setAmenityKey("");
+      setAmenityLabel("");
+    }
   }
   function startRoomEdit(room: Room, parentRoomTypeId: string) {
     setEditingRoomId(room.id); setRoomTypeId(parentRoomTypeId); setRoomCode(room.code); setRoomFloor(room.floor ?? ""); setRoomUnavailable(room.isOutOfService); setRoomActive(room.isActive);
@@ -432,8 +452,10 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
         <label className="space-y-1 text-sm"><span>{text.bedKind}</span><select className="h-10 min-w-0 w-full rounded-md border bg-background px-3" value={typeBedKind} onChange={(event) => setTypeBedKind(event.target.value)}><option value="single">{text.bedKinds.single}</option><option value="double">{text.bedKinds.double}</option><option value="queen">{text.bedKinds.queen}</option><option value="king">{text.bedKinds.king}</option><option value="sofa">{text.bedKinds.sofa}</option><option value="bunk">{text.bedKinds.bunk}</option><option value="crib">{text.bedKinds.crib}</option></select></label>
         <Field label={text.bedCount} value={typeBedCount} setValue={setTypeBedCount} type="number" required />
         {editingTypeId && preservedBeds.length ? <p className="text-xs text-muted-foreground sm:col-span-2">{text.beds}: {preservedBeds.map((bed) => `${String(bed.kind ?? "bed")} × ${String(bed.count ?? 1)}`).join(", ")}</p> : null}
+        <fieldset className="space-y-2 rounded-md border p-3 sm:col-span-2"><legend className="px-1 text-sm font-medium">{text.amenities}</legend>{(activeData?.amenities ?? []).length ? <div className="grid gap-2 sm:grid-cols-2">{activeData!.amenities.map((amenity) => <label key={amenity.id} className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" checked={selectedAmenityIds.includes(amenity.id)} onChange={(event) => setSelectedAmenityIds((ids) => event.target.checked ? [...ids, amenity.id] : ids.filter((id) => id !== amenity.id))} />{amenity.label}</label>)}</div> : <p className="text-xs text-muted-foreground">{text.noAmenities}</p>}</fieldset>
         <div className="flex gap-2"><Button type="submit" disabled={busy || !typeName}>{editingTypeId ? text.update : text.add}</Button>{editingTypeId ? <Button type="button" variant="outline" onClick={resetTypeForm}>{text.cancel}</Button> : null}</div>
       </form>
+      <form onSubmit={createAmenity} className="grid gap-3 rounded-lg border p-3 sm:grid-cols-2"><Field label={text.amenityKey} value={amenityKey} setValue={setAmenityKey} required /><Field label={text.amenityLabel} value={amenityLabel} setValue={setAmenityLabel} required /><Button type="submit" disabled={busy || !amenityKey.trim() || !amenityLabel.trim()}>{text.addAmenity}</Button></form>
     </section>
 
     <section className="space-y-4 rounded-xl border bg-card p-4">

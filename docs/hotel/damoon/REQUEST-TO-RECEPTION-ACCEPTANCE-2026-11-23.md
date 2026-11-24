@@ -6,6 +6,8 @@
 
 ## پذیرش مرکز رزرواسیون — الحاقیهٔ ۲۰۲۶-۱۱-۲۴
 
+**Release update:** PR165 merged at `2308cbaf00746f9e2a038741fdada820f04c5dd8` from exact head `92e9018f1958d01d3240bc3e6514b61e8c928469`. Required executable GitHub workflows passed. Runflare deployment and live Production acceptance remain unverified.
+
 ### محدوده و شواهد فعلی
 
 - Source commit: `0607a8798a4667eecac781b1d11946f4469432a2`، بر پایهٔ main `98896a24126d0c482d4fae434bf5c36f7c20143b`.

@@ -8,6 +8,8 @@
 
 # Damoon | هَندآف اجرایی Agentها (نسخه فشرده و قابل کپی)
 
+> **وضعیت نهایی PR165، ۲۰۲۶-۱۱-۲۴:** ادغام در `2308cbaf00746f9e2a038741fdada820f04c5dd8`، head دقیق PR `92e9018f1958d01d3240bc3e6514b61e8c928469`. تمام checkهای اجرایی موفق؛ Vercel Preview استثنای شناخته‌شدهٔ تعلیق بود. Runflare و Production acceptance هنوز تأیید نشده‌اند؛ هیچ deployment دستی یا تغییر Production انجام نشد.
+
 ## اصول حاکم
 
 Repo: `QComputer/shadcn-rtl`; latest main recorded `aa38b8c0a6a13de4b40cfe8b60ca7904be8349f7` (PR149, documentation-only; no new runtime behavior). **قبل از هر اقدام git status / origin/main refresh**. سرعت بالا اما بدون آمیختن success CI و Production. یک Checkout مشترک مطابق `AGENTS.md`؛ بدون Worktree جدید و بدون حذف کار Agent دیگر. Runflare انتشار خودکار main، پس هر Merge اثر Production دارد.

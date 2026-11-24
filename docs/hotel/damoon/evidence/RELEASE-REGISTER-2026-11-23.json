@@ -362,14 +362,14 @@
   "reservationCenterImplementation20261124": {
     "implementationCommit": "0607a8798a4667eecac781b1d11946f4469432a2",
     "baseMainSha": "98896a24126d0c482d4fae434bf5c36f7c20143b",
-    "state": "CODE_IMPLEMENTED_HOSTED_PG_AND_CENTER_BROWSER_SCENARIOS_PASS_LEGACY_ASSERTION_FIXED_RERUN_PENDING",
+    "state": "MERGED_CI_PASS_RUNFLARE_DEPLOYMENT_AND_PRODUCTION_ACCEPTANCE_UNVERIFIED",
     "receptionCenterReadIndependentOfPublicBookingFlags": true,
     "localEvidence": {
       "typeScript": "PASS",
       "eslint": "PASS",
       "focusedUnitTests": "5_PASS",
       "disposablePostgresAvailable": false,
-      "browserAcceptance": "CENTER_SCENARIOS_PASS; RUN_45474689339_FAILED_AFTER_CENTER_ON_LEGACY_WORKSPACE_DIR_SELECTOR; ASSERTION_FIXED_IN_0607A879; RERUN_PENDING"
+      "browserAcceptance": "PASS_ON_EXACT_PR_HEAD_92E9018; HOTEL_PHASE1_OPERATIONAL_PG_RUN_45476310761; CENTER_MANAGER_STAFF_LOCALE_MAINTENANCE_MOBILE_AND_LEGACY_WORKSPACE_RTL_PASS"
     },
     "productionDatabaseReadOrWrite": false,
     "productionMigration": false,
@@ -377,6 +377,17 @@
     "runflareDeploymentStarted": false,
     "inheritedDirtyFilesModifiedOrStaged": false,
     "pullRequest": 165,
-    "mergeSha": null
+    "pullRequestHeadSha": "92e9018f1958d01d3240bc3e6514b61e8c928469",
+    "mergeSha": "2308cbaf00746f9e2a038741fdada820f04c5dd8",
+    "githubChecks": {
+      "runflareTypeScript": "PASS 45476310482",
+      "focusedRegressions": "PASS 45476310643",
+      "migrationGapUpgrade": "PASS 45476310383",
+      "requestToReception": "PASS 45476310373",
+      "hotelPhase1OperationalPostgresBrowser": "PASS 45476310761",
+      "vercelPreview": "BLOCKED_BY_ESTABLISHED_SUSPENDED_PREVIEW_POLICY_EXCEPTION"
+    },
+    "runflareDeployment": "NOT_VERIFIED",
+    "productionBrowserAcceptance": "NOT_PERFORMED"
   }
 }

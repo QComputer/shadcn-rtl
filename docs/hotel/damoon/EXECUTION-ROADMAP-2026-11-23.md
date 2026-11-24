@@ -60,6 +60,8 @@ M3 آماده‌سازی عملیاتی رزرو/دیتابیس (شاخه مست
 
 ## الحاقیه ۲۰۲۶-۱۱-۲۴ — مرکز رزرواسیون
 
+**Release update:** PR165 merged as `2308cbaf00746f9e2a038741fdada820f04c5dd8` from exact head `92e9018f1958d01d3240bc3e6514b61e8c928469`. All executable required GitHub checks passed; Vercel Preview is the established suspended-policy exception. Automatic Runflare deployment and live acceptance remain unverified.
+
 - **هدف تحویل:** یک dashboard قابل استفاده برای مدیر و STAFF مجاز، با ناوبری مستقیم، manual reservation موجود، سرچ و فیلتر وضعیت/نوع، پنل جزئیات، ورود/خروج امروز و occupancy calendar هفت‌روزه با جابه‌جایی تاریخ.
 - **وضعیت کد:** پیاده‌سازی و اصلاح browser assertion در `0607a8798a4667eecac781b1d11946f4469432a2`; TypeScript، ESLint بدون هشدار و ۵ تست واحد محلی پاس شده‌اند. Hosted PostgreSQL سناریوها را گذراند؛ Reservation Center browser checks شامل موبایل و FA/EN/AR RTL/LTR نیز گذشتند. همان run در انتهایش به selector قدیمی برای legacy workspace برخورد کرد؛ اصلاح selector انجام و rerun نهایی pending است.
 - **قرارداد دسترسی:** mutationها از همان سرویس/تراکنش قبلی استفاده می‌کنند. `GET .../reservations?view=center` فهرست مجاز پذیرش را مستقل از gate عمومی می‌خواند؛ `GET /api/organizations/{id}/hotels/{propertyId}/occupancy` فقط board را برمی‌گرداند و عضویت/tenant/property را دوباره بررسی می‌کند؛ خروجی تعمیرات نامعلوم را به VACANT تبدیل نمی‌کند. schema change ندارد.

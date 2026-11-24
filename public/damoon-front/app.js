@@ -8,6 +8,7 @@ import { validateStayRange, todayLocalISO, jalaliAccessibleDay } from "./calenda
 import translations from "./translations.js";
 import { palettes, readPalette, applyPalette } from "./themes.js";
 import { mountBooking, readStaySelection } from "./booking.js";
+import { getDamoonReservationPageCopy } from "./booking-activation.js";
 import { parseChildAges, withStaySelection, createIdempotencyKey } from "./booking-flow.js";
 import { allowedVirtualTourUrl, DAMOON_VTOUR_COPY, publishedDamoonTours, tourViewerMarkup } from "./virtual-tour.js";
 
@@ -230,7 +231,21 @@ function render() {
   ui = translations[locale]?.ui || faUI;
   const path = normalizePath(window.location.pathname);
   const reservationStart = path === "/hotel-reservations/start";
-  const page = pageForPath(path, locale) || (reservationStart ? { path, title: locale === "fa" ? "درخواست هماهنگی اقامت" : locale === "ar" ? "طلب تنسيق الإقامة" : "Request stay coordination", text: locale === "fa" ? "تاریخ و ترکیب مهمانان را برای ارسال درخواست هماهنگی به پذیرش انتخاب کنید؛ این مسیر موجودی یا قیمت را بررسی و رزرو یا پرداخت انجام نمی‌دهد." : locale === "ar" ? "اختر التواريخ والضيوف لإرسال طلب تنسيق إلى الاستقبال؛ لا يتحقق هذا المسار من التوفر أو الأسعار ولا ينشئ حجزاً أو دفعة." : "Choose dates and guests to send a coordination request to reception. This route does not check availability, confirm a rate, hold a room, or take payment." } : null);
+  const reservationCopy = reservationStart ? getDamoonReservationPageCopy({
+    mode: new URLSearchParams(window.location.search).get("mode"),
+    hostname: window.location.hostname,
+    locale,
+  }) : null;
+  const page = pageForPath(path, locale) || (reservationStart ? {
+    path,
+    title: reservationCopy.title,
+    intro: reservationCopy.title,
+    text: reservationCopy.description,
+    ...(reservationCopy.isDemo ? {
+      badge: reservationCopy.badge,
+      actions: [["/hotel-reservations/start?mode=DEMO_BOOKING#demo-booking", reservationCopy.start]],
+    } : {}),
+  } : null);
   document.documentElement.lang = locale;
   document.documentElement.dir = translations[locale]?.direction || "rtl";
   const noScript = document.querySelector("noscript");
@@ -246,7 +261,7 @@ function render() {
   let body;
   if (!page) body = `<section class="not-found"><p class="eyebrow">404</p><h1>${safeText(ui.pageNotFound)}</h1><p>${safeText(ui.pageNotFoundText)}</p>${link("/", ui.backHome, "button button--primary")}</section>`;
   else if (isAccommodation) body = renderAccommodation({ path, page, locale, site, routeHref, stayHref, escapeHtml: safeText });
-  else if (reservationStart) body = `${hero(page, path)}<section class="content-section"><div class="section-heading"><p class="eyebrow">${safeText(page.title)}</p><h2>${safeText(page.title)}</h2><p>${safeText(page.text)}</p></div><div data-booking-slot></div></section>`;
+  else if (reservationStart) body = `${hero(page, path)}<section class="content-section"><div class="section-heading"><p class="eyebrow">${safeText(page.title)}</p><h2>${safeText(page.title)}</h2><p>${safeText(page.text)}</p></div><div data-booking-slot id="demo-booking"></div></section>`;
   else if (path === '/') body = `<div class="home-top">${hero(page, path)}<div data-booking-slot></div></div>${homeContent()}`;
   else if (path === "/attractions") body = renderDamoonAttractionsPage(locale);
   else if (path.startsWith("/attractions/")) body = renderDamoonAttractionDetailPage(locale, path.slice("/attractions/".length));

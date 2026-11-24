@@ -24,7 +24,7 @@ import {
   validateContact,
   withStaySelection,
 } from "./booking-flow.js";
-import { isDamoonDemoBookingActivated, isDamoonPublicBookingActivated } from "./booking-activation.js";
+import { getDamoonDemoBookingCopy, isDamoonDemoBookingActivated, isDamoonPublicBookingActivated } from "./booking-activation.js";
 
 const STORAGE_KEY = "damoon-stay-selection-v2";
 const LEGACY_STORAGE_KEY = "damoon-stay-selection-v1";
@@ -193,7 +193,11 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   if (reservationEntry) {
     ui.datePlanningOnly = locale === "fa" ? "این مسیر فقط درخواست هماهنگی به پذیرش می‌فرستد؛ موجودی و قیمت را بررسی نمی‌کند، اتاق نگه نمی‌دارد و پرداخت انجام نمی‌دهد." : locale === "ar" ? "يرسل هذا المسار طلب تنسيق إلى الاستقبال فقط؛ ولا يتحقق من التوفر أو الأسعار، ولا يحجز غرفة أو ينفذ دفعة." : "This route sends a coordination request to reception only. It does not check availability, confirm rates, hold a room, or take payment.";
   }
-  if (demoModeActive) ui.datePlanningOnly = locale === "fa" ? "رزرو نمایشی با قیمت و موجودی ساختگی؛ پرداخت واقعی انجام نمی‌شود و رزرو فقط برای نمایش به پذیرش ثبت می‌شود." : locale === "ar" ? "حجز تجريبي بأسعار وتوفر اصطناعيين؛ لا يتم تحصيل أي مبلغ حقيقي ويظهر الحجز التجريبي للاستقبال." : "Demo booking with synthetic prices and inventory. No real payment is collected; the demo reservation appears in reception.";
+  if (demoModeActive) {
+    const demoCopy = getDamoonDemoBookingCopy(locale);
+    ui.datePlanningOnly = demoCopy.planning;
+    ui.bookingSubmit = demoCopy.search;
+  }
   const weekdays = weekdayLabels(locale);
   const today = todayLocalISO();
   let selection = initialSelection(today);

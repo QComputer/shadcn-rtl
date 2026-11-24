@@ -626,6 +626,26 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   assert.equal(persistedUiType.name, uiName);
   assert.equal(persistedUiType.maxOccupancy, 3);
 
+  stage = "browser-create-and-attach-room-type-amenity";
+  const uiAmenityKey = `ui-amenity-${suffix.slice(0, 8)}`;
+  const uiAmenityLabel = `${prefix} UI verified amenity`;
+  const amenityForm = page.locator("form").filter({ has: page.getByLabel("Amenity key") });
+  await amenityForm.getByLabel("Amenity key").fill(uiAmenityKey);
+  await amenityForm.getByLabel("Amenity name").fill(uiAmenityLabel);
+  await amenityForm.getByRole("button", { name: "Add amenity" }).click();
+  const persistedAmenity = await db.hotelAmenity.findFirst({ where: { organizationId: orgAId, propertyId: propertyAId, key: uiAmenityKey } });
+  assert.ok(persistedAmenity, "manager-created property amenity persists in the tenant and property scope");
+  const roomTypeSection = page.getByRole("heading", { name: "Room types" }).locator("xpath=ancestor::section[1]");
+  const uiTypeItem = roomTypeSection.getByRole("listitem").filter({ hasText: uiName });
+  await uiTypeItem.getByRole("button", { name: "Edit" }).click();
+  await roomTypeSection.getByLabel(uiAmenityLabel).check();
+  await roomTypeSection.getByRole("button", { name: "Save changes" }).click();
+  const persistedAmenityLink = await db.hotelRoomTypeAmenity.findFirst({ where: { organizationId: orgAId, roomTypeId: persistedUiType.id, amenityId: persistedAmenity.id } });
+  assert.ok(persistedAmenityLink, "room-type amenity assignment persists through the management UI");
+  const operationsAmenities = await apiJson<{ roomTypes: Array<{ id: string; amenities: Array<{ id: string; label: string }> }> }>(operationsPath, cookie);
+  assert.equal(operationsAmenities.response.status, 200);
+  assert.ok(operationsAmenities.data?.roomTypes.find((roomType) => roomType.id === persistedUiType.id)?.amenities.some((amenity) => amenity.id === persistedAmenity.id && amenity.label === uiAmenityLabel), "authorized operations reload includes the scoped amenity assignment");
+
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.getByRole("heading", { name: "Hotel operations" }).waitFor({ state: "visible", timeout: 30_000 });
   await page.getByText(`${uiName} (${uiSlug})`, { exact: true }).waitFor({ state: "visible", timeout: 30_000 });

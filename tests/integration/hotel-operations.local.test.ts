@@ -178,7 +178,7 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
     await assert.rejects(() => service.createRoomMaintenanceBlock(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, { ...maintenanceInput, reason: "Changed replay reason" }), HotelManagementConflictError, "an idempotency key cannot be reused for changed input");
 
     const operations = await service.getOperations(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, property.id, days("2027-08-01", "2027-08-15"));
-    assert.deepEqual(Object.keys(operations).sort(), ["cancellationPolicies", "inventory", "maintenanceBlocks", "manualRoomManagementEnabled", "property", "range", "ratePlans", "roomBoard", "roomTypes"]);
+    assert.deepEqual(Object.keys(operations).sort(), ["amenities", "cancellationPolicies", "inventory", "maintenanceBlocks", "manualRoomManagementEnabled", "property", "range", "ratePlans", "roomBoard", "roomTypes"]);
     assert.deepEqual(operations.range, { from: "2027-08-01", to: "2027-08-15", nights: 14 });
     assert.equal(operations.property.timezone, "Asia/Tehran");
     const resultRoomType = operations.roomTypes.find((row) => row.id === roomType.id);

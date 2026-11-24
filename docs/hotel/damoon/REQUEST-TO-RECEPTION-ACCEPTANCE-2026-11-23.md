@@ -8,8 +8,8 @@
 
 ### محدوده و شواهد فعلی
 
-- Source commit: `ae6a208e85d0ea2da9f15d8b2008a9ba37cb3227`، بر پایهٔ main `98896a24126d0c482d4fae434bf5c36f7c20143b`.
-- شواهد محلی: TypeScript موفق، ESLint محدودشده موفق و ۵ تست واحد ناوبری/room-board موفق. PostgreSQL موقت محلی روی پورت محافظت‌شدهٔ `127.0.0.1:55439` در دسترس نبود؛ پذیرش PostgreSQL و مرورگر در hosted CI منتظر است.
+- Source commit: `0607a8798a4667eecac781b1d11946f4469432a2`، بر پایهٔ main `98896a24126d0c482d4fae434bf5c36f7c20143b`.
+- شواهد محلی: TypeScript موفق، ESLint محدودشده موفق و ۵ تست واحد ناوبری/room-board موفق. PostgreSQL موقت محلی روی پورت محافظت‌شدهٔ `127.0.0.1:55439` در دسترس نبود؛ hosted PostgreSQL سناریوهای عملیاتی گذشتند و center browser checks شامل manager/staff، locale direction، maintenance و mobile overflow نیز گذشتند. همان run پس از این سناریوها در selector قدیمی legacy workspace شکست خورد؛ selector اصلاح شده و rerun نهایی pending است.
 - عملیات از API رزرو موجود استفاده می‌کنند؛ occupancy از یک GET محدود read model می‌آید. Migration و تغییر Production data نداریم.
 
 ### سناریوهای لازم در hosted acceptance

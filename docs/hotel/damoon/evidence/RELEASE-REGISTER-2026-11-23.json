@@ -360,23 +360,23 @@
     }
   },
   "reservationCenterImplementation20261124": {
-    "implementationCommit": "ae6a208e85d0ea2da9f15d8b2008a9ba37cb3227",
+    "implementationCommit": "0607a8798a4667eecac781b1d11946f4469432a2",
     "baseMainSha": "98896a24126d0c482d4fae434bf5c36f7c20143b",
-    "state": "CODE_IMPLEMENTED_LOCAL_TYPECHECK_ESLINT_UNIT_PASS_HOSTED_PG_BROWSER_PENDING",
+    "state": "CODE_IMPLEMENTED_HOSTED_PG_AND_CENTER_BROWSER_SCENARIOS_PASS_LEGACY_ASSERTION_FIXED_RERUN_PENDING",
     "receptionCenterReadIndependentOfPublicBookingFlags": true,
     "localEvidence": {
       "typeScript": "PASS",
       "eslint": "PASS",
       "focusedUnitTests": "5_PASS",
       "disposablePostgresAvailable": false,
-      "browserAcceptance": "PENDING_HOSTED_CI"
+      "browserAcceptance": "CENTER_SCENARIOS_PASS; RUN_45474689339_FAILED_AFTER_CENTER_ON_LEGACY_WORKSPACE_DIR_SELECTOR; ASSERTION_FIXED_IN_0607A879; RERUN_PENDING"
     },
     "productionDatabaseReadOrWrite": false,
     "productionMigration": false,
     "bookingActivationOrPayment": false,
     "runflareDeploymentStarted": false,
     "inheritedDirtyFilesModifiedOrStaged": false,
-    "pullRequest": null,
+    "pullRequest": 165,
     "mergeSha": null
   }
 }

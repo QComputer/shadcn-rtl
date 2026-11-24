@@ -8,7 +8,7 @@
 
 ### محدوده و شواهد فعلی
 
-- Source commit: `37bd23e8fb3ed9ffed00423c4ffc8a5f44029f96`، بر پایهٔ main `98896a24126d0c482d4fae434bf5c36f7c20143b`.
+- Source commit: `ae6a208e85d0ea2da9f15d8b2008a9ba37cb3227`، بر پایهٔ main `98896a24126d0c482d4fae434bf5c36f7c20143b`.
 - شواهد محلی: TypeScript موفق، ESLint محدودشده موفق و ۵ تست واحد ناوبری/room-board موفق. PostgreSQL موقت محلی روی پورت محافظت‌شدهٔ `127.0.0.1:55439` در دسترس نبود؛ پذیرش PostgreSQL و مرورگر در hosted CI منتظر است.
 - عملیات از API رزرو موجود استفاده می‌کنند؛ occupancy از یک GET محدود read model می‌آید. Migration و تغییر Production data نداریم.
 
@@ -20,7 +20,7 @@
 4. تقویم هفت‌ستونه و ردیف‌های اتاق فیزیکی؛ پیمایش قبل/بعد دقیقاً هفت روز ISO جابه‌جا شود. FA با تاریخ فارسی و RTL، EN با LTR و AR با RTL نمایش داده شود.
 5. خالی، رزروشده، اشغال، تعمیرات، خارج سرویس، تداخل و context نمایشی جدا باشند. اگر خواندن تعمیرات شکست بخورد، خطای صریح نمایش داده شود و خانهٔ خالی ساخته نشود.
 6. STAFF مجاز بتواند صفحه و تقویم scoped را باز کند؛ درخواست tenant/property خارجی رد شود. کاربر ناشناس/مشتری به dashboard دسترسی نداشته باشد.
-7. در موبایل overflow سراسری صفحه نباشد و خود جدول در صورت نیاز اسکرول افقی کند؛ keyboard, labels, light/dark بررسی شود.
+7. در موبایل overflow سراسری صفحه نباشد و خود جدول در صورت نیاز اسکرول افقی کند؛ keyboard, labels, light/dark بررسی شود. hosted browser یک overflow را تشخیص داد؛ اصلاح min-width/wrapping انجام شد و باید دوباره اجرا شود.
 8. جداسازی demo و رزرو عملیاتی حفظ شود؛ Production رزرو/موجودی نسازید، booking عمومی را فعال نکنید و سرویس پرداخت را فراخوانی نکنید.
 
 وضعیت هنگام این الحاقیه: `CODE_IMPLEMENTED_LOCAL_TYPECHECK_ESLINT_UNIT_PASS_HOSTED_PG_BROWSER_PENDING`؛ GET مرکز پذیرش با `view=center` مستقل از public booking flags است، اما mutationها همان guardهای فعلی را دارند.

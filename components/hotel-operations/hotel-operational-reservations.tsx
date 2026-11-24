@@ -146,7 +146,7 @@ export function HotelOperationalReservations({ organizationId, propertyId, local
     catch (cause) {
       const message = cause instanceof Error ? cause.message : "";
       const lower = message.toLowerCase();
-      setError(lower.includes("no inventory") || lower.includes("requested hotel inventory") ? t.noInventory : lower.includes("cancellation policy") ? t.noPolicy : message || t.error);
+      setError(message.includes("HOTEL_MAINTENANCE_SCHEMA_NOT_READY") ? locale === "en" ? "Maintenance data is unavailable; room assignment and check-in are blocked." : locale === "ar" ? "بيانات الصيانة غير متاحة؛ تم إيقاف تخصيص الغرفة وتسجيل الوصول." : "داده تعمیرات در دسترس نیست؛ تخصیص اتاق و ثبت ورود متوقف شد." : lower.includes("no inventory") || lower.includes("requested hotel inventory") ? t.noInventory : lower.includes("cancellation policy") ? t.noPolicy : t.error);
     }
     finally { setBusy(false); }
   }

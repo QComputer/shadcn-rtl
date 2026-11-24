@@ -8,6 +8,10 @@
 
 # Damoon | هَندآف اجرایی Agentها (نسخه فشرده و قابل کپی)
 
+## نقطهٔ ادامه پس از PR166 — ۲۰۲۶-۱۱-۲۵
+
+شاخهٔ محلی `codex/damoon-res-center-live-readiness-20261124` از main `70c0069b8cdb925ac9da0334a515cf94d936daa5` شامل اصلاح پیوند guest-demo در property operations، discovery property دامون با حذف synthetic `damoon-demo` و پاسخ fail-closed به multi-operational-property، و جداسازی missing maintenance table از reads مستقل عملیات است. هفت تست unit، full TypeScript check و ESLint متمرکز پاس شده‌اند. Disposable PostgreSQL/browser acceptance باید در CI اجرا شود؛ production database binding/schema، migration و Runflare live status با این کار بررسی یا تغییر نشده‌اند. تغییرات inherited Leaflet CSS/JS و `sites/damoon/theme-tokens.css` همچنان خارج از مالکیت این شاخه‌اند. تا زمان تأیید CI این تغییرات merge/deploy نشده تلقی شوند.
+
 > **وضعیت نهایی PR165، ۲۰۲۶-۱۱-۲۴:** ادغام در `2308cbaf00746f9e2a038741fdada820f04c5dd8`، head دقیق PR `92e9018f1958d01d3240bc3e6514b61e8c928469`. تمام checkهای اجرایی موفق؛ Vercel Preview استثنای شناخته‌شدهٔ تعلیق بود. Runflare و Production acceptance هنوز تأیید نشده‌اند؛ هیچ deployment دستی یا تغییر Production انجام نشد.
 
 ## اصول حاکم

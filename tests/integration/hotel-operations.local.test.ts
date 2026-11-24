@@ -178,7 +178,8 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
     await assert.rejects(() => service.createRoomMaintenanceBlock(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, { ...maintenanceInput, reason: "Changed replay reason" }), HotelManagementConflictError, "an idempotency key cannot be reused for changed input");
 
     const operations = await service.getOperations(principal(managerA.id, "MANAGER", organizationA.id), { organizationId: organizationA.id }, property.id, days("2027-08-01", "2027-08-15"));
-    assert.deepEqual(Object.keys(operations).sort(), ["amenities", "cancellationPolicies", "inventory", "maintenanceBlocks", "manualRoomManagementEnabled", "property", "range", "ratePlans", "roomBoard", "roomTypes"]);
+    assert.deepEqual(Object.keys(operations).sort(), ["amenities", "cancellationPolicies", "inventory", "maintenanceBlocks", "maintenanceStatus", "manualRoomManagementEnabled", "property", "range", "ratePlans", "roomBoard", "roomTypes"]);
+    assert.deepEqual(operations.maintenanceStatus, { state: "AVAILABLE" });
     assert.deepEqual(operations.range, { from: "2027-08-01", to: "2027-08-15", nights: 14 });
     assert.equal(operations.property.timezone, "Asia/Tehran");
     const resultRoomType = operations.roomTypes.find((row) => row.id === roomType.id);
@@ -190,6 +191,7 @@ test("Hotel operations read model and inventory initialization are tenant-scoped
     assert.equal(committedNight?.available, 1, "closed-to-arrival/departure stay-through flags do not erase remaining capacity");
     assert.equal(committedNight?.closedToArrival, true);
     assert.equal(committedNight?.closedToDeparture, true);
+    assert.equal(operations.inventory.find((night) => night.date === "2027-08-08")?.available, 0, "scheduled maintenance reduces sellable rooms for the affected night");
     const boardRoom = operations.roomBoard.rooms.find((room) => room.id === physicalRoom.id);
     assert.deepEqual(boardRoom?.nights.find((night) => night.date === "2027-08-04"), { date: "2027-08-04", status: "RESERVED", reference: `BOARD-${suffix}` });
     assert.deepEqual(boardRoom?.nights.filter((night) => night.date >= "2027-08-08" && night.date < "2027-08-10").map((night) => night.status), ["MAINTENANCE", "MAINTENANCE"]);

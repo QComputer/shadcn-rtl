@@ -1,6 +1,7 @@
 import "server-only";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { ApiError } from "@/lib/api-guards";
+export { HOTEL_MAINTENANCE_SCHEMA_NOT_READY, isMissingHotelMaintenanceTableError } from "./hotel-maintenance-schema";
 export const HOTEL_STAY_REQUEST_SCHEMA_MIGRATION = "20261114130000_hotel_operational_modes_and_stay_requests";
 export const HOTEL_OPERATIONAL_RESERVATION_SCHEMA_MIGRATIONS = [
   "20261114130000_hotel_operational_modes_and_stay_requests",

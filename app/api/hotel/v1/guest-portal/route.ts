@@ -1,6 +1,7 @@
 ﻿import { prisma } from "@/lib/db-runtime";
 import { normalizeDomainHost } from "@/lib/custom-domain-routing";
 import { resolveHotelTenantForHost } from "@/lib/hotel/services/hotel-publication.service";
+import { resolveGuestPortalPropertyId } from "@/lib/hotel/services/guest-portal-discovery";
 
 const disabled = () => Response.json({ enabled: false }, { headers: { "Cache-Control": "no-store" } });
 
@@ -37,6 +38,12 @@ export async function GET(request: Request) {
       !domain.providerVerified || !domain.verifiedAt || domain.verifiedAt > new Date() ||
       domain.deletedAt || domain.disabledAt || domain.removedAt) return disabled();
 
+    const organization = await prisma.organization.findFirst({
+      where: { id: tenant.organizationId, vertical: "HOTEL", isActive: true, deletedAt: null },
+      select: { slug: true },
+    });
+    if (!organization) return disabled();
+
     const properties = await prisma.hotelProperty.findMany({
       where: {
         organizationId: tenant.organizationId,
@@ -44,13 +51,13 @@ export async function GET(request: Request) {
         deletedAt: null,
         operationalMode: { not: "DISABLED" },
       },
-      select: { id: true },
+      select: { id: true, slug: true },
       orderBy: { id: "asc" },
-      take: 2,
     });
-    if (properties.length !== 1) return disabled();
+    const propertyId = resolveGuestPortalPropertyId(organization.slug, properties);
+    if (!propertyId) return disabled();
 
-    return Response.json({ enabled: true, organizationId: tenant.organizationId, propertyId: properties[0].id }, {
+    return Response.json({ enabled: true, organizationId: tenant.organizationId, propertyId }, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch {

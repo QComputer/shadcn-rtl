@@ -12,9 +12,9 @@ type StayRequest = { id: string; status: string; guestName: string; message?: st
 type Snapshot = { enabled: boolean; mode: "DISABLED" | "REQUEST_ONLY" | "RESERVATION"; view: "guest" | "reception"; roomTypes: RoomType[]; ratePlans: RatePlan[]; requests: StayRequest[] };
 
 const copy = {
-  fa: { title: "درخواست هماهنگی اقامت", badge: "درخواست به‌معنای رزرو قطعی یا پرداخت نیست.", dates: "ورود", departure: "خروج", room: "گروه اتاق", plan: "طرح نرخ", adults: "بزرگسالان", children: "تعداد کودکان", age: "سن کودک", quote: "دریافت برآورد", guestName: "نام مهمان", message: "پیام برای پذیرش (اختیاری)", submit: "ارسال درخواست هماهنگی", requests: "درخواست‌ها", none: "درخواستی ثبت نشده است.", cancel: "لغو درخواست", contacted: "علامت‌گذاری تماس انجام شد", decline: "رد درخواست", amount: "برآورد نمایشی", policy: "نسخه شرایط", expires: "اعتبار تا", status: "وضعیت", created: "ثبت‌شده", refresh: "بارگذاری دوباره", working: "در حال انجام…", error: "عملیات انجام نشد.", required: "نام مهمان را وارد کنید.", simulation: "اطلاعات برآوردشده توسط سامانه؛ منتظر بررسی پذیرش", ages: "برای هر کودک سن معتبر ۰ تا ۱۷ وارد کنید." },
-  en: { title: "Stay coordination requests", badge: "A request is not a confirmed booking or payment.", dates: "Check-in", departure: "Check-out", room: "Room type", plan: "Rate plan", adults: "Adults", children: "Number of children", age: "Child age", quote: "Get estimate", guestName: "Guest name", message: "Message for reception (optional)", submit: "Send coordination request", requests: "Requests", none: "No requests yet.", cancel: "Cancel request", contacted: "Mark contacted", decline: "Decline request", amount: "Display estimate", policy: "Policy version", expires: "Valid until", status: "Status", created: "Created", refresh: "Reload", working: "Working…", error: "Operation failed.", required: "Enter the guest name.", simulation: "System estimate; pending reception review", ages: "Enter a valid age from 0 to 17 for each child." },
-  ar: { title: "طلبات تنسيق الإقامة", badge: "الطلب لا يعني تأكيد الحجز أو الدفع.", dates: "الوصول", departure: "المغادرة", room: "نوع الغرفة", plan: "خطة السعر", adults: "البالغون", children: "عدد الأطفال", age: "عمر الطفل", quote: "الحصول على تقدير", guestName: "اسم الضيف", message: "رسالة إلى الاستقبال (اختياري)", submit: "إرسال طلب التنسيق", requests: "الطلبات", none: "لا توجد طلبات بعد.", cancel: "إلغاء الطلب", contacted: "تم التواصل", decline: "رفض الطلب", amount: "التقدير المعروض", policy: "إصدار السياسة", expires: "صالح حتى", status: "الحالة", created: "تاريخ الإنشاء", refresh: "إعادة التحميل", working: "جارٍ التنفيذ…", error: "فشلت العملية.", required: "أدخل اسم الضيف.", simulation: "تقدير النظام؛ بانتظار مراجعة الاستقبال", ages: "أدخل عمراً صحيحاً من 0 إلى 17 لكل طفل." },
+  fa: { title: "درخواست هماهنگی اقامت", badge: "درخواست به‌معنای رزرو قطعی یا پرداخت نیست.", portalDisabled: "درگاه درخواست مهمان برای این اقامتگاه فعال نیست. برای هماهنگی با پذیرش تماس بگیرید.", dates: "ورود", departure: "خروج", room: "گروه اتاق", plan: "طرح نرخ", adults: "بزرگسالان", children: "تعداد کودکان", age: "سن کودک", quote: "دریافت برآورد", guestName: "نام مهمان", message: "پیام برای پذیرش (اختیاری)", submit: "ارسال درخواست هماهنگی", requests: "درخواست‌ها", none: "درخواستی ثبت نشده است.", cancel: "لغو درخواست", contacted: "علامت‌گذاری تماس انجام شد", decline: "رد درخواست", amount: "برآورد نمایشی", policy: "نسخه شرایط", expires: "اعتبار تا", status: "وضعیت", created: "ثبت‌شده", refresh: "بارگذاری دوباره", working: "در حال انجام…", error: "عملیات انجام نشد.", required: "نام مهمان را وارد کنید.", simulation: "اطلاعات برآوردشده توسط سامانه؛ منتظر بررسی پذیرش", ages: "برای هر کودک سن معتبر ۰ تا ۱۷ وارد کنید." },
+  en: { title: "Stay coordination requests", badge: "A request is not a confirmed booking or payment.", portalDisabled: "The guest request portal is not enabled for this property. Contact reception for assistance.", dates: "Check-in", departure: "Check-out", room: "Room type", plan: "Rate plan", adults: "Adults", children: "Number of children", age: "Child age", quote: "Get estimate", guestName: "Guest name", message: "Message for reception (optional)", submit: "Send coordination request", requests: "Requests", none: "No requests yet.", cancel: "Cancel request", contacted: "Mark contacted", decline: "Decline request", amount: "Display estimate", policy: "Policy version", expires: "Valid until", status: "Status", created: "Created", refresh: "Reload", working: "Working…", error: "Operation failed.", required: "Enter the guest name.", simulation: "System estimate; pending reception review", ages: "Enter a valid age from 0 to 17 for each child." },
+  ar: { title: "طلبات تنسيق الإقامة", badge: "الطلب لا يعني تأكيد الحجز أو الدفع.", portalDisabled: "بوابة طلبات الضيوف غير مفعلة لهذا العقار. يرجى التواصل مع الاستقبال للمساعدة.", dates: "الوصول", departure: "المغادرة", room: "نوع الغرفة", plan: "خطة السعر", adults: "البالغون", children: "عدد الأطفال", age: "عمر الطفل", quote: "الحصول على تقدير", guestName: "اسم الضيف", message: "رسالة إلى الاستقبال (اختياري)", submit: "إرسال طلب التنسيق", requests: "الطلبات", none: "لا توجد طلبات بعد.", cancel: "إلغاء الطلب", contacted: "تم التواصل", decline: "رفض الطلب", amount: "التقدير المعروض", policy: "إصدار السياسة", expires: "صالح حتى", status: "الحالة", created: "تاريخ الإنشاء", refresh: "إعادة التحميل", working: "جارٍ التنفيذ…", error: "فشلت العملية.", required: "أدخل اسم الضيف.", simulation: "تقدير النظام؛ بانتظار مراجعة الاستقبال", ages: "أدخل عمراً صحيحاً من 0 إلى 17 لكل طفل." },
 } as const;
 
 function idempotencyKey() { return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`; }
@@ -42,12 +42,15 @@ export function HotelStayRequests({ organizationId, propertyId, locale, initialS
   const load = useCallback(async () => {
     const response = await fetch(endpoint, { method: "GET", cache: "no-store", credentials: "same-origin" });
     const body = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(body?.error || t.error);
+    if (!response.ok) {
+      if (response.status === 403 && /guest portal is disabled/i.test(String(body?.error ?? ""))) throw new Error(t.portalDisabled);
+      throw new Error(t.error);
+    }
     if (body?.enabled !== true) { setSnapshot({ enabled: false, mode: "DISABLED", view: "guest", roomTypes: [], ratePlans: [], requests: [] }); return; }
     setSnapshot(body as Snapshot);
     setRoomTypeId((current) => body.roomTypes.some((item: RoomType) => item.id === current) ? current : (body.roomTypes[0]?.id ?? ""));
     setRatePlanId((current) => body.ratePlans.some((item: RatePlan) => item.id === current) ? current : "");
-  }, [endpoint, t.error]);
+  }, [endpoint, t.error, t.portalDisabled]);
 
   useEffect(() => {
     let active = true;
@@ -75,7 +78,7 @@ export function HotelStayRequests({ organizationId, propertyId, locale, initialS
 
   function criteria() { return { action: "quote", roomTypeId, ratePlanId: effectivePlan, checkIn, checkOut, adults: Number(adults), childAges: childAges.filter((age): age is number => age !== null) }; }
 
-  if (snapshot?.enabled === false || snapshot?.mode === "DISABLED") return null;
+  if (snapshot?.enabled === false || snapshot?.mode === "DISABLED") return <p role="status" className="rounded-xl border p-4 text-sm text-muted-foreground">{t.portalDisabled}</p>;
   const isGuest = snapshot?.view === "guest";
   const canQuote = !!checkIn && !!checkOut && !!roomTypeId && !!effectivePlan && Number(adults) >= 1 && childAges.every((age) => age !== null && Number.isInteger(age) && age >= 0 && age <= 17);
 
@@ -99,12 +102,12 @@ export function HotelStayRequests({ organizationId, propertyId, locale, initialS
         <Button type="button" disabled={busy || guestName.trim().length < 2} onClick={() => void run(() => mutate({ action: "request", quoteId: quote.id, guestName: guestName.trim(), ...(message.trim() ? { message: message.trim() } : {}) }), t.badge)}>{busy ? t.working : t.submit}</Button>
       </div> : null}
     </div> : null}
-    <div className="space-y-2"><h3 className="font-semibold">{t.requests}</h3>{!(snapshot?.requests?.length) ? <p className="text-sm text-muted-foreground">{t.none}</p> : <ul className="space-y-2">{(snapshot?.requests ?? []).map((request) => <li key={request.id} className="space-y-2 rounded-lg border p-3">
+    {snapshot?.enabled === true ? <div className="space-y-2"><h3 className="font-semibold">{t.requests}</h3>{!(snapshot.requests?.length) ? <p className="text-sm text-muted-foreground">{t.none}</p> : <ul className="space-y-2">{(snapshot.requests ?? []).map((request) => <li key={request.id} className="space-y-2 rounded-lg border p-3">
       <div className="flex flex-wrap items-center justify-between gap-2"><strong>{request.guestName} · {request.status}</strong><span className="text-xs text-muted-foreground">{t.created}: <bdi dir="ltr">{request.createdAt}</bdi></span></div>
       <p className="text-sm"><bdi dir="ltr">{request.snapshot.checkIn} – {request.snapshot.checkOut}</bdi> · {request.snapshot.adults} {t.adults}{request.snapshot.childAges.length ? ` · ${t.children}: ${request.snapshot.childAges.join(", ")}` : ""} · <bdi dir="ltr">{request.snapshot.totalAmount} {request.snapshot.currency}</bdi></p>
       {request.message ? <p className="text-sm">{request.message}</p> : null}
       <span className="block text-xs text-muted-foreground">{t.simulation}</span>
       <div className="flex flex-wrap gap-2">{isGuest ? <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void run(() => mutate({ action: "cancel-request", requestId: request.id }))}>{t.cancel}</Button> : <><Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void run(() => mutate({ action: "review-request", requestId: request.id, status: "CONTACTED" }))}>{t.contacted}</Button><Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void run(() => mutate({ action: "review-request", requestId: request.id, status: "DECLINED" }))}>{t.decline}</Button></>}</div>
-    </li>)}</ul>}</div>
+    </li>)}</ul>}</div> : null}
   </section>;
 }

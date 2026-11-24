@@ -4,6 +4,13 @@
 
 # Damoon | قرارداد پذیرش جریان درخواست مهمان تا پذیرش
 
+## پذیرش defect follow-up — ۲۰۲۶-۱۱-۲۵ (در حال اجرا)
+
+- پیوند guest demo در property operations با route `DEMO_BOOKING` برای هر یک از localeهای FA/EN/AR ساخته می‌شود؛ شناسه‌های Production در URL reusable وارد نمی‌شوند. سایر propertyها همچنان مسیر legacy خود را می‌بینند.
+- آزمون واحد محلی: پنج مورد guest discovery/locale link/classifier و دو مورد Hotel Operations partial-schema pass-through/error-propagation (۷/۷) پاس شدند. `pnpm run typecheck` و ESLint متمرکز نیز پاس شدند.
+- موارد موردنیاز برای CI: API discovery single operational، operational+demo، multiple operational؛ Hotel Operations partial-schema reads، fail-closed availability/occupancy/assignment/check-in؛ و disposable PostgreSQL/browser. اجرای Production acceptance انجام نشده و Production schema همچنان نامعلوم است.
+- این work هنوز کد ادغام‌نشده است. هیچ درخواست مهمان، رزرو، migration یا Production write ساخته/اجرا نشده است.
+
 ## پذیرش مرکز رزرواسیون — الحاقیهٔ ۲۰۲۶-۱۱-۲۴
 
 **Release update:** PR165 merged at `2308cbaf00746f9e2a038741fdada820f04c5dd8` from exact head `92e9018f1958d01d3240bc3e6514b61e8c928469`. Required executable GitHub workflows passed. Runflare deployment and live Production acceptance remain unverified.

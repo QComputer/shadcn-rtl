@@ -60,6 +60,10 @@ M3 آماده‌سازی عملیاتی رزرو/دیتابیس (شاخه مست
 
 ## الحاقیه ۲۰۲۶-۱۱-۲۴ — مرکز رزرواسیون
 
+## الحاقیه ۲۰۲۶-۱۱-۲۵ — اصلاح لینک demo و پایداری schema تعمیرات
+
+از main پایهٔ `70c0069b8cdb925ac9da0334a515cf94d936daa5`، شاخهٔ `codex/damoon-res-center-live-readiness-20261124` در حال اصلاح دو عیب مستقل است: لینک مهمان property آزمایشی به URL رسمی DEMO_BOOKING و جداسازی reads مستقل Hotel Operations از missing-table تعمیرات. discovery دامون demo را از انتخاب legacy خارج کرده و selection چندملکی مبهم را رد می‌کند. وضعیت فعلی implementation محلی، ۷/۷ unit tests، full TypeScript و ESLint متمرکز سبز است؛ hosted disposable-PostgreSQL/browser checks هنوز لازم‌اند. Production schema و deployment دسترسی/شواهد تازه ندارند و اصلاح migration در گیت جداگانه باقی می‌ماند. جزئیات قرارداد در `ARCHITECTURE-AND-CONTRACTS-2026-11-23.md` آمده است.
+
 **Release update:** PR165 merged as `2308cbaf00746f9e2a038741fdada820f04c5dd8` from exact head `92e9018f1958d01d3240bc3e6514b61e8c928469`. All executable required GitHub checks passed; Vercel Preview is the established suspended-policy exception. Automatic Runflare deployment and live acceptance remain unverified.
 
 - **هدف تحویل:** یک dashboard قابل استفاده برای مدیر و STAFF مجاز، با ناوبری مستقیم، manual reservation موجود، سرچ و فیلتر وضعیت/نوع، پنل جزئیات، ورود/خروج امروز و occupancy calendar هفت‌روزه با جابه‌جایی تاریخ.

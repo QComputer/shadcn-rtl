@@ -10,7 +10,7 @@ type Amenity = { id: string; key: string; label: string; isActive?: boolean };
 type RoomType = {
   id: string; slug: string; name: string; description: string | null; maxAdults: number;
   maxChildren: number; maxOccupancy: number; beds: unknown; rooms: Room[]; amenities: Amenity[];
-  physicalCapacity: { configuredRooms: number; sellableRooms: number };
+  physicalCapacity: { configuredRooms: number; sellableRooms: number | null };
 };
 type RatePlan = {
   id: string; roomTypeId: string; code: string; name: string; currency: string;
@@ -21,7 +21,7 @@ type RatePlan = {
 type CancellationPolicy = { id: string; key: string; name: string; freeCancellationCutoffHours: number; fullCancellationRetention: number; isActive: boolean; version: number };
 type InventoryNight = {
   id: string; roomTypeId: string; date: string; allotment: number; booked: number;
-  held: number; outOfService: number; available: number; closedToArrival: boolean; closedToDeparture: boolean;
+  held: number; outOfService: number; available: number | null; closedToArrival: boolean; closedToDeparture: boolean;
 };
 type RoomBoard = {
   dates: string[];
@@ -36,8 +36,9 @@ type OperationsData = {
   amenities: Amenity[];
   ratePlans: RatePlan[];
   inventory: InventoryNight[];
-  roomBoard: RoomBoard;
-  maintenanceBlocks: MaintenanceBlock[];
+  maintenanceStatus: { state: "AVAILABLE" } | { state: "UNAVAILABLE"; code: "HOTEL_MAINTENANCE_SCHEMA_NOT_READY" };
+  roomBoard: RoomBoard | null;
+  maintenanceBlocks: MaintenanceBlock[] | null;
   manualRoomManagementEnabled: boolean;
   cancellationPolicies: CancellationPolicy[];
 };
@@ -59,7 +60,7 @@ type AvailabilityPreview = {
 
 const labels = {
   fa: {
-    title: "عملیات هتل",
+    title: "عملیات هتل", maintenanceUnavailable: "داده تعمیرات قابل بررسی نیست؛ ظرفیت فروش و تخصیص اتاق غیرفعال است تا طرح‌واره تعمیرات آماده شود.", availabilityUnknown: "نامشخص",
     loading: "در حال بارگذاری…", loadError: "اطلاعات عملیات بارگذاری نشد.", saveError: "ذخیره انجام نشد.",
     roomTypes: "انواع اتاق", rooms: "اتاق‌های فیزیکی", roomBoard: "وضعیت روزانه اتاق‌ها", boardDate: "تاریخ", boardRoom: "اتاق", vacant: "خالی", reserved: "رزروشده", occupied: "اشغال‌شده", unassigned: "شب رزرو بدون تخصیص اتاق فیزیکی", outOfServiceNote: "علامت خارج از سرویس برای همه تاریخ‌های نمایش‌داده‌شده اعمال می‌شود.", outOfServiceConflict: "تخصیص فعال با علامت خارج از سرویس", maintenance: "تعمیرات زمان‌بندی‌شده", maintenanceConflict: "تعمیرات با رزرو فعال تداخل دارد", maintenanceInvalid: "تاریخ پایان باید بعد از تاریخ شروع باشد و دلیل تعمیرات را وارد کنید.", maintenanceFrom: "شروع (شامل)", maintenanceTo: "پایان (غیرشامل)", maintenanceReason: "دلیل تعمیرات", createMaintenance: "ثبت تعمیرات", releaseMaintenance: "پایان تعمیرات", maintenanceGateClosed: "ثبت و پایان تعمیرات تا تأیید بهره‌برداری غیرفعال است.", rates: "نرخ‌ها", inventory: "ظرفیت شبانه",
     add: "افزودن", save: "ذخیره", update: "ذخیره تغییرات", cancel: "لغو ویرایش", edit: "ویرایش",
@@ -75,7 +76,7 @@ const labels = {
     previewTitle: "پیش‌نمایش مهمان (فقط مالک)", previewButton: "بررسی موجودی و قیمت", previewDemo: "پیش‌نمایش داده‌های نمایشی و پیکربندی فعلی است؛ نرخ، ظرفیت و سیاست‌ها تا زمان تأیید مالک هتل اطلاعات قطعی نیستند.", previewNoMutation: "این بررسی فقط‌خواندنی است و هیچ رزرو، نگهداشت اتاق، پرداخت یا تغییری در موجودی ایجاد نمی‌کند.", previewPublicGate: "نمایش عمومی و رزرو مهمان همچنان به انتشار و تأییدهای عمومی نیاز دارد.", previewOccupancy: "تعداد مهمانان", previewAdults: "بزرگسالان", previewChildren: "کودکان", previewChildAge: "سن کودک", previewResult: "نتیجه برای پیکربندی فعلی", previewUnavailable: "برای این اقامت قابل فروش نیست", previewOutOfService: "اتاق‌های فعال این نوع برای شب‌های مشخص‌شده خارج از سرویس هستند.", previewFullCapacity: "ظرفیت قابل فروش در یکی از شب‌های اقامت تکمیل شده است.", previewNoRooms: "برای این بازه گزینه‌ای با اتاق، نرخ و موجودی کامل پیکربندی‌شده پیدا نشد.", previewMissingRooms: "برای نمایش اتاق، ابتدا نوع اتاق و ظرفیت فیزیکی را پیکربندی کنید.", previewNoPhysicalRooms: "برای این نوع اتاق، اتاق فیزیکی فعال و خارج از سرویس نبودن پیکربندی نشده است.", previewMissingRates: "برای اتاق پیکربندی‌شده نرخ فعال برای همه شب‌ها ثبت نشده است.", previewRateGap: "هیچ نرخ تأییدشده‌ای تمام شب‌های انتخابی را پوشش نمی‌دهد.", previewMissingInventory: "برای اتاق پیکربندی‌شده موجودی همه شب‌ها ثبت نشده است.", previewOccupancyMismatch: "ظرفیت اتاق با تعداد مهمانان انتخاب‌شده سازگار نیست.", previewInvalidDates: "تاریخ خروج باید بعد از ورود باشد و اقامت نمی‌تواند بیش از ۳۱ شب باشد.", previewFailed: "پیش‌نمایش بارگذاری نشد؛ پس از بررسی تاریخ و ظرفیت دوباره تلاش کنید.", previewPerNight: "نرخ هر شب", previewTotal: "مجموع اقامت", previewAvailableRooms: "اتاق قابل فروش در تمام شب‌ها", previewCapacity: "ظرفیت", previewRetry: "تلاش دوباره", previewDates: "تاریخ اقامت از بازه بالا استفاده می‌کند.",
   },
   en: {
-    title: "Hotel operations",
+    title: "Hotel operations", maintenanceUnavailable: "Maintenance data cannot be verified. Sellable availability and room assignment are unavailable until the maintenance schema is ready.", availabilityUnknown: "Unknown",
     loading: "Loading…", loadError: "Could not load operations.", saveError: "Save failed.",
     roomTypes: "Room types", rooms: "Physical rooms", roomBoard: "Daily room board", boardDate: "Date", boardRoom: "Room", vacant: "Vacant", reserved: "Reserved", occupied: "Occupied", unassigned: "Reservation nights without a physical room assignment", outOfServiceNote: "The out-of-service flag applies to every displayed date.", outOfServiceConflict: "Active allocation conflicts with out-of-service flag", maintenance: "Scheduled maintenance", maintenanceConflict: "Maintenance conflicts with an active reservation", maintenanceInvalid: "End date must be after the start date, and a reason is required.", maintenanceFrom: "Start (inclusive)", maintenanceTo: "End (exclusive)", maintenanceReason: "Maintenance reason", createMaintenance: "Schedule maintenance", releaseMaintenance: "Release maintenance", maintenanceGateClosed: "Maintenance changes are disabled until operations are approved.", rates: "Rates", inventory: "Nightly inventory",
     add: "Add", save: "Save", update: "Save changes", cancel: "Cancel edit", edit: "Edit",
@@ -91,7 +92,7 @@ const labels = {
     previewTitle: "Guest availability preview (owner only)", previewButton: "Check availability and rates", previewDemo: "This preview uses current demo/configuration data. Rates, capacity, and policies are not confirmed hotel information until the owner approves them.", previewNoMutation: "Read-only: this check creates no reservation, room hold, payment, or inventory change.", previewPublicGate: "Public display and guest booking still require publication and their normal approvals.", previewOccupancy: "Guests", previewAdults: "Adults", previewChildren: "Children", previewChildAge: "Child age", previewResult: "Result for current configuration", previewUnavailable: "Not sellable for this stay", previewOutOfService: "All active physical rooms of this type are out of service for the listed nights.", previewFullCapacity: "Sellable capacity is exhausted for at least one night of this stay.", previewNoRooms: "No option has a complete configured room, rate, and inventory for this stay.", previewMissingRooms: "Configure room types before guest rooms can be previewed.", previewNoPhysicalRooms: "No active, in-service physical room is configured for this room type.", previewMissingRates: "No active rate plan exists for this room type.", previewRateGap: "No confirmed rate covers every selected night.", previewMissingInventory: "Nightly inventory is missing for one or more nights.", previewOccupancyMismatch: "The selected guest count exceeds this room type's capacity.", previewInvalidDates: "Check-out must be after check-in; a stay can be at most 31 nights.", previewFailed: "Could not load the preview. Check the dates and occupancy, then retry.", previewPerNight: "Nightly rates", previewTotal: "Stay total", previewAvailableRooms: "Rooms sellable across all nights", previewCapacity: "Capacity", previewRetry: "Retry preview", previewDates: "Stay dates use the range above.",
   },
   ar: {
-    title: "عمليات الفندق",
+    title: "عمليات الفندق", maintenanceUnavailable: "تعذر التحقق من بيانات الصيانة. التوفر القابل للبيع وتخصيص الغرف غير متاحين حتى تصبح بنية الصيانة جاهزة.", availabilityUnknown: "غير معروف",
     loading: "جارٍ التحميل…", loadError: "تعذر تحميل العمليات.", saveError: "تعذر الحفظ.",
     roomTypes: "أنواع الغرف", rooms: "الغرف الفعلية", roomBoard: "حالة الغرف اليومية", boardDate: "التاريخ", boardRoom: "الغرفة", vacant: "شاغرة", reserved: "محجوزة", occupied: "مشغولة", unassigned: "ليالي حجز بلا تخصيص غرفة فعلية", outOfServiceNote: "تُطبّق علامة خارج الخدمة على جميع التواريخ المعروضة.", outOfServiceConflict: "تخصيص نشط يتعارض مع علامة خارج الخدمة", maintenance: "الصيانة المجدولة", maintenanceConflict: "تتعارض الصيانة مع حجز نشط", maintenanceInvalid: "يجب أن يكون تاريخ النهاية بعد البداية وإدخال سبب الصيانة.", maintenanceFrom: "البداية (شاملة)", maintenanceTo: "النهاية (غير شاملة)", maintenanceReason: "سبب الصيانة", createMaintenance: "جدولة الصيانة", releaseMaintenance: "إنهاء الصيانة", maintenanceGateClosed: "تغييرات الصيانة معطلة حتى اعتماد التشغيل.", rates: "الأسعار", inventory: "مخزون الليالي",
     add: "إضافة", save: "حفظ", update: "حفظ التغييرات", cancel: "إلغاء التعديل", edit: "تعديل",
@@ -422,7 +423,8 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
           }} type="number" />
           {previewChildAges.map((age, index) => <Field key={`preview-child-${index}`} label={`${text.previewChildAge} ${index + 1}`} value={age} setValue={(value) => setPreviewChildAges((current) => current.map((item, itemIndex) => itemIndex === index ? value : item))} type="number" />)}
         </div>
-        <Button type="button" variant="outline" disabled={previewLoading || loading || !activeData || !previewDatesValid || !/^([1-9]|1[0-2])$/.test(previewAdults) || previewChildAges.some((age) => !/^(0|[1-9]|1[0-7])$/.test(age))} onClick={() => void loadAvailabilityPreview()}>{previewLoading ? text.loading : previewError ? text.previewRetry : text.previewButton}</Button>
+        <Button type="button" variant="outline" disabled={previewLoading || loading || !activeData || activeData.maintenanceStatus.state !== "AVAILABLE" || !previewDatesValid || !/^([1-9]|1[0-2])$/.test(previewAdults) || previewChildAges.some((age) => !/^(0|[1-9]|1[0-7])$/.test(age))} onClick={() => void loadAvailabilityPreview()}>{previewLoading ? text.loading : previewError ? text.previewRetry : text.previewButton}</Button>
+        {activeData?.maintenanceStatus.state === "UNAVAILABLE" ? <p role="status" className="text-sm text-amber-800 dark:text-amber-200">{text.maintenanceUnavailable}</p> : null}
         {!previewDatesValid ? <p className="text-sm text-destructive">{text.previewInvalidDates}</p> : null}
         {previewError ? <p role="alert" className="text-sm text-destructive">{text.previewFailed}</p> : null}
         {activePreview ? <div role="status" aria-label={text.previewResult} className="space-y-3">
@@ -463,11 +465,12 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
       <div className="space-y-2">
         <h3 className="font-medium">{text.roomBoard}</h3>
         <p className="text-xs text-muted-foreground">{text.outOfServiceNote}</p>
-        {activeData?.roomBoard.unassignedReservationNights ? <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" role="status">{activeData.roomBoard.unassignedReservationNights} {text.unassigned}</p> : null}
-        <div className="overflow-x-auto rounded-lg border">
+        {activeData?.maintenanceStatus.state === "UNAVAILABLE" ? <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">{text.maintenanceUnavailable}</p> : null}
+        {activeData?.roomBoard?.unassignedReservationNights ? <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" role="status">{activeData.roomBoard.unassignedReservationNights} {text.unassigned}</p> : null}
+        {activeData?.maintenanceStatus.state === "AVAILABLE" ? <div className="overflow-x-auto rounded-lg border">
           <table className="w-full min-w-max text-right text-sm">
-            <thead><tr><th scope="col" className="sticky right-0 bg-muted p-2">{text.boardDate}</th>{(activeData?.roomBoard.rooms ?? []).map((room) => <th scope="col" key={room.id} className="whitespace-nowrap p-2">{text.boardRoom} {room.code}</th>)}</tr></thead>
-            <tbody>{(activeData?.roomBoard.dates ?? []).map((date) => <tr key={date} className="border-t"><th scope="row" className="sticky right-0 whitespace-nowrap bg-background p-2" dir="ltr">{date}</th>{(activeData?.roomBoard.rooms ?? []).map((room) => {
+            <thead><tr><th scope="col" className="sticky right-0 bg-muted p-2">{text.boardDate}</th>{(activeData.roomBoard?.rooms ?? []).map((room) => <th scope="col" key={room.id} className="whitespace-nowrap p-2">{text.boardRoom} {room.code}</th>)}</tr></thead>
+            <tbody>{(activeData.roomBoard?.dates ?? []).map((date) => <tr key={date} className="border-t"><th scope="row" className="sticky right-0 whitespace-nowrap bg-background p-2" dir="ltr">{date}</th>{(activeData.roomBoard?.rooms ?? []).map((room) => {
               const cell = room.nights.find((night) => night.date === date);
               const status = cell?.status ?? "VACANT";
               const label = status === "MAINTENANCE_CONFLICT" ? text.maintenanceConflict : status === "MAINTENANCE" ? text.maintenance : status === "OUT_OF_SERVICE_CONFLICT" ? text.outOfServiceConflict : status === "OUT_OF_SERVICE" ? text.unavailable : status === "OCCUPIED" ? text.occupied : status === "RESERVED" ? text.reserved : text.vacant;
@@ -475,20 +478,20 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
               return <td key={room.id} className="p-2"><span className={`inline-flex rounded px-2 py-1 text-xs ${color}`} aria-label={`${room.code}: ${label}`} title={cell?.reference ? `${label} · ${cell.reference}` : label}>{label}</span></td>;
             })}</tr>)}</tbody>
           </table>
-        </div>
-        {!activeData?.roomBoard.rooms.length ? <p className="text-sm text-muted-foreground">{text.none}</p> : null}
+        </div> : null}
+        {activeData?.maintenanceStatus.state === "AVAILABLE" && !activeData.roomBoard?.rooms.length ? <p className="text-sm text-muted-foreground">{text.none}</p> : null}
       </div>
       <div className="space-y-3 rounded-lg border p-3">
         <h3 className="font-medium">{text.maintenance}</h3>
-        {!activeData?.manualRoomManagementEnabled ? <p className="text-sm text-muted-foreground" role="status">{text.maintenanceGateClosed}</p> : <form onSubmit={createMaintenance} className="grid gap-3 sm:grid-cols-2">
+        {activeData?.maintenanceStatus.state === "UNAVAILABLE" ? <p className="text-sm text-amber-800 dark:text-amber-200" role="status">{text.maintenanceUnavailable}</p> : !activeData?.manualRoomManagementEnabled ? <p className="text-sm text-muted-foreground" role="status">{text.maintenanceGateClosed}</p> : <form onSubmit={createMaintenance} className="grid gap-3 sm:grid-cols-2">
           <label className="space-y-1 text-sm"><span>{text.room}</span><select className="h-10 min-w-0 w-full rounded-md border bg-background px-3" value={maintenanceRoomId} onChange={(event) => setMaintenanceRoomId(event.target.value)} required><option value="">{text.room}</option>{(activeData?.roomTypes ?? []).flatMap((type) => type.rooms.filter((room) => room.isActive).map((room) => <option key={room.id} value={room.id}>{room.code} · {type.name}</option>))}</select></label>
           <Field label={text.maintenanceFrom} value={maintenanceFrom} setValue={setMaintenanceFrom} type="date" required />
           <Field label={text.maintenanceTo} value={maintenanceTo} setValue={setMaintenanceTo} type="date" required />
           <Field label={text.maintenanceReason} value={maintenanceReason} setValue={setMaintenanceReason} required />
           <Button type="submit" disabled={busy || !maintenanceRoomId || !maintenanceReason.trim() || maintenanceTo <= maintenanceFrom}>{text.createMaintenance}</Button>
         </form>}
-        <ul className="space-y-2 text-sm">{(activeData?.maintenanceBlocks ?? []).map((block) => <li key={block.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2"><span>{block.roomCode} · <time dir="ltr">{block.from}</time> – <time dir="ltr">{block.to}</time> · {block.reason}</span>{activeData?.manualRoomManagementEnabled ? <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void releaseMaintenance(block.id)}>{text.releaseMaintenance}</Button> : null}</li>)}</ul>
-        {activeData?.maintenanceBlocks.length === 0 ? <p className="text-sm text-muted-foreground">{text.none}</p> : null}
+        {activeData?.maintenanceStatus.state === "UNAVAILABLE" ? <p role="status" className="text-sm text-amber-800 dark:text-amber-200">{text.maintenanceUnavailable}</p> : <><ul className="space-y-2 text-sm">{(activeData?.maintenanceBlocks ?? []).map((block) => <li key={block.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2"><span>{block.roomCode} · <time dir="ltr">{block.from}</time> – <time dir="ltr">{block.to}</time> · {block.reason}</span>{activeData?.manualRoomManagementEnabled ? <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void releaseMaintenance(block.id)}>{text.releaseMaintenance}</Button> : null}</li>)}</ul>
+        {activeData?.maintenanceBlocks?.length === 0 ? <p className="text-sm text-muted-foreground">{text.none}</p> : null}</>}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">{(activeData?.roomTypes ?? []).map((type) => <div key={type.id} className="rounded-lg border p-3"><h3 className="font-medium">{type.name}</h3><ul className="mt-2 space-y-2 text-sm">{type.rooms.map((room) => <li key={room.id} className="flex items-center justify-between gap-2"><span>{room.code}{room.floor ? ` · ${room.floor}` : ""}{room.isOutOfService ? ` · ${text.unavailable}` : ""}</span><Button type="button" size="sm" variant="ghost" onClick={() => startRoomEdit(room, type.id)}>{text.edit}</Button></li>)}</ul>{type.rooms.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">{text.none}</p> : null}</div>)}</div>
       <form onSubmit={saveRoom} className="grid gap-3 sm:grid-cols-2">
@@ -541,7 +544,7 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
         <Field label={text.date} value={inventoryDate} setValue={setInventoryDate} type="date" required /><Field label={text.allotmentDelta} value={allotmentDelta} setValue={setAllotmentDelta} type="number" required /><Field label={text.outDelta} value={outDelta} setValue={setOutDelta} type="number" required /><Field label={text.reason} value={reason} setValue={setReason} required />
         <Button type="submit" disabled={busy || !inventoryTypeId || (Number(allotmentDelta) === 0 && Number(outDelta) === 0)}>{text.adjust}</Button>
       </form>
-      <div className="overflow-x-auto"><table className="w-full text-right text-sm"><thead><tr><th className="p-2">{text.date}</th><th className="p-2">{text.roomType}</th><th className="p-2">{text.allotment}</th><th className="p-2">{text.booked}</th><th className="p-2">{text.held}</th><th className="p-2">{text.oos}</th><th className="p-2">{text.available}</th></tr></thead><tbody>{(activeData?.inventory ?? []).map((night) => <tr key={night.id} className="border-t"><td className="p-2" dir="ltr">{night.date}</td><td className="p-2">{activeData?.roomTypes.find((item) => item.id === night.roomTypeId)?.name ?? "—"}</td><td className="p-2">{night.allotment}</td><td className="p-2">{night.booked}</td><td className="p-2">{night.held}</td><td className="p-2">{night.outOfService}</td><td className="p-2">{night.available}</td></tr>)}</tbody></table></div>
+      <div className="overflow-x-auto"><table className="w-full text-right text-sm"><thead><tr><th className="p-2">{text.date}</th><th className="p-2">{text.roomType}</th><th className="p-2">{text.allotment}</th><th className="p-2">{text.booked}</th><th className="p-2">{text.held}</th><th className="p-2">{text.oos}</th><th className="p-2">{text.available}</th></tr></thead><tbody>{(activeData?.inventory ?? []).map((night) => <tr key={night.id} className="border-t"><td className="p-2" dir="ltr">{night.date}</td><td className="p-2">{activeData?.roomTypes.find((item) => item.id === night.roomTypeId)?.name ?? "—"}</td><td className="p-2">{night.allotment}</td><td className="p-2">{night.booked}</td><td className="p-2">{night.held}</td><td className="p-2">{night.outOfService}</td><td className="p-2">{night.available ?? text.availabilityUnknown}</td></tr>)}</tbody></table></div>
       {!activeData?.inventory.length ? <p className="text-sm text-muted-foreground">{text.none}</p> : null}
     </section>
   </div>;

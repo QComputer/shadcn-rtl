@@ -389,6 +389,13 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   assert.equal(ratePlanResult.response.status, 201);
   assert.ok(ratePlanResult.data?.ratePlan.id);
   const ratePlanId = ratePlanResult.data!.ratePlan.id;
+  stage = "update-rate-plan-base-nightly-rate";
+  const updatedRatePlan = await apiJson<{ ratePlan: { id: string; baseNightlyRate: string } }>(`/api/organizations/${orgAId}/hotels/${propertyAId}/rate-plans/${ratePlanId}`, cookie, "PATCH", {
+    baseNightlyRate: "260000",
+  });
+  assert.equal(updatedRatePlan.response.status, 200);
+  assert.equal(updatedRatePlan.data?.ratePlan.id, ratePlanId);
+  assert.equal(updatedRatePlan.data?.ratePlan.baseNightlyRate, "260000");
   const from = "2027-06-10";
   const to = "2027-06-12";
   const rateResult = await apiJson<{ nightlyRate: { id: string; nightlyRate: string } }>(`/api/organizations/${orgAId}/hotels/${propertyAId}/rate-plans/${ratePlanId}/nightly-rates`, cookie, "PUT", { from, to, nightlyRate: "275000", minNights: 1 });
@@ -415,7 +422,7 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   assert.equal(operations.data?.range.nights, 2);
   assert.ok(operations.data?.roomTypes.some((roomType) => roomType.id === roomTypeId && roomType.rooms.length === 2), "operations reload includes both configured physical rooms");
   assert.deepEqual(operations.data?.roomTypes.find((roomType) => roomType.id === roomTypeId)?.physicalCapacity, { configuredRooms: 2, sellableRooms: 2 });
-  assert.ok(operations.data?.ratePlans.some((plan) => plan.id === ratePlanId && plan.baseNightlyRate === "250000" && plan.nightlyRates.some((rate) => rate.nightlyRate === "275000")));
+  assert.ok(operations.data?.ratePlans.some((plan) => plan.id === ratePlanId && plan.baseNightlyRate === "260000" && plan.nightlyRates.some((rate) => rate.nightlyRate === "275000")));
   assert.equal(operations.data?.inventory.length, 2);
   assert.ok(operations.data?.inventory.every((night) => night.roomTypeId === roomTypeId && night.allotment === 3 && night.available === 2));
   assert.ok(operations.data?.cancellationPolicies.some((policy) => policy.id === policyResult.data!.policy.id && policy.isActive));
@@ -752,8 +759,21 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   await manualSection.getByLabel("اتاق فیزیکی").selectOption(manualRoom.id);
   await manualSection.getByLabel("روش دریافت").selectOption("PHONE");
   await manualSection.getByLabel("نام کامل مهمان 1").fill(`Manual Guest ${suffix.slice(0, 8)}`);
+  const manualCreateButton = manualSection.getByRole("button", { name: "ثبت رزرو و تخصیص اتاق" });
+  const manualFormState = {
+    checkIn: await manualSection.getByLabel("تاریخ ورود").inputValue(),
+    checkOut: await manualSection.getByLabel("تاریخ خروج").inputValue(),
+    roomType: await manualSection.getByLabel("نوع اتاق").inputValue(),
+    ratePlan: await manualSection.getByLabel("طرح نرخ").inputValue(),
+    adults: await manualSection.getByLabel("بزرگسالان").inputValue(),
+    children: await manualSection.getByLabel("کودکان").inputValue(),
+    physicalRoom: await manualSection.getByLabel("اتاق فیزیکی").inputValue(),
+    guestName: await manualSection.getByLabel("نام کامل مهمان 1").inputValue(),
+    submitDisabled: await manualCreateButton.isDisabled(),
+  };
+  assert.equal(manualFormState.submitDisabled, false, `valid manual reception form must be enabled: ${JSON.stringify(manualFormState)}`);
   const manualCreateResponse = page.waitForResponse((response) => response.url().includes("/reservations/manual") && response.request().method() === "POST");
-  await manualSection.getByRole("button", { name: "ثبت رزرو و تخصیص اتاق" }).click();
+  await manualCreateButton.click();
   const manualResponse = await manualCreateResponse;
   assert.equal(manualResponse.status(), 200, "manual reception entry must succeed while public booking gates remain unset");
   await manualSection.getByRole("status").filter({ hasText: "رزرو پذیرش ثبت شد و اتاق تخصیص یافت." }).waitFor({ state: "visible", timeout: 30_000 });

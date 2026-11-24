@@ -759,8 +759,21 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   await manualSection.getByLabel("اتاق فیزیکی").selectOption(manualRoom.id);
   await manualSection.getByLabel("روش دریافت").selectOption("PHONE");
   await manualSection.getByLabel("نام کامل مهمان 1").fill(`Manual Guest ${suffix.slice(0, 8)}`);
+  const manualCreateButton = manualSection.getByRole("button", { name: "ثبت رزرو و تخصیص اتاق" });
+  const manualFormState = {
+    checkIn: await manualSection.getByLabel("تاریخ ورود").inputValue(),
+    checkOut: await manualSection.getByLabel("تاریخ خروج").inputValue(),
+    roomType: await manualSection.getByLabel("نوع اتاق").inputValue(),
+    ratePlan: await manualSection.getByLabel("طرح نرخ").inputValue(),
+    adults: await manualSection.getByLabel("بزرگسالان").inputValue(),
+    children: await manualSection.getByLabel("کودکان").inputValue(),
+    physicalRoom: await manualSection.getByLabel("اتاق فیزیکی").inputValue(),
+    guestName: await manualSection.getByLabel("نام کامل مهمان 1").inputValue(),
+    submitDisabled: await manualCreateButton.isDisabled(),
+  };
+  assert.equal(manualFormState.submitDisabled, false, `valid manual reception form must be enabled: ${JSON.stringify(manualFormState)}`);
   const manualCreateResponse = page.waitForResponse((response) => response.url().includes("/reservations/manual") && response.request().method() === "POST");
-  await manualSection.getByRole("button", { name: "ثبت رزرو و تخصیص اتاق" }).click();
+  await manualCreateButton.click();
   const manualResponse = await manualCreateResponse;
   assert.equal(manualResponse.status(), 200, "manual reception entry must succeed while public booking gates remain unset");
   await manualSection.getByRole("status").filter({ hasText: "رزرو پذیرش ثبت شد و اتاق تخصیص یافت." }).waitFor({ state: "visible", timeout: 30_000 });

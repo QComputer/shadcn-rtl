@@ -37,7 +37,7 @@ const demoReservationCopy = Object.freeze({
     badge: "رزرو نمایشی · داده‌ها و پرداخت ساختگی",
     start: "رفتن به فرم رزرو نمایشی",
     search: "جست‌وجوی گزینه‌های نمایشی",
-    planning: "تاریخ و تعداد مهمانان را برای جست‌وجوی نمایشی انتخاب کنید؛ قیمت و موجودی واقعی نیستند.",
+    planning: "تاریخ و تعداد مهمانان را برای جست‌وجوی نمایشی انتخاب کنید؛ قیمت و موجودی واقعی نیستند و هیچ مبلغ واقعی دریافت نمی‌شود.",
   }),
   en: Object.freeze({
     title: "Damoon Hotel booking demo",
@@ -45,7 +45,7 @@ const demoReservationCopy = Object.freeze({
     badge: "Booking demo · synthetic data and payment",
     start: "Go to the demo booking form",
     search: "Search demo options",
-    planning: "Choose dates and guest counts to search the demo; prices and inventory are synthetic.",
+    planning: "Choose dates and guest counts to search the demo; prices and inventory are synthetic. No real payment is collected.",
   }),
   ar: Object.freeze({
     title: "عرض الحجز التجريبي لفندق دامون",
@@ -53,7 +53,7 @@ const demoReservationCopy = Object.freeze({
     badge: "حجز تجريبي · بيانات ودفع اصطناعيان",
     start: "الانتقال إلى نموذج الحجز التجريبي",
     search: "بحث عن خيارات تجريبية",
-    planning: "اختر التواريخ وعدد الضيوف للبحث التجريبي؛ الأسعار والتوفر اصطناعيان.",
+    planning: "اختر التواريخ وعدد الضيوف للبحث التجريبي؛ الأسعار والتوفر اصطناعيان، ولا يتم تحصيل أي مبلغ حقيقي.",
   }),
 });
 

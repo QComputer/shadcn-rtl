@@ -6,6 +6,7 @@ import { extname, resolve, sep } from "node:path";
 import test from "node:test";
 import { chromium } from "playwright";
 import { mountBooking } from "../public/damoon-front/booking.js";
+import { getDamoonDemoBookingCopy } from "../public/damoon-front/booking-activation.js";
 import {
   buildReservationEntryUrl,
   buildGuestRequestPayload,
@@ -92,7 +93,10 @@ test("shared-runtime home page opens the authenticated preview and preserves req
   assert.match(booking, /data-track-request/);
   assert.match(booking, /isDamoonDemoBookingActivated\(window\.location\.hostname\)/);
   assert.match(booking, /api\/hotel\/v1\/demo-payments/);
-  assert.match(booking, /No real payment is collected/);
+  assert.match(booking, /getDamoonDemoBookingCopy/);
+  assert.match(getDamoonDemoBookingCopy("en").planning, /No real payment is collected/);
+  assert.match(getDamoonDemoBookingCopy("fa").planning, /هیچ مبلغ واقعی دریافت نمی‌شود/);
+  assert.match(getDamoonDemoBookingCopy("ar").planning, /لا يتم تحصيل أي مبلغ حقيقي/);
   assert.match(styles, /booking-step--confirmed/);
   assert.match(styles, /booking-field--text textarea/);
 });

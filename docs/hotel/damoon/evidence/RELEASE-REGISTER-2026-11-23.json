@@ -322,5 +322,41 @@
     "caveat": "PR148 is merged, CI and CMS workflow acceptance passed only on disposable PostgreSQL (run 45088093245), Runflare v127 is active, and its latest completed deployment log names main 9379d82761bea87c20b86be1a96da9dcb9bd7428; the active pod source SHA itself is not exposed. Live public assets match source. Static fallback category read was accepted in FA/EN/AR at 360/390 without horizontal overflow, but live public CMS GET returned an Nginx HTML 503 and its upstream/configuration cause is unconfirmed. Dynamic Production CMS reads and editing/publication are not accepted. No Production writes were made. This does not authorize public booking, Production writes/migrations, PR140, or indexing.",
     "snapshotRole": "HISTORICAL_PR148_STATE_SUPERSEDED_BY_LATEST_VERIFIED_STATE"
   },
-  "mainShaEvidence": "PR149 merged to main; documentation-only, no new runtime behavior"
+  "mainShaEvidence": "PR149 merged to main; documentation-only, no new runtime behavior",
+  "hotelOperationsMerges20261124": {
+    "latestMainSha": "fac5e370b1c6a8dea1048965cc57967f4c548bda",
+    "runflareDeploymentObserved": false,
+    "productionAcceptance": false,
+    "productionDbQueryOrMutation": false,
+    "pr162": {
+      "headSha": "965aa89b71d90cdf966adc5b37eacff9ff8385ee",
+      "mergeSha": "b14fda7844af236e62159ca6301e1a318a2192db",
+      "checks": "REQUIRED_EXECUTABLE_CHECKS_PASSED; VERCEL_BLOCKED_SUSPENDED_PREVIEW_EXCEPTION",
+      "capability": "Edit existing rate-plan base nightly rate through existing tenant/property-scoped PATCH API"
+    },
+    "pr163": {
+      "headSha": "4698c8f7c4ea6d61e1a7f5a3467b45453b13af1d",
+      "mergeSha": "fac5e370b1c6a8dea1048965cc57967f4c548bda",
+      "checks": {
+        "runflareTypeScript": "PASS",
+        "focusedRegressions": "PASS",
+        "hotelPhase1OperationalPostgreSQLBrowser": "PASS",
+        "migrationGapUpgrade": "PASS",
+        "requestToReception": "PASS",
+        "vercelPreview": "BLOCKED_KNOWN_SUSPENDED_PREVIEW_EXCEPTION"
+      },
+      "capability": "Create property-scoped amenity records and assign verified amenities to room categories in Hotel Operations",
+      "schemaChange": false
+    },
+    "localValidation": {
+      "eslint": "PASS",
+      "typeScript": "PASS",
+      "inheritedDirtyFiles": [
+        "public/damoon-front/vendor/leaflet/leaflet.css",
+        "public/damoon-front/vendor/leaflet/leaflet.js",
+        "sites/damoon/theme-tokens.css"
+      ],
+      "inheritedDirtyFilesModifiedOrStaged": false
+    }
+  }
 }

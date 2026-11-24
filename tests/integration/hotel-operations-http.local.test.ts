@@ -641,8 +641,13 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   const roomTypeSection = page.getByRole("heading", { name: "Room types" }).locator("xpath=ancestor::section[1]");
   const uiTypeItem = roomTypeSection.getByRole("listitem").filter({ hasText: uiName });
   await uiTypeItem.getByRole("button", { name: "Edit" }).click();
-  await roomTypeSection.getByLabel(uiAmenityLabel).check();
+  const amenityCheckbox = roomTypeSection.getByLabel(uiAmenityLabel);
+  await amenityCheckbox.check();
+  assert.equal(await amenityCheckbox.isChecked(), true, "selected amenity checkbox reflects manager input");
+  const amenityLinkResponse = page.waitForResponse((response) => response.url().includes(`/room-types/${persistedUiType.id}/amenities`) && response.request().method() === "PUT");
   await roomTypeSection.getByRole("button", { name: "Save changes" }).click();
+  const amenityLinkResult = await amenityLinkResponse;
+  assert.equal(amenityLinkResult.status(), 200, `room-type amenity association should succeed: ${await amenityLinkResult.text()}`);
   const persistedAmenityLink = await db.hotelRoomTypeAmenity.findFirst({ where: { organizationId: orgAId, roomTypeId: persistedUiType.id, amenityId: persistedAmenity.id } });
   assert.ok(persistedAmenityLink, "room-type amenity assignment persists through the management UI");
   const operationsAmenities = await apiJson<{ roomTypes: Array<{ id: string; amenities: Array<{ id: string; label: string }> }> }>(operationsPath, cookie);

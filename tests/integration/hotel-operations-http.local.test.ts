@@ -55,6 +55,7 @@ let platformUserId = "";
 let managerUserId = "";
 let staffUserId = "";
 let propertyAId = "";
+let demoPropertyId = "";
 let propertyBId = "";
 let activationOrgId = "";
 let activationPropertyId = "";
@@ -246,7 +247,7 @@ before(async () => {
   assert.deepEqual(identity, [{ database: "retail_hero_test", role: "hero_test" }]);
 
   stage = "fixture-creation";
-  const orgA = await db.organization.create({ data: { name: `${prefix}-a`, slug: `${prefix}-a`, type: "SHOP", vertical: "HOTEL", locale: "fa", capabilitiesInitializedAt: new Date() } });
+  const orgA = await db.organization.create({ data: { name: `${prefix}-a`, slug: "damoon-hotel", type: "SHOP", vertical: "HOTEL", locale: "fa", capabilitiesInitializedAt: new Date() } });
   ownedOrgIds.push(orgA.id);
   const orgB = await db.organization.create({ data: { name: `${prefix}-b`, slug: `${prefix}-b`, type: "SHOP", vertical: "HOTEL", locale: "fa", capabilitiesInitializedAt: new Date() } });
   ownedOrgIds.push(orgB.id);
@@ -359,6 +360,8 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   assert.equal(propertyResult.response.status, 201);
   assert.ok(propertyResult.data?.property.id);
   propertyAId = propertyResult.data!.property.id;
+  const demoProperty = await db.hotelProperty.create({ data: { organizationId: orgAId, organizationSlug: "damoon-hotel", slug: "damoon-demo", name: `${prefix} Demo property`, timezone: "Asia/Tehran" } });
+  demoPropertyId = demoProperty.id;
   const propertyB = await db.hotelProperty.create({ data: { organizationId: ownedOrgIds[1]!, organizationSlug: `${prefix}-b`, slug: `${prefix}-property-b`, name: `${prefix} Property B` } });
   propertyBId = propertyB.id;
 
@@ -615,6 +618,7 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   page.on("pageerror", (error) => pageErrors.push(error.name));
   await page.goto(`${baseUrl}/en/dashboard/hotel-operations/${orgAId}/${propertyAId}`, { waitUntil: "domcontentloaded" });
   await page.getByRole("heading", { name: "Hotel operations" }).waitFor({ state: "visible", timeout: 30_000 });
+  assert.equal(await page.getByRole("link", { name: "Open guest request page" }).getAttribute("href"), `/en/hotel/${orgAId}/${propertyAId}`, "ordinary operational property keeps its existing guest link");
   const uiSlug = `${prefix}-ui-deluxe`;
   const uiName = `${prefix} UI Deluxe`;
   const roomTypeForm = page.locator("form").filter({ has: page.getByLabel("Room type slug") });
@@ -846,6 +850,15 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
     const localizedCenter = page.getByRole("region", { name: locale === "en" ? "Reservation center" : "مركز الحجوزات" });
     assert.equal(await localizedCenter.getAttribute("dir"), locale === "en" ? "ltr" : "rtl", `${locale} reservation center uses the expected direction`);
     await page.getByRole("region", { name: locale === "en" ? "Room occupancy calendar" : "تقويم إشغال الغرف" }).waitFor({ state: "visible", timeout: 30_000 });
+  }
+  stage = "browser-demo-guest-link-fa-en-ar";
+  for (const locale of ["fa", "en", "ar"] as const) {
+    await page.goto(`${baseUrl}/${locale}/dashboard/hotel-operations/${orgAId}/${demoPropertyId}`, { waitUntil: "domcontentloaded" });
+    const label = locale === "fa" ? "مشاهده رزرو آزمایشی مهمان" : locale === "en" ? "Open the guest booking demo" : "فتح عرض الحجز للضيف";
+    const demoLink = page.getByRole("link", { name: label, exact: true });
+    await demoLink.waitFor({ state: "visible", timeout: 30_000 });
+    assert.equal(await demoLink.getAttribute("href"), `https://damoon-hotel.ir/${locale}/hotel-reservations/start?mode=DEMO_BOOKING`, `${locale} demo link uses the approved booking route`);
+    assert.equal(await demoLink.getAttribute("target"), "_blank");
   }
   const staffContext = await browser.newContext({ viewport: { width: 1280, height: 850 } });
   await staffContext.addCookies(staffLogin.cookies.map((value) => {

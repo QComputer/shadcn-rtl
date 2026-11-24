@@ -21,3 +21,10 @@ export function isDamoonDemoBookingRequest(input: {
   if (!DAMOON_DEMO_BOOKING.enabled || !isDamoonDemoOrganizationSlug(input.organizationSlug) || input.propertySlug !== DAMOON_DEMO_BOOKING.propertySlug) return false;
   return (DAMOON_DEMO_BOOKING.hosts as readonly string[]).includes(normalizeDomainHost(input.host));
 }
+
+/** Build the public demo entry only on an explicitly approved Damoon host. */
+export function damoonDemoBookingUrl(locale: string) {
+  if (!DAMOON_DEMO_BOOKING.enabled || !(locale === "fa" || locale === "en" || locale === "ar")) return null;
+  const host = DAMOON_DEMO_BOOKING.hosts[0];
+  return new URL(`/${locale}/hotel-reservations/start?mode=${DAMOON_DEMO_BOOKING.mode}`, `https://${host}`).toString();
+}

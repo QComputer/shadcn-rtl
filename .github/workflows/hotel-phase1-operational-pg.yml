@@ -26,6 +26,8 @@ on:
       - "tests/unit/hotel-guest-reservations-route.test.ts"
       - "tests/unit/hotel-offline-policy-settings.test.tsx"
       - "tests/unit/hotel-offline-payment-reversal-ui.test.tsx"
+      - "tests/unit/hotel-guest-portal-discovery.test.ts"
+      - "tests/unit/hotel-operations-maintenance-readiness.test.ts"
       - "package.json"
       - "pnpm-lock.yaml"
   push:
@@ -149,6 +151,8 @@ jobs:
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --experimental-test-module-mocks --test tests/unit/hotel-offline-receipt-route.test.ts
       - name: Run guest reservation and policy tests
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --experimental-test-module-mocks --test tests/unit/hotel-guest-reservations-route.test.ts tests/unit/hotel-offline-policy-settings.test.tsx tests/unit/hotel-offline-payment-reversal-ui.test.tsx
+      - name: Run Damoon guest discovery and partial maintenance schema regressions
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --experimental-test-module-mocks --test tests/unit/hotel-guest-portal-discovery.test.ts tests/unit/hotel-operations-maintenance-readiness.test.ts
       - name: Check TypeScript
         id: hotel_typescript
         run: pnpm exec tsc --noEmit --incremental false

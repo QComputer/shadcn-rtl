@@ -6,6 +6,7 @@ import { HotelDraftAccommodations } from "@/components/hotel-operations/hotel-dr
 import { HotelOperationsWorkspace } from "@/components/hotel-operations/hotel-operations-workspace";
 import { auth } from "@/lib/auth";
 import { getHotelOperationsOrganization } from "@/lib/hotel/management/hotel-operations-dashboard-context.server";
+import { DAMOON_DEMO_BOOKING, damoonDemoBookingUrl, isDamoonDemoOrganizationSlug } from "@/lib/hotel/services/damoon-demo-booking";
 
 export default async function HotelOperationsPropertyPage({
   params,
@@ -24,6 +25,9 @@ export default async function HotelOperationsPropertyPage({
   });
   const property = organization?.properties.find((item) => item.id === propertyId);
   if (!organization || !property) notFound();
+  const demoGuestUrl = isDamoonDemoOrganizationSlug(organization.slug) && property.slug === DAMOON_DEMO_BOOKING.propertySlug
+    ? damoonDemoBookingUrl(locale)
+    : null;
 
   return <main className="mx-auto min-w-0 w-full max-w-[1600px] space-y-4 p-3 sm:p-6">
     <div className="flex flex-wrap items-center justify-between gap-2"><Link className="inline-flex min-h-10 items-center rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href={`/${locale}/dashboard/hotel-operations${organization.role === "SUPER_ADMIN" ? `?organizationId=${encodeURIComponent(organization.id)}` : ""}`}>
@@ -32,7 +36,7 @@ export default async function HotelOperationsPropertyPage({
       {locale === "en" ? "Reservation center" : locale === "ar" ? "مركز الحجوزات" : "رزرواسیون"}
     </Link></div>
     <HotelGuestBookingRequests organizationId={organization.id} propertyId={property.id} locale={locale} />
-    <HotelRequestReception organizationId={organization.id} propertyId={property.id} locale={locale} canConfigure={organization.role === "ADMIN" || organization.role === "SUPER_ADMIN"} showGuestPortal={false} />
+    <HotelRequestReception organizationId={organization.id} propertyId={property.id} locale={locale} canConfigure={organization.role === "ADMIN" || organization.role === "SUPER_ADMIN"} showGuestPortal={false} demoGuestUrl={demoGuestUrl} />
     <HotelDraftAccommodations
       key={`drafts:${organization.id}:${property.id}`}
       organizationId={organization.id}

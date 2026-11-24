@@ -12,6 +12,7 @@ import { enumerateStayNights } from "../domain/stay-dates";
 import { decideReservationTransition } from "../domain/booking-state";
 import { HOTEL_BOOKING_BASE_PROPERTY_SELECT } from "./booking-context";
 import { assertHotelOperationalReservationSchemaReady } from "./hotel-schema-readiness";
+import { HOTEL_MAINTENANCE_SCHEMA_NOT_READY, isMissingHotelMaintenanceTableError } from "./hotel-maintenance-schema";
 import { hashCustomerIdentifier, normalizeCustomerPhone } from "@/lib/customer-identity/customer-identity.service";
 import { isDamoonDemoOrganizationSlug } from "./damoon-demo-booking";
 
@@ -241,6 +242,7 @@ export class HotelOperationalReservationService {
         return result;
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, maxWait: 10000, timeout: 20000 });
     } catch (error) {
+      if (isMissingHotelMaintenanceTableError(error)) throw new ApiError(503, HOTEL_MAINTENANCE_SCHEMA_NOT_READY);
       if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2002" || error.code === "P2034")) fail("Room or inventory changed while saving; refresh and choose another room", 409);
       throw error;
     }
@@ -384,6 +386,7 @@ export class HotelOperationalReservationService {
           if (command.action === "assign-room") {
             if (reservation.status !== "CONFIRMED") fail("Only confirmed reservations can receive a room");
             await this.lockRoom(tx, organizationId, propertyId, reservation.roomTypeId, command.roomId);
+            await this.assertRoomMaintenanceClear(tx, organizationId, propertyId, command.roomId, reservation.checkIn, reservation.checkOut);
             if (await tx.hotelReservationRoom.findFirst({ where: { organizationId, roomId: command.roomId, date: { in: reservation.nights.map(n => n.date) }, reservationId: { not: reservation.id } } })) fail("Room is already assigned");
             await tx.hotelReservationRoom.updateMany({ where: { organizationId, reservationId: reservation.id }, data: { roomId: command.roomId } });
             reservation = await tx.hotelReservation.update({ where: { id: reservation.id }, data: { version: { increment: 1 } }, include: { nights: true, hold: true } });
@@ -393,6 +396,7 @@ export class HotelOperationalReservationService {
               const roomId = reservation.nights[0]?.roomId;
               if (!roomId || reservation.nights.length !== enumerateStayNights(dateOnly(reservation.checkIn), dateOnly(reservation.checkOut)).length || reservation.nights.some(n => n.roomId !== roomId)) fail("Assign a room before check-in");
               await this.lockRoom(tx, organizationId, propertyId, reservation.roomTypeId, roomId);
+              await this.assertRoomMaintenanceClear(tx, organizationId, propertyId, roomId, reservation.checkIn, reservation.checkOut);
             }
             if (checkingIn ? reservation.status !== "CONFIRMED" : reservation.status !== "CHECKED_IN") fail("Invalid reception transition");
             const decision = decideReservationTransition({ current: checkingIn ? "CONFIRMED" : "CHECKED_IN", transition: checkingIn ? "CHECK_IN" : "CHECK_OUT", event: { type: checkingIn ? "GUEST_CHECKED_IN" : "GUEST_CHECKED_OUT", at: now.toISOString() }, now: now.toISOString() });
@@ -411,5 +415,14 @@ export class HotelOperationalReservationService {
   private async lockRoom(tx: Tx, organizationId: string, propertyId: string, roomTypeId: string, roomId: string) {
     await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelRoom" WHERE "id"=${roomId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} FOR UPDATE`);
     if (!await tx.hotelRoom.findFirst({ where: { id: roomId, organizationId, propertyId, roomTypeId, isActive: true, deletedAt: null, isOutOfService: false } })) fail("Room is not available");
+  }
+  private async assertRoomMaintenanceClear(tx: Tx, organizationId: string, propertyId: string, roomId: string, checkIn: Date, checkOut: Date) {
+    try {
+      const overlap = await tx.hotelRoomMaintenanceBlock.findFirst({ where: { organizationId, propertyId, roomId, releasedAt: null, from: { lt: checkOut }, to: { gt: checkIn } }, select: { id: true } });
+      if (overlap) fail("ROOM_MAINTENANCE_CONFLICT");
+    } catch (error) {
+      if (isMissingHotelMaintenanceTableError(error)) throw new ApiError(503, HOTEL_MAINTENANCE_SCHEMA_NOT_READY);
+      throw error;
+    }
   }
 }

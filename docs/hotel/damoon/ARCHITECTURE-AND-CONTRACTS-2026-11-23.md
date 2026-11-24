@@ -55,6 +55,8 @@ Future independent path (NOT public-enabled):
 
 ### قرارداد Reservation Center — ۲۰۲۶-۱۱-۲۴
 
+**Release evidence:** PR165 merged at `2308cbaf00746f9e2a038741fdada820f04c5dd8` (head `92e9018f1958d01d3240bc3e6514b61e8c928469`). Hosted PostgreSQL/browser, TypeScript, focused regressions, migration rehearsal and request-to-reception passed. Vercel Preview remains the suspended-policy exception; Runflare publication and Production acceptance are unverified.
+
 - مسیر dashboard با عضویت فعال سازمان Hotel، capability `HOTEL_BOOKING` و property فعال محدود می‌شود؛ نقش‌های ADMIN/MANAGER/STAFF/SUPER_ADMIN مجازند. STAFF از همان booking-actor authorization مجاز به GET رزرو و occupancy است؛ role تنها authority نیست.
 - `GET /api/organizations/{organizationId}/hotels/{propertyId}/occupancy?from=YYYY-MM-DD&to=YYYY-MM-DD` پاسخ فقط‌خواندنی شامل property identity محدود، بازهٔ حداکثر ۳۱ شب و room board می‌دهد. PII، نرخ و inventory config برنمی‌گردد. درخواست maintenance هم جزو read اجباری است؛ اگر schema/table در دسترس نباشد، کل board شکست می‌خورد تا ظرفیت نامعلوم به اتاق خالی تعبیر نشود.
 - نمایش تقویم هفت روز است و مرز تاریخ ISO را برای API حفظ می‌کند؛ برچسب FA از تقویم فارسی در timezone UTC برای جلوگیری از جابه‌جایی روز استفاده می‌کند. رزروهای demo با نشان مستقل مشخص می‌شوند.

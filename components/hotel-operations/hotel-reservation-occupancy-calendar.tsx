@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { isPropertyDate, offsetPropertyDate, propertyCalendarDate } from "@/lib/hotel/domain/property-calendar";
+import { refreshMatches, reservationCenterRefreshEvent } from "@/lib/hotel/management/reservation-center-feedback";
 
 type CellStatus = "VACANT" | "OUT_OF_SERVICE" | "RESERVED" | "OCCUPIED" | "OUT_OF_SERVICE_CONFLICT" | "MAINTENANCE" | "MAINTENANCE_CONFLICT";
 type Board = { dates: string[]; rooms: Array<{ id: string; code: string; roomTypeId: string; isOutOfService: boolean; nights: Array<{ date: string; status: CellStatus; reference: string | null }> }>; unassignedReservationNights: number };
@@ -14,18 +16,6 @@ const copy = {
   ar: { title: "تقويم إشغال الغرف", range: "تاريخ البداية", previous: "الأسبوع السابق", next: "الأسبوع التالي", available: "متاحة", reserved: "محجوزة", occupied: "مشغولة", maintenance: "صيانة", unavailable: "خارج الخدمة", conflict: "تعارض", demo: "تجريبي", loading: "جارٍ تحميل التقويم…", failed: "التقويم غير متاح؛ تعذر التحقق من السعة والصيانة. لن تُعتبر أي غرفة متاحة.", empty: "لا توجد غرف فعلية نشطة للعرض.", unassigned: "ليالي حجز دون تخصيص غرفة فعلية" },
 } as const;
 
-function todayInTimezone(timeZone: string) {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
-  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? "00";
-  return `${part("year")}-${part("month")}-${part("day")}`;
-}
-
-function addDays(date: string, days: number) {
-  const value = new Date(`${date}T00:00:00.000Z`);
-  value.setUTCDate(value.getUTCDate() + days);
-  return value.toISOString().slice(0, 10);
-}
-
 function formatCalendarDate(date: string, locale: string) {
   const language = locale === "fa" ? "fa-IR-u-ca-persian" : locale === "ar" ? "ar-u-ca-gregory" : "en-GB";
   return new Intl.DateTimeFormat(language, { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" }).format(new Date(`${date}T12:00:00.000Z`));
@@ -34,13 +24,24 @@ function formatCalendarDate(date: string, locale: string) {
 export function HotelReservationOccupancyCalendar({ organizationId, propertyId, propertyTimezone, locale }: { organizationId: string; propertyId: string; propertyTimezone: string; locale: string }) {
   const text = copy[locale as keyof typeof copy] ?? copy.fa;
   const endpoint = useMemo(() => `/api/organizations/${encodeURIComponent(organizationId)}/hotels/${encodeURIComponent(propertyId)}/occupancy`, [organizationId, propertyId]);
-  const [from, setFrom] = useState(() => todayInTimezone(propertyTimezone));
+  const [from, setFrom] = useState(() => propertyCalendarDate(propertyTimezone));
+  const [rangeDays, setRangeDays] = useState<1 | 7 | 31>(7);
+  const [revision, setRevision] = useState(0);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loadedRange, setLoadedRange] = useState("");
-  const to = addDays(from, 7);
-  const rangeKey = `${from}|${to}`;
+  const to = offsetPropertyDate(from, rangeDays);
+  const rangeKey = `${endpoint}|${from}|${to}|${revision}`;
   const [failedRange, setFailedRange] = useState("");
   const rtl = locale === "fa" || locale === "ar";
+  const controls = locale === "en" ? { range: "Calendar range", day: "Day", week: "Week", month: "31 days", today: "Today", refresh: "Refresh calendar", previous: "Previous range", next: "Next range" } : locale === "ar" ? { range: "نطاق التقويم", day: "يوم", week: "أسبوع", month: "31 يوماً", today: "اليوم", refresh: "تحديث التقويم", previous: "النطاق السابق", next: "النطاق التالي" } : { range: "بازه تقویم", day: "روزانه", week: "هفتگی", month: "۳۱ روزه", today: "امروز", refresh: "تازه‌سازی تقویم", previous: "بازه قبل", next: "بازه بعد" };
+
+  useEffect(() => {
+    const listener = (event: Event) => {
+      if (refreshMatches((event as CustomEvent<unknown>).detail, { organizationId, propertyId })) setRevision(value => value + 1);
+    };
+    window.addEventListener(reservationCenterRefreshEvent, listener);
+    return () => window.removeEventListener(reservationCenterRefreshEvent, listener);
+  }, [organizationId, propertyId]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -50,12 +51,12 @@ export function HotelReservationOccupancyCalendar({ organizationId, propertyId, 
         if (!response.ok || !body?.roomBoard) throw new Error("occupancy unavailable");
         if (controller.signal.aborted) return;
         setSnapshot(body as Snapshot);
-        setLoadedRange(`${from}|${to}`);
+        setLoadedRange(rangeKey);
         setFailedRange("");
       })
-      .catch(() => { if (!controller.signal.aborted) { setSnapshot(null); setLoadedRange(""); setFailedRange(`${from}|${to}`); } });
+      .catch(() => { if (!controller.signal.aborted) { setSnapshot(null); setLoadedRange(""); setFailedRange(rangeKey); } });
     return () => controller.abort();
-  }, [endpoint, from, to]);
+  }, [endpoint, from, to, rangeKey]);
 
   const data = loadedRange === rangeKey ? snapshot : null;
   const loading = loadedRange !== rangeKey && failedRange !== rangeKey;
@@ -83,9 +84,12 @@ export function HotelReservationOccupancyCalendar({ organizationId, propertyId, 
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div><h2 id="reservation-occupancy-title" className="text-lg font-semibold">{text.title}</h2>{data?.demoProperty ? <span className="mt-1 inline-flex rounded bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-950 dark:bg-amber-950 dark:text-amber-100">{text.demo}</span> : null}</div>
       <div className="flex flex-wrap items-end gap-2">
-        <Button type="button" variant="outline" size="sm" aria-label={text.previous} onClick={() => setFrom((value) => addDays(value, -7))}>‹</Button>
-        <label className="space-y-1 text-xs"><span>{text.range}</span><Input className="h-9 w-40" type="date" value={from} onChange={(event) => setFrom(event.target.value)} aria-label={text.range} /></label>
-        <Button type="button" variant="outline" size="sm" aria-label={text.next} onClick={() => setFrom((value) => addDays(value, 7))}>›</Button>
+        <label className="space-y-1 text-xs"><span>{controls.range}</span><select aria-label={controls.range} className="h-9 rounded-md border bg-background px-2" value={rangeDays} onChange={event => { setRangeDays(Number(event.target.value) as 1 | 7 | 31); setRevision(value => value + 1); }}><option value={1}>{controls.day}</option><option value={7}>{controls.week}</option><option value={31}>{controls.month}</option></select></label>
+        <Button type="button" variant="outline" size="sm" aria-label={rangeDays === 7 ? text.previous : controls.previous} onClick={() => { setFrom(value => offsetPropertyDate(value, -rangeDays)); setRevision(value => value + 1); }}>‹</Button>
+        <label className="space-y-1 text-xs"><span>{text.range}</span><Input className="h-9 w-40" type="date" value={from} onChange={event => { if (isPropertyDate(event.target.value)) { setFrom(event.target.value); setRevision(value => value + 1); } }} aria-label={text.range} /></label>
+        <Button type="button" variant="outline" size="sm" aria-label={rangeDays === 7 ? text.next : controls.next} onClick={() => { setFrom(value => offsetPropertyDate(value, rangeDays)); setRevision(value => value + 1); }}>›</Button>
+        <Button type="button" variant="outline" size="sm" onClick={() => { setFrom(propertyCalendarDate(propertyTimezone)); setRevision(value => value + 1); }}>{controls.today}</Button>
+        <Button type="button" variant="outline" size="sm" onClick={() => setRevision(value => value + 1)}>{controls.refresh}</Button>
       </div>
     </header>
     <ul className="flex flex-wrap gap-2 text-xs" aria-label={text.title}>

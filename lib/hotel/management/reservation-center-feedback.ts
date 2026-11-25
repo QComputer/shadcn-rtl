@@ -2,6 +2,12 @@ import type { ReceptionDateIssue } from "../domain/property-calendar";
 
 const messages = {
   fa: {
+    AMEND_PAYMENT: "تغییر تاریخ این رزرو به تسویه مالی نیاز دارد.",
+    AMEND_MANUAL: "تغییر تاریخ فعلاً برای رزرو دستی پرداخت‌نشده فعال است.",
+    AMEND_ACTIVE: "ورود قبلی یا شب جاری اقامت قابل حذف نیست.",
+    AMEND_STALE: "رزرو تغییر کرده است؛ دوباره مبلغ را محاسبه کنید.",
+    AMEND_NO_CHANGE: "تغییری برای ثبت وجود ندارد.",
+    AMEND_INTEGRITY: "اطلاعات شب‌های رزرو ناسازگار است؛ مدیر بررسی کند.",
     REQUIRED: "تاریخ ورود و خروج را انتخاب کنید.", INVALID: "تاریخ معتبر وارد کنید.",
     PAST: "تاریخ ورود نباید قبل از امروز در منطقه زمانی هتل باشد.", ORDER: "تاریخ خروج باید بعد از تاریخ ورود باشد.",
     TOO_LONG: "حداکثر مدت این رزرو ۳۱ شب است.", LIMIT: "مدت اقامت یا تاریخ انتخاب‌شده با محدودیت‌های هتل سازگار نیست.",
@@ -16,6 +22,12 @@ const messages = {
     UNAVAILABLE: "سرویس موقتاً در دسترس نیست. دوباره تلاش کنید.",
   },
   en: {
+    AMEND_PAYMENT: "This stay requires financial reconciliation before date changes.",
+    AMEND_MANUAL: "Date changes are currently enabled for unpaid manual stays.",
+    AMEND_ACTIVE: "Arrival and the current night of an active stay cannot be removed.",
+    AMEND_STALE: "The reservation changed; preview the new amount again.",
+    AMEND_NO_CHANGE: "No change to save.",
+    AMEND_INTEGRITY: "Reservation night data is inconsistent; ask the manager to review.",
     REQUIRED: "Select check-in and check-out dates.", INVALID: "Enter valid dates.",
     PAST: "Check-in cannot precede today in the hotel's time zone.", ORDER: "Check-out must be after check-in.",
     TOO_LONG: "This reservation can be at most 31 nights.", LIMIT: "The selected dates or stay length are outside the hotel's limits.",
@@ -29,6 +41,12 @@ const messages = {
     RELOAD: "The action succeeded, but the list could not refresh. Use Refresh.", UNAVAILABLE: "The service is temporarily unavailable. Try again.",
   },
   ar: {
+    AMEND_PAYMENT: "تحتاج الإقامة إلى تسوية مالية قبل تغيير التواريخ.",
+    AMEND_MANUAL: "تعديل التاريخ متاح حالياً للحجوزات اليدوية غير المدفوعة.",
+    AMEND_ACTIVE: "لا يمكن حذف الوصول السابق أو الليلة الحالية.",
+    AMEND_STALE: "تغير الحجز؛ أعد معاينة السعر.",
+    AMEND_NO_CHANGE: "لا توجد تغييرات للحفظ.",
+    AMEND_INTEGRITY: "بيانات ليالي الحجز غير متسقة؛ اطلب مراجعة المدير.",
     REQUIRED: "اختر تاريخي الوصول والمغادرة.", INVALID: "أدخل تواريخ صحيحة.",
     PAST: "لا يمكن أن يسبق تاريخ الوصول اليوم حسب التوقيت المحلي للفندق.", ORDER: "يجب أن يكون تاريخ المغادرة بعد الوصول.",
     TOO_LONG: "الحد الأقصى لهذا الحجز 31 ليلة.", LIMIT: "التواريخ أو مدة الإقامة خارج حدود الفندق.",
@@ -52,7 +70,13 @@ export const receptionReloadMessage = (locale: string) => dictionary(locale).REL
 export function reservationActionMessage(message: string, locale: string, fallback: string, status?: number): string {
   const lower = message.toLowerCase();
   let key: FeedbackKey | undefined;
-  if (lower.includes("hotel_maintenance_schema_not_ready")) key = "SCHEMA";
+  if (lower === "stay_amendment_payment_activity") key = "AMEND_PAYMENT";
+  else if (lower === "stay_amendment_manual_only") key = "AMEND_MANUAL";
+  else if (lower === "stay_amendment_active_dates") key = "AMEND_ACTIVE";
+  else if (lower === "stay_amendment_stale") key = "AMEND_STALE";
+  else if (lower === "stay_amendment_no_change") key = "AMEND_NO_CHANGE";
+  else if (lower === "stay_amendment_integrity") key = "AMEND_INTEGRITY";
+  else if (lower.includes("hotel_maintenance_schema_not_ready")) key = "SCHEMA";
   else if (lower.includes("check-in precedes property today")) key = "PAST";
   else if (lower.includes("stay is outside property limits")) key = "LIMIT";
   else if (lower.includes("stay must be 1 to 31 nights")) key = "LIMIT";
@@ -90,9 +114,9 @@ export class ReservationRequestError extends Error {
 
 export function receptionActionSuccess(action: unknown, locale: string): string {
   const copy = {
-    fa: { "assign-room": "اتاق تخصیص یافت.", "check-in": "ورود مهمان ثبت شد.", "check-out": "خروج مهمان ثبت شد.", cancel: "رزرو لغو شد.", "confirm-reservation": "رزرو تأیید شد." },
-    en: { "assign-room": "Room assigned.", "check-in": "Guest checked in.", "check-out": "Guest checked out.", cancel: "Reservation cancelled.", "confirm-reservation": "Reservation confirmed." },
-    ar: { "assign-room": "تم تخصيص الغرفة.", "check-in": "تم تسجيل وصول الضيف.", "check-out": "تم تسجيل مغادرة الضيف.", cancel: "تم إلغاء الحجز.", "confirm-reservation": "تم تأكيد الحجز." },
+    fa: { "amend-stay": "تغییر اقامت ثبت شد.", "move-room": "انتقال اتاق ثبت شد.", "assign-room": "اتاق تخصیص یافت.", "check-in": "ورود مهمان ثبت شد.", "check-out": "خروج مهمان ثبت شد.", cancel: "رزرو لغو شد.", "confirm-reservation": "رزرو تأیید شد." },
+    en: { "amend-stay": "Stay amendment saved.", "move-room": "Room move saved.", "assign-room": "Room assigned.", "check-in": "Guest checked in.", "check-out": "Guest checked out.", cancel: "Reservation cancelled.", "confirm-reservation": "Reservation confirmed." },
+    ar: { "amend-stay": "تم حفظ تعديل الإقامة.", "move-room": "تم نقل الغرفة.", "assign-room": "تم تخصيص الغرفة.", "check-in": "تم تسجيل وصول الضيف.", "check-out": "تم تسجيل مغادرة الضيف.", cancel: "تم إلغاء الحجز.", "confirm-reservation": "تم تأكيد الحجز." },
   } as const;
   const localized = copy[locale as keyof typeof copy] ?? copy.fa;
   return typeof action === "string" && Object.hasOwn(localized, action) ? localized[action as keyof typeof localized] : "";

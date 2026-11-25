@@ -504,22 +504,50 @@ test("nullable room board falls back to unavailable state without crashing hotel
   const resolved = await lookup(tenantHostname, { all: true, verbatim: true });
   if (!resolved.length || resolved.some(({ address }) => address !== "::1" && !/^127(?:\.\d{1,3}){3}$/.test(address))) throw new Error("Damoon test domain must resolve exclusively to loopback");
   const context = await browser.newContext();
-  const page = await context.newPage();
-  const browserErrors = [];
-  page.on("pageerror", (error) => browserErrors.push(error.message));
-  page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
-  const operationsResponse = { property: { id: propertyId, name: "Damoon", slug: "damoon-hotel", timezone: "Asia/Tehran", currency: "IRR" }, range: { from: "2026-11-25", to: "2026-12-02", nights: 7 }, roomTypes: [], amenities: [], ratePlans: [], inventory: [], cancellationPolicies: [], maintenanceStatus: { state: "UNAVAILABLE", code: "HOTEL_MAINTENANCE_SCHEMA_NOT_READY" }, roomBoard: null, manualRoomManagementEnabled: false, maintenanceBlocks: null };
-  await page.route("**/api/organizations/**/hotels/**/operations*", async (route) => { await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(operationsResponse) }); });
   try {
+    const page = await context.newPage();
+    const browserErrors = [];
+    const operationsStatuses = [];
+    page.on("pageerror", (error) => browserErrors.push(error.message));
+    const path = reservationsPath(organizationId, propertyId).replace(/\/reservations$/, "/operations");
+    await page.route((url) => url.origin === appOrigin && url.pathname === path, async (route) => {
+      if (route.request().method() !== "GET") { await route.continue(); return; }
+      // Preserve the actual authenticated fixture and contract. Inject only the schema-gap read model.
+      const response = await route.fetch({ maxRedirects: 0 });
+      operationsStatuses.push(response.status());
+      if (!response.ok()) { await route.fulfill({ response }); return; }
+      const body = await response.json();
+      await route.fulfill({ status: 200, json: {
+        ...body,
+        maintenanceStatus: { state: "UNAVAILABLE", code: "HOTEL_MAINTENANCE_SCHEMA_NOT_READY" },
+        roomBoard: null,
+        maintenanceBlocks: null,
+        roomTypes: body.roomTypes.map((room) => ({ ...room, physicalCapacity: { ...room.physicalCapacity, sellableRooms: null } })),
+        inventory: body.inventory.map((night) => ({ ...night, available: null })),
+      } });
+    });
     const operationsCallback = `/fa/dashboard/hotel-operations/${organizationId}/${propertyId}`;
     await login(page, appOrigin, env.DAMOON_MANAGER_USERNAME, env.DAMOON_MANAGER_PASSWORD, operationsCallback);
-    await expect(page.getByText(/داده تعمیرات قابل بررسی نیست/)).toBeVisible();
-    await expect(page.getByText("وضعیت روزانه اتاق‌ها")).toBeVisible();
-    await expect(page.getByText("انواع اتاق")).toBeVisible();
-    await expect(page.getByText("نرخ‌ها")).toBeVisible();
-    await expect(page.getByText("ظرفیت شبانه")).toBeVisible();
-    const operationsResponse = await page.waitForResponse((response) => response.url().includes("/api/organizations/") && response.url().includes("/hotels/") && response.url().includes("/operations") && response.request().method() === "GET");
-    expect(operationsResponse.status()).toBe(200);
+    const board = page.getByRole("heading", { name: "وضعیت روزانه اتاق‌ها", exact: true }).locator("..");
+    await expect(board.getByRole("alert")).toContainText("داده تعمیرات قابل بررسی نیست");
+    expect(operationsStatuses.length).toBeGreaterThan(0);
+    expect(operationsStatuses.every((status) => status === 200)).toBe(true);
+    await expect(board.getByRole("table")).toHaveCount(0);
+    await expect(board.getByText("رکوردی موجود نیست.", { exact: true })).toHaveCount(0);
+    const types = page.getByRole("heading", { name: "انواع اتاق", exact: true }).locator("..");
+    await types.getByLabel("شناسه نوع اتاق", { exact: true }).fill("schema-gap-test");
+    await types.getByLabel("نام", { exact: true }).fill("Synthetic regression room type");
+    await expect(types.getByRole("button", { name: "افزودن", exact: true })).toBeEnabled();
+    await types.getByLabel("شناسه امکان", { exact: true }).fill("schema-gap-test");
+    await types.getByLabel("نام امکان", { exact: true }).fill("Synthetic regression amenity");
+    await expect(types.getByRole("button", { name: "افزودن امکان", exact: true })).toBeEnabled();
+    const physicalRooms = page.getByRole("heading", { name: "اتاق‌های فیزیکی", exact: true }).locator("..");
+    await expect(physicalRooms.getByLabel("کد اتاق", { exact: true })).toBeEditable();
+    const rates = page.getByRole("heading", { name: "نرخ‌ها", exact: true }).locator("..");
+    await rates.getByLabel("نرخ پایه (تومان)", { exact: true }).fill("125000");
+    await expect(rates.getByLabel("نرخ پایه (تومان)", { exact: true })).toHaveValue("125000");
+    await expect(page.getByRole("heading", { name: "ظرفیت شبانه", exact: true })).toBeVisible();
+    expect(browserErrors).toEqual([]);
   } finally {
     await context.close();
   }
@@ -531,31 +559,76 @@ test("nullable occupancy board clears stale data after failed refresh", async ({
   const resolved = await lookup(tenantHostname, { all: true, verbatim: true });
   if (!resolved.length || resolved.some(({ address }) => address !== "::1" && !/^127(?:\.\d{1,3}){3}$/.test(address))) throw new Error("Damoon test domain must resolve exclusively to loopback");
   const context = await browser.newContext();
-  const page = await context.newPage();
-  const browserErrors = [];
-  const occupancyRequests = [];
-  let occupancyBody = { property: { id: propertyId, name: "Damoon", timezone: "Asia/Tehran" }, range: { from: "2026-11-25", to: "2026-12-02", nights: 7 }, roomBoard: { dates: ["2026-11-25", "2026-11-26", "2026-11-27", "2026-11-28", "2026-11-29", "2026-11-30", "2026-12-01"], rooms: [{ id: "room-1", code: "D-101", roomTypeId: "type-1", isOutOfService: false, nights: [{ date: "2026-11-25", status: "VACANT", reference: null }] }], unassignedReservationNights: 0 }, demoProperty: true };
-  page.on("pageerror", (error) => browserErrors.push(error.message));
-  page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
-  await page.route("**/api/organizations/**/hotels/**/occupancy*", async (route) => {
-    occupancyRequests.push(`${route.request().method()} ${route.request().url()}`);
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(occupancyBody) });
-  });
+  let releaseRecovery = () => {};
   try {
+    const page = await context.newPage();
+    const browserErrors = [];
+    const requests = [];
+    let mode = "success";
+    let recoveryGate = null;
+    page.on("pageerror", (error) => browserErrors.push(error.message));
+    const path = reservationsPath(organizationId, propertyId).replace(/\/reservations$/, "/occupancy");
+    await page.route((url) => url.origin === appOrigin && url.pathname === path, async (route) => {
+      if (route.request().method() !== "GET") { await route.continue(); return; }
+      const url = new URL(route.request().url());
+      const from = url.searchParams.get("from");
+      const to = url.searchParams.get("to");
+      const phase = mode;
+      const dates = Array.from({ length: 7 }, (_, index) => new Date(Date.parse(`${from}T00:00:00Z`) + index * 86_400_000).toISOString().slice(0, 10));
+      requests.push({ phase, from, to });
+      if (phase === "recovery" && recoveryGate) await recoveryGate;
+      // Matches getOccupancyBoard's response contract, with a deterministic synthetic room.
+      await route.fulfill({ status: 200, json: {
+        property: { id: propertyId, name: "Damoon", timezone: "Asia/Tehran" },
+        range: { from, to, nights: dates.length },
+        demoProperty: true,
+        roomBoard: phase === "null" ? null : {
+          dates,
+          rooms: [{ id: "room-1", code: "D-101", roomTypeId: "type-1", isOutOfService: false,
+            nights: dates.map((date) => ({ date, status: "VACANT", reference: null })) }],
+          unassignedReservationNights: 0,
+        },
+      } });
+    });
     const receptionCallback = `/fa/dashboard/hotel-operations/${organizationId}/${propertyId}/reservations`;
     await login(page, appOrigin, env.DAMOON_MANAGER_USERNAME, env.DAMOON_MANAGER_PASSWORD, receptionCallback);
-    const occupancyRegion = page.getByRole("region", { name: "تقویم اشغال اتاق‌ها" });
-    await expect(occupancyRegion).toBeVisible();
-    await expect(page.locator("table")).toBeVisible();
-    const occupancyResponse = await page.waitForResponse((response) => response.url().includes("/api/organizations/") && response.url().includes("/hotels/") && response.url().includes("/occupancy") && response.request().method() === "GET");
-    expect(occupancyResponse.status()).toBe(200);
-    expect(occupancyRequests.length).toBeGreaterThan(0);
-    occupancyBody = null;
-    await page.getByRole("button", { name: "الأسبوع التالي" }).click();
-    await expect(occupancyRegion).toContainText("تقویم در دسترس نیست");
-    await expect(page.locator("table")).toHaveCount(0);
+    const region = page.getByRole("region", { name: "تقویم اشغال اتاق‌ها", exact: true });
+    const room = region.getByRole("rowheader", { name: "D-101", exact: true });
+    const alert = region.getByRole("alert");
+    const next = region.getByRole("button", { name: "هفته بعد", exact: true });
+    const previous = region.getByRole("button", { name: "هفته قبل", exact: true });
+    await expect(room).toBeVisible();
+    await expect(region.getByText(/شب رزرو بدون تخصیص اتاق فیزیکی/)).toHaveCount(0);
+    expect(requests.length).toBeGreaterThan(0);
+    const firstRange = requests.at(-1).from;
+    mode = "null";
+    await next.click();
+    await expect(alert).toHaveCount(1);
+    await expect(alert).toContainText("تقویم در دسترس نیست");
+    await expect(region.getByRole("table")).toHaveCount(0);
+    await expect(room).toHaveCount(0);
+    const failedRequest = requests.at(-1);
+    expect(failedRequest.phase).toBe("null");
+    expect(failedRequest.from).not.toBe(firstRange);
+    // Return to the original range, but hold the replacement response. Old data must not reappear.
+    recoveryGate = new Promise((resolve) => { releaseRecovery = resolve; });
+    mode = "recovery";
+    await previous.click();
+    await expect.poll(() => requests.at(-1)).toMatchObject({ phase: "recovery", from: firstRange });
+    await expect(region.getByRole("table")).toHaveCount(0);
+    await expect(room).toHaveCount(0);
+    releaseRecovery();
+    await expect(room).toBeVisible();
+    await expect(alert).toHaveCount(0);
+    // A successful retry of the previously failed range must clear the old failure state.
+    mode = "success";
+    await next.click();
+    await expect.poll(() => requests.at(-1)).toMatchObject({ phase: "success", from: failedRequest.from });
+    await expect(room).toBeVisible();
+    await expect(alert).toHaveCount(0);
     expect(browserErrors).toEqual([]);
   } finally {
+    releaseRecovery();
     await context.close();
   }
 });

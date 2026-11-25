@@ -479,7 +479,7 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
             })}</tr>)}</tbody>
           </table>
         </div> : null}
-        {activeData?.maintenanceStatus.state === "AVAILABLE" && !activeData.roomBoard?.rooms.length ? <p className="text-sm text-muted-foreground">{text.none}</p> : null}
+        {activeData?.maintenanceStatus.state === "AVAILABLE" && activeData.roomBoard && activeData.roomBoard.rooms.length === 0 ? <p className="text-sm text-muted-foreground">{text.none}</p> : null}
       </div>
       <div className="space-y-3 rounded-lg border p-3">
         <h3 className="font-medium">{text.maintenance}</h3>

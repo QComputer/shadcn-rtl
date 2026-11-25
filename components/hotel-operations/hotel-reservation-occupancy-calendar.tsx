@@ -48,8 +48,10 @@ export function HotelReservationOccupancyCalendar({ organizationId, propertyId, 
       .then(async (response) => {
         const body = await response.json().catch(() => null);
         if (!response.ok || !body?.roomBoard) throw new Error("occupancy unavailable");
+        if (controller.signal.aborted) return;
         setSnapshot(body as Snapshot);
         setLoadedRange(`${from}|${to}`);
+        setFailedRange("");
       })
       .catch(() => { if (!controller.signal.aborted) { setSnapshot(null); setLoadedRange(""); setFailedRange(`${from}|${to}`); } });
     return () => controller.abort();
@@ -102,6 +104,6 @@ export function HotelReservationOccupancyCalendar({ organizationId, propertyId, 
         })}</tr>)}</tbody>
       </table>
       {!data.roomBoard.rooms.length ? <p className="p-3 text-sm text-muted-foreground">{text.empty}</p> : null}
-    </div> : failed ? <p role="alert" className="rounded-md border border-destructive/50 p-3 text-sm text-destructive">{text.failed}</p> : null}
+    </div> : null}
   </section>;
 }

@@ -96,9 +96,11 @@ export class HotelOperationalReservationService {
     return property;
   }
   private async authorizeManual(actor: HotelBookingActor, organizationId: string, propertyId: string) {
-    if (process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED !== "1") fail("Manual room management is disabled", 403);
     if (actor.role === "CUSTOMER") fail("Reception role required", 403);
-    await authorizeHotelBookingActor(this.db, actor, organizationId, propertyId);
+    const scoped = await authorizeHotelBookingActor(this.db, actor, organizationId, propertyId);
+    const organization = scoped.slug === "damoon-demo" ? await this.db.organization.findFirst({ where: { id: organizationId, vertical: "HOTEL", isActive: true, deletedAt: null }, select: { slug: true } }) : null;
+    const demoManual = scoped.slug === "damoon-demo" && isDamoonDemoOrganizationSlug(organization?.slug);
+    if (process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED !== "1" && !demoManual) fail("Manual room management is disabled", 403);
     await assertHotelOperationalReservationSchemaReady(this.db);
     const property = await this.db.hotelProperty.findFirst({ where: { id: propertyId, organizationId, isActive: true, deletedAt: null }, select: { ...HOTEL_BOOKING_BASE_PROPERTY_SELECT, operationalMode: true, manualConfirmationPolicy: true, allowedOfflinePaymentMethods: true, minimumVerifiedDepositAmount: true, pendingPaymentMinutes: true } });
     if (!property) fail("Hotel property not found", 404);
@@ -134,12 +136,16 @@ export class HotelOperationalReservationService {
       const demoProperty = await authorizeHotelBookingActor(this.db, actor, organizationId, propertyId);
       const demoOrganization = await this.db.organization.findFirst({ where: { id: organizationId, vertical: "HOTEL", isActive: true, deletedAt: null }, select: { slug: true } });
       if (demoProperty.slug === "damoon-demo" && isDamoonDemoOrganizationSlug(demoOrganization?.slug)) {
-        const [reservations, roomTypes, ratePlans] = await Promise.all([
+        const [reservations, roomTypes, ratePlans, rooms, manualRows, maintenanceReady] = await Promise.all([
           this.db.hotelReservation.findMany({ where: { organizationId, propertyId }, include: { nights: { select: { date: true, roomId: true } }, guests: { select: { fullName: true, isPrimary: true } } }, orderBy: { createdAt: "desc" }, take: 100 }),
           this.db.hotelRoomType.findMany({ where: { organizationId, propertyId, isActive: true, deletedAt: null }, select: { id: true, name: true } }),
           this.db.hotelRatePlan.findMany({ where: { organizationId, propertyId, isActive: true }, select: { id: true, name: true, roomTypeId: true } }),
+          this.db.hotelRoom.findMany({ where: { organizationId, propertyId, isActive: true, deletedAt: null, isOutOfService: false }, select: { id: true, code: true, roomTypeId: true } }),
+          this.db.hotelInventoryIdempotency.findMany({ where: { organizationId, operationScope: MANUAL_RESERVATIONS, AND: [{ resultJson: { path: ["propertyId"], equals: propertyId } }] }, orderBy: { createdAt: "desc" }, take: 200, select: { resultJson: true } }),
+          this.db.hotelRoomMaintenanceBlock.count({ where: { organizationId, propertyId } }).then(() => true).catch(error => { if (isMissingHotelMaintenanceTableError(error)) return false; throw error; }),
         ]);
-        return json({ mode: "MANUAL", view: "reception", demoBooking: true, manualRoomManagementEnabled: false, roomTypes, ratePlans, rooms: [], history: [], confirmationPolicy: { manualConfirmationPolicy: "DISABLED", allowedOfflinePaymentMethods: [], minimumVerifiedDepositAmount: null, pendingPaymentMinutes: 0 }, reservations: reservations.map(row => ({ id: row.id, reference: row.reference, guestName: row.guests.find(guest => guest.isPrimary)?.fullName ?? "Demo Guest", status: row.status, paymentMethod: null, roomTypeId: row.roomTypeId, checkIn: dateOnly(row.checkIn), checkOut: dateOnly(row.checkOut), totalAmount: row.totalAmount, currency: row.currency, paidAmount: row.paidAmount, refundedAmount: row.refundedAmount, outstandingAmount: row.totalAmount, createdAt: row.createdAt, confirmedAt: row.confirmedAt, checkedInAt: null, checkedOutAt: null, cancelledAt: null, nights: row.nights, source: "DEMO_BOOKING", simulatedPaymentStatus: row.status === "CONFIRMED" ? "SIMULATED_SUCCESS" : "PENDING_SIMULATION" })) });
+        const manualSources = new Map(manualRows.flatMap(row => { const value = row.resultJson as Record<string, unknown> | null; return value && typeof value === "object" && typeof value.reservationId === "string" ? [[value.reservationId, typeof value.source === "string" ? value.source : null] as const] : []; }));
+        return json({ mode: "MANUAL", view: "reception", demoBooking: true, maintenanceAvailable: maintenanceReady, manualRoomManagementEnabled: maintenanceReady, roomTypes, ratePlans, rooms, history: [], confirmationPolicy: { manualConfirmationPolicy: "DISABLED", allowedOfflinePaymentMethods: [], minimumVerifiedDepositAmount: null, pendingPaymentMinutes: 0 }, reservations: reservations.map(row => ({ id: row.id, reference: row.reference, guestName: row.guests.find(guest => guest.isPrimary)?.fullName ?? "Demo Guest", status: row.status, paymentMethod: null, roomTypeId: row.roomTypeId, checkIn: dateOnly(row.checkIn), checkOut: dateOnly(row.checkOut), totalAmount: row.totalAmount, currency: row.currency, paidAmount: row.paidAmount, refundedAmount: row.refundedAmount, outstandingAmount: row.totalAmount, createdAt: row.createdAt, confirmedAt: row.confirmedAt, checkedInAt: row.checkedInAt, checkedOutAt: row.checkedOutAt, cancelledAt: row.cancelledAt, nights: row.nights, source: manualSources.get(row.id) ?? "DEMO_BOOKING", simulatedPaymentStatus: row.status === "CONFIRMED" ? "SIMULATED_SUCCESS" : "PENDING_SIMULATION" })) });
       }
     }
     if (receptionCenter) {
@@ -255,7 +261,9 @@ export class HotelOperationalReservationService {
   }
   async execute(actor: HotelBookingActor, organizationId: string, propertyId: string, input: unknown, idempotencyKey: string) {
     const submitted = hotelOperationalCommand.parse(input);
-    const manualLifecycle = process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED === "1" && actor.role !== "CUSTOMER" && ["cancel", "assign-room", "check-in", "check-out"].includes(submitted.action);
+    const manualAction = actor.role !== "CUSTOMER" && ["cancel", "assign-room", "check-in", "check-out"].includes(submitted.action);
+    const demoManualLifecycle = manualAction && process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED !== "1" && await this.isDamoonDemoProperty(actor, organizationId, propertyId);
+    const manualLifecycle = manualAction && (process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED === "1" || demoManualLifecycle);
     if (manualLifecycle) await this.authorizeManual(actor, organizationId, propertyId);
     else await this.authorize(actor, organizationId, propertyId);
     if (idempotencyKey.length < 8 || idempotencyKey.length > 200) fail("Idempotency-Key required", 400);
@@ -343,7 +351,8 @@ export class HotelOperationalReservationService {
         const manualCandidates = manualLifecycle ? await tx.hotelInventoryIdempotency.findMany({ where: { organizationId, operationScope: MANUAL_RESERVATIONS, AND: [{ resultJson: { path: ["propertyId"], equals: propertyId } }] }, select: { resultJson: true } }) : [];
         const isManualReservation = manualCandidates.some(row => row.resultJson && typeof row.resultJson === "object" && !Array.isArray(row.resultJson) && row.resultJson.reservationId === command.reservationId);
         const isQuotedReservation = candidates.some(row => (row.snapshot as unknown as HotelPricedQuote).reservationId === command.reservationId);
-        if (manualLifecycle ? !isManualReservation : !isQuotedReservation) fail("Reservation not found", 404);
+        const isDemoReservation = demoManualLifecycle && Boolean(await tx.hotelReservation.findFirst({ where: { id: command.reservationId, organizationId, propertyId }, select: { id: true } }));
+        if (manualLifecycle ? !isManualReservation && !isDemoReservation : !isQuotedReservation) fail("Reservation not found", 404);
         await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelReservation" WHERE "id"=${command.reservationId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} FOR UPDATE`);
         let reservation = await tx.hotelReservation.findFirstOrThrow({ where: { id: command.reservationId, organizationId, propertyId }, include: { nights: true, hold: true } });
         if (command.action === "select-payment-method") {
@@ -412,6 +421,12 @@ export class HotelOperationalReservationService {
     }, { maxWait: 10000, timeout: 20000 });
   }
   private summary(row: { id: string; reference: string; status: string; paymentMethod?: string | null; totalAmount: string | number | bigint; currency: string }) { return { id: row.id, reference: row.reference, status: row.status, paymentMethod: row.paymentMethod ?? null, totalAmount: row.totalAmount.toString(), currency: row.currency, simulated: false }; }
+  private async isDamoonDemoProperty(actor: HotelBookingActor, organizationId: string, propertyId: string) {
+    const property = await authorizeHotelBookingActor(this.db, actor, organizationId, propertyId);
+    if (property.slug !== "damoon-demo") return false;
+    const organization = await this.db.organization.findFirst({ where: { id: organizationId, vertical: "HOTEL", isActive: true, deletedAt: null }, select: { slug: true } });
+    return isDamoonDemoOrganizationSlug(organization?.slug);
+  }
   private async lockRoom(tx: Tx, organizationId: string, propertyId: string, roomTypeId: string, roomId: string) {
     await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelRoom" WHERE "id"=${roomId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} FOR UPDATE`);
     if (!await tx.hotelRoom.findFirst({ where: { id: roomId, organizationId, propertyId, roomTypeId, isActive: true, deletedAt: null, isOutOfService: false } })) fail("Room is not available");

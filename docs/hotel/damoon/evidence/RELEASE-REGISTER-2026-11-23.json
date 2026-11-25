@@ -389,5 +389,55 @@
     },
     "runflareDeployment": "NOT_VERIFIED",
     "productionBrowserAcceptance": "NOT_PERFORMED"
+  },
+  "latestProductionPmsReadOnlyObservation20261125": {
+    "provider": "Runflare",
+    "projectId": "37622",
+    "applicationServiceId": "87432",
+    "activeDeploymentVersion": "v145",
+    "deploymentState": "CURRENT_SUCCESSFUL_AS_SHOWN_IN_PROVIDER_DEPLOYMENT_HISTORY",
+    "activePodSourceSha": null,
+    "evidenceLimit": "Provider UI showed v145 as current/successful; it did not expose active-pod source SHA",
+    "managerDashboard": "READ_ONLY_ACCESS_CONFIRMED",
+    "demoReservationCenter": "TWO_EXISTING_SYNTHETIC_RESERVATIONS_VISIBLE; CATALOG_NOT_PROVISIONED; NO_PHYSICAL_ROOMS; MANUAL_INTAKE_DISABLED; OCCUPANCY_FAILS_CLOSED",
+    "receptionRole": "NOT_INDEPENDENTLY_TESTED",
+    "productionDatabaseReadOrWrite": false,
+    "productionGuestOrProvisioningWrite": false,
+    "productionMigration": false
+  },
+  "damoonDemo31UnitPmsImplementation20261125": {
+    "branch": "codex/damoon-demo-31-unit-pms-20261125",
+    "baseMainSha": "d279e5ee14eb896ddbe28a2205077aca6374a62d",
+    "scope": "DAMOON_DEMO_PROPERTY_ONLY",
+    "syntheticCategoryCounts": {
+      "single": 3,
+      "double": 17,
+      "threePersonSuite": 6,
+      "fourPersonSuite": 3,
+      "fivePersonSuite": 2
+    },
+    "sampleRates": "Manager-configurable synthetic values only",
+    "preservesExistingDemoReservations": true,
+    "manualAndLifecycleActionsRequireMaintenanceSchema": true,
+    "localValidation": {
+      "typeScript": "PASS",
+      "eslint": "PASS",
+      "focusedUnitTests": "25_PASS",
+      "browserAcceptanceSyntax": "PASS",
+      "disposablePostgresBrowserAcceptance": {
+        "requestToReception": "PASS_RUN_45577457361",
+        "hotelPhase1OperationalPostgreSQLBrowser": "PASS_RUN_45577457237",
+        "runflareTypeScript": "PASS_RUN_45577457164",
+        "focusedRegressions": "PASS_RUN_45577457415",
+        "initialRequestToReceptionFailure": "RUN_45576768755_NETWORKIDLE_TEST_WAIT_TIMEOUT; FIXED_TO_DOMCONTENTLOADED; EXACT_HEAD_RERUN_PASSED"
+      }
+    },
+    "pullRequest": 171,
+    "implementationCommitSha": "b80bc8266c73c4fe0277c145d826a4bf51e90fd1",
+    "pullRequestBaseSha": "d279e5ee14eb896ddbe28a2205077aca6374a62d",
+    "vercelPreview": "KNOWN_SUSPENDED_POLICY_EXCEPTION",
+    "evidenceDocumentationCommitCi": "PENDING_EXACT_HEAD_CI",
+    "productionProvisioningOrMutation": false,
+    "merge": "OPEN_MERGE_PENDING"
   }
 }

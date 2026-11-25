@@ -6,6 +6,13 @@
 
 ## قراردادهای تکمیلی Reservation Center — PR167 ادغام‌شده، ۲۰۲۶-۱۱-۲۵
 
+## قرارداد catalog و reception آزمایشی Damoon — شاخهٔ محلی، ۲۰۲۶-۱۱-۲۵
+
+- provisioning نسخه‌دار `DAMOON_31_UNIT_V1` فقط برای سازمان Damoon و property `damoon-demo` با POST هم‌مبدأ و نقش ADMIN/MANAGER مجاز است؛ advisory lock و transaction آن را idempotent می‌کنند. این مسیر category/rate/inventory/physical-room مصنوعی می‌سازد یا همان دادهٔ دمو را به‌روزرسانی می‌کند و هیچ حذف/بازنشانی رزرو موجودی انجام نمی‌دهد. نرخ‌ها از payload مدیر می‌آیند و در scope ملک دمو می‌مانند.
+- اتاق‌های فیزیکی از کدهای صریح `DEMO_*` استفاده می‌کنند و هیچ amenity یا layout واقعی را اثبات نمی‌کنند. ظرفیت/قیمت نمایشی تنها برای گردش demo است. آستانهٔ ظرفیت موجود از `booked + held + outOfService` پایین‌تر برده نمی‌شود؛ اگر رزرو/hold موجود از حد دسته تجاوز کند، transaction با conflict rollback می‌شود.
+- سرویس عملیاتی موجود فقط برای property دمو قابلیت manual reception/lifecycle را می‌پذیرد؛ tenant/property authorization حفظ می‌شود. assignment و manual reservation همچنان جدول نگهداری را می‌خوانند و failure آن را به حالت unavailable/503 تبدیل می‌کنند؛ نبود جدول maintenance هرگز به «بدون maintenance» تعبیر نمی‌شود. سایر propertyها تابع feature gate موجود می‌مانند.
+- قرارداد در این شاخه محلی است؛ آزمون PostgreSQL/browser hosted و پذیرش انتشار هنوز pending است. `HotelRoomMaintenanceBlock` migration در این تغییر اجرا یا تغییر داده نشده است.
+
 - پیوند مهمان property فقط وقتی organization slug و property slug هر دو با پیکربندی demo دامون منطبق باشند، به host allowlistشدهٔ `damoon-hotel.ir` و route محلی‌سازی‌شدهٔ `hotel-reservations/start?mode=DEMO_BOOKING` می‌رود؛ شناسهٔ Production در کد reusable hardcode نمی‌شود. مسیر legacy برای propertyهای دیگر تغییر نمی‌کند.
 - discovery legacy فقط اگر پس از حذف property مصنوعی `damoon-demo` برای سازمان دامون دقیقاً یک property عملیاتی باقی بماند، همان property را برمی‌گرداند. چند property عملیاتی یا صفر نتیجه، disabled است؛ انتخاب اولین ردیف مجاز نیست. domain verification و capability checks قبل از resolution حفظ می‌شوند.
 - `getOperations` داده‌های مستقل را حتی در نبود جدول maintenance برمی‌گرداند و `maintenanceStatus=UNAVAILABLE`، `roomBoard=null`، `maintenanceBlocks=null` و sellable availability نامعلوم می‌دهد. فقط خطای دقیق missing relation قابل degradation است؛ سایر DB errors همچنان خطا هستند. availability preview، occupancy board، room assignment و check-in نیازمند خواندن موفق maintenance هستند. این قرارداد جایگزین یا تأیید Production migration نیست.

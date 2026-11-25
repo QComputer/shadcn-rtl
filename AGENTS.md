@@ -41,3 +41,7 @@ Speed is the primary delivery priority. Deliver cohesive functional batches, use
 - CI gates: RunFlare TypeScript pass, focused-regressions pass, hotel-phase1-operational-pg pass, request-to-reception pass; Vercel blocked (known suspended-preview exception)
 - Scope: PMS Professional 1A — shared Gregorian ISO property-local date helper, reception date validation and localized feedback, 1/7/31-day calendar controls with scoped refresh, allowlisted FA/EN/AR domain errors, manual reservation simulated payment fix, extended E2E calendar refresh and 1/31-day range coverage, 5 focused unit tests
 - Next phase: P1B — transactional date amendments (extend/shorten), in-house room move, reception lifecycle completion; no schema change, no real payment activation
+
+## Hotel mandatory phase boundary
+
+OWNER GATE (2026-11-26): After completion of PMS Professional (1A/1B/1C and remaining reception items), STOP immediately before any Housekeeping implementation. The owner will specify an intervening phase. Do not start Housekeeping until that phase is completed and the owner explicitly authorizes resumption.

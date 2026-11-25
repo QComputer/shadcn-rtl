@@ -81,14 +81,14 @@ export function HotelOperationalReservations({ organizationId, propertyId, local
     return matchesSearch && matchesStatus && matchesKind;
   }), [snapshot, searchTerm, statusFilter, kindFilter]);
   const selectedReservation = visibleReservations.find((item) => item.id === selectedReservationId) ?? null;
-  const summary = useMemo(() => {
+  const summary = (() => {
     const reservations = snapshot?.reservations ?? [];
     return {
       arrivals: reservations.filter((item) => item.checkIn === today && ["CONFIRMED", "CHECKED_IN"].includes(item.status)).length,
       departures: reservations.filter((item) => item.checkOut === today && ["CONFIRMED", "CHECKED_IN"].includes(item.status)).length,
       occupied: new Set(reservations.filter((item) => item.status === "CHECKED_IN").flatMap((item) => item.nights.flatMap((night) => night.date.slice(0, 10) === today && night.roomId ? [night.roomId] : []))).size,
     };
-  }, [snapshot, today]);
+  })();
 
   const load = useCallback(async () => {
     const response = await fetch(readEndpoint, { cache: "no-store", credentials: "same-origin" });

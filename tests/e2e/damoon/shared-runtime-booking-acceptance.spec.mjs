@@ -42,9 +42,17 @@ function localHostResolverArgs() {
     : [];
 }
 
-function dateAtOffset(offset) {
-  const date = new Date();
-  date.setUTCHours(0, 0, 0, 0);
+function dateAtOffset(offset, timeZone = "UTC", at = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US-u-ca-gregory-nu-latn", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(at);
+
+  const read = (type) => parts.find((part) => part.type === type).value;
+  const date = new Date(`${read("year")}-${read("month")}-${read("day")}T00:00:00.000Z`);
+
   date.setUTCDate(date.getUTCDate() + offset);
   return date.toISOString().slice(0, 10);
 }
@@ -323,7 +331,12 @@ test("Damoon DEMO_BOOKING completes simulated payment and is visible in authoriz
     assert.equal(assign.status(), 200, await assign.text());
     const manualUrl = new URL(`/api/organizations/${orgId}/hotels/${propertyId}/reservations/manual`, env.DAMOON_APP_URL).href;
     const manualKey = randomUUID();
-    const manualPayload = { roomId: demoRoom.id, roomTypeId: demoDouble.roomTypeId, ratePlanId: demoDouble.ratePlanId, checkIn: dateAtOffset(0), checkOut: dateAtOffset(1), adults: 1, childAges: [], source: "PHONE", guests: [{ fullName: "Synthetic Telephone Guest", isPrimary: true }] };
+    const manualProperty = await prisma.hotelProperty.findFirstOrThrow({
+      where: { id: propertyId, organizationId: orgId },
+      select: { timezone: true },
+    });
+    const manualNow = new Date();
+    const manualPayload = { roomId: demoRoom.id, roomTypeId: demoDouble.roomTypeId, ratePlanId: demoDouble.ratePlanId, checkIn: dateAtOffset(0, manualProperty.timezone, manualNow), checkOut: dateAtOffset(1, manualProperty.timezone, manualNow), adults: 1, childAges: [], source: "PHONE", guests: [{ fullName: "Synthetic Telephone Guest", isPrimary: true }] };
     const manual = await managerPage.request.post(manualUrl, { headers: { Origin: appOrigin, "Content-Type": "application/json", "Idempotency-Key": manualKey }, data: manualPayload });
     assert.equal(manual.status(), 200, await manual.text());
     const manualResult = await manual.json();

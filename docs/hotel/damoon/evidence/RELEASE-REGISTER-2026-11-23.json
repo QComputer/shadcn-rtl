@@ -424,10 +424,20 @@
       "eslint": "PASS",
       "focusedUnitTests": "25_PASS",
       "browserAcceptanceSyntax": "PASS",
-      "disposablePostgresBrowserAcceptance": "PENDING_HOSTED_CI"
+      "disposablePostgresBrowserAcceptance": {
+        "requestToReception": "PASS_RUN_45577457361",
+        "hotelPhase1OperationalPostgreSQLBrowser": "PASS_RUN_45577457237",
+        "runflareTypeScript": "PASS_RUN_45577457164",
+        "focusedRegressions": "PASS_RUN_45577457415",
+        "initialRequestToReceptionFailure": "RUN_45576768755_NETWORKIDLE_TEST_WAIT_TIMEOUT; FIXED_TO_DOMCONTENTLOADED; EXACT_HEAD_RERUN_PASSED"
+      }
     },
+    "pullRequest": 171,
+    "implementationCommitSha": "b80bc8266c73c4fe0277c145d826a4bf51e90fd1",
+    "pullRequestBaseSha": "d279e5ee14eb896ddbe28a2205077aca6374a62d",
+    "vercelPreview": "KNOWN_SUSPENDED_POLICY_EXCEPTION",
+    "evidenceDocumentationCommitCi": "PENDING_EXACT_HEAD_CI",
     "productionProvisioningOrMutation": false,
-    "pullRequest": null,
-    "merge": "NOT_MERGED"
+    "merge": "OPEN_MERGE_PENDING"
   }
 }

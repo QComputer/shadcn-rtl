@@ -439,7 +439,7 @@ test("Damoon DEMO_BOOKING completes simulated payment and is visible in authoriz
     assert.equal(duplicateNoShow.status(), 422, await duplicateNoShow.text());
     assert.equal((await prisma.hotelInventory.findUniqueOrThrow({ where: { id: pastInventory.id } })).booked, pastInventory.booked - 1);
     assert.equal(await prisma.paymentRequest.count({ where: { organizationId: orgId } }), paymentsBefore);
-    const professionalCenter = await managerPage.request.get(new URL(reservationApi.href + "?view=center"));
+    const professionalCenter = await managerPage.request.get(`${reservationApi.href}?view=center`);
     assert.equal(professionalCenter.status(), 200, await professionalCenter.text());
     const professionalSnapshot = await professionalCenter.json();
     const absentDetails = professionalSnapshot.reservations.find(row => row.id === noShowId);

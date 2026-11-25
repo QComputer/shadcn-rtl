@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +47,7 @@ function formatStayDate(value: string, locale: string) {
 
 export function HotelOperationalReservations({ organizationId, propertyId, locale, mode = "reception", canConfigure = false, initialStay, requestId, centerMode = false, propertyTimezone = "Asia/Tehran" }: { organizationId: string; propertyId: string; locale: string; mode?: "guest" | "reception"; canConfigure?: boolean; initialStay?: { checkIn: string; checkOut: string; adults: number; childAges: Array<number | null> }; requestId?: string; centerMode?: boolean; propertyTimezone?: string }) {
   const router = useRouter();
+  const searchInputId = useId();
   const t = labels[locale as keyof typeof labels] ?? labels.fa;
   const endpoint = useMemo(() => `/api/organizations/${encodeURIComponent(organizationId)}/hotels/${encodeURIComponent(propertyId)}/reservations`, [organizationId, propertyId]);
   const readEndpoint = centerMode ? `${endpoint}?view=center` : endpoint;
@@ -259,7 +260,11 @@ export function HotelOperationalReservations({ organizationId, propertyId, local
       <Button disabled={busy || !guestsPayload()} onClick={() => { const guests = guestsPayload(); if (!guests) { setError(t.guestError); return; } void run(() => post({ action: "reserve", quoteId: quote.id, holdId: hold.id, guests }).then(() => { setQuote(null); setHold(null); }), true); }}>{busy ? t.working : t.reserve}</Button>
     </>}</div> : <Button disabled={busy || (requestId ? false : !checkInDate || !checkOutDate || !roomTypeId || !effectivePlan || childAges.some(age => age === null))} onClick={() => void run(() => post<{ quote: { id: string; totalAmount: string | number; currency: string; checkIn: string; checkOut: string; adults: number; childAges: number[]; roomTypeId: string; ratePlanId: string } }>(requestId ? { action: "quote-request", requestId } : { action: "quote", roomTypeId, ratePlanId: effectivePlan, checkIn: checkInDate, checkOut: checkOutDate, adults, childAges }).then((result) => { setQuote(result.quote); setCheckInDate(result.quote.checkIn); setCheckOutDate(result.quote.checkOut); setAdults(result.quote.adults); setChildAges(result.quote.childAges); setRoomTypeId(result.quote.roomTypeId); setRatePlanId(result.quote.ratePlanId); }))}>{busy ? t.working : requestId ? t.quoteRequest : t.quote}</Button>) : null}
     <div className="min-w-0 space-y-3"><h2 className="font-semibold">{t.reservations}</h2>{centerMode && snapshot ? <div className="grid min-w-0 gap-2 sm:grid-cols-3">
-      <label className="min-w-0 space-y-1 text-sm"><span>{centerReception ? professional.search : t.search}</span><Input type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} />{centerReception ? <span className="text-xs text-muted-foreground">{professional.limit}</span> : null}</label>
+      <div className="min-w-0 space-y-1 text-sm">
+        <label htmlFor={searchInputId}>{centerReception ? professional.search : t.search}</label>
+        <Input id={searchInputId} type="search" aria-describedby={centerReception ? `${searchInputId}-hint` : undefined} value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} />
+        {centerReception ? <p id={`${searchInputId}-hint`} className="text-xs text-muted-foreground">{professional.limit}</p> : null}
+      </div>
       <label className="min-w-0 space-y-1 text-sm"><span>{t.filterStatus}</span><select className="h-10 w-full min-w-0 rounded-md border bg-background px-3" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="ALL">{t.all}</option>{Object.keys(t.statusLabels).map((status) => <option key={status} value={status}>{t.statusLabels[status as keyof typeof t.statusLabels]}</option>)}</select></label>
       <label className="min-w-0 space-y-1 text-sm"><span>{t.filterKind}</span><select className="h-10 w-full min-w-0 rounded-md border bg-background px-3" value={kindFilter} onChange={(event) => setKindFilter(event.target.value)}><option value="ALL">{t.all}</option><option value="DEMO">{t.demoKind}</option><option value="OPERATIONAL">{t.operational}</option></select></label>
     </div> : null}{!snapshot ? <p className="text-sm text-muted-foreground">{t.loading}</p> : snapshot.reservations.length === 0 ? <p className="text-sm text-muted-foreground">{t.empty}</p> : visibleReservations.length === 0 ? <p role="status" className="text-sm text-muted-foreground">{t.noMatch}</p> : <ul className="space-y-2">{visibleReservations.map((item) => {

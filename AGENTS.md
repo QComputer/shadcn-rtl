@@ -33,3 +33,11 @@ separate. The dedicated Damoon frontend is in `sites/damoon`.
 ## Continuous handoff — owner rule (2026-11-26)
 
 Speed is the primary delivery priority. Deliver cohesive functional batches, use existing CI and focused regression checks, and do not reopen completed acceptance without a new reason. Update the applicable existing roadmap and current-status documentation in the same functional PR; include delivered scope, remaining scope, next action and known blockers. Keep Git/CI/merge/live evidence distinct; use the PR and Git history as authoritative for the exact merge SHA. After merge record real deployment or live evidence in the existing status/handoff when available (never invent it); avoid a separate documentation-only PR solely for routine bookkeeping. For Hotel/Damoon begin with docs/hotel/damoon/README.md, ROADMAP.md and STATUS-AND-DECISIONS.md and the active platform handoff. Do not relax tenant isolation, production-data authorization, or real-payment gates.
+
+### PR173 merged (2026-11-26)
+
+- Branch: `codex/hotel-pms-professional-1a`, head `d88cbcc70e8f91dffdedcfee882f02f6b9e796cf`, merge `c9d6ea2ca98bc4d2b47e74cb2fe4a75e05d5d241`
+- Base: `935b26b1e48ca3f31b49fc42409d693979d04cb4` (origin/main)
+- CI gates: RunFlare TypeScript pass, focused-regressions pass, hotel-phase1-operational-pg pass, request-to-reception pass; Vercel blocked (known suspended-preview exception)
+- Scope: PMS Professional 1A — shared Gregorian ISO property-local date helper, reception date validation and localized feedback, 1/7/31-day calendar controls with scoped refresh, allowlisted FA/EN/AR domain errors, manual reservation simulated payment fix, extended E2E calendar refresh and 1/31-day range coverage, 5 focused unit tests
+- Next phase: P1B — transactional date amendments (extend/shorten), in-house room move, reception lifecycle completion; no schema change, no real payment activation

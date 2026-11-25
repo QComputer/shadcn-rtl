@@ -348,6 +348,10 @@ test("Damoon DEMO_BOOKING completes simulated payment and is visible in authoriz
     assert.equal(conflictReplay.status(), 409, "a changed payload cannot silently create another manual reservation");
     // P1B: real transaction on the disposable fixture. Same-day dates use property time.
     const changeAction = (data, key = randomUUID()) => managerPage.request.post(reservationApi.href, { headers: { Origin: appOrigin, "Content-Type": "application/json", "Idempotency-Key": key }, data });
+    // No-show cannot be recorded on the scheduled arrival day.
+    const prematureNoShow = await changeAction({ action: "mark-no-show", reservationId: manualResult.reservationId });
+    assert.equal(prematureNoShow.status(), 422, await prematureNoShow.text());
+    assert.equal((await prisma.hotelReservation.findUniqueOrThrow({ where: { id: manualResult.reservationId } })).status, "CONFIRMED");
     const extendedOut = dateAtOffset(2, manualProperty.timezone, manualNow);
     const extendedDate = dateAtOffset(1, manualProperty.timezone, manualNow);
     const addedInventory = await prisma.hotelInventory.findFirstOrThrow({ where: { organizationId: orgId, propertyId, roomTypeId: demoDouble.roomTypeId, date: new Date(extendedDate + "T00:00:00.000Z") } });
@@ -400,6 +404,49 @@ test("Damoon DEMO_BOOKING completes simulated payment and is visible in authoriz
     const checkOutAction = await managerPage.request.post(reservationApi.href, { headers: { Origin: appOrigin, "Content-Type": "application/json", "Idempotency-Key": randomUUID() }, data: { action: "check-out", reservationId: manualResult.reservationId } });
     assert.equal(checkOutAction.status(), 200, await checkOutAction.text());
     assert.equal((await checkOutAction.json()).reservation.status, "CHECKED_OUT");
+    // P1C-A: make a past-due fixture through the existing manual path, then move only
+    // that synthetic fixture to yesterday inside this already fail-closed disposable DB.
+    const noShowCreated = await managerPage.request.post(manualUrl, { headers: { Origin: appOrigin, "Content-Type": "application/json", "Idempotency-Key": randomUUID() }, data: { ...manualPayload, guests: [{ fullName: "Synthetic Absent Guest", isPrimary: true }] } });
+    assert.equal(noShowCreated.status(), 200, await noShowCreated.text());
+    const noShowId = (await noShowCreated.json()).reservationId;
+    const pastDate = new Date(dateAtOffset(-1, manualProperty.timezone, manualNow) + "T00:00:00.000Z");
+    const currentDate = new Date(manualPayload.checkIn + "T00:00:00.000Z");
+    const pastInventory = await prisma.$transaction(async tx => {
+      const fixture = await tx.hotelReservation.findFirstOrThrow({ where: { id: noShowId, organizationId: orgId, propertyId }, include: { nights: true, hold: true } });
+      assert.equal(fixture.nights.length, 1);
+      assert.ok(fixture.holdId);
+      const currentInventory = await tx.hotelInventory.findFirstOrThrow({ where: { organizationId: orgId, propertyId, roomTypeId: demoDouble.roomTypeId, date: currentDate } });
+      const past = await tx.hotelInventory.upsert({ where: { roomTypeId_date: { roomTypeId: demoDouble.roomTypeId, date: pastDate } }, create: { organizationId: orgId, propertyId, roomTypeId: demoDouble.roomTypeId, date: pastDate, allotment: currentInventory.allotment, booked: 1 }, update: { booked: { increment: 1 } } });
+      await tx.hotelInventory.update({ where: { id: currentInventory.id }, data: { booked: { decrement: 1 } } });
+      await tx.hotelReservationRoom.update({ where: { id: fixture.nights[0].id }, data: { date: pastDate } });
+      await tx.hotelBookingHold.update({ where: { id: fixture.holdId }, data: { checkIn: pastDate, checkOut: currentDate } });
+      await tx.hotelReservation.update({ where: { id: noShowId }, data: { checkIn: pastDate, checkOut: currentDate } });
+      return past;
+    });
+    const noShowCommand = { action: "mark-no-show", reservationId: noShowId };
+    const noShowKey = randomUUID();
+    const noShow = await changeAction(noShowCommand, noShowKey);
+    assert.equal(noShow.status(), 200, await noShow.text());
+    assert.equal((await noShow.json()).reservation.status, "NO_SHOW");
+    const absent = await prisma.hotelReservation.findFirstOrThrow({ where: { id: noShowId, organizationId: orgId, propertyId }, include: { nights: true } });
+    assert.equal(absent.totalAmount, 125000n);
+    assert.equal(absent.paidAmount, 0n);
+    assert.equal(absent.nights[0].roomId, null);
+    assert.equal((await prisma.hotelInventory.findUniqueOrThrow({ where: { id: pastInventory.id } })).booked, pastInventory.booked - 1);
+    const noShowReplay = await changeAction(noShowCommand, noShowKey);
+    assert.equal(noShowReplay.status(), 200, await noShowReplay.text());
+    const duplicateNoShow = await changeAction(noShowCommand);
+    assert.equal(duplicateNoShow.status(), 422, await duplicateNoShow.text());
+    assert.equal((await prisma.hotelInventory.findUniqueOrThrow({ where: { id: pastInventory.id } })).booked, pastInventory.booked - 1);
+    assert.equal(await prisma.paymentRequest.count({ where: { organizationId: orgId } }), paymentsBefore);
+    const professionalCenter = await managerPage.request.get(new URL(reservationApi.href + "?view=center"));
+    assert.equal(professionalCenter.status(), 200, await professionalCenter.text());
+    const professionalSnapshot = await professionalCenter.json();
+    const absentDetails = professionalSnapshot.reservations.find(row => row.id === noShowId);
+    assert.equal(absentDetails.guests[0].fullName, "Synthetic Absent Guest");
+    assert.ok(!Object.hasOwn(absentDetails.guests[0], "phoneHash"));
+    assert.equal(professionalSnapshot.receptionHistory.filter(event => event.reservationId === noShowId && event.action === "mark-no-show").length, 1);
+    assert.ok(professionalSnapshot.receptionHistory.every(event => !Object.hasOwn(event, "resultJson") && !Object.hasOwn(event, "actorUserId")));
     const foreignCenter = await managerPage.request.get(new URL(`/api/organizations/${env.DAMOON_FOREIGN_ORGANIZATION_ID}/hotels/${env.DAMOON_FOREIGN_PROPERTY_ID}/reservations?view=center`, env.DAMOON_APP_URL).href);
     assert.equal(foreignCenter.status(), 403, "manager cannot read the sibling tenant reception center");
     assert.equal((await prisma.hotelReservation.findFirstOrThrow({ where: { reference: manualResult.reference, organizationId: orgId, propertyId } })).status, "CHECKED_OUT");
@@ -407,7 +454,7 @@ test("Damoon DEMO_BOOKING completes simulated payment and is visible in authoriz
     foreignUrl.hostname = env.DAMOON_FOREIGN_HOST;
     const crossTenant = await guest.request.post(foreignUrl.href, { data: { property: "damoon-demo", reference: rows[0].reference, outcome: "SUCCESS", idempotencyKey: randomUUID() } });
     assert.equal(crossTenant.status(), 404, "a foreign tenant host cannot act on Damoon demo reservations");
-    assert.equal(await prisma.hotelReservation.count({ where: { organizationId: orgId, propertyId } }), before + 2, "one online demo and one phone reservation are added without changing prior bookings");
+    assert.equal(await prisma.hotelReservation.count({ where: { organizationId: orgId, propertyId } }), before + 3, "one online demo and two phone reservations are added without changing prior bookings");
     assert.deepEqual(appErrors, []);
     await guest.close();
   } finally {

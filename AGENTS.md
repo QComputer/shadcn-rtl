@@ -50,6 +50,10 @@ Speed is the primary delivery priority. Deliver cohesive functional batches, use
 - Scope: PMS Professional 1B — preview/confirm date changes, extensions and shortening for unpaid manual reception reservations; same-category in-house room move for checked-in guests; FA/EN/AR reception-center controls; property-scoped refresh and feedback; 7 focused unit tests; extended manual reception acceptance (preview, extension, stale/idempotent apply, move, shortening)
 - Next phase: P1C — remaining reception/1C scope; mandatory stop before Housekeeping until owner explicitly authorizes resumption
 
+### PMS Professional 1C-A — pending CI
+- Staff reception: loaded-reservation search by guest/companion/reference/room with Persian/Arabic normalization; read-only guest list and bounded sanitized action history; unpaid manual no-show after property-local arrival day using atomic inventory release and idempotency.
+- No schema change or real payment execution. CI/merge/live evidence is not yet recorded. Remaining PMS Professional: arrival/departure edge cases, full Jalali date picker, grouped reservations, durable guest files, waitlist and complete audit/search. Owner stop before Housekeeping still applies.
+
 ## Hotel mandatory phase boundary
 
 OWNER GATE (2026-11-26): After completion of PMS Professional (1A/1B/1C and remaining reception items), STOP immediately before any Housekeeping implementation. The owner will specify an intervening phase. Do not start Housekeeping until that phase is completed and the owner explicitly authorizes resumption.

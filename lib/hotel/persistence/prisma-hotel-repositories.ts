@@ -503,14 +503,15 @@ export class PrismaHotelRepositories
     const current = await this.findReservation(input.scope, input.reservationId); return current ? { isUpdated: true, reservation: current } : { isUpdated: false, reason: "NOT_FOUND" };
   }
 
-  async cancelReservationAndReleaseInventory(input: { scope: TenantScope; reservationId: string; expectedStatus: readonly Reservation["status"][]; now: Date }, transaction?: Tx): Promise<ReservationUpdateResult> {
+  async cancelReservationAndReleaseInventory(input: { scope: TenantScope; reservationId: string; expectedStatus: readonly Reservation["status"][]; now: Date; outcome?: "CANCELLED" | "NO_SHOW" }, transaction?: Tx): Promise<ReservationUpdateResult> {
     return this.transact(async tx => {
       const organizationId = input.scope.organizationId;
       await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelReservation" WHERE "id"=${input.reservationId} AND "organizationId"=${organizationId} FOR UPDATE`);
       const current = await tx.hotelReservation.findFirst({ where: { id: input.reservationId, organizationId }, include: { nights: true, guests: true } });
       if (!current) return { isUpdated: false, reason: "NOT_FOUND" };
       if ((current.status !== "PENDING_PAYMENT" && current.status !== "CONFIRMED") || !input.expectedStatus.includes(current.status)) return { isUpdated: false, reason: "STATUS_CONFLICT" };
-      const decision = decideReservationTransition({ current: current.status, transition: "CANCEL", event: { type: "CANCELLATION_REQUESTED", at: input.now.toISOString(), refundableAmount: 0 }, now: input.now.toISOString() });
+      const noShow = input.outcome === "NO_SHOW";
+      const decision = decideReservationTransition({ current: current.status, transition: noShow ? "MARK_NO_SHOW" : "CANCEL", event: noShow ? { type: "GUEST_ABSENT", at: input.now.toISOString() } : { type: "CANCELLATION_REQUESTED", at: input.now.toISOString(), refundableAmount: 0 }, now: input.now.toISOString() });
       if (!decision.isAllowed) return { isUpdated: false, reason: "STATUS_CONFLICT" };
       const held = current.holdId ? await tx.hotelBookingHold.findFirst({ where: { id: current.holdId, organizationId, propertyId: current.propertyId, roomTypeId: current.roomTypeId, status: "CONSUMED", quantity: 1 } }) : null;
       const nights = enumerateStayNights(dateOnly(current.checkIn), dateOnly(current.checkOut));
@@ -522,7 +523,7 @@ export class PrismaHotelRepositories
       for (const row of inventory) await tx.hotelInventory.update({ where: { id: row.id }, data: { booked: { decrement: 1 } } });
       await tx.hotelReservationRoom.updateMany({ where: { organizationId, reservationId: current.id }, data: { roomId: null } });
       // Financial balances and allocations are historical facts. Provider refund execution is separate.
-      const updated = await tx.hotelReservation.update({ where: { id: current.id }, data: { status: "CANCELLED", cancelledAt: input.now, version: { increment: 1 } }, include: { nights: true, guests: true } });
+      const updated = await tx.hotelReservation.update({ where: { id: current.id }, data: { status: noShow ? "NO_SHOW" : "CANCELLED", ...(noShow ? {} : { cancelledAt: input.now }), version: { increment: 1 } }, include: { nights: true, guests: true } });
       return { isUpdated: true, reservation: reservation(updated) };
     }, transaction, { maxWait: 10000, timeout: 20000 });
   }

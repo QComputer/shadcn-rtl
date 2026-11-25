@@ -1,3 +1,6 @@
+## Hotel PMS Professional 1C-A — pending CI
+Base `dabe8b52d9a81e3ad05de6b26ed75e78d5ddce04`. Bounded reception search, reservation guest projection, sanitized recent event history, manual unpaid no-show with atomic inventory release. No schema or production changes. Full 1C is not complete; remaining arrival/departure, Jalali input, group/waitlist, durable guest files and full search/history remain. Preserve the mandatory owner gate before Housekeeping.
+
 ## Current hotel continuation — 2026-11-26 / PMS Professional 1B
 
 PR173 merged at c9d6ea2ca98bc4d2b47e74cb2fe4a75e05d5d241; all four executable CI checks independently verified successful. Main baseline 0e34f38b5a658920fe64e1f882999130cd00a697. This 1B package provides unpaid manual stay amendment with server preview/version/price checks and same-category active room movement, using existing transaction and idempotency records. CI and deployment of 1B remain to be recorded; do not claim merged/live before evidence. See the existing Damoon roadmap/status. Next: remaining reception/1C. OWNER GATE (2026-11-26): After completion of PMS Professional (1A/1B/1C and remaining reception items), STOP immediately before any Housekeeping implementation. The owner will specify an intervening phase. Do not start Housekeeping until that phase is completed and the owner explicitly authorizes resumption.

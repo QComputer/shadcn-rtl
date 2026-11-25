@@ -8,9 +8,17 @@
 
 # Damoon | هَندآف اجرایی Agentها (نسخه فشرده و قابل کپی)
 
+## تغییر محلی کاتالوگ PMS دمو — ۲۰۲۶-۱۱-۲۵
+
+شاخهٔ `codex/damoon-demo-31-unit-pms-20261125` از main `d279e5ee14eb896ddbe28a2205077aca6374a62d` در حال افزودن provisioning تکرارپذیر و manager-authorized برای `damoon-demo` است: دسته‌های synthetic با شمارش 3/17/6/3/2، نرخ‌های جداگانه، کد اتاق‌های نمایشی و حفظ رزروهای موجود. عملیات Reception به همان سرویس‌های رزرو محدود می‌ماند و فقط برای property دمو در صورت موجودبودن maintenance schema فعال است؛ در غیر این صورت UI دسترس‌پذیری را صریحاً unavailable اعلام می‌کند. هنوز PostgreSQL/browser CI، PR، merge، deployment و live acceptance اثبات نشده‌اند. Dirty edits موروثی Leaflet و theme token stage/ویرایش نشده‌اند. Production database دست‌نخورده است.
+
+آخرین بررسی فقط خواندنی Runflare/Production در همان روز: Runflare `product`/`37622`, app `87432` نسخهٔ `v145` را «استقرار فعلی/موفق» نشان داد؛ SHA فعال از صفحهٔ provider استخراج نشد. مدیر با موفقیت داشبورد را دید و Reservation Center نمایشی دو رزرو قبلی را نشان داد، اما catalog/physical rooms هنوز provision نشده بود؛ manual intake غیرفعال و occupancy unavailable به‌دلیل maintenance/room schema بود. این شواهد نسخهٔ زندهٔ قبلی را توصیف می‌کند و پذیرش این شاخه نیست. نقش Reception مستقلاً وارد/آزموده نشد. هیچ Production write، رزرو، provisioning یا migration رخ نداد.
+
 ## live PMS check و ادامهٔ کار — ۲۰۲۶-۱۱-۲۵
 
 در manager-authenticated browser، Reservation Center دمو و رزروهای مصنوعی دیده شدند و demo guest link به route محلی‌سازی‌شدهٔ `hotel-reservations/start?mode=DEMO_BOOKING` اشاره می‌کرد. در operational property: reservation list خالی، room types/rate plans/physical rooms خالی، manual intake غیرفعال و occupancy board به‌درستی unavailable به‌علت schema تعمیرات بود. Legacy guest portal هنوز خطای English و empty-list نشان داد، هرچند PR167 همین حالت را در source اصلاح کرده است؛ Runflare source/version از dashboard در دسترس این نوبت تأیید نشد. Health GET 200/ok با `revision=null` به‌تنهایی deployment proof نیست. Production database و migration دست‌نخورده‌اند.
+
+این گزارش تاریخی با بررسی تکمیلی هم‌روز superseded شده است: Runflare deployment history سپس `v145` را active/successful نشان داد، هرچند active-pod source SHA عرضه نشد. Manager Reservation Center دمو شامل دو رزرو موجود بود؛ provisioning کاتالوگ 31 اتاقی هنوز انجام نشده، physical rooms صفر، manual intake disabled و occupancy fail-closed بود. Reception role و E2E روی Production آزموده نشدند.
 
 Branch `codex/damoon-pms-live-readiness-guidance-20261125` این UX gap را رفع می‌کند: وقتی setup عملیاتی ناقص یا manual intake غیرفعال است، Reservation Center پیام سه‌زبانه می‌دهد و ورودی‌های ثبت دستی که کار نمی‌کنند را پنهان می‌کند. Unit 4/4، ESLint، full TypeScript، focused regressions، Hotel Phase 1 PostgreSQL/browser و request-to-reception پاس شدند. PR169 با head `34f15fe0db70d73d4a001a4ba7cc9067fcb6d099` در merge/main `fe6488f8c9ca0decf64de32c1f14b330e48e2153` ادغام شد؛ Vercel Preview استثنای تعلیق بود. Runflare version/source و live acceptance پس از merge هنوز نامعلوم‌اند. هیچ gate روشن یا data mutation نشده است.
 

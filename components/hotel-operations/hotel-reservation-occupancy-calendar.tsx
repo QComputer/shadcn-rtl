@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 
 type CellStatus = "VACANT" | "OUT_OF_SERVICE" | "RESERVED" | "OCCUPIED" | "OUT_OF_SERVICE_CONFLICT" | "MAINTENANCE" | "MAINTENANCE_CONFLICT";
 type Board = { dates: string[]; rooms: Array<{ id: string; code: string; roomTypeId: string; isOutOfService: boolean; nights: Array<{ date: string; status: CellStatus; reference: string | null }> }>; unassignedReservationNights: number };
-type Snapshot = { property: { id: string; name: string; timezone: string }; roomBoard: Board; demoProperty: boolean };
+type Snapshot = { property: { id: string; name: string; timezone: string }; roomBoard: Board | null; demoProperty: boolean };
 
 const copy = {
   fa: { title: "تقویم اشغال اتاق‌ها", range: "تاریخ شروع", previous: "هفته قبل", next: "هفته بعد", available: "خالی", reserved: "رزروشده", occupied: "اشغال‌شده", maintenance: "تعمیرات", unavailable: "خارج از سرویس", conflict: "تداخل", demo: "نمایشی", loading: "در حال بارگذاری تقویم…", failed: "تقویم در دسترس نیست؛ وضعیت ظرفیت و تعمیرات قابل بررسی نیست. هیچ اتاقی خالی فرض نمی‌شود.", empty: "اتاق فیزیکی فعالی برای نمایش وجود ندارد.", unassigned: "شب رزرو بدون تخصیص اتاق فیزیکی" },
@@ -48,10 +48,12 @@ export function HotelReservationOccupancyCalendar({ organizationId, propertyId, 
       .then(async (response) => {
         const body = await response.json().catch(() => null);
         if (!response.ok || !body?.roomBoard) throw new Error("occupancy unavailable");
+        if (controller.signal.aborted) return;
         setSnapshot(body as Snapshot);
         setLoadedRange(`${from}|${to}`);
+        setFailedRange("");
       })
-      .catch(() => { if (!controller.signal.aborted) setFailedRange(`${from}|${to}`); });
+      .catch(() => { if (!controller.signal.aborted) { setSnapshot(null); setLoadedRange(""); setFailedRange(`${from}|${to}`); } });
     return () => controller.abort();
   }, [endpoint, from, to]);
 
@@ -89,10 +91,10 @@ export function HotelReservationOccupancyCalendar({ organizationId, propertyId, 
     <ul className="flex flex-wrap gap-2 text-xs" aria-label={text.title}>
       {(["VACANT", "RESERVED", "OCCUPIED", "MAINTENANCE", "OUT_OF_SERVICE", "MAINTENANCE_CONFLICT"] as CellStatus[]).map((status) => <li key={status}><span className={`inline-flex rounded px-2 py-1 ${statusStyle(status)}`}>{statusText(status)}</span></li>)}
     </ul>
-    {data?.roomBoard.unassignedReservationNights ? <p role="status" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">{data.roomBoard.unassignedReservationNights} {text.unassigned}</p> : null}
+    {data?.roomBoard?.unassignedReservationNights ? <p role="status" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">{data.roomBoard.unassignedReservationNights} {text.unassigned}</p> : null}
     {loading && !data ? <p role="status" className="text-sm text-muted-foreground">{text.loading}</p> : null}
     {failed ? <p role="alert" className="rounded-md border border-destructive/50 p-3 text-sm text-destructive">{text.failed}</p> : null}
-    {data ? <div className="overflow-x-auto rounded-lg border">
+    {data?.roomBoard ? <div className="overflow-x-auto rounded-lg border">
       <table className="min-w-max border-collapse text-sm">
         <caption className="sr-only">{text.title}</caption>
         <thead><tr className="bg-muted"><th scope="col" className="sticky start-0 z-10 min-w-24 bg-muted p-2 text-start">{locale === "fa" ? "اتاق" : locale === "ar" ? "الغرفة" : "Room"}</th>{data.roomBoard.dates.map((date) => <th scope="col" key={date} className="min-w-28 whitespace-nowrap p-2"><time dateTime={date} title={date}>{dateFormatter(date)}</time></th>)}</tr></thead>

@@ -8,6 +8,9 @@ import { HotelOfflinePayments } from "@/components/hotel-operations/hotel-offlin
 import { HotelGuestOfflinePayment } from "@/components/hotel-operations/hotel-guest-offline-payment";
 import { HotelOfflinePolicySettings } from "@/components/hotel-operations/hotel-offline-policy-settings";
 import { getReservationCenterReadinessIssues } from "@/lib/hotel/management/reservation-center-readiness";
+import { isPropertyDate, offsetPropertyDate, propertyCalendarDate, receptionDateIssue } from "@/lib/hotel/domain/property-calendar";
+import type { ReceptionDateIssue } from "@/lib/hotel/domain/property-calendar";
+import { receptionActionSuccess, receptionDateMessage, receptionReloadMessage, reservationActionMessage, reservationCenterRefreshEvent, ReservationRequestError } from "@/lib/hotel/management/reservation-center-feedback";
 
 type RoomType = { id: string; name: string };
 type RatePlan = { id: string; name: string; roomTypeId: string };
@@ -30,11 +33,6 @@ const labels = {
 } as const;
 
 function idempotencyKey() { return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`; }
-function dateInTimezone(timeZone: string) {
-  const parts = new Intl.DateTimeFormat("en", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
-  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? "00";
-  return `${part("year")}-${part("month")}-${part("day")}`;
-}
 function formatStayDate(value: string, locale: string) {
   const language = locale === "fa" ? "fa-IR-u-ca-persian" : locale === "ar" ? "ar-u-ca-gregory" : "en-GB";
   return new Intl.DateTimeFormat(language, { timeZone: "UTC", dateStyle: "medium" }).format(new Date(`${value.slice(0, 10)}T12:00:00.000Z`));
@@ -48,8 +46,8 @@ export function HotelOperationalReservations({ organizationId, propertyId, local
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [checkInDate, setCheckInDate] = useState(initialStay?.checkIn ?? "");
-  const [checkOutDate, setCheckOutDate] = useState(initialStay?.checkOut ?? "");
+  const [checkInDate, setCheckInDate] = useState(() => initialStay?.checkIn ?? (centerMode && mode === "reception" ? propertyCalendarDate(propertyTimezone) : ""));
+  const [checkOutDate, setCheckOutDate] = useState(() => initialStay?.checkOut ?? (centerMode && mode === "reception" ? offsetPropertyDate(propertyCalendarDate(propertyTimezone), 1) : ""));
   const [adults, setAdults] = useState(initialStay?.adults ?? 2);
   const [childAges, setChildAges] = useState<Array<number | null>>(initialStay?.childAges ?? []);
   const [roomTypeId, setRoomTypeId] = useState("");
@@ -71,7 +69,9 @@ export function HotelOperationalReservations({ organizationId, propertyId, local
   const retryKeys = useRef(new Map<string, string>());
   const plans = (snapshot?.ratePlans ?? []).filter((plan) => plan.roomTypeId === roomTypeId);
   const effectivePlan = plans.some((plan) => plan.id === ratePlanId) ? ratePlanId : (plans[0]?.id ?? "");
-  const today = dateInTimezone(propertyTimezone);
+  const today = propertyCalendarDate(propertyTimezone);
+  const manualDateIssue: ReceptionDateIssue | null = receptionDateIssue(checkInDate, checkOutDate, today);
+  const centerReception = centerMode && mode === "reception";
   const isDemoReservation = (item: Reservation) => snapshot?.demoBooking === true || item.source === "DEMO_BOOKING";
   const visibleReservations = useMemo(() => (snapshot?.reservations ?? []).filter((item) => {
     const matchesSearch = `${item.reference} ${item.guestName ?? ""}`.toLocaleLowerCase().includes(searchTerm.trim().toLocaleLowerCase());
@@ -93,7 +93,7 @@ export function HotelOperationalReservations({ organizationId, propertyId, local
   const load = useCallback(async () => {
     const response = await fetch(readEndpoint, { cache: "no-store", credentials: "same-origin" });
     const body = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(body?.error || t.error);
+    if (!response.ok) throw new ReservationRequestError(typeof body?.error === "string" ? body.error : t.error, response.status);
     setSnapshot(body as Snapshot);
     setRoomTypeId((value) => body.roomTypes?.some((item: RoomType) => item.id === value) ? value : (body.roomTypes?.[0]?.id ?? ""));
     setRatePlanId((value) => body.ratePlans?.some((item: RatePlan) => item.id === value) ? value : (body.ratePlans?.[0]?.id ?? ""));
@@ -101,9 +101,9 @@ export function HotelOperationalReservations({ organizationId, propertyId, local
 
   useEffect(() => {
     let active = true;
-    void Promise.resolve().then(() => load()).catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : t.error); });
+    void Promise.resolve().then(() => load()).catch((cause) => { if (active) setError(reservationActionMessage(cause instanceof Error ? cause.message : "", locale, t.error, cause instanceof ReservationRequestError ? cause.status : undefined)); });
     return () => { active = false; };
-  }, [load, t.error]);
+  }, [load, locale, t.error]);
 
   useEffect(() => {
     if (mode !== "reception") return;
@@ -121,10 +121,14 @@ export function HotelOperationalReservations({ organizationId, propertyId, local
     retryKeys.current.set(body, key);
     const response = await fetch(endpoint, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", "Idempotency-Key": key }, body });
     const result = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(result?.error || t.error);
+    if (!response.ok) throw new ReservationRequestError(typeof result?.error === "string" ? result.error : t.error, response.status);
     retryKeys.current.delete(body);
+    if (centerReception) {
+      const message = receptionActionSuccess(payload.action, locale);
+      if (message) setStatusMessage(message);
+    }
     return result as T;
-  }, [endpoint, t.error]);
+  }, [endpoint, centerReception, locale, t.error]);
 
   const postManual = useCallback(async (payload: Record<string, unknown>) => {
     const body = JSON.stringify(payload);
@@ -132,7 +136,7 @@ export function HotelOperationalReservations({ organizationId, propertyId, local
     retryKeys.current.set(body, key);
     const response = await fetch(`${endpoint}/manual`, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", "Idempotency-Key": key }, body });
     const result = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(result?.error || t.error);
+    if (!response.ok) throw new ReservationRequestError(typeof result?.error === "string" ? result.error : t.error, response.status);
     retryKeys.current.delete(body);
     return result;
   }, [endpoint, t.error]);
@@ -149,14 +153,22 @@ export function HotelOperationalReservations({ organizationId, propertyId, local
   };
 
   async function run(action: () => Promise<unknown>, reload = false) {
-    setBusy(true); setError("");
-    try { await action(); if (reload) await load(); }
-    catch (cause) {
-      const message = cause instanceof Error ? cause.message : "";
-      const lower = message.toLowerCase();
-      setError(message.includes("HOTEL_MAINTENANCE_SCHEMA_NOT_READY") ? locale === "en" ? "Maintenance data is unavailable; room assignment and check-in are blocked." : locale === "ar" ? "بيانات الصيانة غير متاحة؛ تم إيقاف تخصيص الغرفة وتسجيل الوصول." : "داده تعمیرات در دسترس نیست؛ تخصیص اتاق و ثبت ورود متوقف شد." : lower.includes("no inventory") || lower.includes("requested hotel inventory") ? t.noInventory : lower.includes("cancellation policy") ? t.noPolicy : t.error);
-    }
-    finally { setBusy(false); }
+    setBusy(true); setError(""); setStatusMessage("");
+    const refreshCalendar = () => {
+      if (centerReception) window.dispatchEvent(new CustomEvent(reservationCenterRefreshEvent, { detail: { organizationId, propertyId } }));
+    };
+    try {
+      // The list and calendar are independent reads; a failure of one must not hide the other.
+      if (action === load) refreshCalendar();
+      await action();
+      if (reload) {
+        refreshCalendar();
+        try { await load(); }
+        catch { setError(receptionReloadMessage(locale)); }
+      }
+    } catch (cause) {
+      setError(reservationActionMessage(cause instanceof Error ? cause.message : "", locale, t.error, cause instanceof ReservationRequestError ? cause.status : undefined));
+    } finally { setBusy(false); }
   }
   function invalidateQuote() { retryKeys.current.clear(); setQuote(null); setHold(null); }
   function guestsPayload(): Guest[] | null {
@@ -204,8 +216,8 @@ export function HotelOperationalReservations({ organizationId, propertyId, local
     </div> : null}
     {mode === "reception" && canConfigure && !centerMode && snapshot?.mode !== "MANUAL" && snapshot?.confirmationPolicy ? <HotelOfflinePolicySettings key={JSON.stringify(snapshot.confirmationPolicy)} organizationId={organizationId} propertyId={propertyId} locale={locale} initialValues={snapshot.confirmationPolicy} apiWired onSaved={() => void run(load)} /> : null}
     {showReservationInputs ? <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      <label className="min-w-0 space-y-1 text-sm"><span>{t.dates}</span><Input type="date" value={checkInDate} onChange={(e) => { setCheckInDate(e.target.value); invalidateQuote(); }} /></label>
-      <label className="min-w-0 space-y-1 text-sm"><span>{t.checkout}</span><Input type="date" value={checkOutDate} onChange={(e) => { setCheckOutDate(e.target.value); invalidateQuote(); }} /></label>
+      <label className="min-w-0 space-y-1 text-sm"><span>{t.dates}</span><Input type="date" value={checkInDate} min={centerReception ? today : undefined} onChange={(e) => { const value = e.target.value; setCheckInDate(value); if (centerReception && isPropertyDate(value) && (!isPropertyDate(checkOutDate) || checkOutDate <= value)) setCheckOutDate(offsetPropertyDate(value, 1)); invalidateQuote(); }} /></label>
+      <label className="min-w-0 space-y-1 text-sm"><span>{t.checkout}</span><Input type="date" value={checkOutDate} min={centerReception && isPropertyDate(checkInDate) ? offsetPropertyDate(checkInDate, 1) : undefined} max={centerReception && isPropertyDate(checkInDate) ? offsetPropertyDate(checkInDate, 31) : undefined} onChange={(e) => { setCheckOutDate(e.target.value); invalidateQuote(); }} /></label>
       <label className="min-w-0 space-y-1 text-sm"><span>{t.room}</span><select className="h-10 w-full min-w-0 rounded-md border bg-background px-3" value={roomTypeId} onChange={(e) => { setRoomTypeId(e.target.value); setRatePlanId(""); invalidateQuote(); }}>{(snapshot?.roomTypes ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
       <label className="min-w-0 space-y-1 text-sm"><span>{t.plan}</span><select className="h-10 w-full min-w-0 rounded-md border bg-background px-3" value={effectivePlan} onChange={(e) => { setRatePlanId(e.target.value); invalidateQuote(); }}>{plans.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
       <label className="space-y-1 text-sm"><span>{t.adults}</span><Input type="number" min={1} max={12} value={adults} onChange={(e) => { setAdults(Math.max(1, Math.min(12, Number(e.target.value) || 1))); invalidateQuote(); }} /></label>
@@ -221,7 +233,10 @@ export function HotelOperationalReservations({ organizationId, propertyId, local
         <label className="min-w-0 space-y-1 text-sm"><span>{t.phone}</span><Input type="tel" inputMode="tel" autoComplete="tel" value={primaryPhone} onChange={(event) => setPrimaryPhone(event.target.value)} /></label>
       </div>
       {!snapshot.rooms.some((room) => room.roomTypeId === roomTypeId) ? <p role="status" className="text-sm text-amber-700">{t.noPhysicalRooms}</p> : null}
-      <Button type="button" disabled={busy || !manualRoomId || !checkInDate || !checkOutDate || !roomTypeId || !effectivePlan || childAges.some((age) => age === null) || !guestsPayload()} onClick={() => {
+      {manualDateIssue ? <p role="status" className="text-sm text-destructive">{receptionDateMessage(manualDateIssue, locale)}</p> : null}
+      <Button type="button" disabled={busy || Boolean(manualDateIssue) || !manualRoomId || !snapshot.rooms.some(room => room.id === manualRoomId && room.roomTypeId === roomTypeId) || !roomTypeId || !effectivePlan || childAges.some((age) => age === null) || !guestsPayload()} onClick={() => {
+        const issue = receptionDateIssue(checkInDate, checkOutDate, propertyCalendarDate(propertyTimezone));
+        if (issue) { setError(receptionDateMessage(issue, locale)); return; }
         const guests = guestsPayload();
         if (!guests) { setError(t.guestError); return; }
         setStatusMessage("");
@@ -246,7 +261,7 @@ export function HotelOperationalReservations({ organizationId, propertyId, local
       return <li key={item.id} className="space-y-2 rounded-lg border p-3">{isDemoReservation(item) ? <p className="inline-flex rounded bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-950 dark:bg-amber-950 dark:text-amber-100">{t.demo}</p> : null}<div className="flex flex-wrap justify-between gap-2"><span className="font-medium"><bdi dir="ltr">{item.reference}</bdi> · {t.statusLabels[item.status as keyof typeof t.statusLabels] ?? item.status}</span><span className="text-sm"><time dateTime={item.checkIn} dir="auto">{centerMode ? formatStayDate(item.checkIn, locale) : item.checkIn}</time> – <time dateTime={item.checkOut} dir="auto">{centerMode ? formatStayDate(item.checkOut, locale) : item.checkOut}</time> · {item.nights.length} {t.nights}</span></div>{item.guestName ? <p className="text-sm">{item.guestName} · {snapshot.roomTypes.find((roomType) => roomType.id === item.roomTypeId)?.name}</p> : null}<p className="text-sm">{t.total}: <bdi dir="ltr">{item.totalAmount} {item.currency}</bdi> · {t.paid}: <bdi dir="ltr">{item.paidAmount}</bdi> · {t.refunded}: <bdi dir="ltr">{item.refundedAmount}</bdi>{item.source ? ` · ${t.source}: ${item.source === "WALK_IN" ? t.walkIn : item.source === "PHONE" ? t.phoneSource : item.source === "DEMO_BOOKING" ? t.demo : t.receptionSource}` : ""}</p>{isDemoReservation(item) && item.simulatedPaymentStatus ? <p className="text-sm">{t.simulatedPayment}: {item.simulatedPaymentStatus === "SIMULATED_SUCCESS" ? t.simulatedSuccess : t.simulatedPending}</p> : null}{item.status === "PENDING_PAYMENT" ? <p className="text-sm text-amber-700">{t.paymentPending}</p> : null}
         {centerMode ? <Button type="button" size="sm" variant="outline" aria-expanded={selectedReservationId === item.id} onClick={() => setSelectedReservationId((current) => current === item.id ? null : item.id)}>{t.details}</Button> : null}
         {mode === "guest" && item.status === "PENDING_PAYMENT" ? <div className="flex flex-wrap gap-2">{snapshot.confirmationPolicy?.allowedOfflinePaymentMethods.map(method => <Button key={method} size="sm" variant="outline" disabled={busy || item.paymentMethod === method} onClick={() => void run(() => post({ action: "select-payment-method", reservationId: item.id, method }), true)}>{method === "CASH" ? (locale === "fa" ? "نقدی در هتل" : locale === "ar" ? "نقداً في الفندق" : "Cash at hotel") : (locale === "fa" ? "واریز بانکی" : locale === "ar" ? "تحويل بنكي" : "Bank transfer")}{item.paymentMethod === method ? " ✓" : ""}</Button>)}</div> : null}
-        <div className="flex flex-wrap items-center gap-2">{mode === "reception" && ["CONFIRMED", "PENDING_PAYMENT"].includes(item.status) ? <><label className="flex items-center gap-2 text-sm"><span>{t.roomSelect}</span><select className="h-9 rounded-md border bg-background px-2" value={chosen} onChange={(e) => { retryKeys.current.clear(); setSelectedRooms((values) => ({ ...values, [item.id]: e.target.value })); }}><option value="" />{snapshot.rooms.map((room) => <option key={room.id} value={room.id}>{room.code}</option>)}</select></label><Button size="sm" variant="outline" disabled={busy || item.status !== "CONFIRMED" || !chosen || chosen === assignedRoomId} onClick={() => void run(() => post({ action: "assign-room", reservationId: item.id, roomId: chosen }), true)}>{t.assign}</Button>{item.status === "PENDING_PAYMENT" ? <Button size="sm" variant="outline" disabled={busy || !item.paymentMethod} onClick={() => void run(() => post({ action: "confirm-reservation", reservationId: item.id }), true)}>{locale === "fa" ? "تأیید رزرو" : locale === "ar" ? "تأكيد الحجز" : "Confirm reservation"}</Button> : null}{item.status === "CONFIRMED" ? <Button size="sm" variant="outline" disabled={busy || !assignedRoomId} onClick={() => void run(() => post({ action: "check-in", reservationId: item.id }), true)}>{t.checkIn}</Button> : null}</> : null}
+        <div className="flex flex-wrap items-center gap-2">{mode === "reception" && ["CONFIRMED", "PENDING_PAYMENT"].includes(item.status) ? <><label className="flex items-center gap-2 text-sm"><span>{t.roomSelect}</span><select className="h-9 rounded-md border bg-background px-2" value={chosen} onChange={(e) => { retryKeys.current.clear(); setSelectedRooms((values) => ({ ...values, [item.id]: e.target.value })); }}><option value="" />{snapshot.rooms.filter((room) => !item.roomTypeId || room.roomTypeId === item.roomTypeId).map((room) => <option key={room.id} value={room.id}>{room.code}</option>)}</select></label><Button size="sm" variant="outline" disabled={busy || item.status !== "CONFIRMED" || !chosen || chosen === assignedRoomId} onClick={() => void run(() => post({ action: "assign-room", reservationId: item.id, roomId: chosen }), true)}>{t.assign}</Button>{item.status === "PENDING_PAYMENT" ? <Button size="sm" variant="outline" disabled={busy || !item.paymentMethod} onClick={() => void run(() => post({ action: "confirm-reservation", reservationId: item.id }), true)}>{locale === "fa" ? "تأیید رزرو" : locale === "ar" ? "تأكيد الحجز" : "Confirm reservation"}</Button> : null}{item.status === "CONFIRMED" ? <Button size="sm" variant="outline" disabled={busy || !assignedRoomId} onClick={() => void run(() => post({ action: "check-in", reservationId: item.id }), true)}>{t.checkIn}</Button> : null}</> : null}
           {mode === "reception" && item.status === "CHECKED_IN" ? <Button size="sm" variant="outline" disabled={busy} onClick={() => void run(() => post({ action: "check-out", reservationId: item.id }), true)}>{t.checkOut}</Button> : null}
           {["PENDING_PAYMENT", "CONFIRMED"].includes(item.status) ? <Button size="sm" variant="outline" disabled={busy} onClick={() => void run(() => post({ action: "cancel", reservationId: item.id }), true)}>{t.cancel}</Button> : null}
         </div>{assigned ? <p className="text-xs text-muted-foreground">{t.roomSelect}: <bdi dir="ltr">{assigned.code}</bdi></p> : null}

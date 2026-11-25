@@ -574,7 +574,8 @@ test("nullable occupancy board clears stale data after failed refresh", async ({
       const from = url.searchParams.get("from");
       const to = url.searchParams.get("to");
       const phase = mode;
-      const dates = Array.from({ length: 7 }, (_, index) => new Date(Date.parse(`${from}T00:00:00Z`) + index * 86_400_000).toISOString().slice(0, 10));
+      const nights = (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000;
+      const dates = Array.from({ length: nights }, (_, index) => new Date(Date.parse(`${from}T00:00:00Z`) + index * 86_400_000).toISOString().slice(0, 10));
       requests.push({ phase, from, to });
       if (phase === "recovery" && recoveryGate) await recoveryGate;
       // Matches getOccupancyBoard's response contract, with a deterministic synthetic room.
@@ -585,7 +586,7 @@ test("nullable occupancy board clears stale data after failed refresh", async ({
         roomBoard: phase === "null" ? null : {
           dates,
           rooms: [{ id: "room-1", code: "D-101", roomTypeId: "type-1", isOutOfService: false,
-            nights: dates.map((date) => ({ date, status: "VACANT", reference: null })) }],
+            nights: dates.map((date, index) => ({ date, status: phase === "reserved" && index === 0 ? "RESERVED" : "VACANT", reference: phase === "reserved" && index === 0 ? "HD-TEST-REFRESH" : null })) }],
           unassignedReservationNights: 0,
         },
       } });
@@ -625,6 +626,19 @@ test("nullable occupancy board clears stale data after failed refresh", async ({
     await next.click();
     await expect.poll(() => requests.at(-1)).toMatchObject({ phase: "success", from: failedRequest.from });
     await expect(room).toBeVisible();
+    await expect(alert).toHaveCount(0);
+    // The reservation-center refresh invalidates the occupancy board without reloading the page.
+    mode = "reserved";
+    await page.getByRole("button", { name: "بارگذاری دوباره", exact: true }).click();
+    await expect.poll(() => requests.at(-1)).toMatchObject({ phase: "reserved", from: failedRequest.from });
+    await expect(region.getByRole("row", { name: /D-101/ })).toContainText("رزروشده");
+    const range = region.getByLabel("بازه تقویم", { exact: true });
+    await range.selectOption("1");
+    await expect.poll(() => (Date.parse(requests.at(-1).to) - Date.parse(requests.at(-1).from)) / 86_400_000).toBe(1);
+    await expect(region.getByRole("columnheader")).toHaveCount(2);
+    await range.selectOption("31");
+    await expect.poll(() => (Date.parse(requests.at(-1).to) - Date.parse(requests.at(-1).from)) / 86_400_000).toBe(31);
+    await expect(region.getByRole("columnheader")).toHaveCount(32);
     await expect(alert).toHaveCount(0);
     expect(browserErrors).toEqual([]);
   } finally {

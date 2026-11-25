@@ -9,6 +9,7 @@ import { authorizeHotelBookingActor, type HotelBookingActor } from "./booking-co
 import { priceHotelStay, type HotelPricedQuote } from "./booking-quote";
 import { PrismaHotelRepositories } from "../persistence/prisma-hotel-repositories";
 import { enumerateStayNights } from "../domain/stay-dates";
+import { propertyCalendarDate } from "../domain/property-calendar";
 import { decideReservationTransition } from "../domain/booking-state";
 import { HOTEL_BOOKING_BASE_PROPERTY_SELECT } from "./booking-context";
 import { assertHotelOperationalReservationSchemaReady } from "./hotel-schema-readiness";
@@ -145,7 +146,7 @@ export class HotelOperationalReservationService {
           this.db.hotelRoomMaintenanceBlock.count({ where: { organizationId, propertyId } }).then(() => true).catch(error => { if (isMissingHotelMaintenanceTableError(error)) return false; throw error; }),
         ]);
         const manualSources = new Map(manualRows.flatMap(row => { const value = row.resultJson as Record<string, unknown> | null; return value && typeof value === "object" && typeof value.reservationId === "string" ? [[value.reservationId, typeof value.source === "string" ? value.source : null] as const] : []; }));
-        return json({ mode: "MANUAL", view: "reception", demoBooking: true, maintenanceAvailable: maintenanceReady, manualRoomManagementEnabled: maintenanceReady, roomTypes, ratePlans, rooms, history: [], confirmationPolicy: { manualConfirmationPolicy: "DISABLED", allowedOfflinePaymentMethods: [], minimumVerifiedDepositAmount: null, pendingPaymentMinutes: 0 }, reservations: reservations.map(row => ({ id: row.id, reference: row.reference, guestName: row.guests.find(guest => guest.isPrimary)?.fullName ?? "Demo Guest", status: row.status, paymentMethod: null, roomTypeId: row.roomTypeId, checkIn: dateOnly(row.checkIn), checkOut: dateOnly(row.checkOut), totalAmount: row.totalAmount, currency: row.currency, paidAmount: row.paidAmount, refundedAmount: row.refundedAmount, outstandingAmount: row.totalAmount, createdAt: row.createdAt, confirmedAt: row.confirmedAt, checkedInAt: row.checkedInAt, checkedOutAt: row.checkedOutAt, cancelledAt: row.cancelledAt, nights: row.nights, source: manualSources.get(row.id) ?? "DEMO_BOOKING", simulatedPaymentStatus: row.status === "CONFIRMED" ? "SIMULATED_SUCCESS" : "PENDING_SIMULATION" })) });
+        return json({ mode: "MANUAL", view: "reception", demoBooking: true, maintenanceAvailable: maintenanceReady, manualRoomManagementEnabled: maintenanceReady, roomTypes, ratePlans, rooms, history: [], confirmationPolicy: { manualConfirmationPolicy: "DISABLED", allowedOfflinePaymentMethods: [], minimumVerifiedDepositAmount: null, pendingPaymentMinutes: 0 }, reservations: reservations.map(row => ({ id: row.id, reference: row.reference, guestName: row.guests.find(guest => guest.isPrimary)?.fullName ?? "Demo Guest", status: row.status, paymentMethod: null, roomTypeId: row.roomTypeId, checkIn: dateOnly(row.checkIn), checkOut: dateOnly(row.checkOut), totalAmount: row.totalAmount, currency: row.currency, paidAmount: row.paidAmount, refundedAmount: row.refundedAmount, outstandingAmount: row.totalAmount, createdAt: row.createdAt, confirmedAt: row.confirmedAt, checkedInAt: row.checkedInAt, checkedOutAt: row.checkedOutAt, cancelledAt: row.cancelledAt, nights: row.nights, source: manualSources.get(row.id) ?? "DEMO_BOOKING", simulatedPaymentStatus: manualSources.has(row.id) ? null : row.status === "CONFIRMED" ? "SIMULATED_SUCCESS" : "PENDING_SIMULATION" })) });
       }
     }
     if (receptionCenter) {
@@ -230,8 +231,8 @@ export class HotelOperationalReservationService {
         if (allocation) fail("Selected physical room is occupied for one or more stay nights");
         if (maintenance) fail("Selected physical room has scheduled maintenance during this stay");
         const now = this.now();
-        const today = new Intl.DateTimeFormat("en-CA", { timeZone: property.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
-        if (command.checkIn < today) fail("Stay is outside property limits", 422);
+        const today = propertyCalendarDate(property.timezone, now);
+        if (command.checkIn < today) fail("Stay is outside property limits: check-in precedes property today", 422);
         const quote = (await priceHotelStay(tx, property, actor.userId, { action: "quote", roomTypeId: command.roomTypeId, ratePlanId: command.ratePlanId, checkIn: command.checkIn, checkOut: command.checkOut, adults: command.adults, childAges: command.childAges }, now)).quote!;
         const holdId = randomUUID(), reference = `HD-${holdId.slice(0, 12).toUpperCase()}`;
         const repository = new PrismaHotelRepositories(this.db);
@@ -289,8 +290,9 @@ export class HotelOperationalReservationService {
       })() : submitted;
       if (command.action === "quote" || command.action === "search") {
         const nights = enumerateStayNights(command.checkIn, command.checkOut);
-        const today = new Intl.DateTimeFormat("en-CA", { timeZone: property!.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
-        if (command.checkIn < today || nights.length < property!.minStayNights || nights.length > property!.maxStayNights) fail("Stay is outside property limits", 422);
+        const today = propertyCalendarDate(property!.timezone, now);
+        if (command.checkIn < today) fail("Stay is outside property limits: check-in precedes property today", 422);
+        if (nights.length < property!.minStayNights || nights.length > property!.maxStayNights) fail("Stay is outside property limits", 422);
         const priced = await priceHotelStay(tx, property!, actor.userId, command, now);
         if (priced.quote) {
           const quote = priced.quote;

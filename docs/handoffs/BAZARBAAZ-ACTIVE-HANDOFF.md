@@ -1,3 +1,7 @@
+## Current Hotel/Damoon continuation — 2026-11-26
+
+For the active hotel stream use [Damoon README](../hotel/damoon/README.md), [current roadmap](../hotel/damoon/ROADMAP.md), [current status](../hotel/damoon/STATUS-AND-DECISIONS.md). Prior PR172 baseline: 935b26b1e48ca3f31b49fc42409d693979d04cb4; 31 synthetic rooms, demo reception booking and corrected occupancy after refresh observed live. Authorized maintenance migration applied per execution report; live calendar and form available. P1A is the current functional PR, P1B the next implementation package. Exact CI/merge/deploy evidence must come from GitHub/provider or live observations. Do not repeat provisioning/migration or treat historical Neon/PR145 status as current. This update only supersedes Hotel/Damoon state; unrelated Retail/platform history is preserved. Owner policy: speed first; same-PR updates to existing roadmap/status, no routine documentation-only cycles.
+
 # Bazarbaaz Active Handoff
 
 ## Verified current status — 2026-11-14

@@ -467,7 +467,7 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
         <p className="text-xs text-muted-foreground">{text.outOfServiceNote}</p>
         {activeData?.maintenanceStatus.state === "UNAVAILABLE" ? <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">{text.maintenanceUnavailable}</p> : null}
         {activeData?.roomBoard?.unassignedReservationNights ? <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" role="status">{activeData.roomBoard.unassignedReservationNights} {text.unassigned}</p> : null}
-        {activeData?.maintenanceStatus.state === "AVAILABLE" ? <div className="overflow-x-auto rounded-lg border">
+        {activeData?.maintenanceStatus.state === "AVAILABLE" && activeData.roomBoard ? <div className="overflow-x-auto rounded-lg border">
           <table className="w-full min-w-max text-right text-sm">
             <thead><tr><th scope="col" className="sticky right-0 bg-muted p-2">{text.boardDate}</th>{(activeData.roomBoard?.rooms ?? []).map((room) => <th scope="col" key={room.id} className="whitespace-nowrap p-2">{text.boardRoom} {room.code}</th>)}</tr></thead>
             <tbody>{(activeData.roomBoard?.dates ?? []).map((date) => <tr key={date} className="border-t"><th scope="row" className="sticky right-0 whitespace-nowrap bg-background p-2" dir="ltr">{date}</th>{(activeData.roomBoard?.rooms ?? []).map((room) => {

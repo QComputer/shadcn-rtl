@@ -497,3 +497,65 @@ test("guest submits a bank transfer and receipt for authorized reception verific
     await db.$disconnect().catch(() => undefined);
   }
 });
+
+test("nullable room board falls back to unavailable state without crashing hotel operations", async ({ browser }) => {
+  test.setTimeout(90_000);
+  assertTestTarget();
+  const resolved = await lookup(tenantHostname, { all: true, verbatim: true });
+  if (!resolved.length || resolved.some(({ address }) => address !== "::1" && !/^127(?:\.\d{1,3}){3}$/.test(address))) throw new Error("Damoon test domain must resolve exclusively to loopback");
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const browserErrors = [];
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
+  const operationsResponse = { property: { id: propertyId, name: "Damoon", slug: "damoon-hotel", timezone: "Asia/Tehran", currency: "IRR" }, range: { from: "2026-11-25", to: "2026-12-02", nights: 7 }, roomTypes: [], amenities: [], ratePlans: [], inventory: [], cancellationPolicies: [], maintenanceStatus: { state: "UNAVAILABLE", code: "HOTEL_MAINTENANCE_SCHEMA_NOT_READY" }, roomBoard: null, manualRoomManagementEnabled: false, maintenanceBlocks: null };
+  await page.route("**/api/organizations/**/hotels/**/operations*", async (route) => { await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(operationsResponse) }); });
+  try {
+    const operationsCallback = `/fa/dashboard/hotel-operations/${organizationId}/${propertyId}`;
+    await login(page, appOrigin, env.DAMOON_MANAGER_USERNAME, env.DAMOON_MANAGER_PASSWORD, operationsCallback);
+    await expect(page.getByText(/داده تعمیرات قابل بررسی نیست/)).toBeVisible();
+    await expect(page.getByText("وضعیت روزانه اتاق‌ها")).toBeVisible();
+    await expect(page.getByText("انواع اتاق")).toBeVisible();
+    await expect(page.getByText("نرخ‌ها")).toBeVisible();
+    await expect(page.getByText("ظرفیت شبانه")).toBeVisible();
+    const operationsResponse = await page.waitForResponse((response) => response.url().includes("/api/organizations/") && response.url().includes("/hotels/") && response.url().includes("/operations") && response.request().method() === "GET");
+    expect(operationsResponse.status()).toBe(200);
+  } finally {
+    await context.close();
+  }
+});
+
+test("nullable occupancy board clears stale data after failed refresh", async ({ browser }) => {
+  test.setTimeout(90_000);
+  assertTestTarget();
+  const resolved = await lookup(tenantHostname, { all: true, verbatim: true });
+  if (!resolved.length || resolved.some(({ address }) => address !== "::1" && !/^127(?:\.\d{1,3}){3}$/.test(address))) throw new Error("Damoon test domain must resolve exclusively to loopback");
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const browserErrors = [];
+  const occupancyRequests = [];
+  let occupancyBody = { property: { id: propertyId, name: "Damoon", timezone: "Asia/Tehran" }, range: { from: "2026-11-25", to: "2026-12-02", nights: 7 }, roomBoard: { dates: ["2026-11-25", "2026-11-26", "2026-11-27", "2026-11-28", "2026-11-29", "2026-11-30", "2026-12-01"], rooms: [{ id: "room-1", code: "D-101", roomTypeId: "type-1", isOutOfService: false, nights: [{ date: "2026-11-25", status: "VACANT", reference: null }] }], unassignedReservationNights: 0 }, demoProperty: true };
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
+  await page.route("**/api/organizations/**/hotels/**/occupancy*", async (route) => {
+    occupancyRequests.push(`${route.request().method()} ${route.request().url()}`);
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(occupancyBody) });
+  });
+  try {
+    const receptionCallback = `/fa/dashboard/hotel-operations/${organizationId}/${propertyId}/reservations`;
+    await login(page, appOrigin, env.DAMOON_MANAGER_USERNAME, env.DAMOON_MANAGER_PASSWORD, receptionCallback);
+    const occupancyRegion = page.getByRole("region", { name: "تقویم اشغال اتاق‌ها" });
+    await expect(occupancyRegion).toBeVisible();
+    await expect(page.locator("table")).toBeVisible();
+    const occupancyResponse = await page.waitForResponse((response) => response.url().includes("/api/organizations/") && response.url().includes("/hotels/") && response.url().includes("/occupancy") && response.request().method() === "GET");
+    expect(occupancyResponse.status()).toBe(200);
+    expect(occupancyRequests.length).toBeGreaterThan(0);
+    occupancyBody = null;
+    await page.getByRole("button", { name: "الأسبوع التالي" }).click();
+    await expect(occupancyRegion).toContainText("تقویم در دسترس نیست");
+    await expect(page.locator("table")).toHaveCount(0);
+    expect(browserErrors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});

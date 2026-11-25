@@ -27,7 +27,7 @@ export async function amendManualHotelStay(tx: Tx, input: {
   const scope = { organizationId, propertyId };
   if (property.id !== propertyId || property.organizationId !== organizationId) fail("Forbidden", 403);
   if (r.status !== "CONFIRMED" && r.status !== "CHECKED_IN") fail("Invalid reception transition");
-  if (r.paidAmount !== 0n || r.refundedAmount !== 0n || r.paymentMethod !== null || r.currency !== property.currency || r.currency !== "TOMAN") fail("STAY_AMENDMENT_PAYMENT_ACTIVITY");
+  if (r.paidAmount !== BigInt(0) || r.refundedAmount !== BigInt(0) || r.paymentMethod !== null || r.currency !== property.currency || r.currency !== "TOMAN") fail("STAY_AMENDMENT_PAYMENT_ACTIVITY");
   const [allocations, offline, requests] = await Promise.all([
     tx.hotelPaymentAllocation.count({ where: { organizationId, hotelReservationId: r.id } }),
     tx.hotelOfflinePayment.count({ where: { organizationId, reservationId: r.id } }),
@@ -46,7 +46,7 @@ export async function amendManualHotelStay(tx: Tx, input: {
   if (!r.holdId) fail("STAY_AMENDMENT_INTEGRITY");
   await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelBookingHold" WHERE "id"=${r.holdId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} FOR UPDATE`);
   const hold = await tx.hotelBookingHold.findFirst({ where: { ...scope, id: r.holdId!, roomTypeId, status: "CONSUMED", quantity: 1 } });
-  if (!hold || dateOnly(hold.checkIn) !== oldCheckIn || dateOnly(hold.checkOut) !== oldCheckOut || r.nights.some(n => n.roomTypeId !== roomTypeId) || r.nights.reduce((sum, n) => sum + n.rate, 0n) !== r.totalAmount) fail("STAY_AMENDMENT_INTEGRITY");
+  if (!hold || dateOnly(hold.checkIn) !== oldCheckIn || dateOnly(hold.checkOut) !== oldCheckOut || r.nights.some(n => n.roomTypeId !== roomTypeId) || r.nights.reduce((sum, n) => sum + n.rate, BigInt(0)) !== r.totalAmount) fail("STAY_AMENDMENT_INTEGRITY");
   // Same type and target room lock order as manual creation; inventory rows always in date order.
   const type = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${roomTypeId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} AND "isActive"=true AND "deletedAt" IS NULL FOR UPDATE`);
   if (!type.length) fail("Room type is not available", 422);

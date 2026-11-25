@@ -23,7 +23,7 @@ export function planStayAmendment(input: {
   const oldDates = stayDatesBetween(oldCheckIn, oldCheckOut);
   const dates = stayDatesBetween(checkIn, checkOut);
   const old = new Map(nights.map(night => [night.date, night]));
-  if (old.size !== nights.length || old.size !== oldDates.length || oldDates.some(date => !old.has(date) || old.get(date)!.rate < 0n)) throw new Error("STAY_AMENDMENT_INTEGRITY");
+  if (old.size !== nights.length || old.size !== oldDates.length || oldDates.some(date => !old.has(date) || old.get(date)!.rate < BigInt(0))) throw new Error("STAY_AMENDMENT_INTEGRITY");
   const active = nights.filter(night => status === "CONFIRMED" || night.date >= today);
   const rooms = new Set(active.map(night => night.roomId));
   if (rooms.size !== 1 || rooms.has(null)) throw new Error("Assign a room before check-in");
@@ -36,10 +36,10 @@ export function planStayAmendment(input: {
   if (status === "CHECKED_IN" && removed.some(date => date <= today)) throw new Error("STAY_AMENDMENT_ACTIVE_DATES");
   const rates = dates.map(date => {
     const rate = old.get(date)?.rate ?? addedRates.get(date);
-    if (rate === undefined || rate < 0n) throw new Error("STAY_AMENDMENT_INTEGRITY");
+    if (rate === undefined || rate < BigInt(0)) throw new Error("STAY_AMENDMENT_INTEGRITY");
     return rate;
   });
-  const total = rates.reduce((sum, rate) => sum + rate, 0n);
+  const total = rates.reduce((sum, rate) => sum + rate, BigInt(0));
   if (total > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("Unsupported amount");
   return { added, removed, retained, dates, newRoomId, rates, total };
 }

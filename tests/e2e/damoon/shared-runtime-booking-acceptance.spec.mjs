@@ -304,7 +304,7 @@ test("Damoon DEMO_BOOKING completes simulated payment and is visible in authoriz
     assert.equal(await prisma.hotelReservation.count({ where: { organizationId: orgId, propertyId } }), before + 1, "catalog setup preserves existing demo bookings");
     const crossPropertyRoomCount = await prisma.hotelRoom.count({ where: { organizationId: env.DAMOON_FOREIGN_ORGANIZATION_ID } });
     assert.equal(crossPropertyRoomCount, 0, "synthetic room setup does not create rooms for another tenant");
-    await managerPage.reload({ waitUntil: "networkidle" });
+    await managerPage.reload({ waitUntil: "domcontentloaded" });
     await expect(managerPage.getByText(/کاتالوگ پیشنهادی: 31 واحد آزمایشی/)).toBeVisible();
     await expect(managerPage.getByText(/اتاق یک‌نفره: 3/)).toBeVisible();
     await expect(managerPage.getByText(/اتاق دونفره: 17/)).toBeVisible();

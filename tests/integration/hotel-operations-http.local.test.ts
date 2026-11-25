@@ -831,11 +831,15 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   await page.goto(`${baseUrl}/fa/dashboard/hotel-operations/${orgAId}/${propertyAId}/reservations`, { waitUntil: "domcontentloaded" });
   await page.getByRole("heading", { name: "مرکز رزرواسیون", exact: true }).waitFor({ state: "visible", timeout: 30_000 });
   const center = page.getByRole("region", { name: "مرکز رزرواسیون" });
-  await center.getByLabel("جست‌وجو با نام مهمان یا کد رزرو").fill(`Manual Guest ${suffix.slice(0, 8)}`);
+  const receptionSearch = center.getByRole("searchbox", { name: "جست‌وجوی نام مهمان یا همراه، کد رزرو یا اتاق", exact: true });
+  await receptionSearch.fill(`Manual Guest ${suffix.slice(0, 8)}`);
+  assert.equal(await receptionSearch.inputValue(), `Manual Guest ${suffix.slice(0, 8)}`);
   const centerItem = center.getByRole("listitem").filter({ hasText: manualDbRow.reference });
   await centerItem.getByRole("button", { name: "جزئیات" }).click();
   const details = page.getByRole("complementary", { name: "جزئیات رزرو انتخاب‌شده" });
-  await details.getByText(`Manual Guest ${suffix.slice(0, 8)}`).waitFor({ state: "visible" });
+  await details.getByRole("heading", { name: "پرونده مهمانان این رزرو", exact: true }).waitFor({ state: "visible" });
+  const primaryGuest = details.getByRole("listitem").filter({ hasText: "مهمان اصلی" }).getByText(`Manual Guest ${suffix.slice(0, 8)}`, { exact: true });
+  await primaryGuest.waitFor({ state: "visible" });
   await center.getByLabel("فیلتر وضعیت").selectOption("CHECKED_OUT");
   await centerItem.getByText("خروج ثبت‌شده").waitFor({ state: "visible" });
 
@@ -849,6 +853,8 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
     await page.getByRole("heading", { name: locale === "en" ? "Reservation center" : "مركز الحجوزات", exact: true }).waitFor({ state: "visible", timeout: 30_000 });
     const localizedCenter = page.getByRole("region", { name: locale === "en" ? "Reservation center" : "مركز الحجوزات" });
     assert.equal(await localizedCenter.getAttribute("dir"), locale === "en" ? "ltr" : "rtl", `${locale} reservation center uses the expected direction`);
+    const localizedSearchName = locale === "en" ? "Search guest, companion, reference or room" : "البحث عن الضيف أو المرافق أو المرجع أو الغرفة";
+    await localizedCenter.getByRole("searchbox", { name: localizedSearchName, exact: true }).waitFor({ state: "visible" });
     await page.getByRole("region", { name: locale === "en" ? "Room occupancy calendar" : "تقويم إشغال الغرف" }).waitFor({ state: "visible", timeout: 30_000 });
   }
   stage = "browser-demo-guest-link-fa-en-ar";

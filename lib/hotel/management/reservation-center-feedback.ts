@@ -2,6 +2,7 @@ import type { ReceptionDateIssue } from "../domain/property-calendar";
 
 const messages = {
   fa: {
+    NO_SHOW_NOT_DUE: "عدم مراجعه فقط پس از پایان روز ورود و قبل از ثبت ورود مجاز است.",
     AMEND_PAYMENT: "تغییر تاریخ این رزرو به تسویه مالی نیاز دارد.",
     AMEND_MANUAL: "تغییر تاریخ فعلاً برای رزرو دستی پرداخت‌نشده فعال است.",
     AMEND_ACTIVE: "ورود قبلی یا شب جاری اقامت قابل حذف نیست.",
@@ -22,6 +23,7 @@ const messages = {
     UNAVAILABLE: "سرویس موقتاً در دسترس نیست. دوباره تلاش کنید.",
   },
   en: {
+    NO_SHOW_NOT_DUE: "No-show is allowed only after the arrival day and before check-in.",
     AMEND_PAYMENT: "This stay requires financial reconciliation before date changes.",
     AMEND_MANUAL: "Date changes are currently enabled for unpaid manual stays.",
     AMEND_ACTIVE: "Arrival and the current night of an active stay cannot be removed.",
@@ -41,6 +43,7 @@ const messages = {
     RELOAD: "The action succeeded, but the list could not refresh. Use Refresh.", UNAVAILABLE: "The service is temporarily unavailable. Try again.",
   },
   ar: {
+    NO_SHOW_NOT_DUE: "يمكن تسجيل عدم الحضور بعد يوم الوصول وقبل تسجيل دخول الضيف فقط.",
     AMEND_PAYMENT: "تحتاج الإقامة إلى تسوية مالية قبل تغيير التواريخ.",
     AMEND_MANUAL: "تعديل التاريخ متاح حالياً للحجوزات اليدوية غير المدفوعة.",
     AMEND_ACTIVE: "لا يمكن حذف الوصول السابق أو الليلة الحالية.",
@@ -70,7 +73,8 @@ export const receptionReloadMessage = (locale: string) => dictionary(locale).REL
 export function reservationActionMessage(message: string, locale: string, fallback: string, status?: number): string {
   const lower = message.toLowerCase();
   let key: FeedbackKey | undefined;
-  if (lower === "stay_amendment_payment_activity") key = "AMEND_PAYMENT";
+  if (lower === "no_show_not_due") key = "NO_SHOW_NOT_DUE";
+  else if (lower === "stay_amendment_payment_activity") key = "AMEND_PAYMENT";
   else if (lower === "stay_amendment_manual_only") key = "AMEND_MANUAL";
   else if (lower === "stay_amendment_active_dates") key = "AMEND_ACTIVE";
   else if (lower === "stay_amendment_stale") key = "AMEND_STALE";
@@ -114,9 +118,9 @@ export class ReservationRequestError extends Error {
 
 export function receptionActionSuccess(action: unknown, locale: string): string {
   const copy = {
-    fa: { "amend-stay": "تغییر اقامت ثبت شد.", "move-room": "انتقال اتاق ثبت شد.", "assign-room": "اتاق تخصیص یافت.", "check-in": "ورود مهمان ثبت شد.", "check-out": "خروج مهمان ثبت شد.", cancel: "رزرو لغو شد.", "confirm-reservation": "رزرو تأیید شد." },
-    en: { "amend-stay": "Stay amendment saved.", "move-room": "Room move saved.", "assign-room": "Room assigned.", "check-in": "Guest checked in.", "check-out": "Guest checked out.", cancel: "Reservation cancelled.", "confirm-reservation": "Reservation confirmed." },
-    ar: { "amend-stay": "تم حفظ تعديل الإقامة.", "move-room": "تم نقل الغرفة.", "assign-room": "تم تخصيص الغرفة.", "check-in": "تم تسجيل وصول الضيف.", "check-out": "تم تسجيل مغادرة الضيف.", cancel: "تم إلغاء الحجز.", "confirm-reservation": "تم تأكيد الحجز." },
+    fa: { "mark-no-show": "عدم مراجعه ثبت شد و ظرفیت آزاد شد.", "amend-stay": "تغییر اقامت ثبت شد.", "move-room": "انتقال اتاق ثبت شد.", "assign-room": "اتاق تخصیص یافت.", "check-in": "ورود مهمان ثبت شد.", "check-out": "خروج مهمان ثبت شد.", cancel: "رزرو لغو شد.", "confirm-reservation": "رزرو تأیید شد." },
+    en: { "mark-no-show": "No-show recorded and inventory released.", "amend-stay": "Stay amendment saved.", "move-room": "Room move saved.", "assign-room": "Room assigned.", "check-in": "Guest checked in.", "check-out": "Guest checked out.", cancel: "Reservation cancelled.", "confirm-reservation": "Reservation confirmed." },
+    ar: { "mark-no-show": "تم تسجيل عدم الحضور وتحرير السعة.", "amend-stay": "تم حفظ تعديل الإقامة.", "move-room": "تم نقل الغرفة.", "assign-room": "تم تخصيص الغرفة.", "check-in": "تم تسجيل وصول الضيف.", "check-out": "تم تسجيل مغادرة الضيف.", cancel: "تم إلغاء الحجز.", "confirm-reservation": "تم تأكيد الحجز." },
   } as const;
   const localized = copy[locale as keyof typeof copy] ?? copy.fa;
   return typeof action === "string" && Object.hasOwn(localized, action) ? localized[action as keyof typeof localized] : "";

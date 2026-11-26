@@ -39,6 +39,22 @@ function hashOtp(otp: string, secret: string): string {
   return customerAuthDigest(`otp:${otp}`, secret);
 }
 
+type PhoneAuthRequest = { phone: string; organizationId: string; origin: string; ip: string; source: "WEB" | "USSD"; idempotencyKey?: string };
+type PhoneAuthConsume = { token?: string; otp?: string; phone?: string; organizationId: string; origin: string };
+export type CustomerVerificationPurpose = "PHONE_PROOF" | "ACCOUNT_SIGN_IN" | "ACCOUNT_ENROLL";
+type ChallengePurpose = CustomerVerificationPurpose | "LEGACY";
+type PurposeOtpInput = { challengeId: string; otp: string; phone: string; organizationId: string; origin: string };
+type ChallengeScope = { id: string; phone: string; organizationId: string; origin: string };
+const purposeTag = (purpose: CustomerVerificationPurpose) => `g3:v1:${purpose}:`;
+function challengeHash(otp: string, secret: string, purpose: ChallengePurpose, scope: ChallengeScope) {
+  if (purpose === "LEGACY") return hashOtp(otp, secret);
+  return purposeTag(purpose) + customerAuthDigest(JSON.stringify(["g3:v1", purpose, scope.id, scope.phone, scope.organizationId, scope.origin, otp]), secret);
+}
+function matchesPurpose(hash: string | null | undefined, purpose: ChallengePurpose) {
+  if (purpose === "LEGACY") return typeof hash === "string" && /^[a-f0-9]{64}$/.test(hash);
+  return typeof hash === "string" && hash.startsWith(purposeTag(purpose)) && /^[a-f0-9]{64}$/.test(hash.slice(purposeTag(purpose).length));
+}
+
 export class CustomerPhoneAuthService {
   constructor(private readonly db?: PrismaClient, private readonly options: CustomerPhoneAuthOptions = {}) {}
   private now() { return this.options.now?.() ?? new Date(); }
@@ -57,7 +73,21 @@ export class CustomerPhoneAuthService {
     return organization;
   }
 
-  async request(input: { phone: string; organizationId: string; origin: string; ip: string; source: "WEB" | "USSD"; idempotencyKey?: string }): Promise<{ accepted: true; requiresOtp?: boolean }> {
+  async request(input: PhoneAuthRequest): Promise<{ accepted: true; requiresOtp?: boolean }> {
+    return this.requestForPurpose(input, "LEGACY", randomUUID());
+  }
+
+  /** Internal G3 contract only. Always return a fresh opaque ID, even when issuance is suppressed.
+   * Future HTTP callers must bind this to the current flow and never infer issuance/delivery from it. */
+  async requestVerification(input: Omit<PhoneAuthRequest, "source" | "idempotencyKey">, purpose: CustomerVerificationPurpose) {
+    const challengeId = randomUUID();
+    if (purpose === "PHONE_PROOF" || purpose === "ACCOUNT_SIGN_IN" || purpose === "ACCOUNT_ENROLL") {
+      await this.requestForPurpose({ ...input, source: "WEB", idempotencyKey: undefined }, purpose, challengeId);
+    }
+    return { accepted: true as const, challengeId };
+  }
+
+  private async requestForPurpose(input: PhoneAuthRequest, purpose: ChallengePurpose, id: string): Promise<{ accepted: true }> {
     const accepted = { accepted: true as const };
     const phone = normalizeIranianMobile(input.phone);
     if (!phone || !this.enabled() || !(this.options.senderAvailable ?? customerPhoneAuthSenderAvailable)()) return accepted;
@@ -103,19 +133,43 @@ export class CustomerPhoneAuthService {
         await tx.customerAccessLink.updateMany({ where: { phone, organizationId: input.organizationId, origin: input.origin, consumedAt: null, otpCodeHash: { not: null }, expiresAt: { gt: now } }, data: { expiresAt: now, otpExpiresAt: now } });
         const otp = generateOtp();
         const token = createCustomerAccessToken();
-        const id = randomUUID();
         const locale = ["fa", "en", "ar"].includes(destination.locale) ? destination.locale : "fa";
         const url = new URL(`/${locale}/login/phone`, input.origin);
         url.searchParams.set("organization", destination.slug);
         url.hash = new URLSearchParams({ token }).toString();
-        await tx.customerAccessLink.create({ data: { id, phone, organizationId: input.organizationId, origin: input.origin, source: input.source, tokenDigest: customerAuthDigest(token, secret), issuanceKey, expiresAt: new Date(now.getTime() + 300_000), createdAt: now, otpCodeHash: hashOtp(otp, secret), otpExpiresAt: new Date(now.getTime() + 120_000), otpAttempts: 0, smsOutbox: { create: { encryptedPayload: encryptCustomerAuthPayload({ phone, url: `OTP:${otp}` }, secret, id), nextAttemptAt: now } } } });
+        await tx.customerAccessLink.create({ data: { id, phone, organizationId: input.organizationId, origin: input.origin, source: input.source, tokenDigest: customerAuthDigest(token, secret), issuanceKey, expiresAt: new Date(now.getTime() + 300_000), createdAt: now, otpCodeHash: challengeHash(otp, secret, purpose, { id, phone, organizationId: input.organizationId, origin: input.origin }), otpExpiresAt: new Date(now.getTime() + 120_000), otpAttempts: 0, smsOutbox: { create: { encryptedPayload: encryptCustomerAuthPayload({ phone, url: `OTP:${otp}` }, secret, id), nextAttemptAt: now } } } });
       }, { maxWait: 5000, timeout: 10_000 });
     } catch (error) {
       if (!(error instanceof CustomerPhoneAuthError)) console.warn("CUSTOMER_PHONE_AUTH_REQUEST_FAILED");
     }
     return accepted;
   }
-  async consume(input: { token?: string; otp?: string; phone?: string; organizationId: string; origin: string }) {
+  /** Compatibility only: existing WEB/USSD sign-in still supports old account creation.
+   * Do not use this method in a progressive enrollment or guest ownership flow. */
+  async consume(input: PhoneAuthConsume) {
+    return this.consumeForPurpose(input, "LEGACY", undefined, (tx, link, now) => this.completeAccount(tx, link, now, "LEGACY"));
+  }
+
+  /** Verifies contact control only. Result is server-local evidence, not a session or bearer grant.
+   * G3-B must bind specific guest records and consume proof atomically in its own design. */
+  async verifyPhone(input: PurposeOtpInput) {
+    return this.consumeForPurpose(input, "PHONE_PROOF", input.challengeId, async (_tx, link, now) => ({
+      purpose: "PHONE_PROOF" as const, challengeId: link.id, phone: link.phone,
+      organizationId: link.organizationId, origin: link.origin, verifiedAt: now,
+    }));
+  }
+
+  /** No implicit enrollment on sign-in; no implicit sign-in from an enrollment challenge. */
+  async signInVerified(input: PurposeOtpInput) {
+    return this.consumeForPurpose(input, "ACCOUNT_SIGN_IN", input.challengeId, (tx, link, now) => this.completeAccount(tx, link, now, "ACCOUNT_SIGN_IN"));
+  }
+  async enrollVerified(input: PurposeOtpInput & { enrollmentConfirmed: true }) {
+    if (input.enrollmentConfirmed !== true) throw new CustomerPhoneAuthError();
+    return this.consumeForPurpose(input, "ACCOUNT_ENROLL", input.challengeId, (tx, link, now) => this.completeAccount(tx, link, now, "ACCOUNT_ENROLL"));
+  }
+
+  private async consumeForPurpose<T>(input: PhoneAuthConsume, purpose: ChallengePurpose, challengeId: string | undefined, complete: (tx: Prisma.TransactionClient, link: ChallengeScope, now: Date) => Promise<T>): Promise<T> {
+    if (purpose !== "LEGACY" && (!challengeId || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(challengeId) || !input.otp || input.token)) throw new CustomerPhoneAuthError();
     if (!this.enabled() || this.secret().length < 32) throw new CustomerPhoneAuthError();
     try {
       const db = await database(this.db);
@@ -133,9 +187,11 @@ export class CustomerPhoneAuthService {
           // Do not fall back to an older challenge when the latest is consumed or expired.
           link = await tx.customerAccessLink.findFirst({ where: { phone, organizationId: input.organizationId, origin: input.origin, otpCodeHash: { not: null } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }] });
           if (!link || link.consumedAt || link.otpConsumedAt || link.expiresAt <= now || !link.otpExpiresAt || link.otpExpiresAt <= now || link.otpAttempts >= 3 || !link.otpCodeHash) throw new CustomerPhoneAuthError();
+          // Never spend another purpose's attempts or revive a prior challenge.
+          if (!matchesPurpose(link.otpCodeHash, purpose) || (purpose !== "LEGACY" && link.id !== challengeId)) throw new CustomerPhoneAuthError();
           const code = input.otp.replace(/\s/g, "");
           const expectedHash = Buffer.from(link.otpCodeHash);
-          const hash = Buffer.from(hashOtp(code, this.secret()));
+          const hash = Buffer.from(challengeHash(code, this.secret(), purpose, link));
           if (!/^\d{4}$/.test(code) || expectedHash.length !== hash.length || !timingSafeEqual(expectedHash, hash)) {
             await tx.customerAccessLink.updateMany({ where: { id: link.id, otpAttempts: { lt: 3 }, consumedAt: null, otpConsumedAt: null, expiresAt: { gt: now }, otpExpiresAt: { gt: now } }, data: { otpAttempts: { increment: 1 } } });
             // Returning rather than throwing commits the failed attempt in this transaction.
@@ -152,25 +208,11 @@ export class CustomerPhoneAuthService {
           throw new CustomerPhoneAuthError();
         }
         if (!link || link.organizationId !== input.organizationId || link.origin !== input.origin || link.consumedAt || link.expiresAt <= now) throw new CustomerPhoneAuthError();
+        // A random compatibility token must never turn a tagged challenge into legacy sign-in.
+        if (!usingOtp && (purpose !== "LEGACY" || (link.otpCodeHash != null && !matchesPurpose(link.otpCodeHash, "LEGACY")))) throw new CustomerPhoneAuthError();
         const claimed = await tx.customerAccessLink.updateMany({ where: { id: link.id, consumedAt: null, expiresAt: { gt: now }, ...(usingOtp ? { otpConsumedAt: null, otpExpiresAt: { gt: now }, otpAttempts: { lt: 3 } } : {}) }, data: { consumedAt: now, otpConsumedAt: now } });
         if (claimed.count !== 1) throw new CustomerPhoneAuthError();
-        const identity = await tx.customerPhoneIdentity.findUnique({ where: { phone: link.phone } });
-        let user;
-        if (identity) {
-          await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${identity.userId} FOR UPDATE`;
-          user = await tx.user.findFirst({ where: { id: identity.userId, ...safeCustomer } });
-          if (!user) throw new CustomerPhoneAuthError();
-        } else {
-          if (await tx.user.findFirst({ where: { OR: [{ name: link.phone }, { phone: { in: [link.phone, link.phone.slice(1), `98${link.phone.slice(1)}`, `+98${link.phone.slice(1)}`, `0098${link.phone.slice(1)}`] } }] }, select: { id: true } })) throw new CustomerPhoneAuthError();
-          user = await tx.user.create({ data: { name: link.phone, phone: link.phone, password: await bcrypt.hash(createCustomerAccessToken(), 12), role: "CUSTOMER", isTeamMember: false } });
-          await tx.customerPhoneIdentity.create({ data: { phone: link.phone, userId: user.id, verifiedAt: now } });
-        }
-        // Signing in is not club consent. Absence of membership is valid; existing
-        // explicit non-active restrictions remain fail-closed until a separate access policy exists.
-        const membership = await tx.customerClubMembership.findUnique({ where: { organizationId_customerId: { organizationId: link.organizationId, customerId: user.id } }, select: { status: true } });
-        if (membership && membership.status !== "ACTIVE") throw new CustomerPhoneAuthError();
-        const session = await tx.customerPhoneSession.create({ data: { userId: user.id, organizationId: link.organizationId, expiresAt: new Date(now.getTime() + 30 * 86_400_000) } });
-        return { id: user.id, name: user.name, password: user.password, locale: user.locale, theme: user.theme, phoneSessionId: session.id, organizationId: link.organizationId };
+        return complete(tx, link, now);
       }, { maxWait: 5000, timeout: 15_000 });
       if (!result) throw new CustomerPhoneAuthError();
       return result;
@@ -178,6 +220,28 @@ export class CustomerPhoneAuthService {
       if (!(error instanceof CustomerPhoneAuthError)) console.warn("CUSTOMER_PHONE_AUTH_CONSUME_FAILED");
       throw new CustomerPhoneAuthError();
     }
+  }
+
+  private async completeAccount(tx: Prisma.TransactionClient, link: ChallengeScope, now: Date, purpose: Exclude<ChallengePurpose, "PHONE_PROOF">) {
+    const identity = await tx.customerPhoneIdentity.findUnique({ where: { phone: link.phone } });
+    let user;
+    if (identity) {
+      if (purpose === "ACCOUNT_ENROLL") throw new CustomerPhoneAuthError();
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${identity.userId} FOR UPDATE`;
+      user = await tx.user.findFirst({ where: { id: identity.userId, ...safeCustomer } });
+      if (!user) throw new CustomerPhoneAuthError();
+    } else {
+      if (purpose === "ACCOUNT_SIGN_IN") throw new CustomerPhoneAuthError();
+      if (await tx.user.findFirst({ where: { OR: [{ name: link.phone }, { phone: { in: [link.phone, link.phone.slice(1), `98${link.phone.slice(1)}`, `+98${link.phone.slice(1)}`, `0098${link.phone.slice(1)}`] } }] }, select: { id: true } })) throw new CustomerPhoneAuthError();
+      user = await tx.user.create({ data: { name: link.phone, phone: link.phone, password: await bcrypt.hash(createCustomerAccessToken(), 12), role: "CUSTOMER", isTeamMember: false } });
+      await tx.customerPhoneIdentity.create({ data: { phone: link.phone, userId: user.id, verifiedAt: now } });
+    }
+    // Signing in is not club consent. Absence of membership is valid; existing
+    // explicit non-active restrictions remain fail-closed until a separate access policy exists.
+    const membership = await tx.customerClubMembership.findUnique({ where: { organizationId_customerId: { organizationId: link.organizationId, customerId: user.id } }, select: { status: true } });
+    if (membership && membership.status !== "ACTIVE") throw new CustomerPhoneAuthError();
+    const session = await tx.customerPhoneSession.create({ data: { userId: user.id, organizationId: link.organizationId, expiresAt: new Date(now.getTime() + 30 * 86_400_000) } });
+    return { id: user.id, name: user.name, password: user.password, locale: user.locale, theme: user.theme, phoneSessionId: session.id, organizationId: link.organizationId };
   }
 }
 

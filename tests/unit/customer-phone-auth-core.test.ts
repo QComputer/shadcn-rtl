@@ -160,3 +160,66 @@ test("wrong OTP commits a bounded increment inside the transaction before reject
   await assert.rejects(new CustomerPhoneAuthService(db, options).consume({ otp: "4321", phone: "09123456789", organizationId: "org-a", origin }), CustomerPhoneAuthError);
   assert.deepEqual(calls, ["lock", "read", "increment", "commit"]);
 });
+
+
+test("purpose issuance is generic when disabled and never accesses persistence", async () => {
+  const db = asDb({ $transaction() { throw new Error("must not touch DB"); } });
+  const service = new CustomerPhoneAuthService(db, { ...options, enabled: false });
+  const a = await service.requestVerification(request, "PHONE_PROOF");
+  const b = await service.requestVerification(request, "ACCOUNT_ENROLL");
+  assert.deepEqual(Object.keys(a).sort(), ["accepted", "challengeId"]);
+  assert.equal(a.accepted, true);
+  assert.match(a.challengeId, /^[0-9a-f-]{36}$/);
+  assert.notEqual(a.challengeId, b.challengeId);
+  await assert.rejects(service.verifyPhone({ ...request, otp: "1234", challengeId: a.challengeId }), CustomerPhoneAuthError);
+});
+
+test("purpose challenge digest binds exact scope and proof consumes without any account delegate", async () => {
+  let saved: { id: string; phone: string; organizationId: string; origin: string; otpCodeHash: string; tokenDigest: string; expiresAt: Date; otpExpiresAt: Date; otpAttempts: number; smsOutbox: { create: { encryptedPayload: string } } } | undefined;
+  let consumed = false;
+  const tx = {
+    organization: { findFirst: async () => ({ id: "org-a", slug: "shop-a", locale: "fa" }) },
+    $queryRaw: async () => [],
+    customerPhoneAuthQuota: { findUnique: async () => null, upsert: async () => ({}) },
+    customerAccessLink: {
+      findFirst: async () => saved ? { ...saved, consumedAt: consumed ? now : null, otpConsumedAt: consumed ? now : null } : null,
+      findUnique: async () => saved ? { ...saved, consumedAt: null, otpConsumedAt: null } : null,
+      updateMany: async ({ where }: { where: { id?: string } }) => {
+        if (where.id) { consumed = true; return { count: 1 }; }
+        return { count: 0 };
+      },
+      create: async ({ data }: { data: NonNullable<typeof saved> }) => { saved = data; },
+    },
+  };
+  const service = new CustomerPhoneAuthService(asDb({ $transaction: async (fn: (input: typeof tx) => unknown) => fn(tx) }), options);
+  const issued = await service.requestVerification(request, "PHONE_PROOF");
+  assert.ok(saved);
+  assert.equal(saved.id, issued.challengeId);
+  const otp = decryptCustomerAuthPayload(saved.smsOutbox.create.encryptedPayload, secret, saved.id).url.slice(4);
+  const digest = customerAuthDigest(JSON.stringify(["g3:v1", "PHONE_PROOF", saved.id, saved.phone, saved.organizationId, saved.origin, otp]), secret);
+  assert.equal(saved.otpCodeHash, `g3:v1:PHONE_PROOF:${digest}`);
+  const input = { ...request, challengeId: issued.challengeId, otp };
+  await assert.rejects(service.consume(input), CustomerPhoneAuthError);
+  await assert.rejects(service.signInVerified(input), CustomerPhoneAuthError);
+  await assert.rejects(service.enrollVerified({ ...input, enrollmentConfirmed: true }), CustomerPhoneAuthError);
+  await assert.rejects(service.verifyPhone({ ...input, challengeId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }), CustomerPhoneAuthError);
+  // Even a hypothetical matching compatibility-token lookup cannot convert a tagged OTP.
+  await assert.rejects(service.consume({ token: createCustomerAccessToken(), organizationId: request.organizationId, origin }), CustomerPhoneAuthError);
+  assert.equal(consumed, false);
+  const proof = await service.verifyPhone(input);
+  assert.deepEqual(proof, { purpose: "PHONE_PROOF", challengeId: issued.challengeId, phone: "09123456789", organizationId: "org-a", origin, verifiedAt: now });
+  assert.equal(consumed, true);
+  await assert.rejects(service.verifyPhone(input), CustomerPhoneAuthError);
+});
+
+test("enrollment rejects absent explicit confirmation and malformed challenge before persistence", async () => {
+  const db = asDb({ $transaction() { throw new Error("must not touch DB"); } });
+  let accesses = 0;
+  const guarded = asDb({ $transaction() { accesses++; throw new Error("must not touch DB"); } });
+  const service = new CustomerPhoneAuthService(guarded, options);
+  const input = { ...request, challengeId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", otp: "1234" };
+  await assert.rejects(service.enrollVerified({ ...input, enrollmentConfirmed: false as unknown as true }), CustomerPhoneAuthError);
+  await assert.rejects(service.verifyPhone({ ...input, challengeId: "not-a-uuid" }), CustomerPhoneAuthError);
+  await assert.rejects(new CustomerPhoneAuthService(db, { ...options, enabled: false }).signInVerified(input), CustomerPhoneAuthError);
+  assert.equal(accesses, 0);
+});

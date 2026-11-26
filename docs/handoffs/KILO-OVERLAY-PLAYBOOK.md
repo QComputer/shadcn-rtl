@@ -1,6 +1,6 @@
 # Kilo Code overlay delivery playbook
 
-Version: 1.1 (2026-11-26) — repository standard proposed in 1C-F.
+Version: 1.2 (2026-11-26) — repository delivery standard; includes PR184 pre-push typecheck gate.
 Scope: BazarBaaz platform, QComputer/shadcn-rtl. Hotel-specific gates below are the current PMS profile, not universal rules for every platform change.
 
 ## 1. Delivery contract
@@ -111,3 +111,14 @@ This document is the single reusable process reference. AGENTS.md links to it; m
 - v1.0: consolidates PR174 (ES2017/BigInt), PR175 (Playwright URL and accessible names), PR176 (workflow paths), PR178 (UTF-8 and blob integrity), PR179/180 (accepted guarded delivery), and 1C-E execution incident (stale session, accidental staging, wrong test runner, unnecessary install).
 
 - v1.1: PR181 verified manifest-exclusive `--stage`; exact node:test invocation replaces Jest guessing; local-check runner introduced in 1C-F. Read SHA values from gh/git, not reconstructed from abbreviated hashes. Before claiming root cause, capture API error body and verify mutable fixtures (room out-of-service state, price fallback) against prior steps. Keep GitHub access failures separate from reported acceptance. If a local Playbook copy exists at the singular `docs/handoff/` path, preserve it; canonical tracked path is `docs/handoffs/`.
+
+
+### G1-A lessons (2026-11-26)
+- Report exact full SHAs and CI results from `gh pr view`, `gh run view` and `git rev-parse`; do not reconstruct or hardcode a summary's SHA suffix. Verify the current PR head and remote main before merge. No admin override.
+- If `NODE_TLS_REJECT_UNAUTHORIZED=0` is inherited, remove only that insecure override from the current command environment; do not change persistent config, weaken TLS or expose secrets. Preserve unrelated files.
+- For isolated Next HTTP acceptance use the existing reviewed Webpack harness where needed; never copy old `.next`, raise deadlines merely to hide failures, or report cancelled cases as passes. Preflight React purity for authored client components; actual project ESLint remains mandatory.
+
+### PR184 lessons — mandatory pre-push typecheck (2026-11-26)
+- This repository uses Base UI Button, not Radix Button. Inspect the actual component contract; for navigation use `Link` with `buttonVariants` rather than unsupported `asChild` or nested interactive elements.
+- For functional TypeScript/TSX overlays, before commit/push require the exact candidate to pass Prisma client generation, Next route type generation (`next typegen`), and `tsc --noEmit` using existing locked dependencies and a sanitized synthetic environment. Prefer an isolated tracked-source snapshot to exclude pre-existing untracked user files and stale `.next` artifacts. Fail closed on any error; report the first causal diagnostic to the Main Agent. Do not substitute syntax transpilation, ESLint, `tsx` tests or a full build for this check.
+- An isolated pre-push typecheck is not a substitute for the hosted acceptance gates. For a fix on an open PR verify the cumulative manifest against the original PR base and verify all required CI gates on the new exact head. Do not restart unrelated local regression suites unless affected.

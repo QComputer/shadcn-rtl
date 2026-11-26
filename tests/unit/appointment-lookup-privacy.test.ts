@@ -1,180 +1,90 @@
 import assert from "node:assert/strict";
 import { before, mock, test } from "node:test";
 import { NextRequest } from "next/server";
-
-class TestApiError extends Error {
-  constructor(readonly status: number, message: string) { super(message); }
+import type { Prisma } from "@prisma/client";
+class TestApiError extends Error { constructor(readonly status: number, message: string) { super(message); } }
+const guestCookie = "appointment-01111111-1111-4111-8111-111111111111";
+const otherCookie = "appointment-02222222-2222-4222-8222-222222222222";
+let principal: "guest" | "customer" | "other-customer" | "wrong-tenant" | "staff" = "guest";
+let tenant: "platform" | "tenant" | "unknown" = "tenant";
+let reads = 0;
+const row = { id: "apt-a", bookingReference: "ABC12345", startTime: new Date("2026-12-10T10:00:00Z"), endTime: new Date("2026-12-10T11:00:00Z"), status: "CONFIRMED", service: { id: "svc-a", name: "Service", duration: 60, price: "100000", organization: { name: "Org", slug: "org-a", timezone: "Asia/Tehran", address: null, phone: null }, serviceProvider: null } };
+function rows(where: Prisma.AppointmentWhereInput, select: Prisma.AppointmentSelect) {
+  reads++;
+  assert.equal(where.deletedAt, null);
+  assert.deepEqual(where.service, { organizationId: "org-a", organization: { isActive: true, deletedAt: null } });
+  for (const field of ["customer", "guestCustomer", "customerId", "guestCustomerId", "customerPhoneAtBooking", "customerEmailAtBooking", "notes", "paymentRequests"]) assert.equal(Object.hasOwn(select, field), false);
+  assert.equal(Object.hasOwn(select, "service"), true);
+  const owner = where.customerId === "customer-a" || (where.customerId === null && JSON.stringify(where.guestCustomer) === JSON.stringify({ sessionId: guestCookie }));
+  return owner && (!where.id || where.id === row.id) && (!where.bookingReference || where.bookingReference === row.bookingReference) ? [row] : [];
 }
-
-const mockPrisma = {
-  organization: {
-    findUnique: async (args: { where: { slug: string; type: string; isActive: boolean } }) => {
-      if (args.where.slug === "valid-org") {
-        return { id: "org-1" };
-      }
-      return null;
-    },
-  },
-  appointment: {
-    findFirst: async (args: { where: { bookingReference?: string; service?: { organizationId?: string } }; select: Record<string, true> }) => {
-      const where = args.where;
-      if (where.bookingReference === "VALID-REF" && where.service?.organizationId === "org-1") {
-        return { id: "apt-1", bookingReference: "VALID-REF" };
-      }
-      if (where.bookingReference === "NO-TOKEN-REF" && where.service?.organizationId === "org-1") {
-        return { id: "apt-2", bookingReference: "NO-TOKEN-REF" };
-      }
-      return null;
-    },
-  },
-};
-
-const mockCustomerPhoneAuthService = {
-  consume: async (args: { otp: string; phone: string; organizationId: string }) => {
-    if (args.otp === "123456" && args.phone === "09123456789" && args.organizationId === "org-1") {
-      return;
-    }
-    throw new Error("Invalid OTP");
-  },
-};
-
-mock.module("@/lib/db", { namedExports: { prisma: mockPrisma, default: mockPrisma } });
-mock.module("@/lib/rate-limit", { namedExports: {
-  getClientIp: () => "127.0.0.1",
-  checkRateLimit: () => ({ allowed: true, remaining: 9, resetAt: Date.now() + 60000, retryAfterSeconds: 0 }),
+mock.module("@/lib/db", { namedExports: { prisma: { appointment: {
+  findMany: async ({ where, select, take }: { where: Prisma.AppointmentWhereInput; select: Prisma.AppointmentSelect; take: number }) => { assert.equal(take, 51); return rows(where, select); },
+  findFirst: async ({ where, select }: { where: Prisma.AppointmentWhereInput; select: Prisma.AppointmentSelect }) => rows(where, select)[0] ?? null,
+} } } });
+mock.module("@/lib/api-guards", { namedExports: {
+  ApiError: TestApiError,
+  requireSameOriginMutation: (request: Request) => { if (request.headers.get("origin") !== new URL(request.url).origin) throw new TestApiError(403, "origin"); },
+  requireAuthSession: async () => { if (principal === "guest") throw new TestApiError(401, "guest"); return { user: { id: principal === "other-customer" ? "customer-b" : "customer-a", role: principal === "staff" ? "STAFF" : "CUSTOMER" } }; },
+  requireCustomerRequestContext: async () => ({ organizationId: principal === "wrong-tenant" ? "org-b" : "org-a" }),
 } });
-mock.module("@/lib/customer-auth/core.server", { namedExports: { customerPhoneAuthService: mockCustomerPhoneAuthService } });
-
-let lookupRoute: typeof import("../../app/api/public/appointments/lookup/route");
-
-before(async () => {
-  [lookupRoute] = await Promise.all([
-    import("../../app/api/public/appointments/lookup/route"),
-  ]);
+mock.module("@/lib/tenant-pwa-context.server", { namedExports: { resolveTenantPwaRequestContext: async () => tenant === "tenant" ? { kind: tenant, organizationId: "org-a" } : { kind: tenant } } });
+mock.module("@/lib/organization-capabilities.server", { namedExports: { requireActiveOrganizationCapability: async (input: { organizationSlug: string; organizationId?: string; capability: string }) => {
+  assert.equal(input.capability, "APPOINTMENT"); if (input.organizationSlug !== "org-a" || input.organizationId && input.organizationId !== "org-a") throw new TestApiError(404, "wrong tenant"); return { id: "org-a", slug: "org-a" };
+} } });
+let lookup: typeof import("../../app/api/public/appointments/lookup/route").POST;
+let detail: typeof import("../../app/api/public/appointments/[id]/route").GET;
+before(async () => { process.env.SESSION_COOKIE_NAME = "guest_session_id_local"; ({ POST: lookup } = await import("../../app/api/public/appointments/lookup/route")); ({ GET: detail } = await import("../../app/api/public/appointments/[id]/route")); });
+function request(body: unknown, cookie?: string, origin = "https://tenant.example") { return new NextRequest("https://tenant.example/api/public/appointments/lookup", { method: "POST", headers: { origin, "content-type": "application/json", ...(cookie ? { cookie: `guest_session_id_local=${cookie}` } : {}) }, body: JSON.stringify(body) }); }
+function get(query: string, cookie?: string, id = "apt-a") { return detail(new NextRequest(`https://tenant.example/api/public/appointments/${id}?${query}`, { headers: cookie ? { cookie: `guest_session_id_local=${cookie}` } : {} }), { params: Promise.resolve({ id }) }); }
+const body = { organizationSlug: "org-a" };
+test("phone/ref/OTP never grants guest access or invokes a record read", async () => {
+  const count = reads;
+  for (const input of [{ ...body, phone: "09123456789" }, { ...body, phone: "09123456789", otpCode: "1234", bookingReference: "ABC12345" }]) assert.equal((await lookup(request(input))).status, 400);
+  assert.equal((await lookup(request({ ...body, bookingReference: "ABC12345" }))).status, 403);
+  assert.equal((await get("organizationSlug=org-a&phone=09123456789")).status, 400);
+  assert.equal((await get("organizationSlug=org-a&ref=ABC12345")).status, 400);
+  assert.equal((await get("organizationSlug=org-a")).status, 403);
+  assert.equal(reads, count);
 });
-
-const request = (url: string, body: unknown, origin = "https://platform.example") =>
-  new NextRequest(url, {
-    method: "POST",
-    headers: { origin, "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-test("phone-only lookup returns generic anti-enumeration response (no PII)", async () => {
-  const response = await lookupRoute.POST(request("https://platform.example/api/public/appointments/lookup", {
-    phone: "09123456789",
-    organizationSlug: "valid-org",
-  }));
-
-  assert.equal(response.status, 200);
-  const json = await response.json();
-  assert.equal(json.message, "If an appointment exists for this phone number, tracking information has been sent.");
-  assert.equal("appointments" in json, false);
-  assert.equal("customer" in json, false);
-  assert.equal("guestCustomer" in json, false);
+test("same-browser guest sees only owned appointments, no PII, no-store", async () => {
+  const response = await lookup(request(body, guestCookie));
+  assert.equal(response.status, 200); assert.equal(response.headers.get("cache-control"), "private, no-store");
+  const data = await response.json(); assert.equal(data.appointments.length, 1); assert.equal(data.appointments[0].id, row.id); assert.equal(data.appointments[0].service.price, 100000);
+  assert.equal((await get("organizationSlug=org-a", guestCookie)).status, 200);
+  assert.equal((await get("organizationSlug=org-a", guestCookie, "unknown-id")).status, 404);
 });
-
-test("phone-only lookup for non-existent org returns generic response (no enumeration)", async () => {
-  const response = await lookupRoute.POST(request("https://platform.example/api/public/appointments/lookup", {
-    phone: "09123456789",
-    organizationSlug: "non-existent-org",
-  }));
-
-  assert.equal(response.status, 200);
-  const json = await response.json();
-  assert.equal(json.message, "If the organization exists, tracking information has been sent.");
-  assert.equal(response.status, 200); // Not 404 - prevents enumeration
+test("wrong or malformed cookie cannot access another guest booking", async () => {
+  assert.deepEqual((await (await lookup(request(body, otherCookie))).json()).appointments, []);
+  assert.equal((await get("organizationSlug=org-a", otherCookie)).status, 404);
+  const count = reads; assert.equal((await lookup(request(body, "123"))).status, 403); assert.equal(reads, count);
 });
-
-test("booking reference only returns generic OTP prompt (no PII)", async () => {
-  const response = await lookupRoute.POST(request("https://platform.example/api/public/appointments/lookup", {
-    bookingReference: "VALID-REF",
-    organizationSlug: "valid-org",
-  }));
-
-  assert.equal(response.status, 200);
-  const json = await response.json();
-  assert.equal(json.message, "To access appointment details, please verify your phone number with the OTP sent to you.");
-  assert.equal("appointments" in json, false);
+test("reference filters only within the owner's existing scope", async () => {
+  assert.equal((await (await lookup(request({ ...body, bookingReference: "abc12345" }, guestCookie))).json()).appointments.length, 1);
+  assert.deepEqual((await (await lookup(request({ ...body, bookingReference: "MISSING" }, guestCookie))).json()).appointments, []);
 });
-
-test("booking reference + phone + valid OTP returns generic success (no tracking token without schema)", async () => {
-  const response = await lookupRoute.POST(request("https://platform.example/api/public/appointments/lookup", {
-    bookingReference: "VALID-REF",
-    phone: "09123456789",
-    otpCode: "123456",
-    organizationSlug: "valid-org",
-  }));
-
-  assert.equal(response.status, 200);
-  const json = await response.json();
-  assert.equal(json.message, "Verification successful. Tracking information has been sent.");
-  assert.equal("trackingToken" in json, false);
-  assert.equal("appointment" in json, false);
+test("unknown host, wrong tenant and cross-origin requests fail before record read", async () => {
+  const count = reads;
+  assert.equal((await lookup(request({ organizationSlug: "org-b" }, guestCookie))).status, 404);
+  assert.equal((await lookup(request(body, guestCookie, "https://other.example"))).status, 403);
+  tenant = "unknown"; try { assert.equal((await get("organizationSlug=org-a", guestCookie)).status, 404); } finally { tenant = "tenant"; }
+  assert.equal(reads, count);
 });
-
-test("booking reference + phone + invalid OTP returns 400", async () => {
-  const response = await lookupRoute.POST(request("https://platform.example/api/public/appointments/lookup", {
-    bookingReference: "VALID-REF",
-    phone: "09123456789",
-    otpCode: "wrong-otp",
-    organizationSlug: "valid-org",
-  }));
-
-  assert.equal(response.status, 400);
-  const json = await response.json();
-  assert.equal(json.error, "Invalid or expired verification code");
+test("platform-host guest lookup is still scoped to the chosen organization", async () => {
+  tenant = "platform"; try { assert.equal((await lookup(request(body, guestCookie))).status, 200); } finally { tenant = "tenant"; }
 });
-
-test("booking reference + phone + OTP for non-existent appointment returns generic response", async () => {
-  const response = await lookupRoute.POST(request("https://platform.example/api/public/appointments/lookup", {
-    bookingReference: "NONEXISTENT-REF",
-    phone: "09123456789",
-    otpCode: "123456",
-    organizationSlug: "valid-org",
-  }));
-
-  assert.equal(response.status, 200);
-  const json = await response.json();
-  assert.equal(json.message, "If the booking reference is valid and verified, tracking information has been sent.");
+test("customer session must be bound to the target tenant; staff is not a guest override", async () => {
+  try {
+    principal = "customer"; assert.equal((await get("organizationSlug=org-a")).status, 200);
+    principal = "other-customer"; assert.equal((await get("organizationSlug=org-a", guestCookie)).status, 404);
+    principal = "wrong-tenant"; assert.equal((await lookup(request(body, guestCookie))).status, 403);
+    principal = "staff"; assert.equal((await get("organizationSlug=org-a", guestCookie)).status, 403);
+  } finally { principal = "guest"; }
 });
-
-test("missing organizationSlug returns 400", async () => {
-  const response = await lookupRoute.POST(request("https://platform.example/api/public/appointments/lookup", {
-    phone: "09123456789",
-  }));
-
-  assert.equal(response.status, 400);
-  const json = await response.json();
-  assert.equal(json.error, "Organization slug is required");
-});
-
-test("missing both phone and bookingReference returns 400", async () => {
-  const response = await lookupRoute.POST(request("https://platform.example/api/public/appointments/lookup", {
-    organizationSlug: "valid-org",
-  }));
-
-  assert.equal(response.status, 400);
-  const json = await response.json();
-  assert.equal(json.error, "Phone number or booking reference is required");
-});
-
-test("error responses never leak sensitive details", async () => {
-  // This test would require re-mocking @/lib/db which is already mocked at module level
-  // The error handling is verified by the try/catch in the route returning generic "Internal server error"
-  // without exposing error details. Covered by the route implementation.
-  assert.ok(true, "Error handling verified by route implementation - generic 500 response");
-});
-
-test("response headers include security hardening", async () => {
-  const response = await lookupRoute.POST(request("https://platform.example/api/public/appointments/lookup", {
-    phone: "09123456789",
-    organizationSlug: "valid-org",
-  }));
-
-  // The lookup endpoint doesn't set security headers (it's a POST that returns JSON)
-  // But we verify no sensitive data in response
-  const json = await response.json();
-  assert.equal(typeof json.message, "string");
-  assert.ok(json.message.length > 0);
+test("bounded input and missing organization rejected before DB read", async () => {
+  const count = reads;
+  assert.equal((await lookup(request({ organizationSlug: "x".repeat(3000) }, guestCookie))).status, 413);
+  assert.equal((await lookup(request({}, guestCookie))).status, 400);
+  assert.equal((await get("", guestCookie)).status, 400);
+  assert.equal(reads, count);
 });

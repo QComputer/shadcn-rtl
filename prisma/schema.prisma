@@ -5235,6 +5235,7 @@ model HotelProperty {
   websiteMedia         HotelWebsiteMediaAssociation[]
   websiteOperations    HotelWebsiteOperation[]
   guestProfiles        HotelGuestProfile[]
+  receptionWaitlist    HotelReceptionWaitlist[]
 
   @@unique([organizationId, slug])
   @@unique([id, organizationId])
@@ -5342,6 +5343,7 @@ model HotelRoomType {
   websiteMedia HotelWebsiteMediaAssociation[]
   holds        HotelBookingHold[]
   reservations HotelReservation[]
+  receptionWaitlist HotelReceptionWaitlist[]
 
   @@unique([propertyId, slug])
   @@unique([id, organizationId])
@@ -6004,6 +6006,34 @@ model HotelGuestProfileLink {
   @@index([organizationId, propertyId, profileId, createdAt, guestId], map: "HotelGuestProfileLink_scope_idx")
 }
 
+
+/// Staff-managed request only; never reserves capacity or initiates payment/contact.
+model HotelReceptionWaitlist {
+  id                   String   @id @default(cuid())
+  organizationId       String
+  propertyId           String
+  roomTypeId           String
+  guestName            String   @db.VarChar(160)
+  phone                String   @db.VarChar(24)
+  checkIn              DateTime @db.Date
+  checkOut             DateTime @db.Date
+  adults               Int
+  childAges            Int[]    @default([])
+  status               String   @default("WAITING")
+  version              Int      @default(0)
+  requestKey           String   @db.VarChar(100)
+  requestHash          String   @db.VarChar(64)
+  reservationReference String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  property HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "HotelReceptionWaitlist_property_fkey")
+  roomType HotelRoomType @relation(fields: [roomTypeId, propertyId], references: [id, propertyId], onDelete: Cascade, map: "HotelReceptionWaitlist_room_type_fkey")
+
+  @@unique([organizationId, propertyId, requestKey], map: "HotelReceptionWaitlist_request_key")
+  @@unique([organizationId, propertyId, reservationReference], map: "HotelReceptionWaitlist_reservation_key")
+  @@index([organizationId, propertyId, status, checkIn, createdAt, id], map: "HotelReceptionWaitlist_scope_idx")
+}
 
 /// A guest's request for reception review. It does not hold inventory, create
 /// a reservation, confirm a stay, or start payment. The public tracking value

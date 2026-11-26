@@ -2,6 +2,19 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { canMarkManualNoShow, matchesReceptionSearch, normalizeReceptionSearch, projectReceptionHistory, receptionClock, receptionArrivalTiming, receptionDepartureTiming, earlyDepartureBoundary, currentReceptionRoom } from "../../lib/hotel/domain/reception-professional";
 
+import { receptionDirectoryTokens, RECEPTION_DIRECTORY_PAGE_SIZE } from "../../lib/hotel/domain/reception-directory";
+
+test("directory validates bounded nonempty literal terms and normalizes Persian variants", () => {
+  assert.deepEqual(receptionDirectoryTokens("كريمي ۱۲٣ كريمي"), ["کریمی", "123"]);
+  assert.deepEqual(receptionDirectoryTokens("%_"), ["%_"]);
+  assert.equal(receptionDirectoryTokens(" "), null);
+  assert.equal(receptionDirectoryTokens("a"), null);
+  assert.equal(receptionDirectoryTokens("a".repeat(121)), null);
+  assert.equal(receptionDirectoryTokens("aa bb cc dd ee ff gg hh ii"), null);
+  assert.equal(receptionDirectoryTokens("a\u0000b"), null);
+  assert.equal(RECEPTION_DIRECTORY_PAGE_SIZE, 25);
+});
+
 const due = { status: "CONFIRMED", checkIn: "2026-11-25", today: "2026-11-26", checkedInAt: null };
 test("no-show requires a prior arrival day, confirmed state and no actual arrival", () => {
   assert.equal(canMarkManualNoShow(due), true);

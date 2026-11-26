@@ -69,6 +69,12 @@ Speed is the primary delivery priority. Deliver cohesive functional batches, use
 - D1 adds read-only server-side search of all reservations in the selected property, literal normalized guest/companion/reference/room search, exact hashed phone search, bounded pages of 25 and related-stay projection via existing customer linkage or shared primary contact. Neither shared account nor contact is proof of individual identity; no name-only linking. No schema change, no payment or inventory mutation. Existing recent-reservation list/filters and actions remain unchanged.
 - Remaining: persistent editable guest identity dossier (explicit linking), group reservations, waitlist, final PMS acceptance, mandatory owner diversion gate before Housekeeping. Do not claim full guest identity resolution or complete audit history.
 
+## PMS Professional 1C-D2 — individual guest profiles (proposed in functional PR)
+- Accepted base: PR179 squash `de8e2e2f0605cdc7fd794679ff969054c8b3dff9`, head `1f2a55b1aa2550c05a59530c355cdb626d1b51bf`; four hosted CI workflows independently confirmed successful. Vercel Preview blocked under existing exception; deployment SHA not verified.
+- D2: property-scoped individual dossiers separate from booking contacts/accounts; explicit manager-confirmed create/link/unlink and versioned rename, staff read-only, paged list and linked stays, audit identifiers without copying names or phone hashes, original guest snapshots unchanged. No automatic name/phone/account matching, profile merge, CRM account mutation or cross-property identity.
+- Additive migration `20261126170000_hotel_guest_profiles`: disposable CI only. Production migration requires explicit owner authorization and verified backup/restore path. Existing reception/directory remains independent of the new tables until profile endpoint is used. No production writes, real payments or SMS.
+- Remaining after acceptance: group reservations, waitlist, PMS final acceptance; STOP before Housekeeping for the owner-directed intervening phase. No Housekeeping implementation.
+
 ## Hotel mandatory phase boundary
 
 OWNER GATE (2026-11-26): After completion of PMS Professional (1A/1B/1C and remaining reception items), STOP immediately before any Housekeeping implementation. The owner will specify an intervening phase. Do not start Housekeeping until that phase is completed and the owner explicitly authorizes resumption.

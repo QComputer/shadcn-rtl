@@ -1,3 +1,4 @@
+import { cleanGuestProfileName } from "../../lib/hotel/domain/guest-profiles";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { canMarkManualNoShow, matchesReceptionSearch, normalizeReceptionSearch, projectReceptionHistory, receptionClock, receptionArrivalTiming, receptionDepartureTiming, earlyDepartureBoundary, currentReceptionRoom } from "../../lib/hotel/domain/reception-professional";
@@ -81,4 +82,13 @@ test("overdue guest keeps the most recent room, without using future room assign
   assert.equal(currentReceptionRoom(nights, "2026-11-24"), null);
   assert.equal(currentReceptionRoom(nights, "2026-11-26"), "A");
   assert.equal(currentReceptionRoom(nights, "2026-11-29"), "B");
+});
+
+
+test("individual profile display names preserve Persian spelling and reject control characters", () => {
+  assert.equal(cleanGuestProfileName("  رضا کریمی  "), "رضا کریمی");
+  assert.equal(cleanGuestProfileName(""), null);
+  assert.equal(cleanGuestProfileName("x".repeat(161)), null);
+  assert.equal(cleanGuestProfileName("A\u202eB"), null);
+  assert.equal(cleanGuestProfileName("A\nB"), null);
 });

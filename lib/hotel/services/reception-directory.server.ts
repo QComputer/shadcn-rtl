@@ -73,7 +73,7 @@ export async function readReceptionDirectory(actor: HotelBookingActor, organizat
   ids = ids.slice(0, RECEPTION_DIRECTORY_PAGE_SIZE);
   const records = await db.hotelReservation.findMany({ where: { ...scope, id: { in: ids } }, select: {
     id: true, reference: true, status: true, checkIn: true, checkOut: true,
-    guests: { where: { organizationId }, orderBy: [{ isPrimary: "desc" }, { id: "asc" }], select: { fullName: true, isPrimary: true, isChild: true, age: true } },
+    guests: { where: { organizationId }, orderBy: [{ isPrimary: "desc" }, { id: "asc" }], select: { id: true, fullName: true, isPrimary: true, isChild: true, age: true } },
     nights: { where: { organizationId }, orderBy: { date: "asc" }, select: { room: { select: { organizationId: true, propertyId: true, code: true } } } },
   } });
   const byId = new Map(records.map(row => [row.id, row]));

@@ -5234,6 +5234,7 @@ model HotelProperty {
   websitePages         HotelWebsitePage[]
   websiteMedia         HotelWebsiteMediaAssociation[]
   websiteOperations    HotelWebsiteOperation[]
+  guestProfiles        HotelGuestProfile[]
 
   @@unique([organizationId, slug])
   @@unique([id, organizationId])
@@ -5848,10 +5849,12 @@ model HotelReservation {
   guests     HotelReservationGuest[]
   allocations HotelPaymentAllocation[]
   offlinePayments HotelOfflinePayment[]
+  guestProfileLinks HotelGuestProfileLink[]
 
   @@unique([organizationId, reference])
   @@unique([organizationId, idempotencyKey])
   @@unique([id, organizationId])
+  @@unique([id, organizationId, propertyId], map: "HotelReservation_profile_scope_key")
   @@index([organizationId, status, createdAt])
   @@index([organizationId, propertyId, checkIn, checkOut])
   @@index([organizationId, holdId])
@@ -5957,9 +5960,50 @@ model HotelReservationGuest {
 
   reservation HotelReservation @relation(fields: [reservationId, organizationId], references: [id, organizationId], onDelete: Cascade)
 
+  profileLink HotelGuestProfileLink?
+
+  @@unique([id, reservationId, organizationId], map: "HotelReservationGuest_profile_scope_key")
   @@unique([reservationId, fullName])
   @@index([organizationId, reservationId])
 }
+
+/// A person dossier within one property, independent from booking contact/account.
+/// No automatic matching by name, phone, account or household.
+model HotelGuestProfile {
+  id             String   @id @default(cuid())
+  organizationId String
+  propertyId     String
+  displayName    String   @db.VarChar(160)
+  version        Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  property HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "HotelGuestProfile_property_fkey")
+  links    HotelGuestProfileLink[]
+
+  @@unique([id, organizationId, propertyId], map: "HotelGuestProfile_scope_key")
+  @@index([organizationId, propertyId, updatedAt, id], map: "HotelGuestProfile_scope_updated_idx")
+}
+
+/// Explicit reception-confirmed link; original reservation guest snapshot is immutable.
+model HotelGuestProfileLink {
+  guestId        String   @id
+  reservationId  String
+  organizationId String
+  propertyId     String
+  profileId      String
+  linkedBy       String
+  createdAt      DateTime @default(now())
+
+  guest       HotelReservationGuest @relation(fields: [guestId, reservationId, organizationId], references: [id, reservationId, organizationId], onDelete: Cascade, map: "HotelGuestProfileLink_guest_fkey")
+  reservation HotelReservation @relation(fields: [reservationId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Cascade, map: "HotelGuestProfileLink_reservation_fkey")
+  profile     HotelGuestProfile @relation(fields: [profileId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Cascade, map: "HotelGuestProfileLink_profile_fkey")
+
+  @@unique([guestId, reservationId, organizationId], map: "HotelGuestProfileLink_guest_scope_key")
+  @@unique([profileId, reservationId], map: "HotelGuestProfileLink_one_person_per_stay_key")
+  @@index([organizationId, propertyId, profileId, createdAt, guestId], map: "HotelGuestProfileLink_scope_idx")
+}
+
 
 /// A guest's request for reception review. It does not hold inventory, create
 /// a reservation, confirm a stay, or start payment. The public tracking value

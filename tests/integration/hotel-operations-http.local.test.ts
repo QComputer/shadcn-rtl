@@ -991,6 +991,11 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
     await page.getByRole("region", { name: locale === "en" ? "Room occupancy calendar" : "تقويم إشغال الغرف" }).waitFor({ state: "visible", timeout: 30_000 });
   }
   stage = "group-reservation-atomic-creation-replay-and-isolation";
+  // The earlier physical-capacity scenario deliberately leaves the second room out of service.
+  // Restore it only here, after all single-room scenarios, before taking the group mutation baseline.
+  const restoreSecondForGroup = await apiJson(`${roomPath}/${roomIds[1]}`, cookie, "PATCH", { isOutOfService: false });
+  assert.equal(restoreSecondForGroup.response.status, 200, `restore second group fixture room: ${JSON.stringify(restoreSecondForGroup.data)}`);
+  assert.equal(await db.hotelRoom.count({ where: { id: { in: roomIds }, organizationId: orgAId, propertyId: propertyAId, roomTypeId, isActive: true, deletedAt: null, isOutOfService: false } }), 2, "both group fixture rooms must be sellable");
   const groupPath = `/api/organizations/${orgAId}/hotels/${propertyAId}/reservations/groups`;
   const groupDay = offsetPropertyDate(propertyCalendarDate(manualProperty.timezone), 45);
   const groupEnd = offsetPropertyDate(groupDay, 1);
@@ -1003,10 +1008,11 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   assert.equal(duplicate.response.status, 422);
   const badGroup = await apiJson(groupPath, cookie, "POST", { ...groupBody, rooms: [groupRooms[0], { ...groupRooms[1], ratePlanId: `missing-${suffix}` }] }, { "idempotency-key": `rollback-${suffix}` });
   assert.equal(badGroup.response.status, 422, "second room failure must reject the entire group");
+  assert.deepEqual(badGroup.data, { error: "Room, rate plan or currency not available" }, "the second room must fail for the intended invalid rate plan");
   assert.deepEqual(await readPreviewMutationSnapshot(orgAId), beforeGroup, "partial groups leave no holds, reservations, allocations, audit rows or inventory writes");
   type GroupReceipt = { groupReference: string; members: Array<{ reservationId: string; reference: string; totalAmount: string }> };
   const bookedGroup = await apiJson<GroupReceipt>(groupPath, cookie, "POST", groupBody, { "idempotency-key": groupKey });
-  assert.equal(bookedGroup.response.status, 200); assert.equal(bookedGroup.data?.members.length, 2);
+  assert.equal(bookedGroup.response.status, 200, `group booking failed: ${JSON.stringify(bookedGroup.data)}`); assert.equal(bookedGroup.data?.members.length, 2);
   const afterGroup = await readPreviewMutationSnapshot(orgAId);
   const replayGroup = await apiJson<GroupReceipt>(groupPath, cookie, "POST", groupBody, { "idempotency-key": groupKey });
   assert.equal(replayGroup.response.status, 200); assert.deepEqual(replayGroup.data, bookedGroup.data);

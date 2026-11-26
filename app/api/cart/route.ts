@@ -1,133 +1,36 @@
-// Unified route to serve both guest and registered users
-
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { NextRequest } from "next/server";
+import { ApiError, jsonError, requireSameOriginMutation } from "@/lib/api-guards";
 import { cartService } from "@/lib/services/cart.service";
 import { addToCartSchema } from "@/lib/validators";
-import { randomUUID } from "crypto";
-import { ZodError } from "zod";
-import { appCookiePath } from "@/lib/app-base-path";
-
-const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || "guest_session_id";
-
-function getSessionId(request: NextRequest): string {
-  const existingSessionId = request.cookies.get(SESSION_COOKIE_NAME);
-  if (existingSessionId) return existingSessionId.value;
-  return randomUUID();
-}
-
-function responseWithSessionCookie(
-  request: NextRequest,
-  sessionId: string,
-  body: unknown,
-  init?: ResponseInit,
-) {
-  const response = NextResponse.json(body, init);
-  if (!request.cookies.get(SESSION_COOKIE_NAME)) {
-    response.cookies.set(SESSION_COOKIE_NAME, sessionId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-      path: appCookiePath(),
-    });
-  }
-  return response;
-}
-
-function statusForError(error: unknown) {
-  if (error instanceof ZodError) return 400;
-  if (!(error instanceof Error)) return 500;
-  if (error.message === "Unauthorized") return 401;
-  if (error.message.includes("not found")) return 404;
-  if (error.message.includes("Insufficient inventory")) return 409;
-  if (error.message.includes("does not belong")) return 400;
-  if (error.message.includes("required")) return 400;
-  return 500;
-}
+import { cartPrincipal, hasGuestCart, privateCartJson, requireCartStore } from "@/lib/retail/cart-access.server";
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = request.nextUrl;
-    const organizationSlug = searchParams.get("organizationSlug");
-    if (!organizationSlug) {
-      return NextResponse.json(
-        { error: "Organization slug is required" },
-        { status: 400 },
-      );
-    }
-
-    const session = await auth();
-    const customerId = session?.user?.id || null;
-    const sessionId = getSessionId(request);
-    const cart = await cartService.getCart(organizationSlug, customerId, sessionId);
-
-    return responseWithSessionCookie(request, sessionId, cart);
-  } catch (error) {
-    console.error("Error getting cart:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: statusForError(error) },
-    );
-  }
+    const organization = await requireCartStore(request, request.nextUrl.searchParams.get("organizationSlug") ?? "");
+    const principal = await cartPrincipal(request, organization, true);
+    const cart = await cartService.getCart(organization.slug, principal.customerId, principal.sessionId);
+    return privateCartJson(principal, cart, 200, await hasGuestCart(organization.slug, principal));
+  } catch (error) { return jsonError(error, "Could not load cart."); }
 }
-
 export async function POST(request: NextRequest) {
   try {
+    requireSameOriginMutation(request);
     const body = await request.json();
-    const data = addToCartSchema.parse(body);
-    const organizationSlug = body.organizationSlug;
-
-    if (!organizationSlug) {
-      return NextResponse.json(
-        { error: "Organization slug is required" },
-        { status: 400 },
-      );
-    }
-
-    const session = await auth();
-    const customerId = session?.user?.id || null;
-    const sessionId = getSessionId(request);
-    const item = await cartService.addItem(
-      organizationSlug,
-      customerId,
-      sessionId,
-      data,
-    );
-
-    return responseWithSessionCookie(request, sessionId, item, { status: 201 });
-  } catch (error) {
-    console.error("Error adding to cart:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: statusForError(error) },
-    );
-  }
+    const parsed = addToCartSchema.safeParse(body);
+    if (!parsed.success || typeof body.organizationSlug !== "string") throw new ApiError(400, "Cart item is invalid.");
+    const organization = await requireCartStore(request, body.organizationSlug);
+    const principal = await cartPrincipal(request, organization, true);
+    if (principal.customerId && principal.sessionId) await cartService.mergeToUserCart(organization.slug, principal.customerId, principal.sessionId);
+    const item = await cartService.addItem(organization.slug, principal.customerId, principal.sessionId, parsed.data);
+    return privateCartJson(principal, item, 201);
+  } catch (error) { return jsonError(error, "Could not add product to cart."); }
 }
-
 export async function DELETE(request: NextRequest) {
   try {
-    const { searchParams } = request.nextUrl;
-    const organizationSlug = searchParams.get("organizationSlug");
-
-    if (!organizationSlug) {
-      return NextResponse.json(
-        { error: "Organization slug is required" },
-        { status: 400 },
-      );
-    }
-
-    const session = await auth();
-    const customerId = session?.user?.id || null;
-    const sessionId = getSessionId(request);
-    await cartService.clearCart(organizationSlug, customerId, sessionId);
-
-    return responseWithSessionCookie(request, sessionId, { success: true });
-  } catch (error) {
-    console.error("Error clearing cart:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: statusForError(error) },
-    );
-  }
+    requireSameOriginMutation(request);
+    const organization = await requireCartStore(request, request.nextUrl.searchParams.get("organizationSlug") ?? "");
+    const principal = await cartPrincipal(request, organization, false);
+    await cartService.clearCart(organization.slug, principal.customerId, principal.sessionId);
+    return privateCartJson(principal, { success: true });
+  } catch (error) { return jsonError(error, "Could not clear cart."); }
 }

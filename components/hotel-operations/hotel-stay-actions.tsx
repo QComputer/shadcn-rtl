@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { isPropertyDate } from "@/lib/hotel/domain/property-calendar";
+import { HotelJalaliDateField } from "@/components/hotel-operations/hotel-jalali-date-field";
+import { isPropertyDate, offsetPropertyDate } from "@/lib/hotel/domain/property-calendar";
 
 export type AmendmentPreview = {
   checkIn: string; checkOut: string; previousTotal: string; total: string; currency: string;
@@ -40,8 +40,8 @@ export function HotelStayActions({ locale, busy, status, today, checkIn, checkOu
     {canAmend ? <details className="rounded-md border p-3">
       <summary className="cursor-pointer font-medium text-sm">{t.title}</summary>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        <label className="space-y-1 text-sm"><span>{t.arrival}</span><Input type="date" value={dates.checkIn} min={checkedIn ? checkIn : today} disabled={busy || checkedIn} onChange={e => { setDates(previous => ({ ...previous, checkIn: e.target.value })); setPreview(null); }} /></label>
-        <label className="space-y-1 text-sm"><span>{t.departure}</span><Input type="date" value={dates.checkOut} min={checkedIn ? today : dates.checkIn} disabled={busy} onChange={e => { setDates(previous => ({ ...previous, checkOut: e.target.value })); setPreview(null); }} /></label>
+        <HotelJalaliDateField label={t.arrival} value={dates.checkIn} today={today} locale={locale} min={checkedIn ? checkIn : today} disabled={busy || checkedIn} onChange={value => { setDates(previous => ({ ...previous, checkIn: value })); setPreview(null); }} />
+        <HotelJalaliDateField label={t.departure} value={dates.checkOut} today={today} locale={locale} min={checkedIn ? offsetPropertyDate(today, 1) : isPropertyDate(dates.checkIn) ? offsetPropertyDate(dates.checkIn, 1) : undefined} disabled={busy} onChange={value => { setDates(previous => ({ ...previous, checkOut: value })); setPreview(null); }} />
       </div>
       <p className="mt-2 text-xs text-muted-foreground">{t.hint}</p>
       {!valid ? <p className="mt-2 text-sm text-destructive" role="status">{t.invalid}</p> : null}

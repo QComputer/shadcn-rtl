@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { HotelJalaliDateField } from "@/components/hotel-operations/hotel-jalali-date-field";
 import { isPropertyDate, offsetPropertyDate, propertyCalendarDate } from "@/lib/hotel/domain/property-calendar";
 import { refreshMatches, reservationCenterRefreshEvent } from "@/lib/hotel/management/reservation-center-feedback";
 
@@ -86,7 +86,7 @@ export function HotelReservationOccupancyCalendar({ organizationId, propertyId, 
       <div className="flex flex-wrap items-end gap-2">
         <label className="space-y-1 text-xs"><span>{controls.range}</span><select aria-label={controls.range} className="h-9 rounded-md border bg-background px-2" value={rangeDays} onChange={event => { setRangeDays(Number(event.target.value) as 1 | 7 | 31); setRevision(value => value + 1); }}><option value={1}>{controls.day}</option><option value={7}>{controls.week}</option><option value={31}>{controls.month}</option></select></label>
         <Button type="button" variant="outline" size="sm" aria-label={rangeDays === 7 ? text.previous : controls.previous} onClick={() => { setFrom(value => offsetPropertyDate(value, -rangeDays)); setRevision(value => value + 1); }}>‹</Button>
-        <label className="space-y-1 text-xs"><span>{text.range}</span><Input className="h-9 w-40" type="date" value={from} onChange={event => { if (isPropertyDate(event.target.value)) { setFrom(event.target.value); setRevision(value => value + 1); } }} aria-label={text.range} /></label>
+        <HotelJalaliDateField label={text.range} value={from} today={propertyCalendarDate(propertyTimezone)} locale={locale} inputClassName="h-9 w-40" onChange={value => { if (isPropertyDate(value)) { setFrom(value); setRevision(current => current + 1); } }} />
         <Button type="button" variant="outline" size="sm" aria-label={rangeDays === 7 ? text.next : controls.next} onClick={() => { setFrom(value => offsetPropertyDate(value, rangeDays)); setRevision(value => value + 1); }}>›</Button>
         <Button type="button" variant="outline" size="sm" onClick={() => { setFrom(propertyCalendarDate(propertyTimezone)); setRevision(value => value + 1); }}>{controls.today}</Button>
         <Button type="button" variant="outline" size="sm" onClick={() => setRevision(value => value + 1)}>{controls.refresh}</Button>

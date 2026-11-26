@@ -1,3 +1,4 @@
+import { distinctGroupRooms, orderGroupRooms, validGroupReference } from "../../lib/hotel/domain/group-reservations";
 import { cleanGuestProfileName } from "../../lib/hotel/domain/guest-profiles";
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -91,4 +92,17 @@ test("individual profile display names preserve Persian spelling and reject cont
   assert.equal(cleanGuestProfileName("x".repeat(161)), null);
   assert.equal(cleanGuestProfileName("A\u202eB"), null);
   assert.equal(cleanGuestProfileName("A\nB"), null);
+});
+
+
+test("group room validation and deterministic lock order", () => {
+  const rows = [{ roomTypeId: "B", roomId: "2" }, { roomTypeId: "A", roomId: "3" }, { roomTypeId: "A", roomId: "1" }];
+  assert.equal(distinctGroupRooms(rows), true);
+  assert.equal(distinctGroupRooms([rows[0], rows[0]]), false);
+  assert.equal(distinctGroupRooms([rows[0]]), false);
+  assert.equal(distinctGroupRooms(Array.from({ length: 9 }, (_, index) => ({ roomId: String(index) }))), false);
+  assert.deepEqual(orderGroupRooms(rows).map(room => room.roomId), ["1", "3", "2"]);
+  assert.equal(rows[0].roomId, "2");
+  assert.equal(validGroupReference("HG-12345678-1234-1234-1234-123456789ABC"), true);
+  assert.equal(validGroupReference("HG-123"), false);
 });

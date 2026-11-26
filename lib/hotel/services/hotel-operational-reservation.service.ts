@@ -6,7 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db-runtime";
 import { ApiError } from "@/lib/api-guards";
 import { authorizeHotelBookingActor, type HotelBookingActor } from "./booking-context";
-import { priceHotelStay, type HotelPricedQuote } from "./booking-quote";
+import { priceHotelStay, type HotelPricedQuote, type HotelPricingProperty } from "./booking-quote";
 import { PrismaHotelRepositories } from "../persistence/prisma-hotel-repositories";
 import { enumerateStayNights } from "../domain/stay-dates";
 import { canMarkManualNoShow, projectReceptionHistory, receptionClock, receptionArrivalTiming, receptionDepartureTiming, earlyDepartureBoundary, currentReceptionRoom } from "../domain/reception-professional";
@@ -19,6 +19,8 @@ import { HOTEL_MAINTENANCE_SCHEMA_NOT_READY, isMissingHotelMaintenanceTableError
 import { hashCustomerIdentifier, normalizeCustomerPhone } from "@/lib/customer-identity/customer-identity.service";
 import { isDamoonDemoOrganizationSlug } from "./damoon-demo-booking";
 
+import { distinctGroupRooms, orderGroupRooms, validGroupReference, GROUP_PAGE_SIZE, MAX_GROUP_ROOMS } from "../domain/group-reservations";
+
 const id = z.string().trim().min(1).max(200);
 const MAX_TOMAN = BigInt(Number.MAX_SAFE_INTEGER);
 const stay = { roomTypeId: id, ratePlanId: id, checkIn: z.iso.date(), checkOut: z.iso.date(), adults: z.number().int().min(1).max(30), childAges: z.array(z.number().int().min(0).max(17)).max(20) };
@@ -29,6 +31,14 @@ const manualReservation = z.object({
   source: z.enum(["WALK_IN", "PHONE", "RECEPTION"]),
   guests: z.array(z.object({ fullName: z.string().trim().min(1).max(150), isPrimary: z.boolean(), isChild: z.boolean().optional(), age: z.number().int().min(0).max(17).optional(), phone: z.string().trim().min(8).max(24).optional() }).strict()).min(1).max(50),
 }).strict();
+const groupReservation = z.object({
+  name: z.string().trim().min(1).max(120).refine(value => !/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/.test(value)),
+  checkIn: z.iso.date(), checkOut: z.iso.date(),
+  rooms: z.array(manualReservation.omit({ checkIn: true, checkOut: true })).min(2).max(MAX_GROUP_ROOMS),
+}).strict();
+const groupMember = z.object({ reservationId: id, reference: id, totalAmount: z.string().regex(/^\d+$/), currency: z.literal("TOMAN") });
+const groupReceipt = z.object({ groupReference: z.string().refine(validGroupReference), name: z.string(), checkIn: z.iso.date(), checkOut: z.iso.date(), members: z.array(groupMember).min(2).max(MAX_GROUP_ROOMS) });
+const GROUP_RESERVATIONS = "HOTEL_MANUAL_GROUP_RESERVATION";
 export const hotelOperationalCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("quote"), ...stay }).strict(),
   z.object({ action: z.literal("search"), ...stay }).strict(),
@@ -214,6 +224,15 @@ export class HotelOperationalReservationService {
     const property = await this.authorizeManual(actor, organizationId, propertyId);
     const command = manualReservation.parse(input);
     if (idempotencyKey.trim().length < 8 || idempotencyKey.length > 200) fail("Idempotency-Key required", 400);
+    try {
+      return await this.db.$transaction(tx => this.createManualInTransaction(tx, actor, organizationId, propertyId, property, command, idempotencyKey), { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, maxWait: 10000, timeout: 20000 });
+    } catch (error) {
+      if (isMissingHotelMaintenanceTableError(error)) throw new ApiError(503, HOTEL_MAINTENANCE_SCHEMA_NOT_READY);
+      if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2002" || error.code === "P2034")) fail("Room or inventory changed while saving; refresh and choose another room", 409);
+      throw error;
+    }
+  }
+  private async createManualInTransaction(tx: Tx, actor: HotelBookingActor, organizationId: string, propertyId: string, property: HotelPricingProperty, command: z.infer<typeof manualReservation>, idempotencyKey: string) {
     const guestRecords = command.guests.map(guest => {
       const normalizedPhone = guest.phone ? normalizeCustomerPhone(guest.phone) : null;
       if (guest.phone && !normalizedPhone) fail("Enter a valid guest phone number", 422);
@@ -224,50 +243,87 @@ export class HotelOperationalReservationService {
     const nights = enumerateStayNights(command.checkIn, command.checkOut);
     if (nights.length < property.minStayNights || nights.length > Math.min(property.maxStayNights, 31)) fail("Stay is outside property limits", 422);
     const fingerprint = createHash("sha256").update(JSON.stringify([actor.userId, propertyId, command])).digest("hex");
+
+    await assertHotelOperationalReservationSchemaReady(tx);
+    await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify([organizationId, MANUAL_RESERVATIONS, idempotencyKey])},0))`);
+    const key = { organizationId_operationScope_idempotencyKey: { organizationId, operationScope: MANUAL_RESERVATIONS, idempotencyKey } };
+    const replay = await tx.hotelInventoryIdempotency.findUnique({ where: key });
+    if (replay) { if (replay.requestFingerprint !== fingerprint) fail("Idempotency-Key conflict"); return replay.resultJson; }
+    const activeProperty = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelProperty" WHERE "id"=${propertyId} AND "organizationId"=${organizationId} AND "isActive"=true AND "deletedAt" IS NULL FOR SHARE`);
+    if (!activeProperty.length) fail("Hotel property is inactive", 404);
+    const lockedType = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${command.roomTypeId} AND "propertyId"=${propertyId} AND "organizationId"=${organizationId} AND "isActive"=true AND "deletedAt" IS NULL FOR UPDATE`);
+    if (!lockedType.length) fail("Room type is not available", 422);
+    await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelRoom" WHERE "id"=${command.roomId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} FOR UPDATE`);
+    const room = await tx.hotelRoom.findFirst({ where: { id: command.roomId, organizationId, propertyId, roomTypeId: command.roomTypeId, isActive: true, deletedAt: null, isOutOfService: false }, select: { id: true } });
+    if (!room) fail("Selected physical room is unavailable", 422);
+    const from = new Date(`${command.checkIn}T00:00:00.000Z`), to = new Date(`${command.checkOut}T00:00:00.000Z`);
+    const [allocation, maintenance] = await Promise.all([
+      tx.hotelReservationRoom.findFirst({ where: { organizationId, roomId: command.roomId, date: { in: nights.map(day => new Date(`${day}T00:00:00.000Z`)) }, reservation: { status: { in: ["HELD", "PENDING_PAYMENT", "CONFIRMED", "CHECKED_IN"] } } }, select: { date: true } }),
+      tx.hotelRoomMaintenanceBlock.findFirst({ where: { organizationId, propertyId, roomId: command.roomId, releasedAt: null, from: { lt: to }, to: { gt: from } }, select: { id: true } }),
+    ]);
+    if (allocation) fail("Selected physical room is occupied for one or more stay nights");
+    if (maintenance) fail("Selected physical room has scheduled maintenance during this stay");
+    const now = this.now();
+    const today = propertyCalendarDate(property.timezone, now);
+    if (command.checkIn < today) fail("Stay is outside property limits: check-in precedes property today", 422);
+    const quote = (await priceHotelStay(tx, property, actor.userId, { action: "quote", roomTypeId: command.roomTypeId, ratePlanId: command.ratePlanId, checkIn: command.checkIn, checkOut: command.checkOut, adults: command.adults, childAges: command.childAges }, now)).quote!;
+    const holdId = randomUUID(), reference = `HD-${holdId.slice(0, 12).toUpperCase()}`;
+    const repository = new PrismaHotelRepositories(this.db);
+    const claimed = await repository.claimInventoryAndCreateHold({ scope: { organizationId }, propertyId, roomTypeId: command.roomTypeId, nights, quantity: 1, now, hold: { id: holdId, organizationId, propertyId, roomTypeId: command.roomTypeId, reference, checkIn: command.checkIn, checkOut: command.checkOut, nights, quantity: 1, expiresAt: new Date(now.getTime() + 600_000), status: "ACTIVE", createdAt: now } }, tx);
+    if (!claimed.isClaimed) fail(claimed.reason === "CONFLICT" ? "Inventory changed; reload and try again" : "No room inventory is available for these dates");
+    const reservationKey = `manual:${createHash("sha256").update(idempotencyKey).digest("hex")}`;
+    const reservation = await repository.createReservation({ id: randomUUID(), organizationId, propertyId, reference, idempotencyKey: reservationKey, holdId, roomTypeId: command.roomTypeId, ratePlanId: command.ratePlanId, status: "PENDING_PAYMENT", checkIn: command.checkIn, checkOut: command.checkOut, nights, nightlyRates: quote.nightlyRates, totalAmount: Number(quote.totalAmount), currency: quote.currency, cancellationPolicySnapshot: quote.policy, guests: guestRecords, occupancy: { adults: command.adults, children: command.childAges.length, childAges: command.childAges }, createdAt: now, updatedAt: now }, tx);
+    await tx.hotelBookingHold.update({ where: { id: holdId }, data: { status: "CONSUMED", expiresAt: new Date("9999-12-31T00:00:00.000Z") } });
+    await tx.hotelReservation.update({ where: { id: reservation.id }, data: { status: "CONFIRMED", confirmedAt: now } });
+    const assigned = await tx.hotelReservationRoom.updateMany({ where: { organizationId, reservationId: reservation.id, roomId: null }, data: { roomId: command.roomId } });
+    if (assigned.count !== nights.length) fail("Reservation room allocation could not be completed");
+    const result = { reservationId: reservation.id, reference, status: "CONFIRMED", totalAmount: String(quote.totalAmount), currency: quote.currency, source: command.source, paymentStatus: "UNPAID" };
+    await tx.hotelInventoryIdempotency.create({ data: { id: randomUUID(), organizationId, operationScope: MANUAL_RESERVATIONS, idempotencyKey, requestFingerprint: fingerprint, status: "COMPLETED", resultJson: json({ ...result, propertyId, action: "CREATE_MANUAL_RESERVATION", actorUserId: actor.userId }), completedAt: now } });
+    return result;
+  }
+  async createGroup(actor: HotelBookingActor, organizationId: string, propertyId: string, input: unknown, idempotencyKey: string) {
+    const property = await this.authorizeManual(actor, organizationId, propertyId);
+    const command = groupReservation.parse(input);
+    if (idempotencyKey.trim().length < 8 || idempotencyKey.length > 200) fail("Idempotency-Key required", 400);
+    if (!distinctGroupRooms(command.rooms)) fail("Distinct physical rooms required for a group", 422);
+    const fingerprint = createHash("sha256").update(JSON.stringify([actor.userId, propertyId, command])).digest("hex");
     try {
       return await this.db.$transaction(async tx => {
-        await assertHotelOperationalReservationSchemaReady(tx);
-        await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify([organizationId, MANUAL_RESERVATIONS, idempotencyKey])},0))`);
-        const key = { organizationId_operationScope_idempotencyKey: { organizationId, operationScope: MANUAL_RESERVATIONS, idempotencyKey } };
+        await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify([organizationId, GROUP_RESERVATIONS, idempotencyKey])},0))`);
+        const key = { organizationId_operationScope_idempotencyKey: { organizationId, operationScope: GROUP_RESERVATIONS, idempotencyKey } };
         const replay = await tx.hotelInventoryIdempotency.findUnique({ where: key });
-        if (replay) { if (replay.requestFingerprint !== fingerprint) fail("Idempotency-Key conflict"); return replay.resultJson; }
-        const activeProperty = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelProperty" WHERE "id"=${propertyId} AND "organizationId"=${organizationId} AND "isActive"=true AND "deletedAt" IS NULL FOR SHARE`);
-        if (!activeProperty.length) fail("Hotel property is inactive", 404);
-        const lockedType = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${command.roomTypeId} AND "propertyId"=${propertyId} AND "organizationId"=${organizationId} AND "isActive"=true AND "deletedAt" IS NULL FOR UPDATE`);
-        if (!lockedType.length) fail("Room type is not available", 422);
-        await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelRoom" WHERE "id"=${command.roomId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} FOR UPDATE`);
-        const room = await tx.hotelRoom.findFirst({ where: { id: command.roomId, organizationId, propertyId, roomTypeId: command.roomTypeId, isActive: true, deletedAt: null, isOutOfService: false }, select: { id: true } });
-        if (!room) fail("Selected physical room is unavailable", 422);
-        const from = new Date(`${command.checkIn}T00:00:00.000Z`), to = new Date(`${command.checkOut}T00:00:00.000Z`);
-        const [allocation, maintenance] = await Promise.all([
-          tx.hotelReservationRoom.findFirst({ where: { organizationId, roomId: command.roomId, date: { in: nights.map(day => new Date(`${day}T00:00:00.000Z`)) }, reservation: { status: { in: ["HELD", "PENDING_PAYMENT", "CONFIRMED", "CHECKED_IN"] } } }, select: { date: true } }),
-          tx.hotelRoomMaintenanceBlock.findFirst({ where: { organizationId, propertyId, roomId: command.roomId, releasedAt: null, from: { lt: to }, to: { gt: from } }, select: { id: true } }),
-        ]);
-        if (allocation) fail("Selected physical room is occupied for one or more stay nights");
-        if (maintenance) fail("Selected physical room has scheduled maintenance during this stay");
-        const now = this.now();
-        const today = propertyCalendarDate(property.timezone, now);
-        if (command.checkIn < today) fail("Stay is outside property limits: check-in precedes property today", 422);
-        const quote = (await priceHotelStay(tx, property, actor.userId, { action: "quote", roomTypeId: command.roomTypeId, ratePlanId: command.ratePlanId, checkIn: command.checkIn, checkOut: command.checkOut, adults: command.adults, childAges: command.childAges }, now)).quote!;
-        const holdId = randomUUID(), reference = `HD-${holdId.slice(0, 12).toUpperCase()}`;
-        const repository = new PrismaHotelRepositories(this.db);
-        const claimed = await repository.claimInventoryAndCreateHold({ scope: { organizationId }, propertyId, roomTypeId: command.roomTypeId, nights, quantity: 1, now, hold: { id: holdId, organizationId, propertyId, roomTypeId: command.roomTypeId, reference, checkIn: command.checkIn, checkOut: command.checkOut, nights, quantity: 1, expiresAt: new Date(now.getTime() + 600_000), status: "ACTIVE", createdAt: now } }, tx);
-        if (!claimed.isClaimed) fail(claimed.reason === "CONFLICT" ? "Inventory changed; reload and try again" : "No room inventory is available for these dates");
-        const reservationKey = `manual:${createHash("sha256").update(idempotencyKey).digest("hex")}`;
-        const reservation = await repository.createReservation({ id: randomUUID(), organizationId, propertyId, reference, idempotencyKey: reservationKey, holdId, roomTypeId: command.roomTypeId, ratePlanId: command.ratePlanId, status: "PENDING_PAYMENT", checkIn: command.checkIn, checkOut: command.checkOut, nights, nightlyRates: quote.nightlyRates, totalAmount: Number(quote.totalAmount), currency: quote.currency, cancellationPolicySnapshot: quote.policy, guests: guestRecords, occupancy: { adults: command.adults, children: command.childAges.length, childAges: command.childAges }, createdAt: now, updatedAt: now }, tx);
-        await tx.hotelBookingHold.update({ where: { id: holdId }, data: { status: "CONSUMED", expiresAt: new Date("9999-12-31T00:00:00.000Z") } });
-        await tx.hotelReservation.update({ where: { id: reservation.id }, data: { status: "CONFIRMED", confirmedAt: now } });
-        const assigned = await tx.hotelReservationRoom.updateMany({ where: { organizationId, reservationId: reservation.id, roomId: null }, data: { roomId: command.roomId } });
-        if (assigned.count !== nights.length) fail("Reservation room allocation could not be completed");
-        const result = { reservationId: reservation.id, reference, status: "CONFIRMED", totalAmount: String(quote.totalAmount), currency: quote.currency, source: command.source, paymentStatus: "UNPAID" };
-        await tx.hotelInventoryIdempotency.create({ data: { id: randomUUID(), organizationId, operationScope: MANUAL_RESERVATIONS, idempotencyKey, requestFingerprint: fingerprint, status: "COMPLETED", resultJson: json({ ...result, propertyId, action: "CREATE_MANUAL_RESERVATION", actorUserId: actor.userId }), completedAt: now } });
-        return result;
-      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, maxWait: 10000, timeout: 20000 });
+        if (replay) {
+          if (replay.requestFingerprint !== fingerprint || replay.status !== "COMPLETED") fail("Idempotency-Key conflict");
+          return groupReceipt.parse(replay.resultJson);
+        }
+        const groupReference = `HG-${randomUUID().toUpperCase()}`;
+        const members: Array<z.infer<typeof groupMember>> = [];
+        for (const room of orderGroupRooms(command.rooms)) {
+          const result = await this.createManualInTransaction(tx, actor, organizationId, propertyId, property, { ...room, checkIn: command.checkIn, checkOut: command.checkOut }, `group-member:${randomUUID()}`);
+          members.push(groupMember.parse(result));
+        }
+        const receipt = { groupReference, name: command.name, checkIn: command.checkIn, checkOut: command.checkOut, members };
+        await tx.hotelInventoryIdempotency.create({ data: { id: randomUUID(), organizationId, operationScope: GROUP_RESERVATIONS, idempotencyKey, requestFingerprint: fingerprint, status: "COMPLETED", resultJson: json({ ...receipt, propertyId, actorUserId: actor.userId }), completedAt: this.now() } });
+        return receipt;
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, maxWait: 10000, timeout: 30000 });
     } catch (error) {
       if (isMissingHotelMaintenanceTableError(error)) throw new ApiError(503, HOTEL_MAINTENANCE_SCHEMA_NOT_READY);
       if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2002" || error.code === "P2034")) fail("Room or inventory changed while saving; refresh and choose another room", 409);
       throw error;
     }
+  }
+  async listGroups(actor: HotelBookingActor, organizationId: string, propertyId: string, reference: string | null) {
+    await this.authorizeManual(actor, organizationId, propertyId);
+    if (reference !== null && !validGroupReference(reference)) fail("Invalid group reference", 400);
+    const rows = await this.db.hotelInventoryIdempotency.findMany({ where: { organizationId, operationScope: GROUP_RESERVATIONS, status: "COMPLETED", AND: [{ resultJson: { path: ["propertyId"], equals: propertyId } }, ...(reference ? [{ resultJson: { path: ["groupReference"], equals: reference } }] : [])] }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: GROUP_PAGE_SIZE, select: { resultJson: true } });
+    const receipts = rows.map(row => groupReceipt.parse(row.resultJson));
+    const ids = receipts.flatMap(row => row.members.map(member => member.reservationId));
+    const current = await this.db.hotelReservation.findMany({ where: { organizationId, propertyId, id: { in: ids } }, select: { id: true, status: true, checkIn: true, checkOut: true, totalAmount: true, currency: true } });
+    const byId = new Map(current.map(row => [row.id, row]));
+    return { groups: receipts.map(receipt => ({ ...receipt, members: receipt.members.map(member => {
+      const row = byId.get(member.reservationId);
+      return { ...member, current: row ? { status: row.status, checkIn: dateOnly(row.checkIn), checkOut: dateOnly(row.checkOut), totalAmount: row.totalAmount.toString(), currency: row.currency } : null };
+    }) })) };
   }
   private async lockQuote(tx: Tx, actor: HotelBookingActor, organizationId: string, propertyId: string, quoteId: string) {
     await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelStayQuote" WHERE "id"=${quoteId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} FOR UPDATE`);

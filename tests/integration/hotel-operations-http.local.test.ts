@@ -108,6 +108,7 @@ function isolatedServerEnv(): NodeJS.ProcessEnv {
     CUSTOMER_SSO_ENABLED: "1",
     HOTEL_INVENTORY_IDEMPOTENCY_ENABLED: "1",
     HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED: "1",
+    HOTEL_RECEPTION_WAITLIST_ENABLED: "1",
     AUTH_TRUST_HOST: "true",
     NEXT_PUBLIC_APP_URL: baseUrl,
     NEXT_PUBLIC_DEPLOYED_APP_URL: baseUrl,
@@ -314,6 +315,7 @@ after(async () => {
       await db.hotelRatePlan.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelRoomMaintenanceBlock.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelRoom.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
+      await db.hotelReceptionWaitlist.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelRoomType.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.hotelProperty.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
       await db.organizationMember.deleteMany({ where: { organizationId: { in: ownedOrgIds }, userId: { in: [userId, managerUserId, staffUserId] } } });
@@ -1038,6 +1040,37 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   await groupPanel.getByText(bookedGroup.data!.groupReference, { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
   for (const member of bookedGroup.data!.members) await groupPanel.getByText(member.reference, { exact: true }).waitFor({ state: "visible" });
   await groupPanel.getByRole("button", { name: "رزرو گروهی", exact: true }).click();
+
+  stage = "reception-waitlist-isolation-and-manual-fulfillment";
+  const waitPath = `/api/organizations/${orgAId}/hotels/${propertyAId}/reservations/waitlist`;
+  type WaitEntry = { id: string; guestName: string; status: string; version: number; reservationReference: string | null };
+  const waitBody = { action: "create", requestKey: `wait-${suffix}`, guestName: groupRooms[0].guests[0].fullName, phone: "09123456789", roomTypeId, checkIn: groupDay, checkOut: groupEnd, adults: 1, childAges: [] };
+  const waitBaseline = await readPreviewMutationSnapshot(orgAId);
+  const waitCreated = await apiJson<WaitEntry>(waitPath, cookie, "POST", waitBody);
+  assert.equal(waitCreated.response.status, 200, `waitlist create: ${JSON.stringify(waitCreated.data)}`);
+  assert.equal(waitCreated.data?.status, "WAITING");
+  const waitId = waitCreated.data!.id;
+  const waitReplay = await apiJson<WaitEntry>(waitPath, cookie, "POST", waitBody);
+  assert.equal(waitReplay.response.status, 200); assert.equal(waitReplay.data?.id, waitId);
+  assert.equal((await apiJson(waitPath, cookie, "POST", { ...waitBody, guestName: "Different" })).response.status, 409);
+  const waitForeign = `/api/organizations/${ownedOrgIds[1]}/hotels/${propertyBId}/reservations/waitlist`;
+  assert.equal((await apiJson(waitForeign, cookie, "POST", { action: "list" })).response.status, 403);
+  const waitList = await apiJson<{ items: WaitEntry[] }>(waitPath, cookie, "POST", { action: "list" });
+  assert.equal(waitList.response.status, 200); assert.equal(waitList.response.headers.get("cache-control"), "private, no-store");
+  assert.ok(waitList.data?.items.some(item => item.id === waitId));
+  assert.equal((await apiJson(waitPath, cookie, "POST", { action: "transition", id: waitId, expectedVersion: 0, status: "BOOKED", confirmed: true, reservationReference: `missing-${suffix}` })).response.status, 422);
+  const contacted = await apiJson<WaitEntry>(waitPath, cookie, "POST", { action: "transition", id: waitId, expectedVersion: 0, status: "CONTACTED" });
+  assert.equal(contacted.response.status, 200); assert.equal(contacted.data?.version, 1);
+  assert.equal((await apiJson(waitPath, cookie, "POST", { action: "transition", id: waitId, expectedVersion: 0, status: "CANCELLED" })).response.status, 409);
+  const waitBooked = await apiJson<WaitEntry>(waitPath, cookie, "POST", { action: "transition", id: waitId, expectedVersion: 1, status: "BOOKED", confirmed: true, reservationReference: bookedGroup.data!.members[0].reference });
+  assert.equal(waitBooked.response.status, 200, `waitlist completion: ${JSON.stringify(waitBooked.data)}`); assert.equal(waitBooked.data?.status, "BOOKED");
+  assert.equal(waitBooked.data?.reservationReference, bookedGroup.data!.members[0].reference);
+  assert.equal((await apiJson(waitPath, cookie, "POST", { action: "transition", id: waitId, expectedVersion: 2, status: "WAITING" })).response.status, 409);
+  assert.deepEqual(await readPreviewMutationSnapshot(orgAId), waitBaseline, "waitlist does not change capacity, reservations or payments");
+  const waitPanel = page.getByRole("region", { name: "لیست انتظار", exact: true });
+  await waitPanel.getByRole("button", { name: "لیست انتظار", exact: true }).click();
+  await waitPanel.getByLabel("درخواست‌های باز", { exact: true }).selectOption("BOOKED");
+  await waitPanel.getByText(groupRooms[0].guests[0].fullName, { exact: false }).waitFor({ state: "visible", timeout: 30_000 });
 
   stage = "browser-demo-guest-link-fa-en-ar";
   for (const locale of ["fa", "en", "ar"] as const) {

@@ -1,3 +1,4 @@
+import { waitlistStayAllowed, waitlistTransitionAllowed } from "../../lib/hotel/domain/reception-waitlist";
 import { distinctGroupRooms, orderGroupRooms, validGroupReference } from "../../lib/hotel/domain/group-reservations";
 import { cleanGuestProfileName } from "../../lib/hotel/domain/guest-profiles";
 import { test } from "node:test";
@@ -105,4 +106,21 @@ test("group room validation and deterministic lock order", () => {
   assert.equal(rows[0].roomId, "2");
   assert.equal(validGroupReference("HG-12345678-1234-1234-1234-123456789ABC"), true);
   assert.equal(validGroupReference("HG-123"), false);
+});
+
+
+test("waitlist uses property dates and permits only explicit open-state transitions", () => {
+  const today = "2027-01-01";
+  assert.equal(waitlistStayAllowed(today, "2027-01-03", today, 1, 3), true);
+  assert.equal(waitlistStayAllowed("2026-12-31", "2027-01-03", today, 1, 3), false);
+  assert.equal(waitlistStayAllowed(today, "2027-01-02", today, 2, 3), false);
+  assert.equal(waitlistStayAllowed(today, "2027-02-03", today, 1, 100), false);
+  assert.equal(waitlistTransitionAllowed("WAITING", "CONTACTED", today, today), true);
+  assert.equal(waitlistTransitionAllowed("CONTACTED", "WAITING", today, today), true);
+  assert.equal(waitlistTransitionAllowed("WAITING", "BOOKED", today, today), true);
+  assert.equal(waitlistTransitionAllowed("WAITING", "EXPIRED", today, today), false);
+  assert.equal(waitlistTransitionAllowed("WAITING", "EXPIRED", "2026-12-31", today), true);
+  assert.equal(waitlistTransitionAllowed("WAITING", "BOOKED", "2026-12-31", today), false);
+  assert.equal(waitlistTransitionAllowed("BOOKED", "WAITING", today, today), false);
+  assert.equal(waitlistTransitionAllowed("CANCELLED", "CONTACTED", today, today), false);
 });

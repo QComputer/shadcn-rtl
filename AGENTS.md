@@ -30,6 +30,10 @@ contracts. Preserve Restaurant/Cafe behavior and tenant isolation. Keep local
 test evidence, public runtime evidence and real payment/booking acceptance
 separate. The dedicated Damoon frontend is in `sites/damoon`.
 
+
+## Main Agent / Kilo Code delivery protocol
+For Main Agent-authored development overlays, follow [KILO-OVERLAY-PLAYBOOK.md](docs/handoffs/KILO-OVERLAY-PLAYBOOK.md). Use exact SHA/blob guards, manifest-exclusive stage, deterministic focused checks, existing CI, and independent acceptance. Speed is the primary priority. Update the playbook with verified improvements in the next functional PR.
+
 ## Continuous handoff — owner rule (2026-11-26)
 
 Speed is the primary delivery priority. Deliver cohesive functional batches, use existing CI and focused regression checks, and do not reopen completed acceptance without a new reason. Update the applicable existing roadmap and current-status documentation in the same functional PR; include delivered scope, remaining scope, next action and known blockers. Keep Git/CI/merge/live evidence distinct; use the PR and Git history as authoritative for the exact merge SHA. After merge record real deployment or live evidence in the existing status/handoff when available (never invent it); avoid a separate documentation-only PR solely for routine bookkeeping. For Hotel/Damoon begin with docs/hotel/damoon/README.md, ROADMAP.md and STATUS-AND-DECISIONS.md and the active platform handoff. Do not relax tenant isolation, production-data authorization, or real-payment gates.

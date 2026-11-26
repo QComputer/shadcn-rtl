@@ -23,7 +23,7 @@ test("request persists an OTP challenge plus encrypted outbox; creates no user",
     organization: { findFirst: async () => ({ id: "org-a", slug: "shop-a", locale: "fa" }) },
     $queryRaw: async () => [],
     customerPhoneAuthQuota: { findUnique: async () => null, upsert: async () => ({}) },
-    customerAccessLink: { create: async ({ data }: { data: Record<string, any> }) => { saved = data; } },
+    customerAccessLink: { updateMany: async () => ({ count: 0 }), create: async ({ data }: { data: Record<string, any> }) => { saved = data; } },
     user: { create: async () => assert.fail("request must not create a user") },
   };
   const db = asDb({ $transaction: async (fn: (input: typeof tx) => unknown) => fn(tx) });
@@ -67,7 +67,7 @@ test("canonical www domains retain exact origin binding; HTTP is limited to deve
     organizationDomain: { findFirst: async ({ where }: { where: { normalizedDomain: string } }) => { domains.push(where.normalizedDomain); return { id: "domain-a" }; } },
     $queryRaw: async () => [],
     customerPhoneAuthQuota: { findUnique: async () => null, upsert: async () => ({}) },
-    customerAccessLink: { create: async ({ data }: { data: { origin: string } }) => { origins.push(data.origin); } },
+    customerAccessLink: { updateMany: async () => ({ count: 0 }), create: async ({ data }: { data: { origin: string } }) => { origins.push(data.origin); } },
   };
   const db = asDb({ $transaction: async (fn: (input: typeof tx) => unknown) => fn(tx) });
   const service = new CustomerPhoneAuthService(db, { ...options, platformOrigins: [] });
@@ -143,4 +143,20 @@ test("session validation rechecks tenant, active customer role and staff members
   assert.deepEqual(where?.user.customerClubMemberships.some, { organizationId: "org-a", status: "ACTIVE" });
   assert.deepEqual(where?.user.memberOf.none.role.in, ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF", "DRIVER"]);
   assert.equal(await validateCustomerPhoneSession(input, asDb({ customerPhoneSession: { findFirst: async () => { throw new Error("offline"); } } })), false);
+});
+
+
+test("wrong OTP commits a bounded increment inside the transaction before rejection", async () => {
+  const calls: string[] = [];
+  const tx = {
+    organization: { findFirst: async () => ({ id: "org-a" }) },
+    $queryRaw: async () => { calls.push("lock"); return []; },
+    customerAccessLink: {
+      findFirst: async () => { calls.push("read"); return { id: "link-a", phone: "09123456789", otpCodeHash: customerAuthDigest("otp:1234", secret), otpExpiresAt: new Date(now.getTime() + 1000), expiresAt: new Date(now.getTime() + 1000), otpAttempts: 0, otpConsumedAt: null, consumedAt: null }; },
+      updateMany: async ({ where, data }: { where: { otpAttempts: { lt: number } }; data: { otpAttempts: { increment: number } } }) => { calls.push("increment"); assert.equal(where.otpAttempts.lt, 3); assert.equal(data.otpAttempts.increment, 1); return { count: 1 }; },
+    },
+  };
+  const db = asDb({ $transaction: async (fn: (input: typeof tx) => Promise<unknown>) => { const result = await fn(tx); calls.push("commit"); return result; } });
+  await assert.rejects(new CustomerPhoneAuthService(db, options).consume({ otp: "4321", phone: "09123456789", organizationId: "org-a", origin }), CustomerPhoneAuthError);
+  assert.deepEqual(calls, ["lock", "read", "increment", "commit"]);
 });

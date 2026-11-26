@@ -40,11 +40,11 @@ async function freshPhone() {
   throw new Error("synthetic phone allocation exhausted");
 }
 
-async function issue(phone: string, organization = organizations[0]) {
+async function issue(phone: string, organization = organizations[0], issuer = service) {
   const ip = `2001:db8:${prefix.slice(-4)}::${++requestSequence}`;
   quotaKeys.add(`ip:${customerAuthDigest(ip, secret)}`);
   const issuanceKey = randomUUID();
-  assert.deepEqual(await service.request({ phone, organizationId: organization.id, origin: origin(organization), ip, source: "WEB", idempotencyKey: issuanceKey }), { accepted: true });
+  assert.deepEqual(await issuer.request({ phone, organizationId: organization.id, origin: origin(organization), ip, source: "WEB", idempotencyKey: issuanceKey }), { accepted: true });
   const link = await db.customerAccessLink.findUnique({ where: { issuanceKey: customerAuthDigest(`WEB:${organization.id}:${phone}:${issuanceKey}`, secret) }, include: { smsOutbox: true } });
   assert.ok(link?.smsOutbox, "request must persist link and encrypted outbox on actual PostgreSQL");
   const payload = decryptCustomerAuthPayload(link.smsOutbox.encryptedPayload, secret, link.id);
@@ -53,8 +53,8 @@ async function issue(phone: string, organization = organizations[0]) {
   return { link, otp: payload.url.slice(4), payload };
 }
 
-async function consumeOtp(phone: string, otp: string, organization = organizations[0]) {
-  const result = await service.consume({ otp, phone, organizationId: organization.id, origin: origin(organization) });
+async function consumeOtp(phone: string, otp: string, organization = organizations[0], issuer = service) {
+  const result = await issuer.consume({ otp, phone, organizationId: organization.id, origin: origin(organization) });
   ownedUserIds.add(result.id);
   return result;
 }
@@ -108,7 +108,9 @@ after(async () => {
 describe("customer phone authentication on explicitly guarded local PostgreSQL", { concurrency: false }, () => {
   it("serializes concurrent request deduplication and phone quotas in PostgreSQL", async () => {
     const phone = await freshPhone();
-    const fixedNow = new Date();
+    // A fixed clock within one quota window; test cooldown separately from quota.
+    const windowStart = new Date(Math.floor(Date.now() / 900_000) * 900_000);
+    let fixedNow = new Date(windowStart.getTime() + 10_000);
     const fixedClockService = new CustomerPhoneAuthService(db, { enabled: true, secret, senderAvailable: () => true, now: () => fixedNow });
     const organization = organizations[0];
     const ip = `2001:db8:${prefix.slice(-4)}::ff`;
@@ -117,8 +119,15 @@ describe("customer phone authentication on explicitly guarded local PostgreSQL",
     await Promise.all([fixedClockService.request(sameIngress), fixedClockService.request(sameIngress), fixedClockService.request(sameIngress)]);
     assert.equal(await db.customerAccessLink.count({ where: { phone, organizationId: organization.id } }), 1);
     await Promise.all(Array.from({ length: 4 }, () => fixedClockService.request({ ...sameIngress, idempotencyKey: randomUUID() })));
-    assert.equal(await db.customerAccessLink.count({ where: { phone, organizationId: organization.id } }), 3);
-    const windowStart = new Date(Math.floor(fixedNow.getTime() / 900_000) * 900_000);
+    assert.equal(await db.customerAccessLink.count({ where: { phone, organizationId: organization.id } }), 1, "cooldown blocks concurrent new keys");
+    fixedNow = new Date(fixedNow.getTime() + 59_999);
+    await fixedClockService.request({ ...sameIngress, idempotencyKey: randomUUID() });
+    assert.equal(await db.customerAccessLink.count({ where: { phone, organizationId: organization.id } }), 1, "cooldown before exact boundary");
+    for (let expected = 2; expected <= 4; expected++) {
+      fixedNow = new Date(fixedNow.getTime() + (expected === 2 ? 1 : 60_000));
+      await Promise.all(Array.from({ length: 4 }, () => fixedClockService.request({ ...sameIngress, idempotencyKey: randomUUID() })));
+      assert.equal(await db.customerAccessLink.count({ where: { phone, organizationId: organization.id } }), Math.min(expected, 3), "one issuance per cooldown; quota remains three");
+    }
     const quota = await db.customerPhoneAuthQuota.findUniqueOrThrow({ where: { key_windowStart: { key: `phone:${customerAuthDigest(phone, secret)}`, windowStart } } });
     assert.equal(quota.count, 3);
     assert.equal(await db.customerPhoneIdentity.count({ where: { phone } }), 0);
@@ -244,16 +253,39 @@ describe("customer phone authentication on explicitly guarded local PostgreSQL",
 
   it("commits failed OTP attempts on PostgreSQL, exhausts after three, and prevents reuse of a consumed OTP", async () => {
     const phone = await freshPhone();
-    const { otp, link } = await issue(phone);
-    const wrong = "0000";
-    for (let i = 0; i < 3; i++) await assert.rejects(consumeOtp(phone, wrong), CustomerPhoneAuthError);
-    assert.equal((await db.customerAccessLink.findUniqueOrThrow({ where: { id: link.id } })).otpAttempts, 3);
-    await assert.rejects(consumeOtp(phone, wrong), CustomerPhoneAuthError);
-
-    const { otp: good, link: goodLink } = await issue(phone);
-    const user = await consumeOtp(phone, good);
+    let fixedNow = new Date(Math.floor(Date.now() / 900_000) * 900_000 + 10_000);
+    const clockService = new CustomerPhoneAuthService(db, { enabled: true, secret, senderAvailable: () => true, now: () => fixedNow });
+    const { otp, link } = await issue(phone, organizations[0], clockService);
+    const wrong = otp === "0000" ? "0001" : "0000";
+    const failures = await Promise.allSettled(Array.from({ length: 5 }, () => consumeOtp(phone, wrong, organizations[0], clockService)));
+    assert.ok(failures.every(result => result.status === "rejected" && result.reason instanceof CustomerPhoneAuthError));
+    assert.equal((await db.customerAccessLink.findUniqueOrThrow({ where: { id: link.id } })).otpAttempts, 3, "concurrent wrong attempts commit exactly three increments");
+    await assert.rejects(consumeOtp(phone, otp, organizations[0], clockService), CustomerPhoneAuthError);
+    assert.equal(await db.customerPhoneIdentity.count({ where: { phone } }), 0);
+    fixedNow = new Date(fixedNow.getTime() + 60_000);
+    const { otp: good, link: goodLink } = await issue(phone, organizations[0], clockService);
+    const user = await consumeOtp(phone, good, organizations[0], clockService);
     ownedUserIds.add(user.id);
-    await assert.rejects(consumeOtp(phone, good), CustomerPhoneAuthError);
+    await assert.rejects(consumeOtp(phone, good, organizations[0], clockService), CustomerPhoneAuthError);
     assert.ok((await db.customerAccessLink.findUniqueOrThrow({ where: { id: goodLink.id } })).consumedAt);
+    assert.equal((await db.customerAccessLink.findUniqueOrThrow({ where: { id: link.id } })).otpAttempts, 3);
+  });
+
+  it("resend supersedes earlier OTPs and consumption never falls back to a prior challenge", async () => {
+    const phone = await freshPhone();
+    let fixedNow = new Date(Math.floor(Date.now() / 900_000) * 900_000 + 10_000);
+    const clockService = new CustomerPhoneAuthService(db, { enabled: true, secret, senderAvailable: () => true, now: () => fixedNow });
+    const first = await issue(phone, organizations[0], clockService);
+    fixedNow = new Date(fixedNow.getTime() + 60_000);
+    const replacement = await issue(phone, organizations[0], clockService);
+    const superseded = await db.customerAccessLink.findUniqueOrThrow({ where: { id: first.link.id } });
+    assert.equal(superseded.expiresAt.getTime(), fixedNow.getTime());
+    assert.equal(superseded.otpExpiresAt?.getTime(), fixedNow.getTime());
+    const results = await Promise.allSettled(Array.from({ length: 5 }, () => consumeOtp(phone, replacement.otp, organizations[0], clockService)));
+    assert.equal(results.filter(result => result.status === "fulfilled").length, 1);
+    await assert.rejects(consumeOtp(phone, first.otp, organizations[0], clockService), CustomerPhoneAuthError);
+    const identity = await db.customerPhoneIdentity.findUniqueOrThrow({ where: { phone } });
+    ownedUserIds.add(identity.userId);
+    assert.equal(await db.customerPhoneSession.count({ where: { userId: identity.userId } }), 1);
   });
 });

@@ -10,6 +10,7 @@ import { priceHotelStay, type HotelPricedQuote } from "./booking-quote";
 import { PrismaHotelRepositories } from "../persistence/prisma-hotel-repositories";
 import { enumerateStayNights } from "../domain/stay-dates";
 import { propertyCalendarDate } from "../domain/property-calendar";
+import { amendManualHotelStay } from "./hotel-stay-amendment";
 import { decideReservationTransition } from "../domain/booking-state";
 import { HOTEL_BOOKING_BASE_PROPERTY_SELECT } from "./booking-context";
 import { assertHotelOperationalReservationSchemaReady } from "./hotel-schema-readiness";
@@ -37,6 +38,9 @@ export const hotelOperationalCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("select-payment-method"), reservationId: id, method: z.enum(["CASH", "BANK_TRANSFER"]) }).strict(),
   z.object({ action: z.literal("confirm-reservation"), reservationId: id }).strict(),
   z.object({ action: z.literal("assign-room"), reservationId: id, roomId: id }).strict(),
+  z.object({ action: z.literal("move-room"), reservationId: id, roomId: id, expectedRoomId: id }).strict(),
+  z.object({ action: z.literal("preview-amend-stay"), reservationId: id, checkIn: z.iso.date(), checkOut: z.iso.date() }).strict(),
+  z.object({ action: z.literal("amend-stay"), reservationId: id, checkIn: z.iso.date(), checkOut: z.iso.date(), expectedVersion: z.number().int().nonnegative(), expectedTotal: z.string().regex(/^\d{1,16}$/) }).strict(),
   z.object({ action: z.literal("check-in"), reservationId: id }).strict(),
   z.object({ action: z.literal("check-out"), reservationId: id }).strict(),
 ]);
@@ -262,9 +266,12 @@ export class HotelOperationalReservationService {
   }
   async execute(actor: HotelBookingActor, organizationId: string, propertyId: string, input: unknown, idempotencyKey: string) {
     const submitted = hotelOperationalCommand.parse(input);
-    const manualAction = actor.role !== "CUSTOMER" && ["cancel", "assign-room", "check-in", "check-out"].includes(submitted.action);
+    const stayChange = ["preview-amend-stay", "amend-stay", "move-room"].includes(submitted.action);
+    if (stayChange && actor.role === "CUSTOMER") fail("Reception role required", 403);
+    const manualAction = actor.role !== "CUSTOMER" && ["cancel", "assign-room", "check-in", "check-out", "preview-amend-stay", "amend-stay", "move-room"].includes(submitted.action);
     const demoManualLifecycle = manualAction && process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED !== "1" && await this.isDamoonDemoProperty(actor, organizationId, propertyId);
     const manualLifecycle = manualAction && (process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED === "1" || demoManualLifecycle);
+    if (stayChange && !manualLifecycle) fail("Manual room management is disabled", 403);
     if (manualLifecycle) await this.authorizeManual(actor, organizationId, propertyId);
     else await this.authorize(actor, organizationId, propertyId);
     if (idempotencyKey.length < 8 || idempotencyKey.length > 200) fail("Idempotency-Key required", 400);
@@ -357,7 +364,27 @@ export class HotelOperationalReservationService {
         if (manualLifecycle ? !isManualReservation && !isDemoReservation : !isQuotedReservation) fail("Reservation not found", 404);
         await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelReservation" WHERE "id"=${command.reservationId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} FOR UPDATE`);
         let reservation = await tx.hotelReservation.findFirstOrThrow({ where: { id: command.reservationId, organizationId, propertyId }, include: { nights: true, hold: true } });
-        if (command.action === "select-payment-method") {
+        let stayChangeResult: Record<string, unknown> = {};
+        if (command.action === "preview-amend-stay" || command.action === "amend-stay") {
+          if (!isManualReservation || isQuotedReservation) fail("STAY_AMENDMENT_MANUAL_ONLY", 422);
+          const amendment = await amendManualHotelStay(tx, { reservation, property: property!, actorUserId: actor.userId, command, now });
+          stayChangeResult = { amendment };
+          if (command.action === "amend-stay") reservation = await tx.hotelReservation.findFirstOrThrow({ where: { id: reservation.id, organizationId, propertyId }, include: { nights: true, hold: true } });
+        } else if (command.action === "move-room") {
+          const today = propertyCalendarDate(property!.timezone, now);
+          if (reservation.status !== "CHECKED_IN" || today < dateOnly(reservation.checkIn) || today >= dateOnly(reservation.checkOut)) fail("Invalid reception transition");
+          const remaining = reservation.nights.filter(n => dateOnly(n.date) >= today).sort((a,b) => a.date.getTime() - b.date.getTime());
+          const dates = enumerateStayNights(today, dateOnly(reservation.checkOut));
+          if (remaining.length !== dates.length || remaining.some((n,i) => dateOnly(n.date) !== dates[i] || n.roomId !== command.expectedRoomId || n.roomTypeId !== reservation.roomTypeId)) fail("STAY_AMENDMENT_STALE");
+          if (!remaining.length || command.roomId === command.expectedRoomId) fail("STAY_AMENDMENT_NO_CHANGE", 422);
+          await this.lockRoom(tx, organizationId, propertyId, reservation.roomTypeId, command.roomId);
+          await this.assertRoomMaintenanceClear(tx, organizationId, propertyId, command.roomId, new Date(today + "T00:00:00.000Z"), reservation.checkOut);
+          if (await tx.hotelReservationRoom.findFirst({ where: { organizationId, roomId: command.roomId, date: { in: remaining.map(n => n.date) }, reservationId: { not: reservation.id } } })) fail("Room is already assigned");
+          const moved = await tx.hotelReservationRoom.updateMany({ where: { organizationId, reservationId: reservation.id, roomId: command.expectedRoomId, date: { in: remaining.map(n => n.date) } }, data: { roomId: command.roomId } });
+          if (moved.count !== remaining.length) fail("STAY_AMENDMENT_STALE");
+          stayChangeResult = { roomMove: { fromRoomId: command.expectedRoomId, toRoomId: command.roomId, dates, effectiveDate: today } };
+          reservation = await tx.hotelReservation.update({ where: { id: reservation.id }, data: { version: { increment: 1 } }, include: { nights: true, hold: true } });
+        } else if (command.action === "select-payment-method") {
           if (actor.role !== "CUSTOMER") fail("Guest account required to select a payment method", 403);
           if (reservation.status !== "PENDING_PAYMENT") fail("Only pending reservations can select a payment method");
           if (!reservation.holdId) fail("Reservation hold is unavailable");
@@ -415,12 +442,16 @@ export class HotelOperationalReservationService {
             reservation = await tx.hotelReservation.update({ where: { id: reservation.id }, data: { status: checkingIn ? "CHECKED_IN" : "CHECKED_OUT", ...(checkingIn ? { checkedInAt: now } : { checkedOutAt: now }), version: { increment: 1 } }, include: { nights: true, hold: true } });
           }
         }
-        result = { reservation: this.summary(reservation) };
+        result = { reservation: this.summary(reservation), ...stayChangeResult };
       }
       const durable = json({ ...result, simulated: false, propertyId, action: command.action, actorUserId: actor.userId });
       await tx.hotelInventoryIdempotency.create({ data: { id: randomUUID(), organizationId, operationScope: ACTIONS, idempotencyKey, requestFingerprint: fingerprint, status: "COMPLETED", resultJson: durable, completedAt: now } });
       return durable;
-    }, { maxWait: 10000, timeout: 20000 });
+    }, { maxWait: 10000, timeout: 20000 }).catch(error => {
+      if (stayChange && isMissingHotelMaintenanceTableError(error)) fail(HOTEL_MAINTENANCE_SCHEMA_NOT_READY, 503);
+      if (stayChange && error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2002" || error.code === "P2034")) fail("Room or inventory changed while saving; refresh and choose another room", 409);
+      throw error;
+    });
   }
   private summary(row: { id: string; reference: string; status: string; paymentMethod?: string | null; totalAmount: string | number | bigint; currency: string }) { return { id: row.id, reference: row.reference, status: row.status, paymentMethod: row.paymentMethod ?? null, totalAmount: row.totalAmount.toString(), currency: row.currency, simulated: false }; }
   private async isDamoonDemoProperty(actor: HotelBookingActor, organizationId: string, propertyId: string) {

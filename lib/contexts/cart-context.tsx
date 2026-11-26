@@ -121,7 +121,12 @@ export function CartProvider({ children, slug, locale }: CartProviderProps) {
       if (!response.ok) {
         throw new Error("Failed to fetch cart");
       }
-      const data = await response.json();
+      let data = await response.json();
+      if (response.headers.get("X-Bazarbaaz-Cart-Merge") === "required") {
+        const merged = await fetch(appPath("/api/retail/v1/cart"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ organization: slug, action: "merge" }) });
+        if (!merged.ok) throw new Error("Could not merge guest cart; retry without losing your selections.");
+        data = (await merged.json()).cart;
+      }
       setCart(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch cart");

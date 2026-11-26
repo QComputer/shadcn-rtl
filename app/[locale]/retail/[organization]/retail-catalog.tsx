@@ -54,6 +54,7 @@ function RetailLiveCatalogState({ view, productSlug, storefrontPath, checkoutPat
   const locale = params.locale || "fa";
   const base = appPath(storefrontPath ?? `/${encodeURIComponent(locale)}/retail/${encodeURIComponent(view.identifier)}`);
   const checkoutHref = appPath(checkoutPath ?? `/${encodeURIComponent(locale)}/retail/${encodeURIComponent(view.identifier)}/checkout`);
+  const cartHref = checkoutHref.replace(/\/checkout\/?$/, "/cart");
   const accountHref = appPath(storefrontPath
     ? `${storefrontPath}/profile`
     : `/${encodeURIComponent(locale)}/retail/${encodeURIComponent(view.identifier)}/account`);
@@ -161,7 +162,7 @@ function RetailLiveCatalogState({ view, productSlug, storefrontPath, checkoutPat
         <span className="truncate">{view.name}</span>
       </a>
       {!productSlug && <nav aria-label="ناوبری فروشگاه" className="hidden gap-8 text-sm md:flex"><a href={`${base}#categories`}>دسته‌بندی‌ها</a><a href={`${base}#products`}>محصولات</a><a href={`${base}/discover`}>جست‌وجوی پیشرفته</a></nav>}
-      <div className="flex shrink-0 items-center gap-2">{!view.previewOnly && <><a href={accountHref} className="hidden min-h-11 items-center rounded-full border border-[#d9d5cd] px-4 py-3 text-sm sm:flex">حساب من</a><a href={checkoutHref} className="min-h-11 rounded-full border border-[#d9d5cd] px-3 py-2.5 text-sm sm:px-4 sm:py-3">سبد خرید</a></>}<a href={`${base}#products`} className="hidden min-h-11 items-center rounded-full border border-[#d9d5cd] px-4 py-3 text-sm sm:flex">مشاهده کالاها <span aria-hidden>⌕</span></a></div>
+      <div className="flex shrink-0 items-center gap-2">{!view.previewOnly && <><a href={accountHref} className="hidden min-h-11 items-center rounded-full border border-[#d9d5cd] px-4 py-3 text-sm sm:flex">حساب من</a><a href={cartHref} className="min-h-11 rounded-full border border-[#d9d5cd] px-3 py-2.5 text-sm sm:px-4 sm:py-3">سبد خرید</a></>}<a href={`${base}#products`} className="hidden min-h-11 items-center rounded-full border border-[#d9d5cd] px-4 py-3 text-sm sm:flex">مشاهده کالاها <span aria-hidden>⌕</span></a></div>
     </header>
     <section aria-label="دسترسی و نصب فروشگاه" className="mx-auto flex max-w-7xl flex-col gap-3 px-4 pb-4 md:flex-row md:items-center md:justify-between md:px-10">
       <div className="flex items-start gap-3 rounded-2xl border border-[#e2dfd8] bg-white/80 p-4">
@@ -200,7 +201,7 @@ function RetailLiveCatalogState({ view, productSlug, storefrontPath, checkoutPat
     <nav aria-label="پیمایش موبایل فروشگاه" className={`fixed inset-x-0 bottom-0 z-40 grid ${view.previewOnly ? "grid-cols-2" : "grid-cols-4"} border-t border-[#e2dfd8] bg-[#fffefa]/95 px-2 pt-2 shadow-[0_-6px_24px_rgba(36,36,31,.08)] backdrop-blur md:hidden`} style={{ paddingBottom: "max(.5rem, env(safe-area-inset-bottom))" }}>
       <a href={base} className="flex min-h-12 flex-col items-center justify-center gap-1 text-[10px] text-[#4c4a43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#9b7653]"><Home className="h-4 w-4" /><span>فروشگاه</span></a>
       <a href={`${base}#categories`} className="flex min-h-12 flex-col items-center justify-center gap-1 text-[10px] text-[#4c4a43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#9b7653]"><LayoutGrid className="h-4 w-4" /><span>دسته‌ها</span></a>
-      {!view.previewOnly && <a href={checkoutHref} className="flex min-h-12 flex-col items-center justify-center gap-1 text-[10px] text-[#4c4a43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#9b7653]"><ShoppingBag className="h-4 w-4" /><span>سبد</span></a>}
+      {!view.previewOnly && <a href={cartHref} className="flex min-h-12 flex-col items-center justify-center gap-1 text-[10px] text-[#4c4a43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#9b7653]"><ShoppingBag className="h-4 w-4" /><span>سبد</span></a>}
       {!view.previewOnly && <a href={accountHref} className="flex min-h-12 flex-col items-center justify-center gap-1 text-[10px] text-[#4c4a43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#9b7653]"><UserRound className="h-4 w-4" /><span>حساب</span></a>}
     </nav></>}
   </main>;

@@ -125,7 +125,8 @@ function normalizeCart(cart: NormalizedCartSource | null) {
   });
 
   return {
-    ...cart,
+    id: cart.id, status: cart.status, organizationSlug: cart.organizationSlug, customerId: cart.customerId,
+    expiresAt: cart.expiresAt, createdAt: cart.createdAt, updatedAt: cart.updatedAt,
     items,
     subtotal: subtotal.toNumber(),
     itemCount: items.reduce((sum: number, item: { quantity: number }) => sum + item.quantity, 0),
@@ -136,7 +137,7 @@ export class CartService {
   async _getCartBySession(organizationSlug: string, sessionId: string) {
     const cart = await prisma.shopCart.findUnique({
       where: {
-        organizationSlug_sessionId: { organizationSlug, sessionId },
+        organizationSlug_sessionId: { organizationSlug, sessionId }, customerId: null,
       },
       include: cartInclude,
     });
@@ -177,7 +178,7 @@ export class CartService {
 
     const cart = await prisma.shopCart.upsert({
       where: {
-        organizationSlug_sessionId: { organizationSlug, sessionId },
+        organizationSlug_sessionId: { organizationSlug, sessionId }, customerId: null,
       },
       update: {
         status: "ACTIVE",
@@ -202,17 +203,6 @@ export class CartService {
       throw new Error("customerId or sessionId is required to get a shop cart");
     }
 
-    if (customerId && sessionId) {
-      const guestCart = await prisma.shopCart.findUnique({
-        where: { organizationSlug_sessionId: { organizationSlug, sessionId } },
-        include: { items: true },
-      });
-
-      if (guestCart?.items.length) {
-        return this.mergeToUserCart(organizationSlug, customerId, sessionId);
-      }
-    }
-
     const cart = customerId
       ? await prisma.shopCart.findUnique({
           where: {
@@ -223,7 +213,7 @@ export class CartService {
       : sessionId
         ? await prisma.shopCart.findUnique({
             where: {
-              organizationSlug_sessionId: { organizationSlug, sessionId },
+              organizationSlug_sessionId: { organizationSlug, sessionId }, customerId: null,
             },
             include: cartInclude,
           })
@@ -431,7 +421,7 @@ export class CartService {
       : sessionId
         ? await prisma.shopCart.findUnique({
             where: {
-              organizationSlug_sessionId: { organizationSlug, sessionId },
+              organizationSlug_sessionId: { organizationSlug, sessionId }, customerId: null,
             },
           })
         : null;
@@ -513,100 +503,43 @@ export class CartService {
     userId: string,
     sessionId: string,
   ) {
-    const guestCart = await prisma.shopCart.findUnique({
-      where: { organizationSlug_sessionId: { organizationSlug, sessionId } },
-      include: {
-        items: true,
-      },
-    });
-
-    const userCart = await this._getOrCreateCart(organizationSlug, userId, null);
-
-    if (!userCart) {
-      throw new Error("Unable to create user cart");
-    }
-
-    if (guestCart?.items?.length) {
-      for (const item of guestCart.items) {
-        const variant = await prisma.productVariant.findFirst({
-          where: {
-            id: item.variantId,
-            deletedAt: null,
-            manuallyUnavailable: false,
-            product: {
-              deletedAt: null,
-              isActive: true,
-              organization: {
-                slug: organizationSlug,
-                isActive: true,
-              },
-            },
-          },
-          include: {
-            product: {
-              include: {
-                organization: {
-                  select: {
-                    capabilities: { select: { key: true, status: true } },
-                  },
-                },
-              },
-            },
-          },
-        });
-
-        if (!variant) {
-          continue;
-        }
-
-        if (!activePublicBusinessCapabilities(variant.product.organization.capabilities).includes("SHOP")) {
-          continue;
-        }
-
-        const existingItem = await prisma.shopCartItem.findFirst({
-          where: {
-            cartId: userCart.id,
-            variantId: item.variantId,
-          },
-        });
-
-        const mergedQuantity = (existingItem?.quantity ?? 0) + item.quantity;
-        const quantity =
-          variant.product.trackInventory && !variant.allowBackOrder
-            ? Math.min(mergedQuantity, Math.max(variant.inventory - variant.reservedQuantity, 0))
-            : mergedQuantity;
-
-        if (quantity <= 0) {
-          continue;
-        }
-
-        if (existingItem) {
-          await prisma.shopCartItem.update({
-            where: { id: existingItem.id },
-            data: { quantity },
+    // Cart merge is an explicit same-origin mutation at the API boundary.
+    // Serializable retry makes two merges of the same guest cart idempotent.
+    // Transfer every owned line, including currently unavailable items: checkout
+    // must revalidate stock and price. Never silently discard a guest selection.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await prisma.$transaction(async tx => {
+          const guestCart = await tx.shopCart.findUnique({
+            where: { organizationSlug_sessionId: { organizationSlug, sessionId } },
+            include: { items: { include: { variant: { include: { product: { select: { organizationSlug: true, organizationId: true, category: { select: { organizationId: true } } } } } } } } },
           });
-        } else {
-          await prisma.shopCartItem.create({
-            data: {
-              cartId: userCart.id,
-              variantId: item.variantId,
-              quantity,
-            },
+          if (!guestCart || !guestCart.items.length) return;
+          if (guestCart.customerId || guestCart.items.some(line => line.variant.product.organizationSlug !== organizationSlug || line.variant.product.category.organizationId !== line.variant.product.organizationId)) {
+            throw new ApiError(404, "Cart contains an unavailable item.");
+          }
+          const userCart = await tx.shopCart.upsert({
+            where: { organizationSlug_customerId: { organizationSlug, customerId: userId } },
+            update: { status: "ACTIVE" }, create: { organizationSlug, customerId: userId, status: "ACTIVE" },
           });
-        }
+          for (const line of guestCart.items) {
+            const existing = await tx.shopCartItem.findFirst({ where: { cartId: userCart.id, variantId: line.variantId }, orderBy: { id: "asc" } });
+            if (existing) {
+              await tx.shopCartItem.update({ where: { id: existing.id }, data: { quantity: { increment: line.quantity } } });
+              await tx.shopCartItem.delete({ where: { id: line.id } });
+            } else {
+              await tx.shopCartItem.create({ data: { cartId: userCart.id, variantId: line.variantId, quantity: line.quantity } });
+              await tx.shopCartItem.delete({ where: { id: line.id } });
+            }
+          }
+          await tx.shopCart.delete({ where: { id: guestCart.id } });
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+        return this.getCart(organizationSlug, userId, null);
+      } catch (error) {
+        if (!(error instanceof Prisma.PrismaClientKnownRequestError) || !["P2034", "P2002"].includes(error.code) || attempt === 2) throw error;
       }
-
-      await prisma.shopCart.delete({
-        where: { id: guestCart.id },
-      });
     }
-
-    const mergedCart = await prisma.shopCart.findUnique({
-      where: { id: userCart.id },
-      include: cartInclude,
-    });
-
-    return normalizeCart(mergedCart);
+    throw new ApiError(409, "Cart merge could not be completed. Retry safely.");
   }
 
   async cleanupExpiredCarts() {

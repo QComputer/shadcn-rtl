@@ -291,8 +291,12 @@ test("authenticated Damoon guest lifecycle reaches reception check-out with tena
     await login(guestPage, guestOrigin, fixture.username, fixture.password, guestCallback);
     await expect(guestPage.locator("section[aria-label='رزروهای هتل']")).toBeVisible();
 
-    const checkIn = daysFromNow(3);
-    const checkOut = daysFromNow(4);
+    const parts = new Intl.DateTimeFormat("en-US-u-ca-gregory-nu-latn", { timeZone: "Asia/Tehran", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+    const part = type => parts.find(value => value.type === type)?.value;
+    const checkIn = `${part("year")}-${part("month")}-${part("day")}`;
+    const followingDay = new Date(`${checkIn}T00:00:00Z`);
+    followingDay.setUTCDate(followingDay.getUTCDate() + 1);
+    const checkOut = followingDay.toISOString().slice(0,10);
     const quote = await api(guestPage, reservationsPath(organizationId, propertyId), { method: "POST", key: key("quote"), body: {
       action: "quote", roomTypeId: fixture.roomTypeId, ratePlanId: fixture.ratePlanId, checkIn, checkOut, adults: 1, childAges: [],
     } });
@@ -342,7 +346,7 @@ test("authenticated Damoon guest lifecycle reaches reception check-out with tena
     expect(assigned.status, JSON.stringify(assigned.body)).toBe(200);
     expect(assigned.body.reservation?.status).toBe("CONFIRMED");
 
-    const checkedIn = await api(staffPage, reservationsPath(organizationId, propertyId), { method: "POST", key: key("check-in"), body: { action: "check-in", reservationId: reservation.id } });
+    const checkedIn = await api(staffPage, reservationsPath(organizationId, propertyId), { method: "POST", key: key("check-in"), body: { action: "check-in", reservationId: reservation.id, allowEarlyArrival: true } });
     expect(checkedIn.status, JSON.stringify(checkedIn.body)).toBe(200);
     expect(checkedIn.body.reservation?.status).toBe("CHECKED_IN");
 

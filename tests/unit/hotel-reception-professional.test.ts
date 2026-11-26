@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { canMarkManualNoShow, matchesReceptionSearch, normalizeReceptionSearch, projectReceptionHistory } from "../../lib/hotel/domain/reception-professional";
+import { canMarkManualNoShow, matchesReceptionSearch, normalizeReceptionSearch, projectReceptionHistory, receptionClock, receptionArrivalTiming, receptionDepartureTiming, earlyDepartureBoundary, currentReceptionRoom } from "../../lib/hotel/domain/reception-professional";
 
 const due = { status: "CONFIRMED", checkIn: "2026-11-25", today: "2026-11-26", checkedInAt: null };
 test("no-show requires a prior arrival day, confirmed state and no actual arrival", () => {
@@ -42,4 +42,30 @@ test("Jalali reception calendar keeps canonical Gregorian dates across Nowruz an
   const days = jalaliMonthGrid(first, "2025-03-21", "2025-03-23");
   assert.equal(days.length, 42);
   assert.deepEqual(days.filter(day => !day.disabled).map(day => day.iso), ["2025-03-21", "2025-03-22", "2025-03-23"]);
+});
+
+
+test("arrival uses property-local civil day and scheduled hour, not runner time", () => {
+  const clock = receptionClock("Asia/Tehran", new Date("2026-11-25T21:00:00Z"));
+  assert.deepEqual(clock, { today: "2026-11-26", localTime: "00:30" });
+  assert.equal(receptionArrivalTiming("2026-11-26", "2026-11-29", clock.today, clock.localTime, "14:00"), "EARLY");
+  assert.equal(receptionArrivalTiming("2026-11-27", "2026-11-29", clock.today, clock.localTime, "14:00"), "BEFORE_STAY");
+  assert.equal(receptionArrivalTiming("2026-11-24", "2026-11-29", clock.today, clock.localTime, "14:00"), "LATE_ARRIVAL");
+  assert.equal(receptionArrivalTiming("2026-11-24", "2026-11-26", clock.today, clock.localTime, "14:00"), "STAY_ENDED");
+  assert.equal(receptionArrivalTiming("2026-11-26", "2026-11-29", clock.today, "14:00", "14:00"), "ON_DAY");
+});
+test("early departure retains today, releases only future nights and distinguishes late checkout", () => {
+  assert.equal(earlyDepartureBoundary("2026-12-31", "2027-01-04"), "2027-01-01");
+  assert.equal(earlyDepartureBoundary("2026-12-31", "2027-01-01"), null);
+  assert.equal(earlyDepartureBoundary("2027-01-02", "2027-01-01"), null);
+  assert.equal(receptionDepartureTiming("2027-01-01", "2026-12-31", "23:00", "11:00"), "EARLY");
+  assert.equal(receptionDepartureTiming("2027-01-01", "2027-01-01", "10:59", "11:00"), "EARLY");
+  assert.equal(receptionDepartureTiming("2027-01-01", "2027-01-01", "11:00", "11:00"), "ON_DAY");
+  assert.equal(receptionDepartureTiming("2027-01-01", "2027-01-01", "11:01", "11:00"), "LATE_DEPARTURE");
+});
+test("overdue guest keeps the most recent room, without using future room assignment", () => {
+  const nights = [{ date: "2026-11-27", roomId: "B" }, { date: new Date("2026-11-25T00:00Z"), roomId: "A" }];
+  assert.equal(currentReceptionRoom(nights, "2026-11-24"), null);
+  assert.equal(currentReceptionRoom(nights, "2026-11-26"), "A");
+  assert.equal(currentReceptionRoom(nights, "2026-11-29"), "B");
 });

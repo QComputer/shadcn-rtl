@@ -377,7 +377,7 @@ test("Damoon DEMO_BOOKING completes simulated payment and is visible in authoriz
     assert.equal((await prisma.hotelInventory.findUniqueOrThrow({ where: { id: addedInventory.id } })).booked, addedInventory.booked + 1, "amendment retry must not duplicate inventory");
     const staleExtend = await changeAction(extendCommand);
     assert.equal(staleExtend.status(), 409, "stale preview rejected");
-    const checkInAction = await managerPage.request.post(reservationApi.href, { headers: { Origin: appOrigin, "Content-Type": "application/json", "Idempotency-Key": randomUUID() }, data: { action: "check-in", reservationId: manualResult.reservationId } });
+    const checkInAction = await managerPage.request.post(reservationApi.href, { headers: { Origin: appOrigin, "Content-Type": "application/json", "Idempotency-Key": randomUUID() }, data: { action: "check-in", reservationId: manualResult.reservationId, allowEarlyArrival: true } });
     assert.equal(checkInAction.status(), 200, await checkInAction.text());
     assert.equal((await checkInAction.json()).reservation.status, "CHECKED_IN");
     const destination = await prisma.hotelRoom.findFirstOrThrow({ where: { organizationId: orgId, propertyId, roomTypeId: demoDouble.roomTypeId, id: { not: demoRoom.id } }, orderBy: { code: "asc" }, select: { id: true } });

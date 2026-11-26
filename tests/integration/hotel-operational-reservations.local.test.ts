@@ -403,11 +403,24 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     assert.equal(assigned.reservation?.id, confirmedOne.id);
     await assert.rejects(() => service.execute(receptionist, a.id, pa.id, { action: "assign-room", reservationId: confirmedTwo.id, roomId: roomOne.id }, `assign-overlap-${token}`), /already assigned/i);
     await service.execute(receptionist, a.id, pa.id, { action: "assign-room", reservationId: confirmedTwo.id, roomId: roomTwo.id }, `assign-room-two-${token}`);
-    const checkedIn = await service.execute(receptionist, a.id, pa.id, { action: "check-in", reservationId: confirmedOne.id }, `check-in-${token}`) as OperationalResult;
+    await assert.rejects(() => service.execute(receptionist, a.id, pa.id, { action: "check-in", reservationId: confirmedOne.id, allowEarlyArrival: true }, `before-stay-${token}`), /RECEPTION_ARRIVAL_OUTSIDE_STAY/);
+    const beforeReceptionClock = clock;
+    clock = new Date(`${stay.checkIn}T12:00:00Z`);
+    await assert.rejects(() => service.execute(receptionist, a.id, pa.id, { action: "check-in", reservationId: confirmedOne.id }, `early-arrival-unconfirmed-${token}`), /RECEPTION_EARLY_ARRIVAL_CONFIRM/);
+    const checkedIn = await service.execute(receptionist, a.id, pa.id, { action: "check-in", reservationId: confirmedOne.id, allowEarlyArrival: true }, `check-in-${token}`) as OperationalResult;
     assert.equal(checkedIn.reservation?.status, "CHECKED_IN");
     await assert.rejects(() => service.execute(guestA, a.id, pa.id, { action: "check-out", reservationId: confirmedOne.id }, `guest-checkout-${token}`), /reception|forbidden/i);
-    const checkedOut = await service.execute(receptionist, a.id, pa.id, { action: "check-out", reservationId: confirmedOne.id }, `check-out-${token}`) as OperationalResult;
+    const beforePaidDeparture = await inventoryForStay();
+    await assert.rejects(() => service.execute(receptionist, a.id, pa.id, { action: "check-out", reservationId: confirmedOne.id }, `early-departure-unconfirmed-${token}`), /RECEPTION_EARLY_DEPARTURE_CONFIRM/);
+    const checkedOut = await service.execute(receptionist, a.id, pa.id, { action: "check-out", reservationId: confirmedOne.id, retainBookedNights: true }, `check-out-${token}`) as OperationalResult;
     assert.equal(checkedOut.reservation?.status, "CHECKED_OUT");
+    const paidDeparture = await db.hotelReservation.findUniqueOrThrow({ where: { id: confirmedOne.id } });
+    assert.equal(paidDeparture.totalAmount, confirmedOne.totalAmount);
+    assert.equal(paidDeparture.paidAmount, confirmedOne.paidAmount);
+    assert.deepEqual((await inventoryForStay()).map(row => row.booked), beforePaidDeparture.map(row => row.booked));
+    assert.equal(paidDeparture.checkedInAt?.toISOString(), clock.toISOString());
+    assert.equal(paidDeparture.checkedOutAt?.toISOString(), clock.toISOString());
+    clock = beforeReceptionClock;
 
     const stayRequests = new HotelStayRequestService(db, now);
     await stayRequests.configure(receptionist, a.id, pa.id, { mode: "REQUEST_ONLY" });
@@ -455,10 +468,39 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     const secondManual = await service.createManual(receptionist, a.id, pa.id, { ...manualCommand, source: "PHONE" }, `manual-after-cancel-${token}`) as ManualResult;
     assert.equal(secondManual.status, "CONFIRMED", "cancellation releases the shared inventory claim");
     await service.execute(receptionist, a.id, pa.id, { action: "assign-room", reservationId: secondManual.reservationId, roomId: receptionRooms[3].id }, `manual-reassign-${token}`);
+    clock = new Date(`${stay.checkIn}T15:00:00Z`);
     const manualCheckIn = await service.execute(receptionist, a.id, pa.id, { action: "check-in", reservationId: secondManual.reservationId }, `manual-check-in-${token}`) as OperationalResult;
     assert.equal(manualCheckIn.reservation?.status, "CHECKED_IN");
-    const manualCheckOut = await service.execute(receptionist, a.id, pa.id, { action: "check-out", reservationId: secondManual.reservationId }, `manual-check-out-${token}`) as OperationalResult;
+    const beforeManualDeparture = await inventoryForStay();
+    const preview = await service.execute(receptionist, a.id, pa.id, { action: "preview-amend-stay", reservationId: secondManual.reservationId, checkIn: stay.checkIn, checkOut: "2027-12-11" }, `manual-departure-preview-${token}`) as unknown as { amendment: { total: string; version: number; removed: string[] } };
+    assert.deepEqual(preview.amendment.removed, ["2027-12-11"]);
+    assert.deepEqual((await inventoryForStay()).map(row => row.booked), beforeManualDeparture.map(row => row.booked));
+    const earlyCommand = { action: "check-out", reservationId: secondManual.reservationId, earlyDeparture: { checkOut: "2027-12-11", expectedTotal: preview.amendment.total, expectedVersion: preview.amendment.version } };
+    await assert.rejects(() => service.execute(receptionist, a.id, pa.id, { ...earlyCommand, earlyDeparture: { ...earlyCommand.earlyDeparture, expectedVersion: preview.amendment.version + 1 } }, `manual-departure-stale-${token}`), /STAY_AMENDMENT_STALE/);
+    const manualCheckOut = await service.execute(receptionist, a.id, pa.id, earlyCommand, `manual-check-out-${token}`) as OperationalResult;
     assert.equal(manualCheckOut.reservation?.status, "CHECKED_OUT");
+    const afterManualDeparture = await db.hotelReservation.findUniqueOrThrow({ where: { id: secondManual.reservationId }, include: { nights: true, hold: true } });
+    assert.equal(afterManualDeparture.nights.length, 1);
+    assert.equal(afterManualDeparture.totalAmount.toString(), preview.amendment.total);
+    assert.equal(afterManualDeparture.hold?.checkOut.toISOString().slice(0,10), "2027-12-11");
+    assert.deepEqual((await inventoryForStay()).map(row => row.booked), beforeManualDeparture.map((row,index) => row.booked - (index === 1 ? 1 : 0)));
+    const departureReplay = await service.execute(receptionist, a.id, pa.id, earlyCommand, `manual-check-out-${token}`) as OperationalResult;
+    assert.equal(departureReplay.reservation?.status, "CHECKED_OUT");
+    assert.deepEqual((await inventoryForStay()).map(row => row.booked), beforeManualDeparture.map((row,index) => row.booked - (index === 1 ? 1 : 0)));
+    // Consecutive synthetic reservations in the same physical room: a prior guest
+    // remains in-house beyond the exclusive checkout date. Night uniqueness alone
+    // cannot prevent the second physical check-in.
+    await db.hotelInventory.createMany({ data: ["2027-12-12", "2027-12-13"].map(date => ({ organizationId: a.id, propertyId: pa.id, roomTypeId: roomA.id, date: day(date), allotment: 4 })) });
+    clock = new Date("2027-12-12T15:00:00Z");
+    const overdue = await service.createManual(receptionist, a.id, pa.id, { ...manualCommand, roomId: receptionRooms[3].id, checkIn: "2027-12-12", checkOut: "2027-12-13" }, `overdue-booking-${token}`) as ManualResult;
+    await service.execute(receptionist, a.id, pa.id, { action: "check-in", reservationId: overdue.reservationId }, `overdue-arrival-${token}`);
+    const nextArrival = await service.createManual(receptionist, a.id, pa.id, { ...manualCommand, roomId: receptionRooms[3].id, checkIn: "2027-12-13", checkOut: "2027-12-14" }, `next-booking-${token}`) as ManualResult;
+    clock = new Date("2027-12-13T15:00:00Z");
+    await assert.rejects(() => service.execute(receptionist, a.id, pa.id, { action: "check-in", reservationId: nextArrival.reservationId }, `occupied-arrival-${token}`), /RECEPTION_ROOM_OCCUPIED/);
+    assert.equal((await db.hotelReservation.findUniqueOrThrow({ where: { id: nextArrival.reservationId } })).status, "CONFIRMED");
+    await service.execute(receptionist, a.id, pa.id, { action: "check-out", reservationId: overdue.reservationId }, `overdue-departure-${token}`);
+    const subsequentArrival = await service.execute(receptionist, a.id, pa.id, { action: "check-in", reservationId: nextArrival.reservationId }, `next-arrival-${token}`) as OperationalResult;
+    assert.equal(subsequentArrival.reservation?.status, "CHECKED_IN");
     passed = true;
   } finally {
     process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED = originalOperational;

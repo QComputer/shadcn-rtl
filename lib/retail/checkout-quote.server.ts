@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { requireActiveOrganizationCapability } from "@/lib/organization-capabilities.server";
 import { readFulfillmentDetails } from "@/lib/retail/fulfillment";
 import { type QuoteInput } from "@/lib/retail/checkout.contract";
+import { checkoutCartOwner, checkoutCustomerId, checkoutOwnerKey, requireGuestCheckout, type RetailCheckoutOwner } from "@/lib/retail/checkout-owner.server";
 
 const money = (value: Prisma.Decimal | number | string) => new Prisma.Decimal(value);
 const code = (value: string) => value.trim().toUpperCase();
@@ -20,20 +21,24 @@ const unitPrice = (product: { basePrice: Prisma.Decimal; discountType: string | 
   return list;
 };
 
-export async function createRetailCheckoutQuote(customerId: string, input: QuoteInput) {
+export async function createRetailCheckoutQuote(owner: RetailCheckoutOwner, input: QuoteInput) {
+  requireGuestCheckout(owner, input);
+  const customerId = checkoutCustomerId(owner);
   const organization = await prisma.organization.findFirst({ where: { slug: input.organization, isActive: true, deletedAt: null, isPlatformOwner: false },
     select: { id: true, slug: true, branding: { select: { retailPreviewOnly: true } } } });
   if (!organization || organization.branding?.retailPreviewOnly) throw new ApiError(404, "Storefront is unavailable.");
   await requireActiveOrganizationCapability({ organizationId: organization.id, capability: "SHOP" });
-  const user = await prisma.user.findUnique({ where: { id: customerId }, select: { firstName: true, lastName: true, name: true, phone: true, address: true } });
-  const result = await quoteInTransaction(prisma, organization, customerId, input);
+  const user = customerId ? await prisma.user.findUnique({ where: { id: customerId }, select: { firstName: true, lastName: true, name: true, phone: true, address: true } }) : null;
+  const result = await quoteInTransaction(prisma, organization, owner, input);
   return { quote: { ...result.quote, customer: { name: [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.name || null, mobile: user?.phone ?? null, address: user?.address ?? null } } };
 }
 
 /** Re-evaluates customer/cart/pricing facts without writing coupon, cart, or inventory state. */
-export async function quoteInTransaction(tx: Tx, organization: { id: string; slug: string }, customerId: string, input: QuoteInput) {
-  const cart = await tx.shopCart.findUnique({
-    where: { organizationSlug_customerId: { organizationSlug: organization.slug, customerId } },
+export async function quoteInTransaction(tx: Tx, organization: { id: string; slug: string }, owner: RetailCheckoutOwner, input: QuoteInput) {
+  requireGuestCheckout(owner, input);
+  const customerId = checkoutCustomerId(owner);
+  const cart = await tx.shopCart.findFirst({
+    where: checkoutCartOwner(owner, organization.slug),
     include: { items: { include: { variant: { include: {
       product: true, optionValues: { include: { definition: true } },
     } } } } },
@@ -70,7 +75,7 @@ export async function quoteInTransaction(tx: Tx, organization: { id: string; slu
         ? "Delivery fee is unavailable."
         : !deliveryFee.isFinite() || deliveryFee.lt(0) ? "Delivery fee is unavailable." : null;
   let discount = money(0); let couponIssue: string | null = null; let couponFacts: unknown = null;
-  if (input.couponCode) {
+  if (input.couponCode && customerId) {
     const coupon = await tx.coupon.findUnique({ where: { organizationId_code: { organizationId: organization.id, code: code(input.couponCode) } } });
     if (!coupon) couponIssue = "Discount code was not found.";
     else {
@@ -87,7 +92,7 @@ export async function quoteInTransaction(tx: Tx, organization: { id: string; slu
   }
   const total = Prisma.Decimal.max(0, subtotal.add(deliveryFee).sub(discount));
   const issues = [...(hasUnorderable ? ["Cart contains unavailable or insufficient-stock items."] : []), ...(couponIssue ? [couponIssue] : []), ...(fulfillmentIssue ? [fulfillmentIssue] : [])];
-  const factsHash = createHash("sha256").update(JSON.stringify([organization.id, customerId, input.type, input.deliveryAddress ?? null, input.recipientName ?? null, input.recipientMobile ?? null, input.deliveryNotes ?? null, input.paymentMethod ?? null, input.cashMode ?? null, facts, subtotal.toString(), discount.toString(), deliveryFee.toString(), total.toString(), couponFacts, settings?.enablePickup ?? true, settings?.enableDelivery ?? true, fulfillmentInfo])).digest("base64url");
+  const factsHash = createHash("sha256").update(JSON.stringify([organization.id, checkoutOwnerKey(owner, organization.slug), input.type, input.deliveryAddress ?? null, input.recipientName ?? null, input.recipientMobile ?? null, input.deliveryNotes ?? null, input.paymentMethod ?? null, input.cashMode ?? null, facts, subtotal.toString(), discount.toString(), deliveryFee.toString(), total.toString(), couponFacts, settings?.enablePickup ?? true, settings?.enableDelivery ?? true, fulfillmentInfo])).digest("base64url");
   return { quote: { reviewToken: factsHash, subtotal: subtotal.toNumber(), discount: discount.toNumber(), deliveryFee: deliveryFee.toNumber(), total: total.toNumber(), currency: "TOMAN" as const,
     items, fulfillmentInfo, fulfillment: [ ...(settings?.enablePickup === false ? [] : [{ type: "PICK_UP" as const, label: "Customer pickup", fee: 0 }]), ...(settings?.enableDelivery === false || !deliveryFeeConfigured || !deliveryFee.isFinite() || deliveryFee.lt(0) ? [] : [{ type: "DELIVERY" as const, label: "Delivery", fee: money(settings!.deliveryFee!).toNumber() }]) ], issues } };
 }

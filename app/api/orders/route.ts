@@ -112,6 +112,9 @@ export async function POST(request: NextRequest) {
     }
 
     const sessionId = getSessionId(request);
+    if (!/^(?:appointment-)?[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)) {
+      return NextResponse.json({ error: "Guest session is invalid" }, { status: 400 });
+    }
     order = await orderService.createForGuest(data, sessionId);
     const response = NextResponse.json(order, { status: 201 });
     return setGuestSessionCookie(request, sessionId, response);

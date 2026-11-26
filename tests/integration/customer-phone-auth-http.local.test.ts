@@ -44,7 +44,7 @@ function isolatedServerEnv() {
     LOCAL_PRISMA_EXPECTED_PORT: "55439", RETAIL_HERO_EXPECTED_DATABASE: "retail_hero_test", DATABASE_RUNTIME_ADAPTER: "postgresql",
     NODE_ENV: "development", NEXT_TELEMETRY_DISABLED: "1", NEXTAUTH_URL: baseUrl, NEXTAUTH_URL_INTERNAL: baseUrl,
     NEXTAUTH_SECRET: secret, AUTH_TRUST_HOST: "true", NEXT_PUBLIC_APP_URL: baseUrl, NEXT_PUBLIC_DEPLOYED_APP_URL: baseUrl,
-    BAZAR_BAZ_PLATFORM_HOSTS: "localhost,127.0.0.1", CUSTOMER_PHONE_AUTH_ENABLED: "1",
+    BAZAR_BAZ_PLATFORM_HOSTS: "localhost,127.0.0.1", CUSTOMER_PHONE_AUTH_ENABLED: "1", RETAIL_GUEST_CHECKOUT_ENABLED: "1",
     SMS_PROVIDER: "DRY_RUN", SMS_DRY_RUN: "true", SMS_REAL_SEND_ENABLED: "false", SMS_GUEST_REAL_SEND_ENABLED: "false",
     EMAIL_PROVIDER: "DRY_RUN", EMAIL_REAL_SEND_ENABLED: "false", CUSTOM_DOMAIN_PROVIDER_ENABLED: "false",
     CUSTOM_DOMAIN_REAL_MUTATION_ENABLED: "false", VERCEL_DOMAIN_AUTOMATION_DRY_RUN: "true", RUNFLARE_DOMAIN_AUTOMATION_DRY_RUN: "true",
@@ -115,6 +115,18 @@ after(async () => {
     if (server && server.exitCode === null) { server.kill(); await Promise.race([new Promise<void>((resolve) => server?.once("exit", () => resolve())), delay(10_000)]); }
     const identities = await db.customerPhoneIdentity.findMany({ where: { phone: { in: [...ownedPhones] } }, select: { userId: true } });
     for (const identity of identities) ownedUserIds.add(identity.userId);
+    const retailOrders = await db.order.findMany({ where: { organizationSlug: prefix }, select: { id: true, guestCustomerId: true } });
+    const retailOrderIds = retailOrders.map(o => o.id);
+    await db.retailPaymentReport.deleteMany({ where: { orderId: { in: retailOrderIds } } });
+    await db.paymentEvent.deleteMany({ where: { orderId: { in: retailOrderIds } } });
+    await db.orderStatusHistory.deleteMany({ where: { orderId: { in: retailOrderIds } } });
+    await db.inventoryMovement.deleteMany({ where: { orderId: { in: retailOrderIds } } });
+    await db.payment.deleteMany({ where: { orderId: { in: retailOrderIds } } });
+    await db.orderItem.deleteMany({ where: { orderId: { in: retailOrderIds } } });
+    await db.order.deleteMany({ where: { id: { in: retailOrderIds } } });
+    await db.guestCustomer.deleteMany({ where: { id: { in: retailOrders.flatMap(o => o.guestCustomerId ? [o.guestCustomerId] : []) } } });
+    await db.paymentSettings.deleteMany({ where: { organizationSlug: prefix } });
+    await db.organizationSettings.deleteMany({ where: { organizationSlug: prefix } });
     await db.shopCart.deleteMany({ where: { organizationSlug: prefix } });
     await db.product.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
     await db.productCategory.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
@@ -296,6 +308,77 @@ describe("customer phone auth through isolated local HTTP", { concurrency: false
     assert.equal((await request(path, { headers: { cookie: guest } }).then(r => r.json())).cart, null);
     const final = await mutate("DELETE", { organization: prefix, itemId: mergedItem.id }, accountCookie);
     assert.equal(final.status, 200);
+  });
+
+  it("guest checkout binds reviewed order, recovery and bank report to the same tenant browser without an account", async () => {
+    const users = await db.user.count(), memberships = await db.customerClubMembership.count();
+    await db.organizationSettings.create({ data: { organizationSlug: prefix, enablePickup: true, enableDelivery: true, deliveryFee: 500 } });
+    await db.paymentSettings.create({ data: { organizationSlug: prefix, settings: { retailR4: {
+      bankTransferEnabled: true, cashEnabled: true, inotiUssdEnabled: false, bankCardNumber: "6037990000000000", bankAccountOwner: "Synthetic", cashModes: ["COUNTER", "PICKUP", "COURIER"], cashBeforeConfirmation: false } } } });
+    const category = await db.productCategory.create({ data: { name: "Guest checkout fixture", organizationId: organization.id, organizationSlug: prefix } });
+    const product = await db.product.create({ data: { name: "Guest checkout item", basePrice: 15000, organizationId: organization.id, organizationSlug: prefix, categoryId: category.id, trackInventory: true } });
+    const variant = await db.productVariant.create({ data: { productId: product.id, name: "Guest fixture", inventory: 10 } });
+    const cartPath = `/api/retail/v1/cart?organization=${encodeURIComponent(prefix)}`;
+    const init = await request(cartPath), other = await request(cartPath);
+    const guest = cookiesFrom(init).find(c => c.startsWith("guest_session_id="))!, foreign = cookiesFrom(other).find(c => c.startsWith("guest_session_id="))!;
+    assert.ok(guest && foreign && guest !== foreign);
+    const post = (path: string, body: unknown, cookie = guest, origin = tenantUrl) => request(path, { method: "POST", headers: { cookie, origin, "content-type": "application/json" }, body: JSON.stringify(body) });
+    const get = (path: string, cookie = guest) => request(path, { headers: { cookie } });
+    assert.equal((await post("/api/retail/v1/cart", { organization: prefix, variantId: variant.id, quantity: 2 })).status, 201);
+    const quotePath = "/api/retail/v1/checkout/quote", checkoutPath = "/api/retail/v1/checkout";
+    const data = { organization: prefix, type: "PICK_UP", recipientName: "Synthetic Guest", recipientMobile: "09120000000", paymentMethod: "BANK_TRANSFER" };
+    const quoteResponse = await post(quotePath, data);
+    assert.equal(quoteResponse.status, 200); const { quote } = await quoteResponse.json();
+    assert.equal(quote.total, 30000); assert.equal(quote.customer.name, null);
+    const key = randomUUID(), body = { ...data, idempotencyKey: key, reviewToken: quote.reviewToken };
+    assert.equal((await post(checkoutPath, { ...body, reviewToken: undefined })).status, 400);
+    assert.equal((await post(checkoutPath, { ...body, couponCode: "ACCOUNT" })).status, 409);
+    assert.equal((await post(checkoutPath, { ...body, paymentMethod: "INOTI_USSD" })).status, 409);
+    assert.equal((await post(checkoutPath, body, guest, "https://foreign.example.test")).status, 403);
+    assert.equal((await post(checkoutPath, { ...body, recipientName: "Changed name" })).status, 409);
+    const [a, b] = await Promise.all([post(checkoutPath, body), post(checkoutPath, body)]);
+    assert.equal(a.status, 201); assert.equal(b.status, 201);
+    const first = await a.json(), second = await b.json(); assert.equal(first.orderNumber, second.orderNumber);
+    assert.equal(first.paymentStatus, "PENDING");
+    const saved = await db.order.findUniqueOrThrow({ where: { orderNumber: first.orderNumber }, include: { guestCustomer: true, payment: true } });
+    assert.equal(saved.customerId, null); assert.ok(saved.guestCustomerId); assert.equal(saved.guestCustomer?.name, data.recipientName);
+    assert.ok(!saved.guestCustomer?.sessionId.includes(guest.split("=")[1]!), "raw cookie must not be persisted as order ownership");
+    assert.equal(saved.payment?.status, "PENDING"); assert.equal((await db.productVariant.findUniqueOrThrow({ where: { id: variant.id } })).inventory, 8);
+    assert.equal(await db.order.count({ where: { retailCheckoutKey: key } }), 1);
+    const orderPath = `/api/retail/v1/orders/${first.orderNumber}?organization=${encodeURIComponent(prefix)}`;
+    const recovery = `${checkoutPath}?organization=${encodeURIComponent(prefix)}&idempotencyKey=${key}`;
+    const listPath = `/api/retail/v1/orders?organization=${encodeURIComponent(prefix)}`;
+    assert.equal((await get(orderPath)).status, 200); assert.equal((await get(recovery)).status, 200);
+    assert.equal((await get(orderPath, foreign)).status, 404); assert.equal((await get(recovery, foreign)).status, 404);
+    assert.equal((await get(orderPath, "")).status, 404);
+    const forgedCookie = `guest_session_id=${saved.guestCustomer!.sessionId}`;
+    assert.equal((await get(orderPath, forgedCookie)).status, 404);
+    assert.equal((await get(`/api/public/orders/${first.orderNumber}`, forgedCookie)).status, 403);
+    assert.equal((await get(orderPath.replace(encodeURIComponent(prefix), `not-${prefix}`))).status, 404);
+    assert.equal((await get(listPath).then(r => r.json())).orders.length, 1);
+    assert.equal((await get(listPath, foreign).then(r => r.json())).orders.length, 0);
+    const bankPath = `/api/retail/v1/orders/${first.orderNumber}/bank-report?organization=${encodeURIComponent(prefix)}`;
+    const report = { method: "TIME", reportedAt: new Date().toISOString(), submittedLocalTime: "Synthetic time" };
+    assert.equal((await post(bankPath, report, foreign)).status, 404);
+    assert.equal((await post(bankPath, report)).status, 201);
+    assert.equal((await post(bankPath, report)).status, 409);
+    const paymentReport = await db.retailPaymentReport.findFirstOrThrow({ where: { orderId: saved.id } });
+    assert.equal(paymentReport.submittedById, `guest:${saved.guestCustomerId}`); assert.equal(paymentReport.status, "PENDING_REVIEW");
+    assert.equal((await db.order.findUniqueOrThrow({ where: { id: saved.id } })).paymentStatus, "PENDING");
+    assert.equal(await db.user.count(), users); assert.equal(await db.customerClubMembership.count(), memberships);
+    // A second order using the same browser but cash has an independent contact record.
+    assert.equal((await post("/api/retail/v1/cart", { organization: prefix, variantId: variant.id, quantity: 1 })).status, 201);
+    const cash = { ...data, paymentMethod: "CASH", cashMode: "PICKUP", recipientName: "Second Guest" };
+    const cashQuote = await post(quotePath, cash); assert.equal(cashQuote.status, 200);
+    const cashOrder = await post(checkoutPath, { ...cash, idempotencyKey: randomUUID(), reviewToken: (await cashQuote.json()).quote.reviewToken });
+    assert.equal(cashOrder.status, 201); assert.equal((await cashOrder.json()).paymentStatus, "PENDING");
+    assert.equal((await db.guestCustomer.findUniqueOrThrow({ where: { id: saved.guestCustomerId! } })).name, data.recipientName);
+    // A foreign browser cannot reuse a key to obtain or overwrite the first order.
+    assert.equal((await post("/api/retail/v1/cart", { organization: prefix, variantId: variant.id, quantity: 1 }, foreign)).status, 201);
+    const foreignQuote = await post(quotePath, cash, foreign); assert.equal(foreignQuote.status, 200);
+    assert.equal((await post(checkoutPath, { ...cash, idempotencyKey: key, reviewToken: (await foreignQuote.json()).quote.reviewToken }, foreign)).status, 409);
+    assert.equal(await db.order.count({ where: { retailCheckoutKey: key } }), 1);
+    assert.equal((await db.productVariant.findUniqueOrThrow({ where: { id: variant.id } })).inventory, 7);
   });
 
 });

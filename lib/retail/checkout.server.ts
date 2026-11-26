@@ -9,14 +9,15 @@ import { requireActiveOrganizationCapability } from "@/lib/organization-capabili
 import { requireEnabledRetailPaymentMethod, retailPaymentPolicyInput } from "@/lib/retail/payment-policy.server";
 import { quoteInTransaction, sameReviewToken } from "@/lib/retail/checkout-quote.server";
 import { type CheckoutInput } from "@/lib/retail/checkout.contract";
+import { checkoutCartOwner, checkoutCustomerId, checkoutOrderOwner, guestOrderScope, requireGuestCheckout, type RetailCheckoutOwner } from "@/lib/retail/checkout-owner.server";
 
 const money = (value: Prisma.Decimal | number | string) => new Prisma.Decimal(value);
 const code = (value: string) => value.trim().toUpperCase();
 
 type Tx = Prisma.TransactionClient;
 
-export async function findRetailCheckoutRecovery(customerId: string, organizationSlug: string, idempotencyKey: string) {
-  return prisma.order.findFirst({ where: { retailCheckoutKey: idempotencyKey, organizationSlug, customerId, deletedAt: null },
+export async function findRetailCheckoutRecovery(owner: RetailCheckoutOwner, organizationSlug: string, idempotencyKey: string) {
+  return prisma.order.findFirst({ where: { retailCheckoutKey: idempotencyKey, organizationSlug, ...checkoutOrderOwner(owner, organizationSlug), deletedAt: null },
     select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, paymentMethod: true,
       publicTrackingToken: true, retailPaymentDeadlineAt: true } });
 }
@@ -58,19 +59,24 @@ async function consumeCoupon(tx: Tx, input: {
   return { coupon: current, discount };
 }
 
-export async function createRetailCheckout(customerId: string, input: CheckoutInput) {
+export async function createRetailCheckout(owner: RetailCheckoutOwner, input: CheckoutInput) {
+  const customerId = checkoutCustomerId(owner);
+  requireGuestCheckout(owner, input, true);
   const organization = await prisma.organization.findFirst({
     where: { slug: input.organization, isActive: true, deletedAt: null, isPlatformOwner: false },
     select: { id: true, slug: true, branding: { select: { retailPreviewOnly: true } } },
   });
   if (!organization || organization.branding?.retailPreviewOnly) throw new ApiError(404, "Storefront is unavailable.");
   await requireActiveOrganizationCapability({ organizationId: organization.id, capability: "SHOP" });
-  const existing = await findRetailCheckoutRecovery(customerId, organization.slug, input.idempotencyKey);
+  const existing = await findRetailCheckoutRecovery(owner, organization.slug, input.idempotencyKey);
   if (existing) return existing;
   const paymentPolicy = await requireEnabledRetailPaymentMethod(organization.slug, organization.id, input.paymentMethod);
   if (input.cashMode && !paymentPolicy.cashModes.includes(input.cashMode)) throw new ApiError(409, "Cash collection mode is unavailable.");
 
   const run = async () => prisma.$transaction(async (tx) => {
+    const replay = await tx.order.findFirst({ where: { retailCheckoutKey: input.idempotencyKey, organizationSlug: organization.slug,
+      ...checkoutOrderOwner(owner, organization.slug), deletedAt: null }, select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, paymentMethod: true, publicTrackingToken: true, retailPaymentDeadlineAt: true } });
+    if (replay) return replay;
     const paymentSettings = await tx.paymentSettings.findUnique({
       where: { organizationSlug: organization.slug }, select: { settings: true },
     });
@@ -84,8 +90,8 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
         (input.paymentMethod === "INOTI_USSD" && !activePolicy.data.inotiUssdEnabled)) {
       throw new ApiError(409, "Selected payment method is no longer available.");
     }
-    const cart = await tx.shopCart.findUnique({
-      where: { organizationSlug_customerId: { organizationSlug: organization.slug, customerId } },
+    const cart = await tx.shopCart.findFirst({
+      where: checkoutCartOwner(owner, organization.slug),
       include: { items: { include: { variant: { include: {
         product: true,
         optionValues: { include: { definition: true } },
@@ -106,7 +112,7 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
       AND "deletedAt" IS NULL ORDER BY "id" FOR UPDATE`;
     if (liveVariants.length !== variantIds.length) throw new ApiError(409, "Cart contains an unavailable product.");
     if (input.reviewToken) {
-      const fresh = await quoteInTransaction(tx, organization, customerId, input);
+      const fresh = await quoteInTransaction(tx, organization, owner, input);
       if (!sameReviewToken(fresh.quote.reviewToken, input.reviewToken)) throw new ApiError(409, "Checkout details changed. Review the updated quote before placing the order.");
       if (fresh.quote.issues.length) throw new ApiError(409, fresh.quote.issues[0]);
     }
@@ -152,7 +158,7 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
     if (input.type === "DELIVERY" && settings?.enableDelivery === false) throw new ApiError(409, "Delivery is unavailable.");
     const deliveryFee = input.type === "DELIVERY" && settings?.deliveryFee !== null && settings?.deliveryFee !== undefined ? money(settings.deliveryFee) : money(0);
     if (input.type === "DELIVERY" && (settings?.deliveryFee === null || settings?.deliveryFee === undefined || !deliveryFee.isFinite() || deliveryFee.lt(0))) throw new ApiError(409, "Delivery fee is unavailable.");
-    const applied = input.couponCode ? await consumeCoupon(tx, {
+    const applied = input.couponCode && customerId ? await consumeCoupon(tx, {
       organizationId: organization.id, customerId, couponCode: input.couponCode, subtotal,
     }) : null;
     const discount = applied?.discount ?? money(0);
@@ -167,6 +173,20 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
         ? activePolicy.data.paymentDeadlinesMinutes.cash
         : activePolicy.data.paymentDeadlinesMinutes.inotiUssd;
     const retailPaymentDeadlineAt = new Date(createdAt.getTime() + deadlineMinutes * 60_000);
+    // Guest rows are per order: never overwrite the contact of a previous order.
+    // A server-derived tenant-scoped digest binds history to the browser, not phone/name.
+    let guestCustomerId: string | null = null;
+    if (typeof owner !== "string") {
+      const scope = guestOrderScope(organization.slug, owner.guestSessionId);
+      // A serializable bounded recent-order budget; never count a replay as a new order.
+      const recent = await tx.order.count({ where: { organizationSlug: organization.slug,
+        ...checkoutOrderOwner(owner, organization.slug), retailCheckoutKey: { not: null },
+        createdAt: { gte: new Date(Date.now() - 15 * 60_000) }, deletedAt: null } });
+      if (recent >= 3) throw new ApiError(429, "Too many guest orders. Please contact the store.");
+      const guest = await tx.guestCustomer.create({ data: { sessionId: `${scope}${input.idempotencyKey}`,
+        name: input.recipientName!, phone: input.recipientMobile!.startsWith("0") ? input.recipientMobile! : `0${input.recipientMobile!}`, address: input.deliveryAddress ?? null }, select: { id: true } });
+      guestCustomerId = guest.id;
+    }
     const order = await tx.order.create({
       data: {
         orderNumber: `RET-${Date.now().toString(36).toUpperCase()}-${randomBytes(5).toString("hex").toUpperCase()}`,
@@ -177,7 +197,7 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
         deliveryAddress: input.deliveryAddress ?? null,
         notes: [input.recipientName ? `تحویل‌گیرنده: ${input.recipientName}` : null, input.recipientMobile ? `شماره تماس تحویل‌گیرنده: ${input.recipientMobile}` : null, input.deliveryNotes ? `توضیحات تحویل: ${input.deliveryNotes}` : null].filter(Boolean).join("\n") || null,
         organizationSlug: organization.slug,
-        customerId, paymentMethod: input.paymentMethod as PaymentMethod, paymentStatus: "PENDING",
+        customerId, guestCustomerId, paymentMethod: input.paymentMethod as PaymentMethod, paymentStatus: "PENDING",
         items: { create: items.map((item) => ({ productId: item.productId, variantId: item.variantId,
           quantity: item.quantity, price: item.price, discount: 0,
           productNameSnapshot: item.productNameSnapshot,
@@ -201,7 +221,7 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
         note: "Retail checkout stock reservation",
       } });
     }
-    if (applied) await tx.couponRedemption.create({ data: {
+    if (applied && customerId) await tx.couponRedemption.create({ data: {
       couponId: applied.coupon.id, organizationId: organization.id, customerId, orderId: order.id,
       discountAmount: applied.discount, metadata: { code: applied.coupon.code, source: "RETAIL_CHECKOUT" },
     } });
@@ -223,11 +243,14 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
     try { return await run(); }
     catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-        const previous = await findRetailCheckoutRecovery(customerId, organization.slug, input.idempotencyKey);
+        const previous = await findRetailCheckoutRecovery(owner, organization.slug, input.idempotencyKey);
         if (previous) return previous;
+        throw new ApiError(409, "Checkout request conflicts with an existing order.");
       }
       if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2034" ||
           (error.code === "P2010" && ["40001", "40P01"].includes(String(error.meta?.code))))) {
+        const previous = await findRetailCheckoutRecovery(owner, organization.slug, input.idempotencyKey);
+        if (previous) return previous;
         if (attempt < 2) continue;
         throw new ApiError(409, "Checkout is busy. Please retry.");
       }

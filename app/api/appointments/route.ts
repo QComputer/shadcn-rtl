@@ -111,6 +111,9 @@ export async function POST(request: NextRequest) {
       request.cookies.get(process.env.SESSION_COOKIE_NAME || "guest_session_id_local")?.value ||
       `appointment-${crypto.randomUUID()}`;
 
+    if (!/^(?:appointment-)?[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)) {
+      throw new ApiError(400, "Guest session is invalid");
+    }
     const guestCustomer = await prisma.guestCustomer.upsert({
       where: { sessionId },
       update: {

@@ -4,6 +4,7 @@ import { Prisma, RetailPaymentReportStatus } from "@prisma/client";
 import { z } from "zod";
 import { ApiError } from "@/lib/api-guards";
 import { prisma } from "@/lib/db";
+import { checkoutOrderOwner, type RetailCheckoutOwner } from "@/lib/retail/checkout-owner.server";
 import { getRetailPaymentPolicy } from "@/lib/retail/payment-policy.server";
 import { removeRetailReceipt, storeRetailReceipt } from "@/lib/retail/receipt-storage.server";
 
@@ -13,11 +14,11 @@ export const bankTimeInput = z.object({
   submittedLocalTime: z.string().trim().min(4).max(100),
 }).strict();
 
-async function customerOrder(organizationSlug: string, orderNumber: string, customerId: string) {
+async function customerOrder(organizationSlug: string, orderNumber: string, owner: RetailCheckoutOwner) {
   const order = await prisma.order.findFirst({
-    where: { orderNumber, organizationSlug, customerId, retailCheckoutKey: { not: null },
+    where: { orderNumber, organizationSlug, ...checkoutOrderOwner(owner, organizationSlug), retailCheckoutKey: { not: null },
       deletedAt: null, status: { notIn: ["CANCELLED", "REFUNDED"] } },
-    select: { id: true, organization: { select: { id: true, slug: true } },
+    select: { id: true, customerId: true, guestCustomerId: true, organization: { select: { id: true, slug: true } },
       paymentMethod: true, paymentStatus: true, status: true, retailPaymentDeadlineAt: true },
   });
   if (!order) throw new ApiError(404, "Order not found.");
@@ -25,7 +26,7 @@ async function customerOrder(organizationSlug: string, orderNumber: string, cust
 }
 
 async function submitBankReport(input: {
-  organizationSlug: string; orderNumber: string; customerId: string;
+  organizationSlug: string; orderNumber: string; customerId: RetailCheckoutOwner;
   kind: "BANK_RECEIPT" | "BANK_TIME"; receiptKey?: string; reportedAt?: Date;
   submittedContext?: Prisma.InputJsonValue;
 }) {
@@ -41,13 +42,13 @@ async function submitBankReport(input: {
   return prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${order.id} FOR UPDATE`;
     const current = await tx.order.findFirst({ where: { id: order.id, organization: { id: order.organization.id },
-      customerId: input.customerId, retailCheckoutKey: { not: null }, paymentMethod: "BANK_TRANSFER", paymentStatus: "PENDING",
+      ...checkoutOrderOwner(input.customerId, input.organizationSlug), retailCheckoutKey: { not: null }, paymentMethod: "BANK_TRANSFER", paymentStatus: "PENDING",
       status: { notIn: ["CANCELLED", "REFUNDED"] }, OR: [{ retailPaymentDeadlineAt: null }, { retailPaymentDeadlineAt: { gt: new Date() } }] }, select: { id: true } });
     if (!current) throw new ApiError(409, "This order is no longer accepting a bank transfer report.");
     const pending = await tx.retailPaymentReport.findFirst({ where: { orderId: order.id, status: "PENDING_REVIEW" }, select: { id: true } });
     if (pending) throw new ApiError(409, "A payment report is already awaiting review.");
     return tx.retailPaymentReport.create({ data: {
-      organizationId: order.organization.id, orderId: order.id, submittedById: input.customerId,
+      organizationId: order.organization.id, orderId: order.id, submittedById: order.customerId ?? `guest:${order.guestCustomerId}`,
       kind: input.kind, receiptKey: input.receiptKey ?? null, reportedAt: input.reportedAt ?? null,
       submittedContext: input.submittedContext ?? Prisma.JsonNull,
     }, select: { id: true, kind: true, status: true, createdAt: true } });
@@ -55,7 +56,7 @@ async function submitBankReport(input: {
 }
 
 export async function submitBankTimeReport(input: {
-  organizationSlug: string; orderNumber: string; customerId: string;
+  organizationSlug: string; orderNumber: string; customerId: RetailCheckoutOwner;
   reportedAt: string; submittedLocalTime: string;
 }) {
   const reportedAt = new Date(input.reportedAt);
@@ -66,7 +67,7 @@ export async function submitBankTimeReport(input: {
 }
 
 export async function submitBankReceiptReport(input: {
-  organizationSlug: string; orderNumber: string; customerId: string;
+  organizationSlug: string; orderNumber: string; customerId: RetailCheckoutOwner;
   buffer: Buffer; mimeType: string;
 }) {
   // Check the order before uploading. The second check in submitBankReport also

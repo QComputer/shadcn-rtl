@@ -107,7 +107,7 @@ export async function GET(
 
     const isOwner = Boolean(session?.user?.id && order.customerId === session.user.id);
     const isSameGuestSession = Boolean(
-      order.guestCustomer?.sessionId &&
+      !order.retailCheckoutKey && order.guestCustomer?.sessionId &&
       guestSessionId &&
       order.guestCustomer.sessionId === guestSessionId,
     );

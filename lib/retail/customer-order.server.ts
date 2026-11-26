@@ -1,11 +1,12 @@
 import "server-only";
 import { ApiError } from "@/lib/api-guards";
 import { prisma } from "@/lib/db";
+import { checkoutOrderOwner, type RetailCheckoutOwner } from "@/lib/retail/checkout-owner.server";
 import { customerFulfillment, publicFulfillmentInfoSchema } from "@/lib/retail/fulfillment";
 
 /** Owner-only projection used by the existing Retail confirmation endpoint. */
-export async function getRetailCustomerOrder(customerId: string, organization: string, orderNumber: string) {
-  const order = await prisma.order.findFirst({ where: {orderNumber, organizationSlug: organization, customerId, retailCheckoutKey: {not: null}, deletedAt: null},
+export async function getRetailCustomerOrder(owner: RetailCheckoutOwner, organization: string, orderNumber: string) {
+  const order = await prisma.order.findFirst({ where: {orderNumber, organizationSlug: organization, ...checkoutOrderOwner(owner, organization), retailCheckoutKey: {not: null}, deletedAt: null},
     include: {items: {orderBy: {id: "asc"}}, payment: true, statusHistory: {orderBy: [{createdAt: "asc"},{id: "asc"}], select: {id: true,newStatus: true,note: true,createdAt: true}}} });
   if (!order) throw new ApiError(404,"سفارش پیدا نشد.");
   const metadata=order.payment?.metadata;

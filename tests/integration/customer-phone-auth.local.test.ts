@@ -3,7 +3,7 @@ import { randomInt, randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
 import { PrismaClient, type CustomerAccessLink, type Organization } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { CustomerPhoneAuthError, CustomerPhoneAuthService, validateCustomerPhoneSession } from "../../lib/customer-auth/core.server";
+import { CustomerPhoneAuthError, CustomerPhoneAuthService, validateCustomerPhoneSession, type CustomerVerificationPurpose } from "../../lib/customer-auth/core.server";
 import { customerAuthDigest, decryptCustomerAuthPayload } from "../../lib/customer-auth/crypto";
 import { processCustomerAuthSmsOutbox } from "../../lib/customer-auth/sms-outbox.server";
 
@@ -51,6 +51,25 @@ async function issue(phone: string, organization = organizations[0], issuer = se
   assert.ok(payload.url.startsWith("OTP:"), "outbox must carry an OTP payload");
   assert.match(payload.url.slice(4), /^\d{4}$/, "exactly one four-digit OTP code");
   return { link, otp: payload.url.slice(4), payload };
+}
+
+async function issuePurpose(phone: string, purpose: CustomerVerificationPurpose, organization = organizations[0], issuer = service) {
+  const ip = `2001:db8:${prefix.slice(-4)}::${++requestSequence}`;
+  quotaKeys.add(`ip:${customerAuthDigest(ip, secret)}`);
+  const input = { phone, organizationId: organization.id, origin: origin(organization), ip };
+  const issued = await issuer.requestVerification(input, purpose);
+  assert.equal(issued.accepted, true);
+  const link = await db.customerAccessLink.findUniqueOrThrow({ where: { id: issued.challengeId }, include: { smsOutbox: true } });
+  assert.ok(link.smsOutbox);
+  assert.ok(link.otpCodeHash?.startsWith(`g3:v1:${purpose}:`));
+  const payload = decryptCustomerAuthPayload(link.smsOutbox.encryptedPayload, secret, link.id);
+  assert.match(payload.url, /^OTP:\d{4}$/);
+  return { ...input, challengeId: link.id, otp: payload.url.slice(4), link };
+}
+
+async function assertNoIdentity(phone: string) {
+  assert.equal(await db.customerPhoneIdentity.count({ where: { phone } }), 0);
+  assert.equal(await db.user.count({ where: { OR: [{ name: phone }, { phone }] } }), 0);
 }
 
 async function consumeOtp(phone: string, otp: string, organization = organizations[0], issuer = service) {
@@ -288,5 +307,127 @@ describe("customer phone authentication on explicitly guarded local PostgreSQL",
     const identity = await db.customerPhoneIdentity.findUniqueOrThrow({ where: { phone } });
     ownedUserIds.add(identity.userId);
     assert.equal(await db.customerPhoneSession.count({ where: { userId: identity.userId } }), 1);
+  });
+
+  it("consumes proof-only OTP exactly once under contention without creating any account or session", async () => {
+    const phone = await freshPhone();
+    const input = await issuePurpose(phone, "PHONE_PROOF");
+    const beforeSessions = await db.customerPhoneSession.count({ where: { organizationId: organizations[0].id } });
+    const beforeClub = await db.customerClubMembership.count({ where: { organizationId: organizations[0].id } });
+    const results = await Promise.allSettled(Array.from({ length: 10 }, () => service.verifyPhone(input)));
+    const successes = results.filter(result => result.status === "fulfilled");
+    assert.equal(successes.length, 1);
+    assert.ok(successes[0].status === "fulfilled");
+    assert.equal(successes[0].value.purpose, "PHONE_PROOF");
+    assert.equal(successes[0].value.challengeId, input.challengeId);
+    assert.equal(successes[0].value.phone, phone);
+    assert.ok(results.filter(result => result.status === "rejected").every(result => result.reason instanceof CustomerPhoneAuthError));
+    await assert.rejects(service.verifyPhone(input), CustomerPhoneAuthError);
+    await assertNoIdentity(phone);
+    assert.equal(await db.customerPhoneSession.count({ where: { organizationId: organizations[0].id } }), beforeSessions);
+    assert.equal(await db.customerClubMembership.count({ where: { organizationId: organizations[0].id } }), beforeClub);
+    const link = await db.customerAccessLink.findUniqueOrThrow({ where: { id: input.challengeId } });
+    assert.ok(link.consumedAt && link.otpConsumedAt);
+  });
+
+  it("denies wrong purpose, challenge ID, tenant, origin, and legacy token without spending proof attempts", async () => {
+    const phone = await freshPhone();
+    const input = await issuePurpose(phone, "PHONE_PROOF");
+    await assert.rejects(service.consume(input), CustomerPhoneAuthError);
+    await assert.rejects(service.signInVerified(input), CustomerPhoneAuthError);
+    await assert.rejects(service.enrollVerified({ ...input, enrollmentConfirmed: true }), CustomerPhoneAuthError);
+    await assert.rejects(service.verifyPhone({ ...input, challengeId: randomUUID() }), CustomerPhoneAuthError);
+    await assert.rejects(service.verifyPhone({ ...input, organizationId: organizations[1].id, origin: origin(organizations[1]) }), CustomerPhoneAuthError);
+    await assert.rejects(service.verifyPhone({ ...input, origin: `https://alt-${organizations[0].slug}.example.test` }), CustomerPhoneAuthError);
+    // Inject a known random token digest into the owned fixture, simulating a token leak.
+    const token = randomUUID().replace(/-/g, "") + "a".repeat(11);
+    await db.customerAccessLink.update({ where: { id: input.challengeId }, data: { tokenDigest: customerAuthDigest(token, secret) } });
+    await assert.rejects(service.consume({ token, organizationId: input.organizationId, origin: input.origin }), CustomerPhoneAuthError);
+    const state = await db.customerAccessLink.findUniqueOrThrow({ where: { id: input.challengeId } });
+    assert.equal(state.otpAttempts, 0);
+    assert.equal(state.consumedAt, null);
+    await service.verifyPhone(input);
+    await assertNoIdentity(phone);
+  });
+
+  it("shares cooldown and quota between purposes, invalidates the old purpose and persists failed attempts", async () => {
+    const phone = await freshPhone();
+    let fixedNow = new Date(Math.floor(Date.now() / 900_000) * 900_000 + 10_000);
+    const issuer = new CustomerPhoneAuthService(db, { enabled: true, secret, senderAvailable: () => true, now: () => fixedNow });
+    const first = await issuePurpose(phone, "PHONE_PROOF", organizations[0], issuer);
+    const suppressed = await issuer.requestVerification(first, "ACCOUNT_ENROLL");
+    assert.equal(await db.customerAccessLink.count({ where: { id: suppressed.challengeId } }), 0);
+    fixedNow = new Date(fixedNow.getTime() + 60_000);
+    const replacement = await issuePurpose(phone, "ACCOUNT_ENROLL", organizations[0], issuer);
+    const stale = await db.customerAccessLink.findUniqueOrThrow({ where: { id: first.challengeId } });
+    assert.equal(stale.otpExpiresAt?.getTime(), fixedNow.getTime());
+    await assert.rejects(issuer.verifyPhone(first), CustomerPhoneAuthError);
+    const wrong = replacement.otp === "0000" ? "0001" : "0000";
+    const failures = await Promise.allSettled(Array.from({ length: 5 }, () => issuer.enrollVerified({ ...replacement, otp: wrong, enrollmentConfirmed: true })));
+    assert.ok(failures.every(result => result.status === "rejected" && result.reason instanceof CustomerPhoneAuthError));
+    assert.equal((await db.customerAccessLink.findUniqueOrThrow({ where: { id: replacement.challengeId } })).otpAttempts, 3);
+    await assert.rejects(issuer.enrollVerified({ ...replacement, enrollmentConfirmed: true }), CustomerPhoneAuthError);
+    fixedNow = new Date(fixedNow.getTime() + 60_000);
+    const third = await issuePurpose(phone, "PHONE_PROOF", organizations[0], issuer);
+    fixedNow = new Date(fixedNow.getTime() + 60_000);
+    const capped = await issuer.requestVerification(third, "ACCOUNT_SIGN_IN");
+    assert.equal(await db.customerAccessLink.count({ where: { id: capped.challengeId } }), 0);
+    fixedNow = new Date(fixedNow.getTime() + 60_000);
+    await assert.rejects(issuer.verifyPhone(third), CustomerPhoneAuthError);
+    await assertNoIdentity(phone);
+  });
+
+  it("requires explicit enrollment; sign-in for an unknown phone does not create an account", async () => {
+    const phone = await freshPhone();
+    const unknown = await issuePurpose(phone, "ACCOUNT_SIGN_IN");
+    await assert.rejects(service.signInVerified(unknown), CustomerPhoneAuthError);
+    await assertNoIdentity(phone);
+    const enrollment = await issuePurpose(phone, "ACCOUNT_ENROLL", organizations[1]);
+    await assert.rejects(service.enrollVerified({ ...enrollment, enrollmentConfirmed: false as unknown as true }), CustomerPhoneAuthError);
+    await assertNoIdentity(phone);
+    await assert.rejects(service.signInVerified(enrollment), CustomerPhoneAuthError);
+    const results = await Promise.allSettled(Array.from({ length: 4 }, () => service.enrollVerified({ ...enrollment, enrollmentConfirmed: true })));
+    const successful = results.filter(result => result.status === "fulfilled");
+    assert.equal(successful.length, 1);
+    assert.ok(successful[0].status === "fulfilled");
+    const enrolled = successful[0].value;
+    ownedUserIds.add(enrolled.id);
+    assert.equal(await db.customerPhoneIdentity.count({ where: { phone, userId: enrolled.id } }), 1);
+    assert.equal(await db.customerClubMembership.count({ where: { customerId: enrolled.id } }), 0);
+    assert.equal(await db.organizationMember.count({ where: { userId: enrolled.id } }), 0);
+    assert.equal(await db.customerPhoneSession.count({ where: { userId: enrolled.id } }), 1);
+    assert.equal(await validateCustomerPhoneSession({ sessionId: enrolled.phoneSessionId, userId: enrolled.id, organizationId: organizations[1].id }, db), true);
+    assert.equal(await validateCustomerPhoneSession({ sessionId: enrolled.phoneSessionId, userId: enrolled.id, organizationId: organizations[0].id }, db), false);
+  });
+
+  it("purpose enrollment rejects legacy unverified contact collisions without linking them", async () => {
+    const phone = await freshPhone();
+    const legacy = await db.user.create({ data: { name: `${prefix}-purpose-legacy`, phone: `+98${phone.slice(1)}`, password: "synthetic-legacy-credential", role: "CUSTOMER" } });
+    ownedUserIds.add(legacy.id);
+    const input = await issuePurpose(phone, "ACCOUNT_ENROLL");
+    await assert.rejects(service.enrollVerified({ ...input, enrollmentConfirmed: true }), CustomerPhoneAuthError);
+    assert.equal(await db.customerPhoneIdentity.count({ where: { phone } }), 0);
+    assert.equal(await db.customerPhoneSession.count({ where: { userId: legacy.id } }), 0);
+    assert.equal((await db.user.findUniqueOrThrow({ where: { id: legacy.id } })).phone, `+98${phone.slice(1)}`);
+  });
+
+  it("signs in only an existing verified safe customer; enrollment cannot replace it or bypass restrictions", async () => {
+    const phone = await freshPhone();
+    const enrolled = await service.enrollVerified({ ...await issuePurpose(phone, "ACCOUNT_ENROLL"), enrollmentConfirmed: true });
+    ownedUserIds.add(enrolled.id);
+    const duplicate = await issuePurpose(phone, "ACCOUNT_ENROLL", organizations[1]);
+    await assert.rejects(service.enrollVerified({ ...duplicate, enrollmentConfirmed: true }), CustomerPhoneAuthError);
+    const input = await issuePurpose(phone, "ACCOUNT_SIGN_IN");
+    await db.customerClubMembership.create({ data: { organizationId: organizations[0].id, customerId: enrolled.id, status: "BLOCKED" } });
+    await assert.rejects(service.signInVerified(input), CustomerPhoneAuthError);
+    await db.customerClubMembership.delete({ where: { organizationId_customerId: { organizationId: organizations[0].id, customerId: enrolled.id } } });
+    await db.user.update({ where: { id: enrolled.id }, data: { role: "ADMIN" } });
+    await assert.rejects(service.signInVerified(input), CustomerPhoneAuthError);
+    await db.user.update({ where: { id: enrolled.id }, data: { role: "CUSTOMER" } });
+    const signedIn = await service.signInVerified(input);
+    assert.equal(signedIn.id, enrolled.id);
+    assert.notEqual(signedIn.phoneSessionId, enrolled.phoneSessionId);
+    assert.equal(await db.customerPhoneIdentity.count({ where: { phone } }), 1);
+    assert.equal(await db.customerClubMembership.count({ where: { customerId: enrolled.id } }), 0);
   });
 });

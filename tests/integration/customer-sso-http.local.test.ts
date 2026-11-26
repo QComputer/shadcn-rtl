@@ -180,7 +180,7 @@ describe("cross-domain customer SSO through isolated local HTTP", { concurrency:
     const userId = sourceSession.user?.id;
     assert.ok(userId);
     ownedUserIds.add(userId!);
-    await db.customerClubMembership.create({ data: { organizationId: targetOrg.id, customerId: userId!, source: "PUBLIC_SHOP" } });
+    assert.equal(await db.customerClubMembership.count({ where: { customerId: userId! } }), 0);
 
     for (const source of ["https://attacker.example.test/", `https://${sourceHost}/redirect?next=evil`, `https://user:secret@${sourceHost}`]) {
       const rejected = await request("/api/auth/customer/sso/start", targetHost, targetOrigin, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ source }) });
@@ -235,6 +235,7 @@ describe("cross-domain customer SSO through isolated local HTTP", { concurrency:
     assert.equal(targetSession.user?.id, userId);
     assert.equal(targetSession.user?.role, "CUSTOMER");
     assert.equal(targetSession.user?.organizationId, targetOrg.id);
+    assert.equal(await db.customerClubMembership.count({ where: { customerId: userId! } }), 0, "SSO must not enroll either club");
     assert.equal((await db.customerSsoTicket.findUniqueOrThrow({ where: { id: ticketRow.id } })).consumedAt instanceof Date, true);
     assert.doesNotMatch((targetCallback.headers.getSetCookie?.() ?? []).join(";"), /(?:^|;)\s*Domain=/i);
     const targetPhoneSession = await db.customerPhoneSession.findFirstOrThrow({ where: { userId: userId!, organizationId: targetOrg.id } });

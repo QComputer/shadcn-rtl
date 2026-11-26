@@ -71,12 +71,7 @@ export async function POST(request: NextRequest) {
         },
         select: { id: true, name: true, email: true, role: true, createdAt: true },
       });
-      if (hotelTenant) {
-        await tx.customerClubMembership.create({
-          data: { organizationId: hotelTenant.organizationId, customerId: created.id, status: "ACTIVE", source: "PUBLIC_SHOP" },
-          select: { id: true },
-        });
-      }
+      // An account is not consent to club membership; hotel registration remains host- and gate-scoped.
       return created;
     });
 

@@ -165,8 +165,10 @@ export class CustomerPhoneAuthService {
           user = await tx.user.create({ data: { name: link.phone, phone: link.phone, password: await bcrypt.hash(createCustomerAccessToken(), 12), role: "CUSTOMER", isTeamMember: false } });
           await tx.customerPhoneIdentity.create({ data: { phone: link.phone, userId: user.id, verifiedAt: now } });
         }
-        const membership = await tx.customerClubMembership.upsert({ where: { organizationId_customerId: { organizationId: link.organizationId, customerId: user.id } }, create: { organizationId: link.organizationId, customerId: user.id, source: "PUBLIC_SHOP" }, update: {} });
-        if (membership.status !== "ACTIVE") throw new CustomerPhoneAuthError();
+        // Signing in is not club consent. Absence of membership is valid; existing
+        // explicit non-active restrictions remain fail-closed until a separate access policy exists.
+        const membership = await tx.customerClubMembership.findUnique({ where: { organizationId_customerId: { organizationId: link.organizationId, customerId: user.id } }, select: { status: true } });
+        if (membership && membership.status !== "ACTIVE") throw new CustomerPhoneAuthError();
         const session = await tx.customerPhoneSession.create({ data: { userId: user.id, organizationId: link.organizationId, expiresAt: new Date(now.getTime() + 30 * 86_400_000) } });
         return { id: user.id, name: user.name, password: user.password, locale: user.locale, theme: user.theme, phoneSessionId: session.id, organizationId: link.organizationId };
       }, { maxWait: 5000, timeout: 15_000 });
@@ -184,7 +186,7 @@ export const customerPhoneAuthService = new CustomerPhoneAuthService();
 export async function validateCustomerPhoneSession(input: { sessionId: string; userId: string; organizationId: string }, db?: PrismaClient) {
   try {
     const client = await database(db);
-    return !!await client.customerPhoneSession.findFirst({ where: { id: input.sessionId, userId: input.userId, organizationId: input.organizationId, revokedAt: null, expiresAt: { gt: new Date() }, organization: { isActive: true, deletedAt: null }, user: { ...safeCustomer, customerClubMemberships: { some: { organizationId: input.organizationId, status: "ACTIVE" } } } }, select: { id: true } });
+    return !!await client.customerPhoneSession.findFirst({ where: { id: input.sessionId, userId: input.userId, organizationId: input.organizationId, revokedAt: null, expiresAt: { gt: new Date() }, organization: { isActive: true, deletedAt: null }, user: { ...safeCustomer, customerClubMemberships: { none: { organizationId: input.organizationId, status: { not: "ACTIVE" } } } } }, select: { id: true } });
   } catch { console.warn("CUSTOMER_PHONE_AUTH_SESSION_CHECK_FAILED"); return false; }
 }
 
@@ -198,7 +200,7 @@ export async function createCustomerPasswordSession(userId: string, organization
       const membership = user && organization
         ? await tx.customerClubMembership.findUnique({ where: { organizationId_customerId: { organizationId, customerId: user.id } }, select: { status: true } })
         : null;
-      if (!user || !organization || membership?.status !== "ACTIVE") throw new CustomerPhoneAuthError();
+      if (!user || !organization || (membership && membership.status !== "ACTIVE")) throw new CustomerPhoneAuthError();
       const session = await tx.customerPhoneSession.create({
         data: { userId: user.id, organizationId, expiresAt: new Date(Date.now() + 30 * 86_400_000) },
         select: { id: true },

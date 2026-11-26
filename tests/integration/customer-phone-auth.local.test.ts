@@ -91,7 +91,7 @@ after(async () => {
   try {
     // Only IDs created by this run; never reset, broad prefix-match or touch seeded fixture data.
     // Recover an owned identity if a test was interrupted immediately after a successful DB commit.
-    const committedIdentities = await db.customerPhoneIdentity.findMany({ where: { phone: { in: [...phones] }, user: { customerClubMemberships: { some: { organizationId: { in: ownedOrgIds } } } } }, select: { userId: true } });
+    const committedIdentities = await db.customerPhoneIdentity.findMany({ where: { phone: { in: [...phones] }, user: { customerPhoneSessions: { some: { organizationId: { in: ownedOrgIds } } } } }, select: { userId: true } });
     for (const identity of committedIdentities) ownedUserIds.add(identity.userId);
     await db.organizationMember.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
     await db.organizationDomain.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
@@ -133,7 +133,7 @@ describe("customer phone authentication on explicitly guarded local PostgreSQL",
     assert.equal(await db.customerPhoneIdentity.count({ where: { phone } }), 0);
   });
 
-  it("uses one verified phone identity across two separate customer clubs without staff membership", async () => {
+  it("uses one verified phone identity across two tenants without club or staff enrollment", async () => {
     const phone = await freshPhone();
     const first = await issue(phone);
     assert.equal(await db.customerPhoneIdentity.count({ where: { phone } }), 0, "request cannot create identity");
@@ -142,7 +142,7 @@ describe("customer phone authentication on explicitly guarded local PostgreSQL",
     const secondUser = await consumeOtp(second.link.phone, second.otp, organizations[1]);
     assert.equal(firstUser.id, secondUser.id);
     assert.equal(await db.customerPhoneIdentity.count({ where: { phone } }), 1);
-    assert.equal(await db.customerClubMembership.count({ where: { customerId: firstUser.id, status: "ACTIVE", organizationId: { in: ownedOrgIds } } }), 2);
+    assert.equal(await db.customerClubMembership.count({ where: { customerId: firstUser.id } }), 0);
     assert.equal(await db.organizationMember.count({ where: { userId: firstUser.id } }), 0);
     const user = await db.user.findUniqueOrThrow({ where: { id: firstUser.id } });
     assert.equal(user.role, "CUSTOMER");
@@ -200,6 +200,7 @@ describe("customer phone authentication on explicitly guarded local PostgreSQL",
     const { link: initialLink, otp: initialOtp } = await issue(phone);
     const initial = await consumeOtp(initialLink.phone, initialOtp);
     const membershipWhere = { organizationId_customerId: { organizationId: organizations[0].id, customerId: initial.id } };
+    await db.customerClubMembership.create({ data: { organizationId: organizations[0].id, customerId: initial.id, status: "ACTIVE" } });
     const { link: secondLink, otp: secondOtp } = await issue(phone);
     for (const status of ["BLOCKED", "LEFT", "PAUSED"] as const) {
       await db.customerClubMembership.update({ where: membershipWhere, data: { status } });

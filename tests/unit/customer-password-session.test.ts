@@ -5,7 +5,7 @@ import { CustomerPhoneAuthError, createCustomerPasswordSession } from "../../lib
 
 const asDb = (value: unknown) => value as PrismaClient;
 
-test("password customer session requires active customer, organization, and club membership", async () => {
+test("password customer session checks active customer and tenant, without creating club membership", async () => {
   const queries: Array<{ model: string; query?: Record<string, unknown> }> = [];
   const tx = {
     user: { findFirst: async (query: Record<string, unknown>) => { queries.push({ model: "user", query }); return { id: "customer-a" }; } },
@@ -33,11 +33,11 @@ test("password customer session requires active customer, organization, and club
   assert.ok(sessionData.expiresAt.getTime() > Date.now());
 });
 
-test("password customer session rejects missing or inactive tenant membership", async () => {
+test("password customer session rejects invalid principal, tenant or explicitly restricted membership", async () => {
   for (const fixture of [
     { user: null, organization: { id: "org-a" }, membership: { status: "ACTIVE" } },
     { user: { id: "customer-a" }, organization: null, membership: { status: "ACTIVE" } },
-    { user: { id: "customer-a" }, organization: { id: "org-a" }, membership: { status: "LEFT" } },
+    ...["LEFT", "BLOCKED", "PAUSED"].map(status => ({ user: { id: "customer-a" }, organization: { id: "org-a" }, membership: { status } })),
   ]) {
     let created = false;
     const tx = {
@@ -50,4 +50,17 @@ test("password customer session rejects missing or inactive tenant membership", 
     await assert.rejects(createCustomerPasswordSession("customer-a", "org-a", db), CustomerPhoneAuthError);
     assert.equal(created, false);
   }
+});
+
+test("password customer without club membership receives only a tenant session", async () => {
+  const tx = {
+    user: { findFirst: async () => ({ id: "customer-a" }) },
+    organization: { findFirst: async () => ({ id: "org-a" }) },
+    customerClubMembership: { findUnique: async () => null },
+    customerPhoneSession: { create: async ({ data }: { data: { userId: string; organizationId: string } }) => {
+      assert.equal(data.userId, "customer-a"); assert.equal(data.organizationId, "org-a"); return { id: "session-a" };
+    } },
+  };
+  const db = asDb({ $transaction: async (callback: (value: typeof tx) => unknown) => callback(tx) });
+  assert.equal(await createCustomerPasswordSession("customer-a", "org-a", db), "session-a");
 });

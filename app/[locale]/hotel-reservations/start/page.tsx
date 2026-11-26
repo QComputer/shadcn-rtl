@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { HotelOperationalReservations } from "@/components/hotel-operations/hotel-operational-reservations";
 import { auth } from "@/lib/auth";
+import { resolveCustomerAuthContext } from "@/lib/customer-auth/context.server";
 import { prisma } from "@/lib/db-runtime";
 import { resolveHotelTenantForHost } from "@/lib/hotel/services/hotel-publication.service";
 
@@ -67,12 +68,12 @@ export default async function HotelReservationStartPage({ params, searchParams }
     const path = `/${locale}/hotel-reservations/start${query ? `?${query}` : ""}`;
     redirect(`/${locale}/login?callbackUrl=${encodeURIComponent(path)}`);
   }
-  if (session.user.role !== "CUSTOMER") notFound();
-  const membership = await prisma.customerClubMembership.findFirst({
-    where: { organizationId: tenant.organizationId, customerId: session.user.id, status: "ACTIVE" },
-    select: { id: true },
-  });
-  if (!membership) notFound();
+  // Auth already validates the persisted session. Bind the server-rendered portal to
+  // the same verified tenant and origin before handing it to the API client.
+  if (session.user.role !== "CUSTOMER" || session.user.isTeamMember || !session.user.phoneSessionId ||
+      !session.user.customerOrigin || session.user.organizationId !== tenant.organizationId) notFound();
+  const context = await resolveCustomerAuthContext(new Request(new URL("/", session.user.customerOrigin), { headers: requestHeaders }));
+  if (!context || context.organizationId !== tenant.organizationId || context.origin !== session.user.customerOrigin) notFound();
   const previewNotice = locale === "fa"
     ? "پیش‌نمایش هتل دامون: نرخ، موجودی، اتاق‌ها و قوانین این محیط نمونه‌اند و تا تأیید مالک هتل اطلاعات قطعی نیستند. ثبت درخواست در این پیش‌نمایش جایگزین تأیید پذیرش نمی‌شود."
     : locale === "ar"

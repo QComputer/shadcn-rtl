@@ -82,7 +82,7 @@ export async function authorizeHotelBookingActor(
   if (!user || !property || !["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF", "CUSTOMER"].includes(actor.role)) deny();
   if (actor.role !== "SUPER_ADMIN" && actor.organizationId !== organizationId) deny();
   if (actor.role === "CUSTOMER") {
-    if (!actor.customerContextVerified || !await db.customerClubMembership.findFirst({ where: { organizationId, customerId: actor.userId, status: "ACTIVE" } })) {
+    if (!actor.customerContextVerified || await db.customerClubMembership.findFirst({ where: { organizationId, customerId: actor.userId, status: { not: "ACTIVE" } } })) {
       deny("Customer context required");
     }
   } else if (actor.role !== "SUPER_ADMIN" && !await db.organizationMember.findFirst({ where: { organizationId, userId: actor.userId, isActive: true, role: { in: ["ADMIN", "MANAGER", "STAFF"] } } })) {

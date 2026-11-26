@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { once } from "node:events";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { createServer } from "node:net";
 import { request as httpRequest } from "node:http";
 import { spawn, type ChildProcess } from "node:child_process";
@@ -853,6 +853,62 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   await primaryGuest.waitFor({ state: "visible" });
   await center.getByLabel("فیلتر وضعیت").selectOption("CHECKED_OUT");
   await centerItem.getByText("خروج ثبت‌شده").waitFor({ state: "visible" });
+
+  stage = "property-wide-reception-directory";
+  const directoryPath = `/api/organizations/${orgAId}/hotels/${propertyAId}/reservations/directory`;
+  const directoryGuestName = `رضا كريمي ${suffix.slice(0, 8)}`;
+  const old = await db.hotelReservation.create({ data: {
+    organizationId: orgAId, propertyId: propertyAId, roomTypeId, ratePlanId,
+    reference: `DIR-OLD-${suffix}`, idempotencyKey: `DIR-OLD-${suffix}`, status: "CHECKED_OUT",
+    checkIn: new Date("2020-01-01T00:00:00Z"), checkOut: new Date("2020-01-02T00:00:00Z"),
+    totalAmount: BigInt(0), cancellationPolicyKey: "fixture", cancellationPolicySnapshot: {}, createdAt: new Date("2020-01-01T00:00:00Z"),
+  } });
+  try {
+    await db.hotelReservationGuest.create({ data: { organizationId: orgAId, reservationId: old.id, fullName: directoryGuestName, isPrimary: true } });
+    const fillers = Array.from({ length: 201 }, (_, i) => ({ organizationId: orgAId, propertyId: propertyAId, roomTypeId, ratePlanId, reference: `DIR-FILL-${suffix}-${i}`, idempotencyKey: `DIR-FILL-${suffix}-${i}`, status: "CHECKED_OUT", checkIn: new Date("2020-02-01T00:00:00Z"), checkOut: new Date("2020-02-02T00:00:00Z"), totalAmount: BigInt(0), cancellationPolicyKey: "fixture", cancellationPolicySnapshot: {}, createdAt: new Date("2020-02-01T00:00:00Z") }));
+    await db.hotelReservation.createMany({ data: fillers });
+    const contacts = await db.hotelReservation.findMany({ where: { organizationId: orgAId, propertyId: propertyAId, reference: { in: [fillers[0].reference, fillers[1].reference] } }, select: { id: true } });
+    assert.equal(contacts.length, 2);
+    const fixturePhone = "09123456789";
+    const phoneHash = createHash("sha256").update(`${orgAId}:${fixturePhone}`).digest("hex");
+    await db.hotelReservationGuest.createMany({ data: contacts.map((row, index) => ({ organizationId: orgAId, reservationId: row.id, fullName: `Contact fixture ${index}`, isPrimary: true, phoneHash })) });
+    const before = await readPreviewMutationSnapshot(orgAId);
+    type DirectoryResponse = { rows: Array<{ id: string; reference: string; guests: Array<{ fullName: string }> }>; hasMore: boolean; basis?: string };
+    const found = await apiJson<DirectoryResponse>(directoryPath, cookie, "POST", { action: "search", query: `کریمی ${suffix.slice(0, 8)}`, page: 1 });
+    assert.equal(found.response.status, 200); assert.deepEqual(found.data?.rows.map(row => row.id), [old.id]);
+    assert.equal(found.response.headers.get("cache-control"), "private, no-store");
+    assert.equal(JSON.stringify(found.data).includes("phoneHash"), false);
+    const literal = await apiJson<DirectoryResponse>(directoryPath, cookie, "POST", { action: "search", query: "%_", page: 1 });
+    assert.equal(literal.response.status, 200); assert.deepEqual(literal.data?.rows, []);
+    const first = await apiJson<DirectoryResponse>(directoryPath, cookie, "POST", { action: "search", query: `DIR-FILL-${suffix}`, page: 1 });
+    const second = await apiJson<DirectoryResponse>(directoryPath, cookie, "POST", { action: "search", query: `DIR-FILL-${suffix}`, page: 2 });
+    assert.equal(first.data?.rows.length, 25); assert.equal(first.data?.hasMore, true); assert.equal(second.data?.rows.length, 25);
+    assert.ok(first.data?.rows.every(row => !second.data?.rows.some(other => other.id === row.id)));
+    const history = await apiJson<DirectoryResponse>(directoryPath, cookie, "POST", { action: "history", reservationId: old.id, page: 1 });
+    assert.equal(history.data?.basis, "RESERVATION_ONLY"); assert.deepEqual(history.data?.rows.map(row => row.id), [old.id]);
+    const phoneResult = await apiJson<DirectoryResponse>(directoryPath, cookie, "POST", { action: "phone", query: "۰۹۱۲۳۴۵۶۷۸۹" });
+    assert.equal(phoneResult.response.status, 200); assert.deepEqual(new Set(phoneResult.data?.rows.map(row => row.id)), new Set(contacts.map(row => row.id)));
+    assert.equal(JSON.stringify(phoneResult.data).includes(phoneHash), false);
+    const contactHistory = await apiJson<DirectoryResponse>(directoryPath, cookie, "POST", { action: "history", reservationId: contacts[0].id });
+    assert.equal(contactHistory.response.status, 200); assert.equal(contactHistory.data?.basis, "CONTACT");
+    assert.deepEqual(new Set(contactHistory.data?.rows.map(row => row.id)), new Set(contacts.map(row => row.id)));
+    const invalid = await apiJson(directoryPath, cookie, "POST", { action: "search", query: "a", page: 401 });
+    assert.equal(invalid.response.status, 400);
+    const denied = await apiJson(`/api/organizations/${ownedOrgIds[1]}/hotels/${propertyBId}/reservations/directory`, cookie, "POST", { action: "search", query: "DIR" });
+    assert.equal(denied.response.status, 403);
+    const deniedAnchor = await apiJson(`/api/organizations/${orgAId}/hotels/${demoPropertyId}/reservations/directory`, cookie, "POST", { action: "history", reservationId: old.id });
+    assert.equal(deniedAnchor.response.status, 404);
+    const directory = center.getByRole("region", { name: "جست‌وجوی کل سوابق هتل" });
+    await directory.getByRole("searchbox", { name: "نام، همراه، کد رزرو یا اتاق در کل سوابق" }).fill(old.reference);
+    await directory.getByRole("button", { name: "جست‌وجوی سوابق" }).click();
+    await directory.getByText(directoryGuestName, { exact: false }).waitFor({ state: "visible" });
+    await directory.getByRole("button", { name: "سوابق مرتبط" }).click();
+    await directory.getByText("پیوند هویتی قابل اتکا ثبت نشده است؛ فقط همین رزرو نمایش داده می‌شود.", { exact: true }).waitFor({ state: "visible" });
+    assert.deepEqual(await readPreviewMutationSnapshot(orgAId), before, "directory requests are read-only");
+  } finally {
+    await db.hotelReservation.deleteMany({ where: { organizationId: orgAId, propertyId: propertyAId, reference: { startsWith: `DIR-FILL-${suffix}-` } } });
+    await db.hotelReservation.deleteMany({ where: { organizationId: orgAId, propertyId: propertyAId, id: old.id } });
+  }
 
   const calendar = page.getByRole("region", { name: "تقویم اشغال اتاق‌ها" });
   await calendar.getByLabel("تاریخ شروع").fill("2027-08-08");

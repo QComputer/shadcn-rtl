@@ -13,6 +13,10 @@ export function decodePublicRouteSegment(segment: string) {
   }
 }
 
+export function encodePublicRouteSegment(segment: string) {
+  return encodeURIComponent(segment);
+}
+
 export function buildShopPublicPath(input: {
   locale: string;
   shopSlug: string;
@@ -113,7 +117,7 @@ export function buildShopProductPath(input: {
   return buildShopPublicPath({
     locale: input.locale,
     shopSlug: input.shopSlug,
-    subPath: `/product/${input.productSegment}`,
+    subPath: `/product/${encodePublicRouteSegment(input.productSegment)}`,
     isCustomDomain: input.isCustomDomain,
   });
 }

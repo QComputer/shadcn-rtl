@@ -22,6 +22,7 @@ import {
   buildShopCheckoutPath,
   buildShopOrderPath,
   buildShopProductPath,
+  encodePublicRouteSegment,
   buildShopProductsPath,
 } from "@/lib/shop-public-paths";
 import { resolveOrganizationPublicHome } from "@/lib/organization-public-home";
@@ -35,6 +36,16 @@ describe("BB-3A custom-domain public namespace", () => {
     assert.equal(buildShopProductPath({ ...shopInput, productSegment: "latte" }), "/shop/product/latte");
     assert.equal(buildShopCheckoutPath(shopInput), "/shop/checkout");
     assert.equal(buildShopOrderPath({ ...shopInput, orderNumber: "ORD-1" }), "/shop/order/ORD-1");
+  });
+
+  it("encodes product route segments once for custom-domain and platform paths", () => {
+    for (const productSegment of ["کتونی-ونس-پلو", "حذاء-عربي", "classic-sneaker"]) {
+      const encoded = encodePublicRouteSegment(productSegment);
+      assert.equal(decodeURIComponent(encoded), productSegment);
+      assert.equal(buildShopProductPath({ ...shopInput, productSegment }), `/shop/product/${encoded}`);
+      assert.equal(buildShopProductPath({ ...shopInput, isCustomDomain: false, productSegment }), `/fa/tenant-a/shop/product/${encoded}`);
+    }
+    assert.equal(encodePublicRouteSegment("classic-sneaker"), "classic-sneaker");
   });
 
   it("keeps every supported appointment page beneath /appointment", () => {

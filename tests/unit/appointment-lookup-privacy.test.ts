@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { before, mock, test } from "node:test";
 import { NextRequest } from "next/server";
 import type { Prisma } from "@prisma/client";
+import { appointmentGuestFilter, appointmentGuestScope, appointmentContactPhone } from "../../lib/appointments/guest-scope";
 class TestApiError extends Error { constructor(readonly status: number, message: string) { super(message); } }
 const guestCookie = "appointment-01111111-1111-4111-8111-111111111111";
 const otherCookie = "appointment-02222222-2222-4222-8222-222222222222";
@@ -15,7 +16,7 @@ function rows(where: Prisma.AppointmentWhereInput, select: Prisma.AppointmentSel
   assert.deepEqual(where.service, { organizationId: "org-a", organization: { isActive: true, deletedAt: null } });
   for (const field of ["customer", "guestCustomer", "customerId", "guestCustomerId", "customerPhoneAtBooking", "customerEmailAtBooking", "notes", "paymentRequests"]) assert.equal(Object.hasOwn(select, field), false);
   assert.equal(Object.hasOwn(select, "service"), true);
-  const owner = where.customerId === "customer-a" || (where.customerId === null && JSON.stringify(where.guestCustomer) === JSON.stringify({ sessionId: guestCookie }));
+  const owner = where.customerId === "customer-a" || (where.customerId === null && JSON.stringify(where.guestCustomer) === JSON.stringify(appointmentGuestFilter("org-a", guestCookie)));
   return owner && (!where.id || where.id === row.id) && (!where.bookingReference || where.bookingReference === row.bookingReference) ? [row] : [];
 }
 mock.module("@/lib/db", { namedExports: { prisma: { appointment: {
@@ -87,4 +88,15 @@ test("bounded input and missing organization rejected before DB read", async () 
   assert.equal((await lookup(request({}, guestCookie))).status, 400);
   assert.equal((await get("", guestCookie)).status, 400);
   assert.equal(reads, count);
+});
+
+test("new appointment owner scopes preserve legacy browser access without storing bearer", () => {
+  const scope = appointmentGuestScope("org-a", guestCookie);
+  assert.match(scope, /^appointment:v1:[a-f0-9]{64}:$/);
+  assert.ok(!scope.includes(guestCookie));
+  assert.notEqual(scope, appointmentGuestScope("org-b", guestCookie));
+  assert.notEqual(scope, appointmentGuestScope("org-a", otherCookie));
+  assert.deepEqual(appointmentGuestFilter("org-a", guestCookie), { OR: [{ sessionId: guestCookie }, { sessionId: { startsWith: scope } }] });
+  assert.equal(appointmentContactPhone("+۹۸ ۹۱۲-۰۰۰-۰۰۰۰"), "09120000000");
+  assert.equal(appointmentContactPhone("not-a-number"), null);
 });

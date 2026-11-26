@@ -5,8 +5,9 @@ import { ApiError, requireAuthSession, requireCustomerRequestContext } from "@/l
 import { requireActiveOrganizationCapability } from "@/lib/organization-capabilities.server";
 import { resolveTenantPwaRequestContext } from "@/lib/tenant-pwa-context.server";
 
+import { appointmentGuestCookieName, appointmentGuestFilter, appointmentGuestSessionPattern } from "@/lib/appointments/guest-scope";
+
 export const privateAppointmentHeaders = { "Cache-Control": "private, no-store", Vary: "Cookie" };
-const guestSessionPattern = /^(?:appointment-)?[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const publicAppointmentSlug = /^[a-z0-9][a-z0-9-]{0,127}$/i;
 
 // A reference identifies a booking, not its owner. Never accept a phone,
@@ -31,9 +32,9 @@ export async function appointmentOwnerWhere(request: NextRequest, slug: string):
   // Existing appointment creation issues an HttpOnly, host-only random UUID cookie.
   // Accept only that format (also used by the existing cart when configured to share it).
   // This is same-browser possession, not verified phone ownership or account creation.
-  const sessionId = request.cookies.get(process.env.SESSION_COOKIE_NAME || "guest_session_id_local")?.value;
-  if (!sessionId || !guestSessionPattern.test(sessionId)) throw new ApiError(403, "Appointment access unavailable");
-  return { ...scope, customerId: null, guestCustomer: { sessionId } };
+  const sessionId = request.cookies.get(appointmentGuestCookieName())?.value;
+  if (!sessionId || !appointmentGuestSessionPattern.test(sessionId)) throw new ApiError(403, "Appointment access unavailable");
+  return { ...scope, customerId: null, guestCustomer: appointmentGuestFilter(organization.id, sessionId) };
 }
 
 // Deliberately exclude notes, contact data, staff phone, payment fields, and

@@ -11,6 +11,8 @@ import { quoteInTransaction, sameReviewToken } from "@/lib/retail/checkout-quote
 import { type CheckoutInput } from "@/lib/retail/checkout.contract";
 import { checkoutCartOwner, checkoutCustomerId, checkoutOrderOwner, guestOrderScope, requireGuestCheckout, type RetailCheckoutOwner } from "@/lib/retail/checkout-owner.server";
 
+import { assertGuestCheckoutBudget } from "@/lib/retail/guest-checkout-budget.server";
+
 const money = (value: Prisma.Decimal | number | string) => new Prisma.Decimal(value);
 const code = (value: string) => value.trim().toUpperCase();
 
@@ -178,13 +180,9 @@ export async function createRetailCheckout(owner: RetailCheckoutOwner, input: Ch
     let guestCustomerId: string | null = null;
     if (typeof owner !== "string") {
       const scope = guestOrderScope(organization.slug, owner.guestSessionId);
-      // A serializable bounded recent-order budget; never count a replay as a new order.
-      const recent = await tx.order.count({ where: { organizationSlug: organization.slug,
-        ...checkoutOrderOwner(owner, organization.slug), retailCheckoutKey: { not: null },
-        createdAt: { gte: new Date(Date.now() - 15 * 60_000) }, deletedAt: null } });
-      if (recent >= 3) throw new ApiError(429, "Too many guest orders. Please contact the store.");
+      const phone = await assertGuestCheckoutBudget(tx, organization.slug, owner, input.recipientMobile!);
       const guest = await tx.guestCustomer.create({ data: { sessionId: `${scope}${input.idempotencyKey}`,
-        name: input.recipientName!, phone: input.recipientMobile!.startsWith("0") ? input.recipientMobile! : `0${input.recipientMobile!}`, address: input.deliveryAddress ?? null }, select: { id: true } });
+        name: input.recipientName!, phone, address: input.deliveryAddress ?? null }, select: { id: true } });
       guestCustomerId = guest.id;
     }
     const order = await tx.order.create({

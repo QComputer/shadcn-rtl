@@ -379,6 +379,66 @@ describe("customer phone auth through isolated local HTTP", { concurrency: false
     assert.equal((await post(checkoutPath, { ...cash, idempotencyKey: key, reviewToken: (await foreignQuote.json()).quote.reviewToken }, foreign)).status, 409);
     assert.equal(await db.order.count({ where: { retailCheckoutKey: key } }), 1);
     assert.equal((await db.productVariant.findUniqueOrThrow({ where: { id: variant.id } })).inventory, 7);
+    const third = await post(checkoutPath, { ...cash, idempotencyKey: randomUUID(), reviewToken: (await post(quotePath, cash, foreign).then(r => r.json())).quote.reviewToken }, foreign);
+    assert.equal(third.status, 201);
+    const rotated = `guest_session_id=${randomUUID()}`;
+    assert.equal((await post("/api/retail/v1/cart", { organization: prefix, variantId: variant.id, quantity: 1 }, rotated)).status, 201);
+    const rotatedQuote = await post(quotePath, cash, rotated); assert.equal(rotatedQuote.status, 200);
+    const rejected = await post(checkoutPath, { ...cash, idempotencyKey: randomUUID(), reviewToken: (await rotatedQuote.json()).quote.reviewToken }, rotated);
+    assert.equal(rejected.status, 429);
+    assert.equal((await db.productVariant.findUniqueOrThrow({ where: { id: variant.id } })).inventory, 6);
+    assert.equal((await post(checkoutPath, body)).status, 201, "existing idempotent replay remains available at the contact limit");
+  });
+
+  it("creates and tracks guest appointments without an account; rejects foreign tenant and cookie rotation abuse", async () => {
+    const slug = `${prefix}-appointment`;
+    const host = "appointment-auth.localhost", origin = `http://${host}:${port}`;
+    const org = await db.organization.create({ data: { name: slug, slug, type: "APPOINTMENT", timezone: "UTC" } });
+    try {
+      await db.organizationDomain.create({ data: { organizationId: org.id, domain: host, normalizedDomain: host, status: "ACTIVE", providerVerified: true, dnsConfigured: true, sslReady: true, verifiedAt: new Date() } });
+      const category = await db.serviceCategory.create({ data: { organizationId: org.id, name: "Fixture services" } });
+      const service = await db.service.create({ data: { organizationId: org.id, categoryId: category.id, name: "Fixture appointment", duration: 30, price: 1000 } });
+      const date = new Date(); date.setUTCDate(date.getUTCDate() + 2); date.setUTCHours(10, 0, 0, 0);
+      const days = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"] as const;
+      await db.businessHour.create({ data: { organizationId: org.id, day: days[date.getUTCDay()]!, openTime: "08:00", closeTime: "20:00", isOpen: true } });
+      await db.bookingSettings.create({ data: { organizationSlug: slug, autoConfirm: false } });
+      const users = await db.user.count(); const memberships = await db.customerClubMembership.count();
+      const booking = { serviceId: service.id, date: date.toISOString(), startTime: date.toISOString(), customerName: "Fixture Guest", customerPhone: "09120000000", notes: "private note" };
+      const submit = (body: unknown, cookie = "", target = host, targetOrigin = origin) => request("/api/appointments", { method: "POST", headers: { cookie, origin: targetOrigin, "content-type": "application/json" }, body: JSON.stringify(body) }, target);
+      assert.equal((await submit(booking, "", tenantHost, tenantUrl)).status, 404);
+      assert.equal((await submit(booking, "", host, "https://foreign.example.test")).status, 403);
+      const first = await submit(booking); assert.equal(first.status, 201);
+      const data = await first.json(); assert.deepEqual(Object.keys(data).sort(), ["bookingReference", "id", "status"]); assert.equal(data.status, "PENDING");
+      const guest = cookiesFrom(first).find(c => c.startsWith("guest_session_id_local="))!;
+      assert.ok(guest); const raw = guest.split("=")[1]!;
+      const saved = await db.appointment.findUniqueOrThrow({ where: { id: data.id }, include: { guestCustomer: true } });
+      assert.equal(saved.customerId, null); assert.ok(saved.guestCustomer); assert.ok(!saved.guestCustomer.sessionId.includes(raw));
+      const detail = `/api/public/appointments/${data.id}?organizationSlug=${encodeURIComponent(slug)}`;
+      assert.equal((await request(detail, { headers: { cookie: guest } }, host)).status, 200);
+      assert.equal((await request(detail, { headers: { cookie: `guest_session_id_local=appointment-${randomUUID()}` } }, host)).status, 404);
+      assert.equal((await request(detail, { headers: { cookie: `guest_session_id_local=${saved.guestCustomer.sessionId}` } }, host)).status, 403);
+      assert.equal((await request(detail, { headers: { cookie: guest } }, tenantHost)).status, 404);
+      const lookup = await request("/api/public/appointments/lookup", { method: "POST", headers: { cookie: guest, origin, "content-type": "application/json" }, body: JSON.stringify({ organizationSlug: slug }) }, host);
+      assert.equal(lookup.status, 200); assert.equal((await lookup.json()).appointments[0].id, data.id);
+      for (let i = 1; i <= 3; i++) {
+        const later = new Date(date.getTime() + i * 60 * 60_000);
+        const result = await submit({ ...booking, customerPhone: "+98 9120000000", customerName: `Guest ${i}`, startTime: later.toISOString() }, `guest_session_id_local=appointment-${randomUUID()}`);
+        assert.equal(result.status, i < 3 ? 201 : 429);
+      }
+      assert.equal(await db.appointment.count({ where: { serviceId: service.id } }), 3);
+      assert.equal(await db.user.count(), users); assert.equal(await db.customerClubMembership.count(), memberships);
+      assert.equal((await db.guestCustomer.findUniqueOrThrow({ where: { id: saved.guestCustomerId! } })).name, booking.customerName);
+    } finally {
+      const records = await db.appointment.findMany({ where: { service: { organizationId: org.id } }, select: { id: true, guestCustomerId: true } });
+      await db.appointment.deleteMany({ where: { id: { in: records.map(r => r.id) } } });
+      await db.guestCustomer.deleteMany({ where: { id: { in: records.flatMap(r => r.guestCustomerId ? [r.guestCustomerId] : []) } } });
+      await db.bookingSettings.deleteMany({ where: { organizationSlug: slug } });
+      await db.businessHour.deleteMany({ where: { organizationId: org.id } });
+      await db.service.deleteMany({ where: { organizationId: org.id } });
+      await db.serviceCategory.deleteMany({ where: { organizationId: org.id } });
+      await db.organizationDomain.deleteMany({ where: { organizationId: org.id } });
+      await db.organization.delete({ where: { id: org.id } });
+    }
   });
 
 });

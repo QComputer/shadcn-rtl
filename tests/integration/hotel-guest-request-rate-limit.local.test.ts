@@ -17,7 +17,15 @@ if (connectionString) {
     && target.pathname === "/hotel_guest_rate_limit_test"
     && decodeURIComponent(target.username) === "hotel_guest_rate_limit_test"
     && decodeURIComponent(target.password) === "ci_only_guest_request_limiter";
-  assert.ok(approvedCi, "refuses every database except the exact disposable CI fixture");
+  const approvedLocal = process.env.HOTEL_GUEST_REQUEST_LIMIT_LOCAL_ACCEPTANCE === "1"
+    && process.env.NODE_ENV === "test" && !process.env.VERCEL && !process.env.VERCEL_ENV
+    && process.env.DATABASE_RUNTIME_ADAPTER === "postgresql" && process.env.LOCAL_PRISMA_EXPECTED_PORT === "55439"
+    && process.env.RETAIL_HERO_EXPECTED_DATABASE === "retail_hero_test"
+    && target.hostname === "127.0.0.1" && target.port === "55439" && target.pathname === "/retail_hero_test"
+    && decodeURIComponent(target.username) === "hero_test" && decodeURIComponent(target.password) === "local_admin_fixture_only"
+    && process.env.DATABASE_URL === target.toString() && process.env.DIRECT_URL === target.toString();
+  assert.ok(approvedCi || approvedLocal, "refuses every database except the exact disposable CI or local fixture");
+  assert.equal(target.hash, "");
   assert.equal(target.search, "", "refuses inherited connection options");
 }
 
@@ -27,7 +35,8 @@ test("PostgreSQL guest request upsert enforces limits across independent Prisma 
   const organizationIds: string[] = [];
   try {
     const identity = await clientA.$queryRaw<Array<{ name: string; role: string }>>`SELECT current_database()::text AS name, current_user::text AS role`;
-    assert.deepEqual(identity, [{ name: "hotel_guest_rate_limit_test", role: "hotel_guest_rate_limit_test" }]);
+    const target = new URL(connectionString!);
+    assert.deepEqual(identity, [{ name: target.pathname.slice(1), role: decodeURIComponent(target.username) }]);
 
     const suffix = randomUUID();
     const organizationA = await clientA.organization.create({ data: { name: `guest-rate-${suffix}-a`, slug: `guest-rate-${suffix}-a`, type: "SHOP", vertical: "HOTEL" } });

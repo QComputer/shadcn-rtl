@@ -1,4 +1,7 @@
 import { Prisma } from "@prisma/client";
+import { randomUUID } from "node:crypto";
+import { ApiError } from "@/lib/api-guards";
+import { appointmentGuestFilter, appointmentGuestScope, appointmentGuestSessionPattern } from "@/lib/appointments/guest-scope";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import type {
@@ -32,7 +35,7 @@ type BookingOwner =
   | { kind: "user"; customerId: string }
   | {
       kind: "guest";
-      guestCustomerId: string;
+      guestSessionId: string;
       customerName: string;
       customerPhone?: string | null;
       customerEmail?: string | null;
@@ -270,12 +273,13 @@ function buildGuardedAppointmentWindow(
 }
 
 export class AppointmentService {
-  private async createWithOwner(owner: BookingOwner, data: CreateAppointmentInput) {
+  private async createWithOwner(owner: BookingOwner, data: CreateAppointmentInput, expectedOrganizationId?: string) {
     const appointment = await prisma.$transaction(
       async (tx) => {
         const service = await tx.service.findFirst({
           where: {
             id: data.serviceId,
+            ...(expectedOrganizationId ? { organizationId: expectedOrganizationId } : {}),
             isActive: true,
             deletedAt: null,
             organization: {
@@ -414,6 +418,23 @@ export class AppointmentService {
           });
         }
 
+        let guestCustomerId: string | null = null;
+        if (owner.kind === "guest") {
+          // These counts and the new appointment share the SERIALIZABLE transaction.
+          // Contact-based limits do not assert that a guest owns that phone number.
+          const recent: Prisma.AppointmentWhereInput = { customerId: null, guestCustomerId: { not: null },
+            service: { organizationId: service.organizationId }, createdAt: { gte: new Date(now.getTime() - 15 * 60_000) } };
+          const tenantCount = await tx.appointment.count({ where: recent });
+          const browserCount = await tx.appointment.count({ where: { ...recent, guestCustomer: appointmentGuestFilter(service.organizationId, owner.guestSessionId) } });
+          const contactCount = await tx.appointment.count({ where: { ...recent, customerPhoneAtBooking: owner.customerPhone } });
+          if (tenantCount >= 60 || browserCount >= 3 || contactCount >= 3) throw new ApiError(429, "Too many guest appointments. Please contact the business.");
+          const [firstName, ...rest] = owner.customerName.trim().split(/\s+/);
+          const guest = await tx.guestCustomer.create({ data: {
+            sessionId: `${appointmentGuestScope(service.organizationId, owner.guestSessionId)}${randomUUID()}`,
+            name: owner.customerName, firstName, lastName: rest.join(" "), phone: owner.customerPhone, email: owner.customerEmail,
+          }, select: { id: true } });
+          guestCustomerId = guest.id;
+        }
         const guestName = owner.kind === "guest" ? owner.customerName : null;
         const guestPhone = owner.kind === "guest" ? owner.customerPhone || null : null;
         const guestEmail = owner.kind === "guest" ? owner.customerEmail || null : null;
@@ -428,7 +449,7 @@ export class AppointmentService {
             confirmedAt: initialStatus === "CONFIRMED" ? new Date() : null,
             notes: data.notes,
             customerId: owner.kind === "user" ? owner.customerId : null,
-            guestCustomerId: owner.kind === "guest" ? owner.guestCustomerId : null,
+            guestCustomerId,
             serviceId: data.serviceId,
             bookingReference,
             customerNameAtBooking:
@@ -486,21 +507,22 @@ export class AppointmentService {
     return appointment;
   }
 
-  async create(customerId: string, data: CreateAppointmentInput) {
-    return this.createWithOwner({ kind: "user", customerId }, data);
+  async create(customerId: string, data: CreateAppointmentInput, expectedOrganizationId?: string) {
+    return this.createWithOwner({ kind: "user", customerId }, data, expectedOrganizationId);
   }
 
-  async createForGuest(guestCustomerId: string, data: CreateAppointmentInput & { customerName: string }) {
-    return this.createWithOwner(
-      {
-        kind: "guest",
-        guestCustomerId,
-        customerName: data.customerName,
-        customerPhone: data.customerPhone || null,
-        customerEmail: data.customerEmail || null,
-      },
-      data,
-    );
+  async createForGuest(guestSessionId: string, data: CreateAppointmentInput & { customerName: string; customerPhone: string }, organizationId: string) {
+    if (!appointmentGuestSessionPattern.test(guestSessionId)) throw new ApiError(400, "Invalid guest session");
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await this.createWithOwner({ kind: "guest", guestSessionId, customerName: data.customerName,
+          customerPhone: data.customerPhone, customerEmail: data.customerEmail || null }, data, organizationId);
+      } catch (error) {
+        if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2034") throw error;
+        if (attempt === 2) throw new ApiError(409, "Booking is busy. Please retry.");
+      }
+    }
+    throw new ApiError(409, "Booking is busy. Please retry.");
   }
 
   async getById(id: string) {

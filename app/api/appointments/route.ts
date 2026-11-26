@@ -3,16 +3,13 @@ import { auth } from "@/lib/auth";
 import { appointmentService } from "@/lib/services/appointment.service";
 import { createAppointmentSchema } from "@/lib/validators";
 import { prisma } from "@/lib/db";
-import { ApiError, jsonError, getActiveMembership } from "@/lib/api-guards";
+import { ApiError, jsonError, getActiveMembership, requireAuthSession, requireSameOriginMutation } from "@/lib/api-guards";
+import { readBoundedJson } from "@/lib/security/bounded-json";
+import { resolveTenantPwaRequestContext } from "@/lib/tenant-pwa-context.server";
+import { requireActiveOrganizationCapability } from "@/lib/organization-capabilities.server";
+import { appointmentContactPhone, appointmentGuestCookieName, appointmentGuestSessionPattern } from "@/lib/appointments/guest-scope";
+import { privateAppointmentHeaders } from "@/lib/appointments/public-ownership.server";
 import { appCookiePath } from "@/lib/app-base-path";
-
-function splitName(fullName: string) {
-  const nameParts = fullName.trim().split(/\s+/);
-  return {
-    firstName: nameParts[0] || fullName,
-    lastName: nameParts.slice(1).join(" ") || "",
-  };
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -49,9 +46,13 @@ export async function GET(request: NextRequest) {
 
     let appointments;
     if (session.user.role === "CUSTOMER") {
+      const bound = await requireAuthSession(request);
+      const organizationId = bound.customerContext?.organizationId;
+      if (!organizationId || (params.organizationId && params.organizationId !== organizationId)) throw new ApiError(403, "Forbidden");
       appointments = await appointmentService.list({
         ...params,
-        customerId: session.user.id,
+        organizationId,
+        customerId: bound.user.id,
         guestCustomerId: undefined,
       });
     } else if (session.user.role === "STAFF") {
@@ -81,7 +82,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(appointments);
+    return NextResponse.json(appointments, { headers: privateAppointmentHeaders });
   } catch (error) {
     console.error("Error listing appointments:", error);
     return jsonError(error, "Internal server error");
@@ -90,68 +91,46 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    const body = await request.json();
-    const data = createAppointmentSchema.parse(body);
-
-    if (session?.user?.id) {
-      const appointment = await appointmentService.create(session.user.id, data);
-      return NextResponse.json(appointment, { status: 201 });
+    requireSameOriginMutation(request);
+    const parsed = createAppointmentSchema.safeParse(await readBoundedJson(request, { maxBytes: 8 * 1024 }));
+    if (!parsed.success) throw new ApiError(400, "Invalid appointment request");
+    const data = parsed.data;
+    const tenant = await resolveTenantPwaRequestContext(request.headers);
+    if (tenant.kind === "unknown") throw new ApiError(404, "Appointment unavailable");
+    const service = await prisma.service.findFirst({ where: { id: data.serviceId, isActive: true, deletedAt: null,
+      ...(tenant.kind === "tenant" ? { organizationId: tenant.organizationId } : {}),
+      organization: { isActive: true, deletedAt: null } }, select: { organizationId: true } });
+    if (!service) throw new ApiError(404, "Appointment unavailable");
+    await requireActiveOrganizationCapability({ organizationId: service.organizationId, capability: "APPOINTMENT" });
+    const respond = (appointment: { id: string; bookingReference: string | null; status: string }) => NextResponse.json({
+      id: appointment.id, bookingReference: appointment.bookingReference, status: appointment.status,
+    }, { status: 201, headers: privateAppointmentHeaders });
+    const existingAuth = await auth();
+    if (existingAuth?.user?.id) {
+      const session = await requireAuthSession(request);
+      if (session.user.role === "CUSTOMER") {
+        if (session.customerContext?.organizationId !== service.organizationId) throw new ApiError(403, "Appointment unavailable");
+      } else if (session.user.role !== "SUPER_ADMIN" && !await getActiveMembership(session.user.id, service.organizationId)) {
+        throw new ApiError(403, "Appointment unavailable");
+      }
+      return respond(await appointmentService.create(session.user.id, data, service.organizationId));
     }
-
-    if (!data.customerName || !data.customerPhone) {
-      throw new ApiError(
-        400,
-        "Authentication required or guest customer details (name and phone) must be provided",
-      );
-    }
-
-    const { firstName, lastName } = splitName(data.customerName);
-    const sessionId =
-      request.cookies.get(process.env.SESSION_COOKIE_NAME || "guest_session_id_local")?.value ||
-      `appointment-${crypto.randomUUID()}`;
-
-    if (!/^(?:appointment-)?[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)) {
-      throw new ApiError(400, "Guest session is invalid");
-    }
-    const guestCustomer = await prisma.guestCustomer.upsert({
-      where: { sessionId },
-      update: {
-        name: data.customerName,
-        firstName,
-        lastName,
-        phone: data.customerPhone,
-        email: data.customerEmail || null,
-      },
-      create: {
-        sessionId,
-        name: data.customerName,
-        firstName,
-        lastName,
-        phone: data.customerPhone,
-        email: data.customerEmail || null,
-      },
+    const name = data.customerName?.trim();
+    const phone = data.customerPhone && appointmentContactPhone(data.customerPhone);
+    if (!name || name.length < 2 || !phone) throw new ApiError(400, "Valid guest name and phone are required");
+    const cookieName = appointmentGuestCookieName();
+    const existing = request.cookies.get(cookieName)?.value;
+    const sessionId = existing && appointmentGuestSessionPattern.test(existing) ? existing : `appointment-${crypto.randomUUID()}`;
+    const appointment = await appointmentService.createForGuest(sessionId, { ...data, customerName: name, customerPhone: phone }, service.organizationId);
+    const response = respond(appointment);
+    if (sessionId !== existing) response.cookies.set(cookieName, sessionId, {
+      httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: appCookiePath(), maxAge: 60 * 60 * 24 * 30,
     });
-
-    const appointment = await appointmentService.createForGuest(guestCustomer.id, {
-      ...data,
-      customerName: data.customerName,
-    });
-
-    const response = NextResponse.json(appointment, { status: 201 });
-    if (!request.cookies.get(process.env.SESSION_COOKIE_NAME || "guest_session_id_local")?.value) {
-      response.cookies.set(process.env.SESSION_COOKIE_NAME || "guest_session_id_local", sessionId, {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
-        path: appCookiePath(),
-        maxAge: 60 * 60 * 24 * 30,
-      });
-    }
-
     return response;
   } catch (error) {
-    console.error("Error creating appointment:", error);
-    return jsonError(error, "Internal server error");
+    const response = jsonError(error, "Appointment could not be created");
+    response.headers.set("Cache-Control", "private, no-store");
+    response.headers.set("Vary", "Cookie");
+    return response;
   }
 }

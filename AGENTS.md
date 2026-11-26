@@ -54,6 +54,11 @@ Speed is the primary delivery priority. Deliver cohesive functional batches, use
 - Staff reception: loaded-reservation search by guest/companion/reference/room with Persian/Arabic normalization; read-only guest list and bounded sanitized action history; unpaid manual no-show after property-local arrival day using atomic inventory release and idempotency.
 - No schema change or real payment execution. CI/merge/live evidence is not yet recorded. Remaining PMS Professional: arrival/departure edge cases, full Jalali date picker, grouped reservations, durable guest files, waitlist and complete audit/search. Owner stop before Housekeeping still applies.
 
+### PR175 merged (2026-11-26)
+
+- Merge `54dcbfc82de5f6548dfb6bb0572015474c864e06`, head `07240f43ca5d5f79bbe30bb8793b899a64db52b9`; four hosted execution gates passed, Vercel Preview remains blocked.
+- 1C-A: loaded-reservation search, reservation guest projection, bounded reception history and unpaid manual no-show. 1C-B proposed: shared Jalali single-date selection in reception intake, amendments and occupancy navigation; retain ISO contracts and native date input. No production deployment claim. Remaining reception and 1C work precedes the mandatory owner gate.
+
 ## Hotel mandatory phase boundary
 
 OWNER GATE (2026-11-26): After completion of PMS Professional (1A/1B/1C and remaining reception items), STOP immediately before any Housekeeping implementation. The owner will specify an intervening phase. Do not start Housekeeping until that phase is completed and the owner explicitly authorizes resumption.

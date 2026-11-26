@@ -32,3 +32,14 @@ test("reception history projects only known actions and loaded reservations", ()
     { id: "2", reservationId: "A", action: "CREATE_MANUAL_RESERVATION", at: createdAt.toISOString() },
   ]);
 });
+
+test("Jalali reception calendar keeps canonical Gregorian dates across Nowruz and bounds", async () => {
+  const { jalaliParts, jalaliMonthGrid, moveJalaliMonth, startOfJalaliMonth } = await import("../../lib/booking/jalali-calendar");
+  const first = "2025-03-21";
+  assert.deepEqual(jalaliParts(first), { year: 1404, month: 1, day: 1 });
+  assert.equal(startOfJalaliMonth("2025-04-02"), first);
+  assert.equal(moveJalaliMonth(first, 1), "2025-04-21");
+  const days = jalaliMonthGrid(first, "2025-03-21", "2025-03-23");
+  assert.equal(days.length, 42);
+  assert.deepEqual(days.filter(day => !day.disabled).map(day => day.iso), ["2025-03-21", "2025-03-22", "2025-03-23"]);
+});

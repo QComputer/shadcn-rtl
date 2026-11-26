@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { HotelOfflinePayments } from "@/components/hotel-operations/hotel-offline-payments";
+import { HotelJalaliDateField } from "@/components/hotel-operations/hotel-jalali-date-field";
 import { HotelStayActions, type AmendmentPreview } from "@/components/hotel-operations/hotel-stay-actions";
 import { HotelGuestOfflinePayment } from "@/components/hotel-operations/hotel-guest-offline-payment";
 import { HotelOfflinePolicySettings } from "@/components/hotel-operations/hotel-offline-policy-settings";
@@ -225,8 +226,13 @@ export function HotelOperationalReservations({ organizationId, propertyId, local
     </div> : null}
     {mode === "reception" && canConfigure && !centerMode && snapshot?.mode !== "MANUAL" && snapshot?.confirmationPolicy ? <HotelOfflinePolicySettings key={JSON.stringify(snapshot.confirmationPolicy)} organizationId={organizationId} propertyId={propertyId} locale={locale} initialValues={snapshot.confirmationPolicy} apiWired onSaved={() => void run(load)} /> : null}
     {showReservationInputs ? <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {mode === "reception" ? <>
+        <HotelJalaliDateField label={t.dates} value={checkInDate} today={today} locale={locale} min={centerReception ? today : undefined} onChange={value => { setCheckInDate(value); if (centerReception && isPropertyDate(value) && (!isPropertyDate(checkOutDate) || checkOutDate <= value)) setCheckOutDate(offsetPropertyDate(value, 1)); invalidateQuote(); }} />
+        <HotelJalaliDateField label={t.checkout} value={checkOutDate} today={today} locale={locale} min={centerReception && isPropertyDate(checkInDate) ? offsetPropertyDate(checkInDate, 1) : undefined} max={centerReception && isPropertyDate(checkInDate) ? offsetPropertyDate(checkInDate, 31) : undefined} onChange={value => { setCheckOutDate(value); invalidateQuote(); }} />
+      </> : <>
       <label className="min-w-0 space-y-1 text-sm"><span>{t.dates}</span><Input type="date" value={checkInDate} min={centerReception ? today : undefined} onChange={(e) => { const value = e.target.value; setCheckInDate(value); if (centerReception && isPropertyDate(value) && (!isPropertyDate(checkOutDate) || checkOutDate <= value)) setCheckOutDate(offsetPropertyDate(value, 1)); invalidateQuote(); }} /></label>
       <label className="min-w-0 space-y-1 text-sm"><span>{t.checkout}</span><Input type="date" value={checkOutDate} min={centerReception && isPropertyDate(checkInDate) ? offsetPropertyDate(checkInDate, 1) : undefined} max={centerReception && isPropertyDate(checkInDate) ? offsetPropertyDate(checkInDate, 31) : undefined} onChange={(e) => { setCheckOutDate(e.target.value); invalidateQuote(); }} /></label>
+      </>}
       <label className="min-w-0 space-y-1 text-sm"><span>{t.room}</span><select className="h-10 w-full min-w-0 rounded-md border bg-background px-3" value={roomTypeId} onChange={(e) => { setRoomTypeId(e.target.value); setRatePlanId(""); invalidateQuote(); }}>{(snapshot?.roomTypes ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
       <label className="min-w-0 space-y-1 text-sm"><span>{t.plan}</span><select className="h-10 w-full min-w-0 rounded-md border bg-background px-3" value={effectivePlan} onChange={(e) => { setRatePlanId(e.target.value); invalidateQuote(); }}>{plans.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
       <label className="space-y-1 text-sm"><span>{t.adults}</span><Input type="number" min={1} max={12} value={adults} onChange={(e) => { setAdults(Math.max(1, Math.min(12, Number(e.target.value) || 1))); invalidateQuote(); }} /></label>

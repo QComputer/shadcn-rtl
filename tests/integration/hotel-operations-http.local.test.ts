@@ -845,6 +845,15 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
 
   const calendar = page.getByRole("region", { name: "تقویم اشغال اتاق‌ها" });
   await calendar.getByLabel("تاریخ شروع").fill("2027-08-08");
+  await calendar.getByRole("button", { name: "تقویم شمسی", exact: true }).click();
+  const jalaliDialog = page.getByRole("dialog", { name: "تقویم شمسی", exact: true });
+  await jalaliDialog.waitFor({ state: "visible" });
+  assert.equal(await jalaliDialog.locator('button[data-date="2027-08-08"]').getAttribute("aria-pressed"), "true");
+  await jalaliDialog.locator('button[data-date="2027-08-07"]').click();
+  assert.equal(await calendar.getByLabel("تاریخ شروع").inputValue(), "2027-08-07", "Jalali selection preserves Gregorian ISO date");
+  await calendar.getByRole("button", { name: "تقویم شمسی", exact: true }).click();
+  await jalaliDialog.locator('button[data-date="2027-08-08"]').click();
+  assert.equal(await calendar.getByLabel("تاریخ شروع").inputValue(), "2027-08-08");
   await calendar.getByRole("cell").filter({ hasText: "تعمیرات" }).first().waitFor({ state: "visible", timeout: 30_000 });
   await calendar.getByRole("row").filter({ hasText: manualRoom.code }).waitFor({ state: "visible" });
   assert.equal(await calendar.getAttribute("dir"), "rtl", "the reservation calendar uses Persian RTL presentation");

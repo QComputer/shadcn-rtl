@@ -16,7 +16,7 @@ import {
   ArrowRight
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
@@ -126,7 +126,7 @@ export default function BookingPage({
   const [notes, setNotes] = useState("")
   
   // Booking result
-  const [bookingSuccess, setBookingSuccess] = useState(false)
+  const [bookingSuccess, setBookingSuccess] = useState<{ id: string; bookingReference: string | null; status: string } | null>(null)
   const [bookingError, setBookingError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -228,7 +228,9 @@ export default function BookingPage({
         throw new Error(errorData.error || "Failed to book appointment")
       }
 
-      setBookingSuccess(true)
+      const booking = await response.json() as { id: string; bookingReference: string | null; status: string }
+      if (!booking.id) throw new Error("Booking response is unavailable")
+      setBookingSuccess(booking)
     } catch (err) {
       setBookingError(err instanceof Error ? err.message : "Booking failed")
     } finally {
@@ -275,6 +277,9 @@ export default function BookingPage({
 
   // Success state
   if (bookingSuccess) {
+    const messages = locale === "en" ? { received: "Appointment request received", confirmed: "Appointment confirmed", tracking: "Track my appointment", note: "Keep this browser to track your booking. No account is required for guest booking.", reference: "Booking reference" }
+      : locale === "ar" ? { received: "تم استلام طلب الموعد", confirmed: "تم تأكيد الموعد", tracking: "متابعة موعدي", note: "احتفظ بهذا المتصفح لمتابعة الحجز. لا يلزم حساب لحجز الضيف.", reference: "مرجع الحجز" }
+      : { received: "درخواست نوبت ثبت شد", confirmed: "نوبت تأیید شد", tracking: "پیگیری نوبت من", note: "برای پیگیری، همین مرورگر را نگه دارید. رزرو مهمان نیازی به ایجاد حساب ندارد.", reference: "کد رزرو" }
     return (
       <div className="min-h-screen bg-background py-8">
         <div className="container mx-auto px-4 max-w-2xl">
@@ -283,7 +288,7 @@ export default function BookingPage({
               <div className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mx-auto mb-6">
                 <CheckCircle className="h-10 w-10 text-green-600 dark:text-green-400" />
               </div>
-              <h1 className="text-2xl font-bold mb-2">{t("appointment.bookingConfirmed")}</h1>
+              <h1 className="text-2xl font-bold mb-2">{bookingSuccess.status === "CONFIRMED" ? messages.confirmed : messages.received}</h1>
               <p className="text-muted-foreground mb-6">{t("appointment.thankYou")}</p>
               
               <div className="bg-muted rounded-lg p-4 text-right mb-6">
@@ -297,10 +302,11 @@ export default function BookingPage({
                 </p>
               </div>
 
-              <div className="flex gap-4 justify-center">
-                <Button variant="outline">
-                  <Link href={appointmentRoutes.href()}>{t("common.back")}</Link>
-                </Button>
+              {bookingSuccess.bookingReference && <p className="mb-3">{messages.reference}: <span dir="ltr" className="font-mono">{bookingSuccess.bookingReference}</span></p>}
+              <p className="mb-4 text-sm text-muted-foreground">{messages.note}</p>
+              <div className="flex flex-wrap gap-3 justify-center">
+                <Link className={buttonVariants()} href={appointmentRoutes.href(`/my-appointments/${encodeURIComponent(bookingSuccess.id)}`)}>{messages.tracking}</Link>
+                <Link className={buttonVariants({ variant: "outline" })} href={appointmentRoutes.href()}>{t("common.back")}</Link>
               </div>
             </CardContent>
           </Card>

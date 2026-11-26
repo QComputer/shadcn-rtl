@@ -3,11 +3,12 @@ import { ApiError, jsonError, requireSameOriginMutation } from "@/lib/api-guards
 import { createRetailCheckoutQuote } from "@/lib/retail/checkout-quote.server";
 import { retailCheckoutQuoteInput } from "@/lib/retail/checkout.contract";
 import { requireCheckoutOwner } from "@/lib/retail/checkout-owner.server";
+import { readBoundedJson } from "@/lib/security/bounded-json";
 
 export async function POST(request: NextRequest) {
   try {
     requireSameOriginMutation(request);
-    const parsed = retailCheckoutQuoteInput.safeParse(await request.json());
+    const parsed = retailCheckoutQuoteInput.safeParse(await readBoundedJson(request, { maxBytes: 8 * 1024 }));
     if (!parsed.success) throw new ApiError(400, "Checkout details are invalid.");
     const { owner } = await requireCheckoutOwner(request, parsed.data.organization, true);
     const result = await createRetailCheckoutQuote(owner, parsed.data);

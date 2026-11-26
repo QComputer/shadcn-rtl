@@ -4,6 +4,7 @@ import { createRetailCheckout, findRetailCheckoutRecovery } from "@/lib/retail/c
 import { retailCheckoutInput } from "@/lib/retail/checkout.contract";
 import { prisma } from "@/lib/db";
 import { requireCheckoutOwner } from "@/lib/retail/checkout-owner.server";
+import { readBoundedJson } from "@/lib/security/bounded-json";
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     requireSameOriginMutation(request);
-    const parsed = retailCheckoutInput.safeParse(await request.json());
+    const parsed = retailCheckoutInput.safeParse(await readBoundedJson(request, { maxBytes: 8 * 1024 }));
     if (!parsed.success) throw new ApiError(400, "Checkout details are invalid.");
     const { owner } = await requireCheckoutOwner(request, parsed.data.organization, true);
     const order = await createRetailCheckout(owner, parsed.data);

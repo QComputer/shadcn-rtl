@@ -71,10 +71,12 @@ mock.module("@/lib/hotel/services/public-availability.service", { namedExports: 
 } });
 
 let service: typeof import("@/lib/hotel/guest-booking-request.server");
-const config = { AUTH_SECRET: process.env.AUTH_SECRET, HOTEL_GUEST_BOOKING_REQUEST_ENABLED: process.env.HOTEL_GUEST_BOOKING_REQUEST_ENABLED };
+const config = { AUTH_SECRET: process.env.AUTH_SECRET, HOTEL_GUEST_BOOKING_REQUEST_ENABLED: process.env.HOTEL_GUEST_BOOKING_REQUEST_ENABLED, HOTEL_GUEST_PORTAL_ENABLED: process.env.HOTEL_GUEST_PORTAL_ENABLED, HOTEL_OPERATIONAL_RESERVATIONS_ENABLED: process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED };
 before(async () => {
   process.env.AUTH_SECRET = "fixture-secret-for-synthetic-tracking-only";
   process.env.HOTEL_GUEST_BOOKING_REQUEST_ENABLED = "1";
+  process.env.HOTEL_GUEST_PORTAL_ENABLED = "0";
+  process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED = "0";
   service = await import("@/lib/hotel/guest-booking-request.server");
 });
 

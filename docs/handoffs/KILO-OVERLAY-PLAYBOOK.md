@@ -111,3 +111,9 @@ This document is the single reusable process reference. AGENTS.md links to it; m
 - v1.0: consolidates PR174 (ES2017/BigInt), PR175 (Playwright URL and accessible names), PR176 (workflow paths), PR178 (UTF-8 and blob integrity), PR179/180 (accepted guarded delivery), and 1C-E execution incident (stale session, accidental staging, wrong test runner, unnecessary install).
 
 - v1.1: PR181 verified manifest-exclusive `--stage`; exact node:test invocation replaces Jest guessing; local-check runner introduced in 1C-F. Read SHA values from gh/git, not reconstructed from abbreviated hashes. Before claiming root cause, capture API error body and verify mutable fixtures (room out-of-service state, price fallback) against prior steps. Keep GitHub access failures separate from reported acceptance. If a local Playbook copy exists at the singular `docs/handoff/` path, preserve it; canonical tracked path is `docs/handoffs/`.
+
+
+### G1-A lessons (2026-11-26)
+- Report exact full SHAs and CI results from `gh pr view`, `gh run view` and `git rev-parse`; do not reconstruct or hardcode a summary's SHA suffix. Verify the current PR head and remote main before merge. No admin override.
+- If `NODE_TLS_REJECT_UNAUTHORIZED=0` is inherited, remove only that insecure override from the current command environment; do not change persistent config, weaken TLS or expose secrets. Preserve unrelated files.
+- For isolated Next HTTP acceptance use the existing reviewed Webpack harness where needed; never copy old `.next`, raise deadlines merely to hide failures, or report cancelled cases as passes. Preflight React purity for authored client components; actual project ESLint remains mandatory.

@@ -75,6 +75,11 @@ Speed is the primary delivery priority. Deliver cohesive functional batches, use
 - Additive migration `20261126170000_hotel_guest_profiles`: disposable CI only. Production migration requires explicit owner authorization and verified backup/restore path. Existing reception/directory remains independent of the new tables until profile endpoint is used. No production writes, real payments or SMS.
 - Remaining after acceptance: group reservations, waitlist, PMS final acceptance; STOP before Housekeeping for the owner-directed intervening phase. No Housekeeping implementation.
 
+## PMS Professional 1C-E — atomic manual group reservations (proposed; CI pending)
+- Accepted base: PR180 squash `46a30dc0d6c92f49294f8146b5f4ab99a73cc940`, head `b0012e45bf449584bc80f8d2b356ef02d2b67232`; four hosted workflows independently confirmed successful (45830423460, 45830423736, 45830423451, 45830423424). Prisma validation/generation and disposable migration step succeeded. Production application of guest-profile migration is not verified or authorized by this package. Vercel preview blocked under the existing exception.
+- E: 2–8 distinct physical rooms with shared dates, independent room/rate/guest details; one serializable transaction reuses manual pricing, inventory and reservation creation. Unpaid reservations only; stable lock order, scoped idempotent receipt, recent 25 groups and exact group-reference lookup with current member status. Group receipt is stored in the existing durable HotelInventoryIdempotency record under its own operation scope, not a new mutable group model; preserve these records. No schema change or production writes.
+- No group-wide amendment, cancellation, check-in/out, combined quote or settlement; use existing per-reservation workflows. No automated contact, discount, group-wide payment or allocation outside the existing manual reception contract. Remaining: waitlist and final PMS acceptance; STOP before Housekeeping for owner-defined intervening phase.
+
 ## Hotel mandatory phase boundary
 
 OWNER GATE (2026-11-26): After completion of PMS Professional (1A/1B/1C and remaining reception items), STOP immediately before any Housekeeping implementation. The owner will specify an intervening phase. Do not start Housekeeping until that phase is completed and the owner explicitly authorizes resumption.

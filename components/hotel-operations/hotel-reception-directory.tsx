@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
+import { HotelGuestProfiles } from "./hotel-guest-profiles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { ReceptionDirectoryResult, ReceptionDirectoryRow } from "@/lib/hotel/domain/reception-directory";
@@ -23,6 +24,9 @@ export function HotelReceptionDirectory({ endpoint, locale, statusLabels }: { en
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const pending = useRef(false);
+  const [profilePanel, setProfilePanel] = useState<{ id: string; fullName: string } | "browse" | null>(null);
+  const profileLabel = locale === "en" ? "Guest profiles" : locale === "ar" ? "ملفات الضيوف" : "پرونده‌های مستقل مهمانان";
+  const personLabel = locale === "en" ? "Individual profile" : locale === "ar" ? "الملف الفردي" : "پرونده فردی";
   async function load(input: Query) {
     if (pending.current) return;
     pending.current = true; setBusy(true); setError(false); setResult(null); setCurrent(input);
@@ -44,6 +48,8 @@ export function HotelReceptionDirectory({ endpoint, locale, statusLabels }: { en
       <div className="min-w-0 flex-1 basis-48 space-y-1"><label className="text-sm" htmlFor={fieldId}>{mode === "phone" ? t.phone : t.query}</label><Input id={fieldId} type="search" inputMode={mode === "phone" ? "tel" : "search"} maxLength={mode === "phone" ? 32 : 120} autoComplete="off" disabled={busy} value={query} onChange={event => { setQuery(event.target.value); setResult(null); setCurrent(null); setSearch(null); setError(false); }} /></div>
       <Button type="submit" disabled={busy || query.trim().length < (mode === "phone" ? 8 : 2)}>{t.submit}</Button>
     </form>
+    <Button type="button" variant="outline" size="sm" onClick={() => setProfilePanel("browse")}>{profileLabel}</Button>
+    {profilePanel ? <HotelGuestProfiles key={profilePanel === "browse" ? "browse" : profilePanel.id} endpoint={endpoint} locale={locale} anchor={profilePanel === "browse" ? null : profilePanel} statusLabels={statusLabels} onClose={() => setProfilePanel(null)} /> : null}
     {busy ? <p role="status">{t.working}</p> : null}{error ? <p role="alert">{t.failed}</p> : null}
     {current?.action === "history" && search ? <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void load(search)}>{t.back}</Button> : null}
     {result ? <div className="space-y-3" aria-live="polite">
@@ -52,7 +58,7 @@ export function HotelReceptionDirectory({ endpoint, locale, statusLabels }: { en
         <p className="font-medium"><bdi>{row.reference}</bdi> · {statusLabels[row.status] ?? row.status}</p>
         <p>{t.dates}: {formatDate(row.checkIn)} – {formatDate(row.checkOut)}</p>
         {row.rooms.length ? <p>{t.rooms}: <bdi>{row.rooms.join("، ")}</bdi></p> : null}
-        {row.guests.map((guest, index) => <p key={index}>{guest.fullName}{guest.isPrimary ? ` · ${t.primary}` : ""}{guest.isChild ? ` · ${t.child}` : ""}</p>)}
+        {row.guests.map(guest => <div key={guest.id} className="flex flex-wrap items-center gap-2"><span>{guest.fullName}{guest.isPrimary ? ` · ${t.primary}` : ""}{guest.isChild ? ` · ${t.child}` : ""}</span><Button type="button" size="sm" variant="ghost" onClick={() => setProfilePanel({ id: guest.id, fullName: guest.fullName })}>{personLabel}</Button></div>)}
         {current?.action !== "history" ? <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => showHistory(row)}>{t.history}</Button> : null}
       </article>)}</div>}
       <div className="flex flex-wrap items-center gap-2"><Button type="button" size="sm" variant="outline" disabled={busy || result.page <= 1 || !current} onClick={() => { if (current) void load({ ...current, page: result.page - 1 }); }}>{t.previous}</Button><span className="text-sm">{t.page} {result.page}</span><Button type="button" size="sm" variant="outline" disabled={busy || !result.hasMore || !current} onClick={() => { if (current) void load({ ...current, page: result.page + 1 }); }}>{t.next}</Button></div>

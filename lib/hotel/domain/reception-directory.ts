@@ -9,7 +9,7 @@ export function receptionDirectoryTokens(query: string): string[] | null {
 }
 export type ReceptionDirectoryRow = {
   id: string; reference: string; status: string; checkIn: string; checkOut: string;
-  guests: Array<{ fullName: string; isPrimary: boolean; isChild: boolean; age: number | null }>;
+  guests: Array<{ id: string; fullName: string; isPrimary: boolean; isChild: boolean; age: number | null }>;
   rooms: string[];
 };
 export type ReceptionDirectoryResult = {

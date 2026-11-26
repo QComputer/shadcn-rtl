@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { appFetch } from "@/lib/app-base-path";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +23,7 @@ function AppointmentCard({ item, locale, detail, href }: { item: Item; locale: L
     <p>{item.service.organization.name}</p><p>{dateTime(item.startTime, locale, item.service.organization.timezone)} – {dateTime(item.endTime, locale, item.service.organization.timezone)}</p>
     {item.bookingReference && <p dir="ltr" className="font-mono text-start">{item.bookingReference}</p>}
     <p>{new Intl.NumberFormat(locale).format(item.service.price)} {t.price}</p>
-    {detail ? <><p>{item.service.serviceProvider?.firstName} {item.service.serviceProvider?.lastName}</p><p>{item.service.organization.address}</p>{item.service.organization.phone && <a className="block underline" href={`tel:${item.service.organization.phone}`}>{item.service.organization.phone}</a>}</> : <Button asChild variant="outline"><Link href={href(`/my-appointments/${encodeURIComponent(item.id)}`)}>{t.details}</Link></Button>}
+    {detail ? <><p>{item.service.serviceProvider?.firstName} {item.service.serviceProvider?.lastName}</p><p>{item.service.organization.address}</p>{item.service.organization.phone && <a className="block underline" href={`tel:${item.service.organization.phone}`}>{item.service.organization.phone}</a>}</> : <Link className={buttonVariants({ variant: "outline" })} href={href(`/my-appointments/${encodeURIComponent(item.id)}`)}>{t.details}</Link>}
   </CardContent></Card>;
 }
 export function PrivateAppointmentTracking({ locale: rawLocale, slug, appointmentId }: { locale: string; slug: string; appointmentId?: string }) {
@@ -59,6 +59,6 @@ export function PrivateAppointmentTracking({ locale: rawLocale, slug, appointmen
     {!appointmentId && <form onSubmit={lookup} className="space-y-3"><label htmlFor="booking-reference">{t.ref}</label><Input id="booking-reference" value={ref} onChange={event => setRef(event.target.value.toUpperCase())} maxLength={64} autoComplete="off" dir="ltr" /><Button disabled={loading} type="submit">{loading ? t.loading : t.show}</Button></form>}
     {loading && <p role="status">{t.loading}</p>}{error && <p role="alert" className="text-destructive">{t.denied}</p>}
     {result && <section className="space-y-3">{result.items.length === 0 && <p>{t.none}</p>}{result.items.map(item => <AppointmentCard key={item.id} item={item} locale={locale} detail={Boolean(appointmentId)} href={routes.href} />)}{result.hasMore && <p>{t.more}</p>}</section>}
-    <div className="flex flex-wrap gap-2">{appointmentId && <Button variant="outline" asChild><Link href={routes.href("/my-appointments")}>{t.back}</Link></Button>}<Button variant="outline" asChild><Link href={routes.href("/booking")}>{t.booking}</Link></Button></div>
+    <div className="flex flex-wrap gap-2">{appointmentId && <Link className={buttonVariants({ variant: "outline" })} href={routes.href("/my-appointments")}>{t.back}</Link>}<Link className={buttonVariants({ variant: "outline" })} href={routes.href("/booking")}>{t.booking}</Link></div>
   </main>;
 }

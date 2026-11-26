@@ -1,3 +1,4 @@
+import { progressiveCustomerEnrollmentEnabled } from "@/lib/customer-auth/progressive-contract";
 import { resolveCustomerAuthContext } from "@/lib/customer-auth/context.server";
 import { customerPhoneAuthAvailable } from "@/lib/customer-auth/core.server";
 import { customerSsoAvailable } from "@/lib/customer-auth/sso.server";
@@ -13,6 +14,7 @@ export async function GET(request: Request) {
   const available = Boolean(context && await customerPhoneAuthAvailable());
   return Response.json({
     available,
+    progressiveEnrollment: Boolean(context && progressiveCustomerEnrollmentEnabled()),
     ssoAvailable: Boolean(context && customerSsoAvailable()),
     organization: context ? { id: context.organizationId, slug: context.slug, name: context.name, logo: context.logo } : null,
     homePath: context?.homePath ?? null,

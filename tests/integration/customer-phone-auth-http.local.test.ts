@@ -149,8 +149,11 @@ describe("customer phone auth through isolated local HTTP", { concurrency: false
   it("fails closed for the real HTTP request gate and rejects an unowned tenant host", async () => {
     const good = await request("/api/auth/customer/config");
     assert.equal(good.status, 200);
-    const config = await good.json() as { available: boolean; organization?: { id: string; slug: string } | null };
+    const config = await good.json() as { available: boolean; progressiveEnrollment?: boolean; organization?: { id: string; slug: string } | null };
     assert.equal(config.available, false, "provider singleton has no configured sender");
+    assert.equal(config.progressiveEnrollment, false, "progressive gate defaults OFF");
+    const disabled = await request("/api/auth/customer/progressive/request", { method: "POST", headers: { origin: tenantUrl, "content-type": "application/json" }, body: JSON.stringify({ phone: "09000000000", organization: prefix, purpose: "ACCOUNT_SIGN_IN" }) });
+    assert.equal(disabled.status, 404);
     assert.equal(config.organization?.id, organization.id, "synthetic tenant host resolves through HTTP");
     const malformedOrDisabled = await request("/api/auth/customer/request", { method: "POST", headers: { origin: tenantUrl, "content-type": "application/json" }, body: JSON.stringify({ phone: "09000000000", organization: prefix }) });
     assert.equal(malformedOrDisabled.status, 202);

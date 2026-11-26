@@ -270,8 +270,9 @@ export function resolveOperationalAppRoute(
   if (path === "/") {
     return { locale, internalPathname: `/${locale}/${organization}`, surface: "HOME" };
   }
-  if (path === "/login") {
-    return { locale, internalPathname: `/${locale}/login`, surface: "LOGIN" };
+  // Keep only the two known login routes in the operational APP namespace.
+  if (path === "/login" || path === "/login/phone") {
+    return { locale, internalPathname: `/${locale}${path}`, surface: "LOGIN" };
   }
   if (path === "/shop" || path.startsWith("/shop/")) {
     return { locale, internalPathname: `/${locale}/${organization}${path}`, surface: "SHOP" };
@@ -664,6 +665,7 @@ export function isCustomDomainApplicationPath(pathname: string) {
 
   return (
     pathnameWithoutLocale === "/login" ||
+    pathnameWithoutLocale === "/login/phone" ||
     pathnameWithoutLocale === "/forgot-password" ||
     pathnameWithoutLocale === "/register" ||
     pathnameWithoutLocale.startsWith("/register/") ||

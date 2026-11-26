@@ -132,3 +132,7 @@ This document is the single reusable process reference. AGENTS.md links to it; m
 
 ### G1-B2 verified execution pattern (2026-11-26)
 - Reported PR185 acceptance used one staged snapshot for full TypeScript and the focused unit/PG/HTTP profile (120/120), with four hosted gates auto-triggered. Reuse this pattern for G2. Dispatch only missing applicable gates, never duplicates; match full head SHA for every result. Preserve exact asset-module extraction and same-invocation TLS guard. Report independent upstream verification separately from executor evidence.
+
+
+### G2-A execution evidence (2026-11-26)
+- Executor reported full staged candidate acceptance 123/123 and PR186 four hosted gates, with two path-filtered workflows dispatched. Preserve the exact staged-tree TypeScript + unit/PG/HTTP acceptance pattern. Use the same active Kilo session while it follows instructions; no redundant full tests after an unchanged accepted candidate. Record warnings honestly; fix relevant new warnings within functional packages, not separate cleanup PRs. Keep brand spelling `bazarbaaz`; use TLS guard in each PowerShell invocation.

@@ -9,6 +9,7 @@ import { PremiumOrderConfirmation } from "./premium-order-confirmation";
 import { RetailPaymentFollowup } from "./retail-payment-followup";
 import { Button } from "@/components/ui/button";
 
+type RecentOrder = { orderNumber: string; total: string; status: string; paymentStatus: string; type: string; createdAt: string };
 type Draft = { type: "PICK_UP" | "DELIVERY"; deliveryAddress: string; recipientName: string; recipientMobile: string; deliveryNotes: string; couponCode: string; paymentMethod: string; cashMode: string };
 const initial: Draft = { type: "PICK_UP", deliveryAddress: "", recipientName: "", recipientMobile: "", deliveryNotes: "", couponCode: "", paymentMethod: "", cashMode: "" };
 const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring";
@@ -38,6 +39,7 @@ export default function RetailCheckoutClient({ locale, organization, storefrontP
   const [cart, setCart] = useState<CheckoutCart | null>(null), [methods, setMethods] = useState<CheckoutPaymentMethod[]>([]), [draft, setDraft] = useState<Draft>(initial);
   const [quote, setQuote] = useState<CheckoutQuote | null>(null), [customer, setCustomer] = useState<CheckoutQuote["customer"] | null>(null), [fulfillment, setFulfillment] = useState<CheckoutQuote["fulfillment"]>([]);
   const [order, setOrder] = useState<CheckoutOrder | null>(null), [loading, setLoading] = useState(true), [authenticated, setAuthenticated] = useState(true), [busy, setBusy] = useState(false), [busyItemId, setBusyItemId] = useState<string | null>(null), [reviewed, setReviewed] = useState(false);
+  const [guestAvailable, setGuestAvailable] = useState(false), [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [errors, setErrors] = useState<Record<string, string>>({}), [reload, setReload] = useState(0);
   const lock = useRef(false), key = useRef<string | null>(null), scope = useRef(""), alert = useRef<HTMLDivElement>(null), form = useRef<HTMLFormElement>(null);
   useEffect(() => {
@@ -49,25 +51,29 @@ export default function RetailCheckoutClient({ locale, organization, storefrontP
           retailRequest<{ user?: { id?: string } }>("/api/auth/session"),
         ]);
         if (cancelled) return;
-        if (!session?.user?.id) {
-          setCart(initialCart.cart); setAuthenticated(false); setMethods([]); setQuote(null); setOrder(null); setCustomer(null); setFulfillment([]);
-          return;
-        }
-        const cartResult = initialCart.mergePending ? await retailRequest<{ cart: CheckoutCart | null }>("/api/retail/v1/cart", { method: "POST", body: JSON.stringify({ organization: org, action: "merge" }) }) : initialCart;
-        const paymentResult = cartOnly ? { methods: [] as CheckoutPaymentMethod[] } : await retailRequest<{ methods: CheckoutPaymentMethod[] }>(`/api/retail/v1/payment-methods?organization=${encodeURIComponent(org)}`);
+        const signedIn = Boolean(session?.user?.id);
+        const cartResult = initialCart.mergePending && signedIn ? await retailRequest<{ cart: CheckoutCart | null }>("/api/retail/v1/cart", { method: "POST", body: JSON.stringify({ organization: org, action: "merge" }) }) : initialCart;
+        const paymentResult = cartOnly ? { methods: [] as CheckoutPaymentMethod[], guestCheckoutAvailable: false } : await retailRequest<{ methods: CheckoutPaymentMethod[]; guestCheckoutAvailable?: boolean }>(`/api/retail/v1/payment-methods?organization=${encodeURIComponent(org)}`);
         if (cancelled) return;
-        scope.current = `retail-checkout:${org}:${session.user.id}`; key.current = stored(`${scope.current}:key`);
-        setCart(cartResult.cart); setMethods(paymentResult.methods); setAuthenticated(true);
+        const available = paymentResult.guestCheckoutAvailable === true;
+        const selectedMethods = signedIn ? paymentResult.methods : paymentResult.methods.filter(m => m.method !== "INOTI_USSD");
+        scope.current = `retail-checkout:${org}:${session?.user?.id ?? "guest"}`; key.current = stored(`${scope.current}:key`);
+        setCart(cartResult.cart); setMethods(selectedMethods); setAuthenticated(signedIn); setGuestAvailable(available); setOrder(null); setReviewed(false); setQuote(null); setCustomer(null); setFulfillment([]); setRecentOrders([]);
+        if (cartOnly) return;
         const explicit = new URLSearchParams(window.location.search).get("order");
-        const recovery = key.current && !explicit ? await retailRequest<{ orderNumber: string | null }>(`/api/retail/v1/checkout?organization=${encodeURIComponent(org)}&idempotencyKey=${encodeURIComponent(key.current)}`) : null;
+        const history = await retailRequest<{ orders: RecentOrder[] }>(`/api/retail/v1/orders?organization=${encodeURIComponent(org)}`);
+        if (cancelled) return;
+        setRecentOrders(history.orders);
+        const recovery = key.current && !explicit ? await retailRequest<{ orderNumber: string | null }>(`/api/retail/v1/checkout?organization=${encodeURIComponent(org)}&idempotencyKey=${encodeURIComponent(key.current)}`).catch(e => { if (e instanceof RetailRequestError && e.status === 404) return null; throw e; }) : null;
         const orderNumber = explicit ?? recovery?.orderNumber;
         if (orderNumber && !cartOnly) {
           const result = await retailRequest<{ order: CheckoutOrder }>(`/api/retail/v1/orders/${encodeURIComponent(orderNumber)}?organization=${encodeURIComponent(org)}`);
           if (!cancelled) { setOrder(result.order); save(`${scope.current}:key`, null); key.current = null; }
           return;
         }
-        const saved = restore(stored(`${scope.current}:draft`));
-        let next: Draft = { ...initial, ...saved, paymentMethod: saved.paymentMethod ?? paymentResult.methods[0]?.method ?? "" };
+        if (!signedIn && !available) return;
+        const saved: Partial<Draft> = signedIn ? restore(stored(`${scope.current}:draft`)) : {};
+        let next: Draft = { ...initial, ...saved, paymentMethod: saved.paymentMethod ?? selectedMethods[0]?.method ?? "" };
         if (cartResult.cart?.items.length && !cartOnly) {
           const result = await retailRequest<{ quote: CheckoutQuote }>("/api/retail/v1/checkout/quote", { method: "POST", body: JSON.stringify({ organization: org, type: "PICK_UP" }) });
           if (cancelled) return;
@@ -75,7 +81,7 @@ export default function RetailCheckoutClient({ locale, organization, storefrontP
           next = { ...next, recipientName: saved.recipientName ?? result.quote.customer.name ?? "", recipientMobile: saved.recipientMobile ?? result.quote.customer.mobile ?? "" };
           if (!result.quote.fulfillment.some(m => m.type === next.type) && result.quote.fulfillment[0]) next.type = result.quote.fulfillment[0].type;
         }
-        if (!modes(paymentResult.methods, next).includes(next.cashMode)) next.cashMode = modes(paymentResult.methods, next)[0] ?? "";
+        if (!modes(selectedMethods, next).includes(next.cashMode)) next.cashMode = modes(selectedMethods, next)[0] ?? "";
         if (!cancelled) setDraft(next);
       } catch (e) { if (!cancelled) { if (e instanceof Error && e.message === "AUTH_REQUIRED") setAuthenticated(false); else setError(checkoutError(e)); } }
       finally { if (!cancelled) setLoading(false); }
@@ -85,7 +91,7 @@ export default function RetailCheckoutClient({ locale, organization, storefrontP
   function update(patch: Partial<Draft>) {
     const next = { ...draft, ...patch };
     if (patch.type || patch.paymentMethod) { const available = modes(methods, next); if (!available.includes(next.cashMode)) next.cashMode = available[0] ?? ""; }
-    setDraft(next); setReviewed(false); setErrors({}); setError(""); setNotice(""); if (scope.current) save(`${scope.current}:draft`, JSON.stringify(next));
+    setDraft(next); setReviewed(false); setErrors({}); setError(""); setNotice(""); if (scope.current && authenticated) save(`${scope.current}:draft`, JSON.stringify(next));
   }
   function fail(e: unknown) { setError(checkoutError(e)); requestAnimationFrame(() => alert.current?.focus()); }
   async function mutate(item: CheckoutCartItem, quantity: number | null) {
@@ -108,6 +114,10 @@ export default function RetailCheckoutClient({ locale, organization, storefrontP
   async function submit(event: FormEvent) {
     event.preventDefault(); if (lock.current) return;
     const invalid = checkoutFormErrors(draft, modes(methods, draft));
+    if (!authenticated) {
+      if (draft.recipientName.trim().length < 2) invalid.recipientName = "نام خریدار را وارد کنید.";
+      if (!/^(?:09\d{9}|\+989\d{9})$/.test(checkoutDigits(draft.recipientMobile).replace(/[\s-]/g, ""))) invalid.recipientMobile = "شماره همراه معتبر وارد کنید.";
+    }
     if (!fulfillment.some(m => m.type === draft.type)) invalid.type = "روش دریافت فعالی برای سفارش انتخاب نشده است.";
     if (Object.keys(invalid).length) { setErrors(invalid); setError("اطلاعات مشخص‌شده را کامل کنید."); requestAnimationFrame(() => form.current?.querySelector<HTMLElement>("[aria-invalid=true]")?.focus()); return; }
     lock.current = true; setBusy(true); setError(""); setNotice("");
@@ -137,10 +147,10 @@ export default function RetailCheckoutClient({ locale, organization, storefrontP
     <header className="mb-7 flex flex-wrap items-end justify-between gap-3"><div><p className="mb-2 text-xs text-muted-foreground">{cartOnly ? "انتخاب‌های شما" : "یک قدم تا ثبت سفارش"}</p><h1 className="text-2xl font-semibold sm:text-3xl">{order ? "سفارش شما" : cartOnly ? "سبد خرید" : "تکمیل سفارش"}</h1></div>{!cartOnly && !order && <a className={`${focus} min-h-11 py-3 text-sm underline underline-offset-4`} href={cartPath}>ویرایش سبد خرید</a>}</header>
     {error && <div ref={alert} tabIndex={-1} role="alert" className="mb-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm leading-7 text-rose-900">{error}{!cart && <button type="button" onClick={() => { setError(""); setLoading(true); setReload(n => n + 1); }} className={`${focus} ms-3 underline`}>تلاش دوباره</button>}</div>}
     {notice && <p role="status" className="mb-5 rounded-2xl bg-muted p-4 text-sm leading-7">{notice}</p>}
-    {loading ? <section aria-busy="true" aria-label="در حال دریافت سبد" className="space-y-4">{[0,1].map(i => <div key={i} className="h-36 animate-pulse rounded-3xl bg-muted/60 motion-reduce:animate-none" />)}<p role="status" className="text-sm text-muted-foreground">در حال دریافت اطلاعات فروشگاه…</p></section> : !authenticated && !cartOnly ? <section className={`${panel} space-y-5 py-10 text-center`}><UserRound className="mx-auto size-9 text-muted-foreground" /><h2 className="text-lg font-semibold">سبد خرید شما محفوظ است</h2><p className="text-sm leading-7 text-muted-foreground">برای ثبت نهایی سفارش در این نسخه وارد حساب شوید؛ انتخاب‌های این مرورگر پس از ورود منتقل می‌شوند.</p><a href={login} className={`${focus} inline-flex min-h-12 items-center rounded-xl bg-primary px-7 text-sm text-primary-foreground`}>ورود و ادامه خرید</a><a href={cartPath} className={`${focus} block text-sm underline underline-offset-4`}>مشاهده و ویرایش سبد بدون حساب</a></section> : order ? <PremiumOrderConfirmation order={order} storefrontPath={store}><RetailPaymentFollowup organization={org} order={order} methods={methods} /></PremiumOrderConfirmation> : !items.length ? <section data-empty-cart className={`${panel} py-14 text-center`}><ShoppingBag className="mx-auto mb-5 size-12 text-muted-foreground" /><h2 className="text-lg font-semibold">سبد خریدتان هنوز خالی است</h2><p className="mt-3 text-sm leading-7 text-muted-foreground">رنگ و اندازه دلخواهتان را از صفحه محصول انتخاب کنید.</p><a href={store} className={`${focus} mt-7 inline-flex min-h-12 items-center rounded-xl bg-primary px-6 text-sm text-primary-foreground`}>دیدن محصولات فروشگاه</a></section> : <>
+    {loading ? <section aria-busy="true" aria-label="در حال دریافت سبد" className="space-y-4">{[0,1].map(i => <div key={i} className="h-36 animate-pulse rounded-3xl bg-muted/60 motion-reduce:animate-none" />)}<p role="status" className="text-sm text-muted-foreground">در حال دریافت اطلاعات فروشگاه…</p></section> : order ? <PremiumOrderConfirmation order={order} storefrontPath={store}><RetailPaymentFollowup organization={org} order={order} methods={methods} /></PremiumOrderConfirmation> : !authenticated && !guestAvailable && !cartOnly ? <section className={`${panel} space-y-5 py-10 text-center`}><UserRound className="mx-auto size-9 text-muted-foreground" /><h2 className="text-lg font-semibold">سبد خرید شما محفوظ است</h2><p className="text-sm leading-7 text-muted-foreground">برای ثبت نهایی سفارش در این نسخه وارد حساب شوید؛ انتخاب‌های این مرورگر پس از ورود منتقل می‌شوند.</p><a href={login} className={`${focus} inline-flex min-h-12 items-center rounded-xl bg-primary px-7 text-sm text-primary-foreground`}>ورود و ادامه خرید</a><a href={cartPath} className={`${focus} block text-sm underline underline-offset-4`}>مشاهده و ویرایش سبد بدون حساب</a></section> : !items.length ? <section data-empty-cart className={`${panel} py-14 text-center`}><ShoppingBag className="mx-auto mb-5 size-12 text-muted-foreground" /><h2 className="text-lg font-semibold">سبد خریدتان هنوز خالی است</h2><p className="mt-3 text-sm leading-7 text-muted-foreground">رنگ و اندازه دلخواهتان را از صفحه محصول انتخاب کنید.</p><a href={store} className={`${focus} mt-7 inline-flex min-h-12 items-center rounded-xl bg-primary px-6 text-sm text-primary-foreground`}>دیدن محصولات فروشگاه</a></section> : <>
       <div className={`grid items-start gap-7 ${drawer ? "" : "lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10"}`}><div className="min-w-0 space-y-5">
         {cartOnly ? <section className={panel}><h2 className="text-sm font-semibold">کالاهای انتخاب‌شده <span className="ms-2 font-normal text-muted-foreground">{new Intl.NumberFormat("fa-IR").format(cart?.itemCount ?? 0)} عدد</span></h2><PremiumCartItems items={items} storefrontPath={store} busy={busy} busyItemId={busyItemId} onQuantity={(item,q) => void mutate(item,q)} onRemove={item => void mutate(item,null)} /></section> : <form id="retail-checkout-form" ref={form} onSubmit={e => void submit(e)} noValidate className="space-y-5">
-          <fieldset disabled={busy} className={panel}><legend className="sr-only">اطلاعات و روش دریافت</legend><h2 className="mb-4 text-base font-semibold">اطلاعات خریدار</h2><p className="text-sm leading-7">{customer?.name ?? "حساب کاربری شما"}{customer?.mobile && <bdi className="ms-3 text-muted-foreground">{customer.mobile}</bdi>}</p><p className="mt-2 text-xs leading-6 text-muted-foreground">سفارش به همین حساب متصل می‌شود؛ ایمیل لازم نیست.</p>
+          <fieldset disabled={busy} className={panel}><legend className="sr-only">اطلاعات و روش دریافت</legend><h2 className="mb-4 text-base font-semibold">اطلاعات خریدار</h2>{authenticated ? <><p className="text-sm leading-7">{customer?.name ?? "حساب کاربری شما"}{customer?.mobile && <bdi className="ms-3 text-muted-foreground">{customer.mobile}</bdi>}</p><p className="mt-2 text-xs leading-6 text-muted-foreground">سفارش به همین حساب متصل می‌شود؛ ایمیل لازم نیست.</p></> : <><p className="text-sm leading-7">خرید بدون حساب؛ برای پیگیری سفارش از همین مرورگر استفاده کنید. شماره همراه فقط برای هماهنگی سفارش است.</p><a href={login} className="mt-2 inline-block text-xs underline">ورود اختیاری به حساب</a>{draft.type === "PICK_UP" && <div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="text-sm">نام خریدار<input name="recipientName" autoComplete="name" maxLength={120} value={draft.recipientName} aria-invalid={!!errors.recipientName} onChange={e=>update({recipientName:e.target.value})} className={field}/>{fieldError("recipientName")}</label><label className="text-sm">شماره همراه<input name="recipientMobile" autoComplete="tel" inputMode="tel" dir="ltr" maxLength={24} value={draft.recipientMobile} aria-invalid={!!errors.recipientMobile} onChange={e=>update({recipientMobile:e.target.value})} className={field}/>{fieldError("recipientMobile")}</label></div>}</>}
             <h2 className="mb-4 mt-7 border-t border-border pt-6 text-base font-semibold">روش دریافت</h2>{!fulfillment.length ? <p role="status" className="text-sm leading-7 text-amber-800">فروشگاه هنوز روش دریافت معتبری تنظیم نکرده است.</p> : <div className="grid gap-3 sm:grid-cols-2">{fulfillment.map(m => <label key={m.type} className={`flex min-h-20 cursor-pointer items-center gap-3 rounded-2xl border p-4 ${draft.type === m.type ? "border-primary bg-primary/10" : "border-border"}`}><input type="radio" name="type" value={m.type} checked={draft.type === m.type} onChange={() => update({type:m.type})} className="size-4 accent-primary" /><span><strong className="block text-sm font-medium">{m.type === "PICK_UP" ? "دریافت حضوری" : "ارسال به نشانی شما"}</strong><span className="mt-1 block text-xs text-muted-foreground">{m.type === "PICK_UP" ? "بدون هزینه ارسال" : checkoutMoney(m.fee)}</span></span></label>)}</div>}{fieldError("type")}
             {quote?.fulfillmentInfo && <div aria-label="راهنمای دریافت سفارش" className="mt-4 space-y-2 rounded-xl border border-border p-4 text-xs leading-7 text-muted-foreground">
               {draft.type === "PICK_UP" && <><p className="whitespace-pre-line">نشانی دریافت حضوری: {quote.fulfillmentInfo.pickupAddress || "نشانی دریافت حضوری ثبت نشده است؛ پیش از مراجعه با فروشگاه هماهنگ کنید."}</p>{quote.fulfillmentInfo.pickupInstructions && <p className="whitespace-pre-line">{quote.fulfillmentInfo.pickupInstructions}</p>}</>}
@@ -160,12 +170,14 @@ export default function RetailCheckoutClient({ locale, organization, storefrontP
         </form>}
       </div><aside aria-label="خلاصه سفارش" className={`${panel} min-w-0 space-y-5 lg:sticky lg:top-6`}><h2 className="text-base font-semibold">{cartOnly?"خلاصه سبد":"خلاصه سفارش"}</h2>
         <dl className="space-y-4 text-sm"><div className="flex justify-between gap-3"><dt className="text-muted-foreground">جمع کالاها</dt><dd className="tabular-nums">{checkoutMoney(reviewed&&quote?quote.subtotal:cart?.subtotal??0)}</dd></div>{reviewed&&quote&&quote.discount>0&&<div className="flex justify-between gap-3 text-emerald-800"><dt>تخفیف تأییدشده</dt><dd>{checkoutMoney(quote.discount)}</dd></div>}<div className="flex justify-between gap-3"><dt className="text-muted-foreground">هزینه دریافت</dt><dd className="text-end">{cartOnly?"در تکمیل سفارش مشخص می‌شود":fulfillment.find(m=>m.type===draft.type)?checkoutMoney(fulfillment.find(m=>m.type===draft.type)!.fee):"نیازمند تنظیم فروشگاه"}</dd></div><div className="flex justify-between gap-3 border-t border-border pt-5 text-base font-semibold"><dt>{cartOnly?"جمع کالاها":reviewed?"مبلغ نهایی":"جمع کالاها پیش از بررسی"}</dt><dd data-checkout-total className="tabular-nums">{checkoutMoney(total)}</dd></div></dl>
-        {!cartOnly&&<><details className="border-t border-border pt-4"><summary className={`${focus} min-h-11 cursor-pointer py-3 text-xs`}>کد تخفیف دارید؟</summary><label className="mt-2 block text-xs">کد تخفیف (اختیاری)<input name="couponCode" form="retail-checkout-form" value={draft.couponCode} maxLength={40} disabled={busy} onChange={e=>update({couponCode:e.target.value})} className={field} /><span className="mt-2 block leading-6 text-muted-foreground">اعتبار و مبلغ تخفیف هنگام بررسی محاسبه می‌شود.</span></label></details><div className="border-t border-border pt-4 text-xs leading-7 text-muted-foreground"><p>دریافت: {draft.type==="DELIVERY"?"ارسال به نشانی":"حضوری"}</p>{draft.type==="DELIVERY"&&draft.deliveryAddress&&<p className="mt-1 break-words">{draft.deliveryAddress}</p>}<p className="mt-1">پرداخت: {methods.find(m=>m.method===draft.paymentMethod)?.label??"انتخاب نشده"}</p></div></>}
+        {!cartOnly&&<>{authenticated && <details className="border-t border-border pt-4"><summary className={`${focus} min-h-11 cursor-pointer py-3 text-xs`}>کد تخفیف دارید؟</summary><label className="mt-2 block text-xs">کد تخفیف (اختیاری)<input name="couponCode" form="retail-checkout-form" value={draft.couponCode} maxLength={40} disabled={busy} onChange={e=>update({couponCode:e.target.value})} className={field} /><span className="mt-2 block leading-6 text-muted-foreground">اعتبار و مبلغ تخفیف هنگام بررسی محاسبه می‌شود.</span></label></details>}<div className="border-t border-border pt-4 text-xs leading-7 text-muted-foreground"><p>دریافت: {draft.type==="DELIVERY"?"ارسال به نشانی":"حضوری"}</p>{draft.type==="DELIVERY"&&draft.deliveryAddress&&<p className="mt-1 break-words">{draft.deliveryAddress}</p>}<p className="mt-1">پرداخت: {methods.find(m=>m.method===draft.paymentMethod)?.label??"انتخاب نشده"}</p></div></>}
         {!valid&&<p role="status" className="text-xs leading-7 text-amber-800">تعداد یا وضعیت کالاهای مشخص‌شده را در سبد اصلاح کنید.</p>}
         <div className="flex">{action()}</div><p className="text-[11px] leading-6 text-muted-foreground">{cartOnly?"موجودی و مبلغ نهایی پیش از ثبت سفارش دوباره بررسی می‌شود.":reviewed?"ثبت نهایی همین اقلام و مبلغ تأییدشده را ارسال می‌کند. تغییر هزینه یا موجودی نیازمند بررسی دوباره است.":"با دکمه بررسی سفارشی ثبت نمی‌شود؛ ابتدا مبلغ و موجودی را ببینید."}</p>{cartOnly&&<a href={store} className={`${focus} flex min-h-11 items-center justify-center text-xs`}>ادامه خرید</a>}
       </aside></div>
       {!drawer&&<div data-checkout-action className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 border-t border-border bg-background/95 px-4 py-3 backdrop-blur md:hidden"><div className="mx-auto flex max-w-lg items-center gap-3"><div className="min-w-24 text-xs"><strong className="block tabular-nums">{checkoutMoney(total)}</strong><span className="mt-1 block text-[10px] text-muted-foreground">{reviewed?"مبلغ نهایی":"پیش از بررسی"}</span></div>{action(true)}</div></div>}
     </>}
+    {!loading && cartOnly && <a href={checkout} className="mt-6 block text-center text-sm underline underline-offset-4">پیگیری سفارش‌های قبلی</a>}
+    {!loading && !cartOnly && !order && recentOrders.length > 0 && <section className={`${panel} mt-6`}><h2 className="mb-3 text-base font-semibold">سفارش‌های قابل پیگیری در این نشست</h2>{recentOrders.map(entry => <a key={entry.orderNumber} href={`${checkout}?order=${encodeURIComponent(entry.orderNumber)}`} className="flex min-h-12 flex-wrap items-center justify-between gap-2 border-b border-border py-3 text-sm"><bdi>{entry.orderNumber}</bdi><span>{checkoutMoney(Number(entry.total))}</span><span className="underline">پیگیری سفارش</span></a>)}</section>}
     {!embedded&&!drawer&&<nav aria-label="پیمایش موبایل فروشگاه" className="fixed inset-x-0 bottom-0 z-50 flex h-[calc(4rem+env(safe-area-inset-bottom))] items-start justify-around border-t border-border bg-background px-4 pt-3 text-xs md:hidden"><a href={store} className={`${focus} min-h-11 px-5 py-2`}>فروشگاه</a><a href={cartPath} className={`${focus} min-h-11 px-5 py-2`}>سبد خرید</a></nav>}
   </div></div>;
 }

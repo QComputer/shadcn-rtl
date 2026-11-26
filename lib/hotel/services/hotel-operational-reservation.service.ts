@@ -9,7 +9,7 @@ import { authorizeHotelBookingActor, type HotelBookingActor } from "./booking-co
 import { priceHotelStay, type HotelPricedQuote } from "./booking-quote";
 import { PrismaHotelRepositories } from "../persistence/prisma-hotel-repositories";
 import { enumerateStayNights } from "../domain/stay-dates";
-import { canMarkManualNoShow, projectReceptionHistory } from "../domain/reception-professional";
+import { canMarkManualNoShow, projectReceptionHistory, receptionClock, receptionArrivalTiming, receptionDepartureTiming, earlyDepartureBoundary, currentReceptionRoom } from "../domain/reception-professional";
 import { propertyCalendarDate } from "../domain/property-calendar";
 import { amendManualHotelStay } from "./hotel-stay-amendment";
 import { decideReservationTransition } from "../domain/booking-state";
@@ -43,8 +43,8 @@ export const hotelOperationalCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("move-room"), reservationId: id, roomId: id, expectedRoomId: id }).strict(),
   z.object({ action: z.literal("preview-amend-stay"), reservationId: id, checkIn: z.iso.date(), checkOut: z.iso.date() }).strict(),
   z.object({ action: z.literal("amend-stay"), reservationId: id, checkIn: z.iso.date(), checkOut: z.iso.date(), expectedVersion: z.number().int().nonnegative(), expectedTotal: z.string().regex(/^\d{1,16}$/) }).strict(),
-  z.object({ action: z.literal("check-in"), reservationId: id }).strict(),
-  z.object({ action: z.literal("check-out"), reservationId: id }).strict(),
+  z.object({ action: z.literal("check-in"), reservationId: id, allowEarlyArrival: z.boolean().optional() }).strict(),
+  z.object({ action: z.literal("check-out"), reservationId: id, retainBookedNights: z.boolean().optional(), earlyDeparture: z.object({ checkOut: z.iso.date(), expectedVersion: z.number().int().nonnegative(), expectedTotal: z.string().regex(/^\d{1,16}$/) }).strict().optional() }).strict(),
 ]);
 const ACTIONS = "HOTEL_OPERATIONAL_ACTION";
 const QUOTES = "HOTEL_OPERATIONAL_QUOTE";
@@ -161,7 +161,7 @@ export class HotelOperationalReservationService {
           this.db.hotelRoomMaintenanceBlock.count({ where: { organizationId, propertyId } }).then(() => true).catch(error => { if (isMissingHotelMaintenanceTableError(error)) return false; throw error; }),
         ]);
         const manualSources = new Map(manualRows.flatMap(row => { const value = row.resultJson as Record<string, unknown> | null; return value && typeof value === "object" && typeof value.reservationId === "string" ? [[value.reservationId, typeof value.source === "string" ? value.source : null] as const] : []; }));
-        return json({ mode: "MANUAL", view: "reception", demoBooking: true, maintenanceAvailable: maintenanceReady, manualRoomManagementEnabled: maintenanceReady, roomTypes, ratePlans, rooms, receptionHistory: receptionCenter ? await this.receptionHistory(organizationId, propertyId, reservations.map(row => row.id)) : [], history: [], confirmationPolicy: { manualConfirmationPolicy: "DISABLED", allowedOfflinePaymentMethods: [], minimumVerifiedDepositAmount: null, pendingPaymentMinutes: 0 }, reservations: reservations.map(row => ({ id: row.id, reference: row.reference, guestName: row.guests.find(guest => guest.isPrimary)?.fullName ?? "Demo Guest", ...(receptionCenter ? { guests: row.guests } : {}), status: row.status, paymentMethod: manualSources.has(row.id) ? row.paymentMethod : null, roomTypeId: row.roomTypeId, checkIn: dateOnly(row.checkIn), checkOut: dateOnly(row.checkOut), totalAmount: row.totalAmount, currency: row.currency, paidAmount: row.paidAmount, refundedAmount: row.refundedAmount, outstandingAmount: row.totalAmount, createdAt: row.createdAt, confirmedAt: row.confirmedAt, checkedInAt: row.checkedInAt, checkedOutAt: row.checkedOutAt, cancelledAt: row.cancelledAt, nights: row.nights, source: manualSources.get(row.id) ?? "DEMO_BOOKING", simulatedPaymentStatus: manualSources.has(row.id) ? null : ["CONFIRMED", "CHECKED_IN", "CHECKED_OUT"].includes(row.status) ? "SIMULATED_SUCCESS" : row.status === "PENDING_PAYMENT" ? "PENDING_SIMULATION" : null })) });
+        return json({ mode: "MANUAL", view: "reception", receptionSchedule: { timezone: demoProperty.timezone, checkInTime: demoProperty.checkInTime, checkOutTime: demoProperty.checkOutTime }, demoBooking: true, maintenanceAvailable: maintenanceReady, manualRoomManagementEnabled: maintenanceReady, roomTypes, ratePlans, rooms, receptionHistory: receptionCenter ? await this.receptionHistory(organizationId, propertyId, reservations.map(row => row.id)) : [], history: [], confirmationPolicy: { manualConfirmationPolicy: "DISABLED", allowedOfflinePaymentMethods: [], minimumVerifiedDepositAmount: null, pendingPaymentMinutes: 0 }, reservations: reservations.map(row => ({ id: row.id, reference: row.reference, guestName: row.guests.find(guest => guest.isPrimary)?.fullName ?? "Demo Guest", ...(receptionCenter ? { guests: row.guests } : {}), status: row.status, paymentMethod: manualSources.has(row.id) ? row.paymentMethod : null, roomTypeId: row.roomTypeId, checkIn: dateOnly(row.checkIn), checkOut: dateOnly(row.checkOut), totalAmount: row.totalAmount, currency: row.currency, paidAmount: row.paidAmount, refundedAmount: row.refundedAmount, outstandingAmount: row.totalAmount, createdAt: row.createdAt, confirmedAt: row.confirmedAt, checkedInAt: row.checkedInAt, checkedOutAt: row.checkedOutAt, cancelledAt: row.cancelledAt, nights: row.nights, source: manualSources.get(row.id) ?? "DEMO_BOOKING", simulatedPaymentStatus: manualSources.has(row.id) ? null : ["CONFIRMED", "CHECKED_IN", "CHECKED_OUT"].includes(row.status) ? "SIMULATED_SUCCESS" : row.status === "PENDING_PAYMENT" ? "PENDING_SIMULATION" : null })) });
       }
     }
     if (receptionCenter) {
@@ -179,7 +179,7 @@ export class HotelOperationalReservationService {
         return value && typeof value === "object" && typeof value.reservationId === "string" ? [[value.reservationId, typeof value.source === "string" ? value.source : null] as const] : [];
       }));
       return json({
-        mode: "MANUAL", view: "reception", demoBooking: property.slug === "damoon-demo" && isDamoonDemoOrganizationSlug(property.organizationSlug),
+        mode: "MANUAL", view: "reception", receptionSchedule: { timezone: property.timezone, checkInTime: property.checkInTime, checkOutTime: property.checkOutTime }, demoBooking: property.slug === "damoon-demo" && isDamoonDemoOrganizationSlug(property.organizationSlug),
         manualRoomManagementEnabled: process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED === "1",
         roomTypes, ratePlans, rooms, receptionHistory: await this.receptionHistory(organizationId, propertyId, reservations.map(row => row.id)),
         reservations: reservations.map((row) => ({
@@ -207,7 +207,7 @@ export class HotelOperationalReservationService {
     const ratePlans = await this.db.hotelRatePlan.findMany({ where: { organizationId, propertyId, isActive: true }, select: { id: true, name: true, roomTypeId: true } });
     const rooms = actor.role === "CUSTOMER" ? [] : await this.db.hotelRoom.findMany({ where: { organizationId, propertyId, isActive: true, deletedAt: null, isOutOfService: false }, select: { id: true, code: true, roomTypeId: true } });
     const history = await this.db.hotelInventoryIdempotency.findMany({ where: { organizationId, operationScope: { in: [ACTIONS, "HOTEL_OPERATIONAL_SYSTEM_EXPIRY", ...(actor.role === "CUSTOMER" ? [] : [MANUAL_RESERVATIONS])] }, AND: [{ resultJson: { path: ["propertyId"], equals: propertyId } }, ...(actor.role === "CUSTOMER" ? [{ resultJson: { path: ["actorUserId"], equals: actor.userId } }] : [])] }, orderBy: { createdAt: "desc" }, take: 200, select: { id: true, resultJson: true, createdAt: true } });
-    return json({ mode: manualOnly ? "MANUAL" : "RESERVATION", view: actor.role === "CUSTOMER" ? "guest" : "reception", manualRoomManagementEnabled: process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED === "1", confirmationPolicy: { manualConfirmationPolicy: property.manualConfirmationPolicy, allowedOfflinePaymentMethods: property.allowedOfflinePaymentMethods, minimumVerifiedDepositAmount: property.minimumVerifiedDepositAmount?.toString() ?? null, pendingPaymentMinutes: property.pendingPaymentMinutes }, roomTypes, ratePlans, rooms, history, reservations: reservations.map(row => ({ id: row.id, reference: row.reference, guestName: row.guests.find(g => g.isPrimary)?.fullName ?? "", status: row.status, paymentMethod: row.paymentMethod, roomTypeId: row.roomTypeId, checkIn: dateOnly(row.checkIn), checkOut: dateOnly(row.checkOut), totalAmount: row.totalAmount, currency: row.currency, paidAmount: row.paidAmount, refundedAmount: row.refundedAmount, outstandingAmount: row.totalAmount - row.paidAmount, createdAt: row.createdAt, confirmedAt: row.confirmedAt, checkedInAt: row.checkedInAt, checkedOutAt: row.checkedOutAt, cancelledAt: row.cancelledAt, nights: row.nights, source: manualMeta.find(item => item.id === row.id)?.source ?? null })) });
+    return json({ mode: manualOnly ? "MANUAL" : "RESERVATION", ...(actor.role !== "CUSTOMER" ? { receptionSchedule: { timezone: property.timezone, checkInTime: property.checkInTime, checkOutTime: property.checkOutTime } } : {}), view: actor.role === "CUSTOMER" ? "guest" : "reception", manualRoomManagementEnabled: process.env.HOTEL_MANUAL_ROOM_MANAGEMENT_ENABLED === "1", confirmationPolicy: { manualConfirmationPolicy: property.manualConfirmationPolicy, allowedOfflinePaymentMethods: property.allowedOfflinePaymentMethods, minimumVerifiedDepositAmount: property.minimumVerifiedDepositAmount?.toString() ?? null, pendingPaymentMinutes: property.pendingPaymentMinutes }, roomTypes, ratePlans, rooms, history, reservations: reservations.map(row => ({ id: row.id, reference: row.reference, guestName: row.guests.find(g => g.isPrimary)?.fullName ?? "", status: row.status, paymentMethod: row.paymentMethod, roomTypeId: row.roomTypeId, checkIn: dateOnly(row.checkIn), checkOut: dateOnly(row.checkOut), totalAmount: row.totalAmount, currency: row.currency, paidAmount: row.paidAmount, refundedAmount: row.refundedAmount, outstandingAmount: row.totalAmount - row.paidAmount, createdAt: row.createdAt, confirmedAt: row.confirmedAt, checkedInAt: row.checkedInAt, checkedOutAt: row.checkedOutAt, cancelledAt: row.cancelledAt, nights: row.nights, source: manualMeta.find(item => item.id === row.id)?.source ?? null })) });
   }
   /** Creates an immediately confirmed, unpaid reception booking behind the manual operations gate. */
   async createManual(actor: HotelBookingActor, organizationId: string, propertyId: string, input: unknown, idempotencyKey: string) {
@@ -389,6 +389,7 @@ export class HotelOperationalReservationService {
           if (remaining.length !== dates.length || remaining.some((n,i) => dateOnly(n.date) !== dates[i] || n.roomId !== command.expectedRoomId || n.roomTypeId !== reservation.roomTypeId)) fail("STAY_AMENDMENT_STALE");
           if (!remaining.length || command.roomId === command.expectedRoomId) fail("STAY_AMENDMENT_NO_CHANGE", 422);
           await this.lockRoom(tx, organizationId, propertyId, reservation.roomTypeId, command.roomId);
+          await this.assertNoInHouseOccupant(tx, organizationId, propertyId, command.roomId, reservation.id, today);
           await this.assertRoomMaintenanceClear(tx, organizationId, propertyId, command.roomId, new Date(today + "T00:00:00.000Z"), reservation.checkOut);
           if (await tx.hotelReservationRoom.findFirst({ where: { organizationId, roomId: command.roomId, date: { in: remaining.map(n => n.date) }, reservationId: { not: reservation.id } } })) fail("Room is already assigned");
           const moved = await tx.hotelReservationRoom.updateMany({ where: { organizationId, reservationId: reservation.id, roomId: command.expectedRoomId, date: { in: remaining.map(n => n.date) } }, data: { roomId: command.roomId } });
@@ -454,15 +455,38 @@ export class HotelOperationalReservationService {
             reservation = await tx.hotelReservation.update({ where: { id: reservation.id }, data: { version: { increment: 1 } }, include: { nights: true, hold: true } });
           } else {
             const checkingIn = command.action === "check-in";
-            if (checkingIn) {
-              const roomId = reservation.nights[0]?.roomId;
-              if (!roomId || reservation.nights.length !== enumerateStayNights(dateOnly(reservation.checkIn), dateOnly(reservation.checkOut)).length || reservation.nights.some(n => n.roomId !== roomId)) fail("Assign a room before check-in");
-              await this.lockRoom(tx, organizationId, propertyId, reservation.roomTypeId, roomId);
-              await this.assertRoomMaintenanceClear(tx, organizationId, propertyId, roomId, reservation.checkIn, reservation.checkOut);
-            }
             if (checkingIn ? reservation.status !== "CONFIRMED" : reservation.status !== "CHECKED_IN") fail("Invalid reception transition");
+            const { today, localTime } = receptionClock(property!.timezone, now);
+            const arrival = dateOnly(reservation.checkIn), departure = dateOnly(reservation.checkOut);
             const decision = decideReservationTransition({ current: checkingIn ? "CONFIRMED" : "CHECKED_IN", transition: checkingIn ? "CHECK_IN" : "CHECK_OUT", event: { type: checkingIn ? "GUEST_CHECKED_IN" : "GUEST_CHECKED_OUT", at: now.toISOString() }, now: now.toISOString() });
             if (!decision.isAllowed) fail(decision.reason);
+            if (command.action === "check-in") {
+              const roomId = reservation.nights[0]?.roomId;
+              const expectedDates = enumerateStayNights(arrival, departure);
+              if (!roomId || reservation.nights.length !== expectedDates.length || expectedDates.some(date => !reservation.nights.some(n => dateOnly(n.date) === date && n.roomId === roomId && n.roomTypeId === reservation.roomTypeId))) fail("Assign a room before check-in");
+              const timing = receptionArrivalTiming(arrival, departure, today, localTime, property!.checkInTime);
+              if (timing === "BEFORE_STAY" || timing === "STAY_ENDED") fail("RECEPTION_ARRIVAL_OUTSIDE_STAY", 422);
+              if (timing === "EARLY" && !command.allowEarlyArrival) fail("RECEPTION_EARLY_ARRIVAL_CONFIRM", 422);
+              await this.lockRoom(tx, organizationId, propertyId, reservation.roomTypeId, roomId);
+              await this.assertNoInHouseOccupant(tx, organizationId, propertyId, roomId, reservation.id, today);
+              await this.assertRoomMaintenanceClear(tx, organizationId, propertyId, roomId, new Date(today + "T00:00:00.000Z"), reservation.checkOut);
+              stayChangeResult = { lifecycle: { timing, at: now.toISOString(), propertyDate: today, localTime } };
+            } else if (command.action === "check-out") {
+              if (!reservation.checkedInAt || reservation.checkedInAt > now) fail("Invalid reception transition");
+              const timing = receptionDepartureTiming(departure, today, localTime, property!.checkOutTime);
+              const boundary = earlyDepartureBoundary(today, departure);
+              if (command.earlyDeparture) {
+                if (!manualLifecycle || !isManualReservation || isQuotedReservation) fail("STAY_AMENDMENT_MANUAL_ONLY", 422);
+                if (command.retainBookedNights || !boundary || command.earlyDeparture.checkOut !== boundary) fail("RECEPTION_EARLY_DEPARTURE_STALE", 409);
+                // Same reservation lock and transaction as the checkout status update; existing pricing and financial guards are reused.
+                const amendment = await amendManualHotelStay(tx, { reservation, property: property!, actorUserId: actor.userId, now, command: { action: "amend-stay", reservationId: reservation.id, checkIn: arrival, ...command.earlyDeparture } });
+                stayChangeResult = { amendment };
+                reservation = await tx.hotelReservation.findFirstOrThrow({ where: { id: reservation.id, organizationId, propertyId }, include: { nights: true, hold: true } });
+              } else if (boundary && !command.retainBookedNights) {
+                fail("RECEPTION_EARLY_DEPARTURE_CONFIRM", 422);
+              }
+              stayChangeResult = { ...stayChangeResult, lifecycle: { timing, at: now.toISOString(), propertyDate: today, localTime, previousCheckOut: departure, retainedBookedNights: !command.earlyDeparture } };
+            }
             reservation = await tx.hotelReservation.update({ where: { id: reservation.id }, data: { status: checkingIn ? "CHECKED_IN" : "CHECKED_OUT", ...(checkingIn ? { checkedInAt: now } : { checkedOutAt: now }), version: { increment: 1 } }, include: { nights: true, hold: true } });
           }
         }
@@ -487,6 +511,16 @@ export class HotelOperationalReservationService {
   private async lockRoom(tx: Tx, organizationId: string, propertyId: string, roomTypeId: string, roomId: string) {
     await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelRoom" WHERE "id"=${roomId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} FOR UPDATE`);
     if (!await tx.hotelRoom.findFirst({ where: { id: roomId, organizationId, propertyId, roomTypeId, isActive: true, deletedAt: null, isOutOfService: false } })) fail("Room is not available");
+  }
+  // An overdue checked-in guest still occupies the last assigned physical room,
+  // even when that room's booked-night rows no longer overlap the next stay.
+  // Caller holds the destination room row lock, serializing arrivals and moves.
+  private async assertNoInHouseOccupant(tx: Tx, organizationId: string, propertyId: string, roomId: string, reservationId: string, today: string) {
+    const occupants = await tx.hotelReservation.findMany({
+      where: { organizationId, propertyId, status: "CHECKED_IN", id: { not: reservationId }, nights: { some: { roomId } } },
+      select: { nights: { where: { date: { lte: new Date(today + "T00:00:00.000Z") } }, orderBy: { date: "desc" }, take: 1, select: { date: true, roomId: true } } },
+    });
+    if (occupants.some(occupant => currentReceptionRoom(occupant.nights, today) === roomId)) fail("RECEPTION_ROOM_OCCUPIED", 409);
   }
   private async assertRoomMaintenanceClear(tx: Tx, organizationId: string, propertyId: string, roomId: string, checkIn: Date, checkOut: Date) {
     try {

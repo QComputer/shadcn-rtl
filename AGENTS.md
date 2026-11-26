@@ -59,6 +59,11 @@ Speed is the primary delivery priority. Deliver cohesive functional batches, use
 - Merge `54dcbfc82de5f6548dfb6bb0572015474c864e06`, head `07240f43ca5d5f79bbe30bb8793b899a64db52b9`; four hosted execution gates passed, Vercel Preview remains blocked.
 - 1C-A: loaded-reservation search, reservation guest projection, bounded reception history and unpaid manual no-show. 1C-B proposed: shared Jalali single-date selection in reception intake, amendments and occupancy navigation; retain ISO contracts and native date input. No production deployment claim. Remaining reception and 1C work precedes the mandatory owner gate.
 
+## PMS Professional 1C-C — reception lifecycle (proposed; CI pending)
+- Base main `5e1819c9746e125aeab28b22fb35aade5b19e1ca`: PR176 merged, three PR-head gates successful and manually dispatched request-to-reception on merged main successful ([run 45729895850](https://github.com/QComputer/shadcn-rtl/actions/runs/45729895850)). Vercel Preview suspended; live Runflare not verified.
+- 1C-C: property-local arrival window and early-arrival acknowledgement; late arrival inside the booked dates; block arrival/move to a room still occupied by a checked-in guest (including overdue). Actual timestamps, localized FA/EN/AR controls and existing idempotency audit. Early checkout of unpaid manual stays may shorten via versioned amount preview and atomic checkout, retaining today's night. Explicit retain-all departure records physical checkout without financial or inventory changes; finance reconciliation remains deferred. No same-day inventory release or automatic late charges. CI trigger includes all hotel-operations components.
+- Remaining: global search, durable guest dossier, grouped reservations, waitlist, PMS acceptance, then mandatory owner diversion gate before any Housekeeping. No migration, production mutation, real payment or SMS.
+
 ## Hotel mandatory phase boundary
 
 OWNER GATE (2026-11-26): After completion of PMS Professional (1A/1B/1C and remaining reception items), STOP immediately before any Housekeeping implementation. The owner will specify an intervening phase. Do not start Housekeeping until that phase is completed and the owner explicitly authorizes resumption.

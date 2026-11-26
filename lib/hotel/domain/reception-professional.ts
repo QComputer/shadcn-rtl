@@ -1,4 +1,4 @@
-import { isPropertyDate } from "./property-calendar";
+import { isPropertyDate, offsetPropertyDate, propertyCalendarDate } from "./property-calendar";
 
 /** No-show is a manual staff decision after the arrival civil day, never an automatic job. */
 export function canMarkManualNoShow(input: { status: string; checkIn: string; today: string; checkedInAt?: Date | string | null }): boolean {
@@ -33,4 +33,37 @@ export function projectReceptionHistory(rows: ReadonlyArray<{ id: string; create
     output.push({ id: row.id, reservationId, action: action as ReceptionHistoryAction, at: row.createdAt.toISOString() });
   }
   return output;
+}
+
+export function propertyLocalTime(timeZone: string, at: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(at);
+  return `${parts.find(p => p.type === "hour")?.value}:${parts.find(p => p.type === "minute")?.value}`;
+}
+
+export function receptionArrivalTiming(checkIn: string, checkOut: string, today: string, localTime: string, scheduledTime: string): "BEFORE_STAY" | "STAY_ENDED" | "EARLY" | "ON_DAY" | "LATE_ARRIVAL" {
+  if (today < checkIn) return "BEFORE_STAY";
+  if (today >= checkOut) return "STAY_ENDED";
+  if (today > checkIn) return "LATE_ARRIVAL";
+  return localTime < scheduledTime ? "EARLY" : "ON_DAY";
+}
+
+export function receptionDepartureTiming(checkOut: string, today: string, localTime: string, scheduledTime: string): "EARLY" | "ON_DAY" | "LATE_DEPARTURE" {
+  if (today < checkOut || (today === checkOut && localTime < scheduledTime)) return "EARLY";
+  return today > checkOut || localTime > scheduledTime ? "LATE_DEPARTURE" : "ON_DAY";
+}
+
+/** Never release the current property-local night before Housekeeping exists. */
+export function earlyDepartureBoundary(today: string, checkOut: string): string | null {
+  const next = offsetPropertyDate(today, 1);
+  return next < checkOut ? next : null;
+}
+
+/** Last assigned night at or before today, including overdue guests. Never use a future move. */
+export function currentReceptionRoom(nights: ReadonlyArray<{ date: Date | string; roomId: string | null }>, today: string): string | null {
+  const eligible = nights.map(n => ({ date: typeof n.date === "string" ? n.date.slice(0, 10) : n.date.toISOString().slice(0, 10), roomId: n.roomId })).filter(n => n.date <= today).sort((a,b) => b.date.localeCompare(a.date));
+  return eligible[0]?.roomId ?? null;
+}
+
+export function receptionClock(timeZone: string, at: Date = new Date()) {
+  return { today: propertyCalendarDate(timeZone, at), localTime: propertyLocalTime(timeZone, at) };
 }

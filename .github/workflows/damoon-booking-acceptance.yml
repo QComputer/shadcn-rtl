@@ -9,7 +9,7 @@ on:
       - "app/[locale]/login/**"
       - "app/api/hotel/v1/**"
       - "app/api/organizations/**/hotels/**/booking-requests/**"
-      - "components/hotel-operations/hotel-guest-booking-requests.tsx"
+      - "components/hotel-operations/**"
       - "lib/hotel/**"
       - "lib/auth.ts"
       - "lib/customer-auth/context.server.ts"

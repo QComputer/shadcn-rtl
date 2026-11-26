@@ -2,6 +2,11 @@ import type { ReceptionDateIssue } from "../domain/property-calendar";
 
 const messages = {
   fa: {
+    ARRIVAL_OUTSIDE: "ورود فقط در بازه معتبر اقامت ممکن است؛ برای ورود قبل از تاریخ رزرو ابتدا تاریخ را اصلاح کنید.",
+    ARRIVAL_CONFIRM: "ورود پیش از ساعت مقرر نیاز به تأیید پذیرش دارد.",
+    DEPARTURE_CONFIRM: "برای خروج زودهنگام، مبلغ جدید را پیش‌نمایش کنید یا نگه‌داشتن تمام شب‌ها را صریحاً تأیید کنید.",
+    DEPARTURE_STALE: "تاریخ محلی یا رزرو تغییر کرده؛ پیش‌نمایش خروج را دوباره انجام دهید.",
+    ROOM_OCCUPIED: "مهمان قبلی هنوز خروج ثبت‌شده ندارد؛ ابتدا وضعیت اتاق را بررسی کنید.",
     NO_SHOW_NOT_DUE: "عدم مراجعه فقط پس از پایان روز ورود و قبل از ثبت ورود مجاز است.",
     AMEND_PAYMENT: "تغییر تاریخ این رزرو به تسویه مالی نیاز دارد.",
     AMEND_MANUAL: "تغییر تاریخ فعلاً برای رزرو دستی پرداخت‌نشده فعال است.",
@@ -23,6 +28,11 @@ const messages = {
     UNAVAILABLE: "سرویس موقتاً در دسترس نیست. دوباره تلاش کنید.",
   },
   en: {
+    ARRIVAL_OUTSIDE: "Arrival must be within the reserved stay; amend the dates before arriving on an earlier day.",
+    ARRIVAL_CONFIRM: "Arrival before the scheduled time requires reception confirmation.",
+    DEPARTURE_CONFIRM: "Preview the revised amount or explicitly retain all booked nights before early departure.",
+    DEPARTURE_STALE: "The property date or reservation changed; preview departure again.",
+    ROOM_OCCUPIED: "The previous guest is still checked in; resolve the room occupancy first.",
     NO_SHOW_NOT_DUE: "No-show is allowed only after the arrival day and before check-in.",
     AMEND_PAYMENT: "This stay requires financial reconciliation before date changes.",
     AMEND_MANUAL: "Date changes are currently enabled for unpaid manual stays.",
@@ -43,6 +53,11 @@ const messages = {
     RELOAD: "The action succeeded, but the list could not refresh. Use Refresh.", UNAVAILABLE: "The service is temporarily unavailable. Try again.",
   },
   ar: {
+    ARRIVAL_OUTSIDE: "يجب أن يكون الوصول ضمن مدة الحجز؛ عدّل التواريخ أولاً إذا كان الوصول مبكراً.",
+    ARRIVAL_CONFIRM: "الوصول قبل الوقت المحدد يحتاج إلى تأكيد الاستقبال.",
+    DEPARTURE_CONFIRM: "عاين المبلغ المعدل أو أكد الاحتفاظ بجميع الليالي قبل المغادرة المبكرة.",
+    DEPARTURE_STALE: "تغير تاريخ المنشأة أو الحجز؛ أعد معاينة المغادرة.",
+    ROOM_OCCUPIED: "الضيف السابق لم يسجل المغادرة بعد؛ تحقق من إشغال الغرفة أولاً.",
     NO_SHOW_NOT_DUE: "يمكن تسجيل عدم الحضور بعد يوم الوصول وقبل تسجيل دخول الضيف فقط.",
     AMEND_PAYMENT: "تحتاج الإقامة إلى تسوية مالية قبل تغيير التواريخ.",
     AMEND_MANUAL: "تعديل التاريخ متاح حالياً للحجوزات اليدوية غير المدفوعة.",
@@ -73,7 +88,12 @@ export const receptionReloadMessage = (locale: string) => dictionary(locale).REL
 export function reservationActionMessage(message: string, locale: string, fallback: string, status?: number): string {
   const lower = message.toLowerCase();
   let key: FeedbackKey | undefined;
-  if (lower === "no_show_not_due") key = "NO_SHOW_NOT_DUE";
+  if (lower === "reception_arrival_outside_stay") key = "ARRIVAL_OUTSIDE";
+  else if (lower === "reception_early_arrival_confirm") key = "ARRIVAL_CONFIRM";
+  else if (lower === "reception_early_departure_confirm") key = "DEPARTURE_CONFIRM";
+  else if (lower === "reception_early_departure_stale") key = "DEPARTURE_STALE";
+  else if (lower === "reception_room_occupied") key = "ROOM_OCCUPIED";
+  else if (lower === "no_show_not_due") key = "NO_SHOW_NOT_DUE";
   else if (lower === "stay_amendment_payment_activity") key = "AMEND_PAYMENT";
   else if (lower === "stay_amendment_manual_only") key = "AMEND_MANUAL";
   else if (lower === "stay_amendment_active_dates") key = "AMEND_ACTIVE";

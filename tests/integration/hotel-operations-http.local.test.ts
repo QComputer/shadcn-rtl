@@ -15,6 +15,7 @@ import { chromium } from "playwright";
 import { PrismaHotelRepositories } from "../../lib/hotel/persistence/prisma-hotel-repositories";
 import { searchPublicHotelAvailability } from "../../lib/hotel/services/public-availability.service";
 import { priceHotelStay } from "../../lib/hotel/services/booking-quote";
+import { propertyCalendarDate, offsetPropertyDate } from "../../lib/hotel/domain/property-calendar";
 
 // Real local HTTP acceptance for the Hotel operations APIs and their persisted view.
 // Only the guarded disposable PostgreSQL fixture is used; external providers are disabled.
@@ -788,8 +789,13 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   const manualSection = page.getByRole("region", { name: "رزروهای هتل" });
   await manualSection.waitFor({ state: "visible", timeout: 30_000 });
   assert.equal(await manualSection.getAttribute("dir"), "rtl", "manual reception form is Persian-first and RTL");
-  await manualSection.getByLabel("تاریخ ورود").fill(from);
-  await manualSection.getByLabel("تاریخ خروج").fill(to);
+  const manualProperty = await db.hotelProperty.findUniqueOrThrow({ where: { id: propertyAId }, select: { timezone: true } });
+  const arrivalDay = propertyCalendarDate(manualProperty.timezone);
+  const nextDay = offsetPropertyDate(arrivalDay, 1);
+  const departureDay = offsetPropertyDate(arrivalDay, 2);
+  await db.hotelInventory.createMany({ data: [arrivalDay, nextDay].map(date => ({ organizationId: orgAId, propertyId: propertyAId, roomTypeId, date: new Date(date + "T00:00:00Z"), allotment: 2 })), skipDuplicates: true });
+  await manualSection.getByLabel("تاریخ ورود").fill(arrivalDay);
+  await manualSection.getByLabel("تاریخ خروج").fill(departureDay);
   await manualSection.getByLabel("نوع اتاق").selectOption(roomTypeId);
   await manualSection.getByLabel("طرح نرخ").selectOption(ratePlanId);
   await manualSection.getByLabel("بزرگسالان").fill("1");
@@ -824,8 +830,13 @@ it("persists Hotel operations changes, reloads the scoped operations view, and d
   const manualItem = manualSection.getByRole("listitem").filter({ hasText: manualDbRow.reference });
   await manualItem.getByRole("button", { name: "ثبت ورود" }).click();
   await manualItem.getByText("ورود ثبت‌شده").waitFor({ state: "visible", timeout: 30_000 });
-  await manualItem.getByRole("button", { name: "ثبت خروج" }).click();
+  await manualItem.getByRole("button", { name: "پیش‌نمایش مبلغ خروج زودهنگام", exact: true }).click();
+  await manualItem.getByRole("button", { name: "تأیید مبلغ و ثبت خروج", exact: true }).click();
   await manualItem.getByText("خروج ثبت‌شده").waitFor({ state: "visible", timeout: 30_000 });
+  const departedManual = await db.hotelReservation.findUniqueOrThrow({ where: { id: manualDbRow.id }, include: { nights: true } });
+  assert.equal(departedManual.checkOut.toISOString().slice(0,10), nextDay);
+  assert.equal(departedManual.nights.length, 1);
+  assert.ok(departedManual.checkedInAt && departedManual.checkedOutAt);
 
   stage = "browser-reservation-center-search-details-and-calendar";
   await page.goto(`${baseUrl}/fa/dashboard/hotel-operations/${orgAId}/${propertyAId}/reservations`, { waitUntil: "domcontentloaded" });

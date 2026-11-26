@@ -33,6 +33,7 @@ const ownedQuotaKeys = new Set<string>();
 let organization: Organization;
 let server: ChildProcess | undefined;
 let serverOutput = "";
+let serverStartupOutput = "";
 
 function isolatedServerEnv() {
   const allowedSystem = ["PATH", "PATHEXT", "SystemRoot", "SYSTEMROOT", "windir", "ComSpec", "TEMP", "TMP", "USERPROFILE", "APPDATA", "LOCALAPPDATA"];
@@ -55,16 +56,26 @@ function isolatedServerEnv() {
 
 async function waitForServer() {
   const deadline = Date.now() + 120_000;
+  let lastProbe = "not attempted";
   while (Date.now() < deadline) {
-    if (server?.exitCode !== null && server?.exitCode !== undefined) throw new Error("isolated Next server exited before becoming ready");
-    try { if ((await fetch(`${baseUrl}/api/auth/csrf`)).ok) return; } catch { /* startup in progress */ }
+    if (server?.exitCode !== null && server?.exitCode !== undefined || server?.signalCode) break;
+    try {
+      const response = await fetch(`${baseUrl}/api/auth/csrf`, { signal: AbortSignal.timeout(Math.max(1, deadline - Date.now())) });
+      if (response.ok) return;
+      lastProbe = `HTTP ${response.status}`;
+    } catch (error) { lastProbe = error instanceof Error ? error.name : "network failure"; }
     await delay(500);
   }
-  throw new Error("isolated Next server did not become ready within 120 seconds");
+  // Synthetic startup only: redact fixture secrets; report the actual Next startup failure,
+  // never response bodies, cookies, or OTPs. Preserve the 120s acceptance deadline.
+  const diagnostic = (serverStartupOutput + "\n--- recent server output ---\n" + serverOutput.split(/\r?\n/).slice(-35).join("\n")).replaceAll(secret, "[fixture-secret]").replaceAll(dbUrl.toString(), "[fixture-db]").replaceAll(decodeURIComponent(dbUrl.password), "[fixture-password]");
+  throw new Error(`isolated Next server readiness failed: ${lastProbe}; exit=${server?.exitCode ?? "none"}; signal=${server?.signalCode ?? "none"}\n${diagnostic || "No startup output captured"}`);
 }
 
 function appendOutput(chunk: Buffer) {
-  serverOutput = (serverOutput + chunk.toString("utf8")).slice(-12_000);
+  const text = chunk.toString("utf8");
+  serverStartupOutput = (serverStartupOutput + text).slice(0, 12_000);
+  serverOutput = (serverOutput + text).slice(-12_000);
 }
 
 async function request(path: string, init: RequestInit = {}, host = tenantHost) {
@@ -82,11 +93,12 @@ before(async () => {
   organization = await db.organization.create({ data: { name: `${prefix}-tenant`, slug: prefix, type: "SHOP", locale: "fa" } });
   ownedOrgIds.push(organization.id);
   await db.organizationDomain.create({ data: { organizationId: organization.id, domain: tenantHost, normalizedDomain: tenantHost, status: "ACTIVE", providerVerified: true, dnsConfigured: true, sslReady: true, verifiedAt: new Date() } });
-  server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "--hostname", baseHost, "--port", port], { cwd: process.cwd(), env: isolatedServerEnv(), stdio: keepBrowserFixture ? "ignore" : ["ignore", "pipe", "pipe"], windowsHide: true });
+  server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "--webpack", "--hostname", baseHost, "--port", port], { cwd: process.cwd(), env: isolatedServerEnv(), stdio: keepBrowserFixture ? "ignore" : ["ignore", "pipe", "pipe"], windowsHide: true });
   if (!keepBrowserFixture) {
     server.stdout?.on("data", appendOutput);
     server.stderr?.on("data", appendOutput);
   }
+  server.on("error", error => appendOutput(Buffer.from(`\nNext spawn error: ${error.message}\n`)));
   await waitForServer();
 });
 

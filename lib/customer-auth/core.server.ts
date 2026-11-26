@@ -67,7 +67,8 @@ export class CustomerPhoneAuthService {
       const db = await database(this.db);
       await db.$transaction(async tx => {
         const destination = await this.destination(tx, input.organizationId, input.origin);
-        const now = this.now();
+        // Serialize issuance and consumption for this phone before checking quota or challenge state.
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`identity:${phone}`}, 0))::text`;
         const issuanceKey = input.idempotencyKey ? customerAuthDigest(`${input.source}:${input.organizationId}:${phone}:${input.idempotencyKey}`, secret) : null;
         const keys = [
           { key: `phone:${customerAuthDigest(phone, secret)}`, limit: 3 },
@@ -75,6 +76,7 @@ export class CustomerPhoneAuthService {
           { key: `org:${input.organizationId}`, limit: 100 },
         ].sort((a, b) => a.key.localeCompare(b.key));
         for (const item of keys) await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${item.key}, 0))::text`;
+        const now = this.now();
         if (issuanceKey && await tx.customerAccessLink.findUnique({ where: { issuanceKey }, select: { id: true } })) return;
         // 60-second resend cooldown: do not issue a new OTP if an unconsumed
         // link for the same phone+org+origin was created within the last 60s.
@@ -96,6 +98,9 @@ export class CustomerPhoneAuthService {
           if ((counter?.count ?? 0) >= item.limit) return;
         }
         for (const item of keys) await tx.customerPhoneAuthQuota.upsert({ where: { key_windowStart: { key: item.key, windowStart } }, create: { key: item.key, windowStart, count: 1 }, update: { count: { increment: 1 } } });
+        // Reissuing an OTP supersedes older OTP challenges in this exact origin/tenant scope.
+        // Never revive an older still-valid code after consuming the replacement.
+        await tx.customerAccessLink.updateMany({ where: { phone, organizationId: input.organizationId, origin: input.origin, consumedAt: null, otpCodeHash: { not: null }, expiresAt: { gt: now } }, data: { expiresAt: now, otpExpiresAt: now } });
         const otp = generateOtp();
         const token = createCustomerAccessToken();
         const id = randomUUID();
@@ -114,27 +119,40 @@ export class CustomerPhoneAuthService {
     if (!this.enabled() || this.secret().length < 32) throw new CustomerPhoneAuthError();
     try {
       const db = await database(this.db);
-      return await db.$transaction(async tx => {
+      const result = await db.$transaction(async tx => {
         await this.destination(tx, input.organizationId, input.origin);
-        const now = this.now();
         let link;
-        if (input.otp && input.phone) {
-          const phone = normalizeIranianMobile(input.phone);
-          link = await tx.customerAccessLink.findFirst({ where: { phone, organizationId: input.organizationId, origin: input.origin, consumedAt: null, expiresAt: { gt: now }, otpConsumedAt: null, otpExpiresAt: { gt: now } }, orderBy: { createdAt: "desc" } });
-          if (!link || (link.otpAttempts ?? 0) >= 3) throw new CustomerPhoneAuthError();
-          const hash = hashOtp(input.otp.replace(/\s/g, ""), this.secret());
-          if (!timingSafeEqual(Buffer.from(link.otpCodeHash || ""), Buffer.from(hash))) {
-            await db.customerAccessLink.update({ where: { id: link.id }, data: { otpAttempts: { increment: 1 } } });
-            throw new CustomerPhoneAuthError();
+        let now: Date;
+        const usingOtp = Boolean(input.otp);
+        if (usingOtp) {
+          const phone = normalizeIranianMobile(input.phone ?? "");
+          if (!phone || !input.otp || input.token) throw new CustomerPhoneAuthError();
+          // The lock must precede the challenge read, including the attempt counter.
+          await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`identity:${phone}`}, 0))::text`;
+          now = this.now();
+          // Do not fall back to an older challenge when the latest is consumed or expired.
+          link = await tx.customerAccessLink.findFirst({ where: { phone, organizationId: input.organizationId, origin: input.origin, otpCodeHash: { not: null } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }] });
+          if (!link || link.consumedAt || link.otpConsumedAt || link.expiresAt <= now || !link.otpExpiresAt || link.otpExpiresAt <= now || link.otpAttempts >= 3 || !link.otpCodeHash) throw new CustomerPhoneAuthError();
+          const code = input.otp.replace(/\s/g, "");
+          const expectedHash = Buffer.from(link.otpCodeHash);
+          const hash = Buffer.from(hashOtp(code, this.secret()));
+          if (!/^\d{4}$/.test(code) || expectedHash.length !== hash.length || !timingSafeEqual(expectedHash, hash)) {
+            await tx.customerAccessLink.updateMany({ where: { id: link.id, otpAttempts: { lt: 3 }, consumedAt: null, otpConsumedAt: null, expiresAt: { gt: now }, otpExpiresAt: { gt: now } }, data: { otpAttempts: { increment: 1 } } });
+            // Returning rather than throwing commits the failed attempt in this transaction.
+            return null;
           }
         } else if (input.token && /^[A-Za-z0-9_-]{43}$/.test(input.token)) {
-          link = await tx.customerAccessLink.findUnique({ where: { tokenDigest: customerAuthDigest(input.token, this.secret()) } });
+          const tokenDigest = customerAuthDigest(input.token, this.secret());
+          const candidate = await tx.customerAccessLink.findUnique({ where: { tokenDigest } });
+          if (!candidate || candidate.organizationId !== input.organizationId || candidate.origin !== input.origin) throw new CustomerPhoneAuthError();
+          await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`identity:${candidate.phone}`}, 0))::text`;
+          now = this.now();
+          link = await tx.customerAccessLink.findUnique({ where: { tokenDigest } });
         } else {
           throw new CustomerPhoneAuthError();
         }
         if (!link || link.organizationId !== input.organizationId || link.origin !== input.origin || link.consumedAt || link.expiresAt <= now) throw new CustomerPhoneAuthError();
-        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`identity:${link.phone}`}, 0))::text`;
-        const claimed = await tx.customerAccessLink.updateMany({ where: { id: link.id, consumedAt: null, expiresAt: { gt: now } }, data: { consumedAt: now, otpConsumedAt: now } });
+        const claimed = await tx.customerAccessLink.updateMany({ where: { id: link.id, consumedAt: null, expiresAt: { gt: now }, ...(usingOtp ? { otpConsumedAt: null, otpExpiresAt: { gt: now }, otpAttempts: { lt: 3 } } : {}) }, data: { consumedAt: now, otpConsumedAt: now } });
         if (claimed.count !== 1) throw new CustomerPhoneAuthError();
         const identity = await tx.customerPhoneIdentity.findUnique({ where: { phone: link.phone } });
         let user;
@@ -152,6 +170,8 @@ export class CustomerPhoneAuthService {
         const session = await tx.customerPhoneSession.create({ data: { userId: user.id, organizationId: link.organizationId, expiresAt: new Date(now.getTime() + 30 * 86_400_000) } });
         return { id: user.id, name: user.name, password: user.password, locale: user.locale, theme: user.theme, phoneSessionId: session.id, organizationId: link.organizationId };
       }, { maxWait: 5000, timeout: 15_000 });
+      if (!result) throw new CustomerPhoneAuthError();
+      return result;
     } catch (error) {
       if (!(error instanceof CustomerPhoneAuthError)) console.warn("CUSTOMER_PHONE_AUTH_CONSUME_FAILED");
       throw new CustomerPhoneAuthError();

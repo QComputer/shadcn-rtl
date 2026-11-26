@@ -1,4 +1,6 @@
 import { CustomerPhoneLogin } from "@/components/auth/customer-phone-login";
+import { ProgressiveCustomerPhoneLogin } from "@/components/auth/progressive-customer-phone-login";
+import { progressiveCustomerEnrollmentEnabled } from "@/lib/customer-auth/progressive-contract";
 import { prisma } from "@/lib/db";
 
 type PageProps = {
@@ -18,6 +20,10 @@ export default async function CustomerPhoneLoginPage({ params, searchParams }: P
   }
   if (!organizationHint && callbackUrl) {
     try { organizationHint = new URL(callbackUrl, "https://same-origin.invalid").searchParams.get("organization") ?? undefined; } catch { /* ignore malformed callback context */ }
+  }
+
+  if (progressiveCustomerEnrollmentEnabled()) {
+    return <ProgressiveCustomerPhoneLogin key={`${locale}:${organizationHint ?? ""}`} locale={locale} organizationHint={organizationHint} />;
   }
 
   let organization = null;

@@ -22,6 +22,7 @@ import { validateSessionCredential } from "./security/session-credential.server"
 import { resolveCustomerAuthContext } from "./customer-auth/context.server";
 import { customerPhoneAuthService, createCustomerPasswordSession, validateCustomerPhoneSession, revokeCustomerPhoneSession } from "./customer-auth/core.server";
 import { customerSsoService } from "./customer-auth/sso.server";
+import { parseProgressiveCredentials, progressiveCustomerEnrollmentEnabled } from "./customer-auth/progressive-contract";
 
 /**
  * NextAuth Type Extensions
@@ -235,13 +236,26 @@ const buildProviders = (): Provider[] => {
   providers.push(CredentialsProvider({
     id: "customer-phone",
     name: "ورود مشتری با شماره موبایل",
-    credentials: { token: { type: "password" }, otp: { type: "password" }, phone: { type: "text" }, organization: { type: "text" } },
+    credentials: { token: { type: "password" }, otp: { type: "password" }, phone: { type: "text" }, organization: { type: "text" },
+      purpose: { type: "text" }, challengeId: { type: "text" }, enrollmentConfirmed: { type: "text" } },
     async authorize(credentials, request) {
       if (typeof credentials?.organization !== "string") return null;
       const context = await resolveCustomerAuthContext(request, credentials.organization);
       if (!context || request.headers.get("origin") !== context.origin) return null;
       try {
-        const customer = await customerPhoneAuthService.consume({ token: typeof credentials?.token === "string" ? credentials.token : undefined, otp: typeof credentials?.otp === "string" ? credentials.otp : undefined, phone: typeof credentials?.phone === "string" ? credentials.phone : undefined, organizationId: context.organizationId, origin: context.origin });
+        let customer;
+        if (progressiveCustomerEnrollmentEnabled()) {
+          const input = parseProgressiveCredentials(credentials);
+          if (!input) return null;
+          const scope = { challengeId: input.challengeId, otp: input.otp, phone: input.phone, organizationId: context.organizationId, origin: context.origin };
+          customer = input.purpose === "ACCOUNT_ENROLL"
+            ? await customerPhoneAuthService.enrollVerified({ ...scope, enrollmentConfirmed: input.enrollmentConfirmed })
+            : await customerPhoneAuthService.signInVerified(scope);
+        } else {
+          // Never reinterpret a purpose-bound request as legacy auto-enrollment.
+          if (credentials?.purpose !== undefined || credentials?.challengeId !== undefined || credentials?.enrollmentConfirmed !== undefined) return null;
+          customer = await customerPhoneAuthService.consume({ token: typeof credentials?.token === "string" ? credentials.token : undefined, otp: typeof credentials?.otp === "string" ? credentials.otp : undefined, phone: typeof credentials?.phone === "string" ? credentials.phone : undefined, organizationId: context.organizationId, origin: context.origin });
+        }
         return { id: customer.id, name: customer.name, role: "CUSTOMER", isTeamMember: false,
           locale: customer.locale, theme: customer.theme, organizationId: context.organizationId,
           phoneSessionId: customer.phoneSessionId,

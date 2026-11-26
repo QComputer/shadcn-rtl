@@ -1,3 +1,4 @@
+import { progressiveCustomerEnrollmentEnabled } from "@/lib/customer-auth/progressive-contract";
 import { resolveCustomerAuthContext } from "@/lib/customer-auth/context.server";
 import { CustomerPhoneAuthError, customerPhoneAuthAvailable, customerPhoneAuthService } from "@/lib/customer-auth/core.server";
 
@@ -13,6 +14,8 @@ function requestIp(request: Request) {
 }
 
 export async function POST(request: Request) {
+  // Old WEB callers must not bypass the explicit purpose contract after cutover.
+  if (progressiveCustomerEnrollmentEnabled()) return Response.json({ accepted: false }, { status: 409, headers: noStore });
   const origin = request.headers.get("origin");
   if (!origin) return Response.json({ accepted: true }, { status: 403, headers: noStore });
   let body: unknown;

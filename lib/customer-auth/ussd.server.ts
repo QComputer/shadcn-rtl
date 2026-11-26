@@ -2,6 +2,7 @@ import "server-only";
 
 import { normalizeDigits, normalizeIranianMobile } from "@/lib/integrations/inoti-ussd/parser";
 import { customerAuthDigest } from "./crypto";
+import { progressiveCustomerEnrollmentEnabled } from "./progressive-contract";
 import {
   customerPhoneAuthAvailable,
   customerPhoneAuthService,
@@ -95,7 +96,9 @@ const productionDependencies: CustomerUssdEnrollmentDependencies = {
     const { resolveCustomerAuthDestination } = await import("./context.server");
     return resolveCustomerAuthDestination(organizationId);
   },
-  available: customerPhoneAuthAvailable,
+  // The current USSD protocol does not carry a purpose-bound challenge ID.
+  // Keep legacy compatibility when the new gate is OFF; fail closed on cutover.
+  available: () => !progressiveCustomerEnrollmentEnabled() && customerPhoneAuthAvailable(),
   request: (input) => customerPhoneAuthService.request(input),
   secret: process.env.NEXTAUTH_SECRET ?? "",
 };

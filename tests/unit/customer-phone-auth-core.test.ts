@@ -123,7 +123,7 @@ test("consume rejects LEFT, BLOCKED and PAUSED club memberships without reactiva
       },
       customerPhoneIdentity: { findUnique: async () => ({ userId: "user-a" }) },
       user: { findFirst: async () => ({ id: "user-a", name: "09123456789" }) },
-      customerClubMembership: { upsert: async ({ update }: { update: unknown }) => { assert.deepEqual(update, {}); return { status }; } },
+      customerClubMembership: { findUnique: async () => ({ status }) },
       customerPhoneSession: { create: async () => { sessions++; return { id: "session-a" }; } },
     };
     const db = asDb({ $transaction: async (fn: (input: typeof tx) => unknown) => fn(tx) });
@@ -140,7 +140,7 @@ test("session validation rechecks tenant, active customer role and staff members
   assert.equal(where?.organizationId, "org-a");
   assert.equal(where?.user.role, "CUSTOMER");
   assert.equal(where?.user.isTeamMember, false);
-  assert.deepEqual(where?.user.customerClubMemberships.some, { organizationId: "org-a", status: "ACTIVE" });
+  assert.deepEqual(where?.user.customerClubMemberships.none, { organizationId: "org-a", status: { not: "ACTIVE" } });
   assert.deepEqual(where?.user.memberOf.none.role.in, ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF", "DRIVER"]);
   assert.equal(await validateCustomerPhoneSession(input, asDb({ customerPhoneSession: { findFirst: async () => { throw new Error("offline"); } } })), false);
 });

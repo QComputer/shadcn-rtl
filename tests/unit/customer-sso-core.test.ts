@@ -94,12 +94,12 @@ test("wrong tenant, exact origin, browser verifier, expiration and replay fail b
 });
 
 test("rechecks current customer, source revocation and target membership without enrollment", async () => {
-  for (const condition of ["customer", "source", "BLOCKED", "PAUSED", "LEFT", "missing"]) {
+  for (const condition of ["customer", "source", "BLOCKED", "PAUSED", "LEFT"]) {
     const f = fixture(); const service = new CustomerSsoService(f.db, options);
     const { ticket } = await service.issue(input);
     if (condition === "customer") f.eligibility(false);
     else if (condition === "source") f.source(false);
-    else f.membership(condition === "missing" ? undefined : condition);
+    else f.membership(condition);
     await assert.rejects(service.redeem({ ticket, verifier, organizationId: "target", origin }), CustomerSsoError);
     assert.equal(f.sessions(), 0); assert.equal(f.claims(), 0);
     await assert.rejects(service.issue(input), CustomerSsoError);
@@ -117,4 +117,12 @@ test("origin syntax requires HTTPS exact origin; loopback HTTP only outside prod
       else assert.ok((await new CustomerSsoService(fixture().db, options).issue(local)).ticket);
     }
   } finally { if (previous === undefined) delete environment.NODE_ENV; else environment.NODE_ENV = previous; }
+});
+
+test("SSO issues and redeems for a nonmember without creating club membership", async () => {
+  const f = fixture(); f.membership(undefined);
+  const service = new CustomerSsoService(f.db, options);
+  const { ticket } = await service.issue(input);
+  assert.equal((await service.redeem({ ticket, verifier, organizationId: "target", origin })).phoneSessionId, "target-session");
+  assert.equal(f.sessions(), 1);
 });

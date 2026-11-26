@@ -49,7 +49,6 @@ function LoginForm({ locale }: { locale: string }) {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
-  const [joinHotelOnLogin, setJoinHotelOnLogin] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [mounted, setMounted] = useState(false)
@@ -79,7 +78,6 @@ function LoginForm({ locale }: { locale: string }) {
         username: username.trim().toLowerCase(),
         password,
         redirect: false,
-        ...(joinHotelOnLogin ? { hotelGuestJoin: "true" } : {}),
       })
 
       if (result?.error) {
@@ -218,19 +216,6 @@ function LoginForm({ locale }: { locale: string }) {
                   </button>
                 </div>
               </div>
-
-              {requestedCallbackUrl?.startsWith(`/${locale}/hotel-reservations/start`) && (
-                <div className="flex items-start gap-2 rounded-md border p-3">
-                  <Checkbox id="join-hotel" checked={joinHotelOnLogin} onCheckedChange={(checked) => setJoinHotelOnLogin(checked === true)} />
-                  <label htmlFor="join-hotel" className="cursor-pointer text-sm leading-6 text-muted-foreground">
-                    {locale === "en"
-                      ? "If I am not already a member, I agree to join the hotel on this domain to continue my reservation."
-                      : locale === "ar"
-                        ? "إذا لم أكن عضواً، أوافق على الانضمام إلى الفندق المرتبط بهذا النطاق لمتابعة الحجز."
-                        : "اگر هنوز عضو نیستم، با عضویت در هتل همین دامنه برای ادامهٔ رزرو موافقم."}
-                  </label>
-                </div>
-              )}
 
               <div className="flex items-center gap-2">
                 <Checkbox

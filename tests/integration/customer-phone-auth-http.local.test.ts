@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import bcrypt from "bcryptjs";
 import { randomInt, randomUUID } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
@@ -186,6 +187,7 @@ describe("customer phone auth through isolated local HTTP", { concurrency: false
     assert.ok(persisted.consumedAt);
     const identityRow = await db.customerPhoneIdentity.findUniqueOrThrow({ where: { phone } });
     ownedUserIds.add(identityRow.userId);
+    assert.equal(await db.customerClubMembership.count({ where: { customerId: identityRow.userId } }), 0, "OTP login must not enroll in the club");
     const persistedSession = await db.customerPhoneSession.findFirstOrThrow({ where: { userId: identityRow.userId, organizationId: organization.id } });
     assert.equal(persistedSession.revokedAt, null);
     const reloaded = await request("/api/auth/session", { headers: { cookie } });
@@ -204,5 +206,21 @@ describe("customer phone auth through isolated local HTTP", { concurrency: false
     assert.ok([200, 302, 401].includes(replay.status));
     const replaySession = await request("/api/auth/session", { headers: { cookie: cookieHeader([...csrfCookies, ...cookiesFrom(replay)]) } });
     assert.equal((await replaySession.json() as { user?: unknown } | null)?.user, undefined);
+  });
+  it("password login without a club creates only a scoped session, and the legacy hotel join flag cannot enroll", async () => {
+    const username = `fixture-${randomUUID()}`;
+    const password = `local-fixture-${randomUUID()}`;
+    const user = await db.user.create({ data: { name: username, password: await bcrypt.hash(password, 12), role: "CUSTOMER", isTeamMember: false } });
+    ownedUserIds.add(user.id);
+    const csrf = await request("/api/auth/csrf");
+    const csrfCookies = cookiesFrom(csrf);
+    const csrfToken = (await csrf.json() as { csrfToken: string }).csrfToken;
+    const response = await request("/api/auth/callback/credentials", { method: "POST", redirect: "manual", headers: { origin: tenantUrl, cookie: cookieHeader(csrfCookies), "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ csrfToken, callbackUrl: tenantUrl, username, password, hotelGuestJoin: "true" }) });
+    const session = await request("/api/auth/session", { headers: { cookie: cookieHeader([...csrfCookies, ...cookiesFrom(response)]) } });
+    const body = await session.json() as { user?: { id?: string; organizationId?: string } } | null;
+    assert.equal(body?.user?.id, user.id);
+    assert.equal(body?.user?.organizationId, organization.id);
+    assert.equal(await db.customerClubMembership.count({ where: { customerId: user.id } }), 0);
+    assert.equal(await db.customerPhoneSession.count({ where: { userId: user.id, organizationId: organization.id, revokedAt: null } }), 1);
   });
 });

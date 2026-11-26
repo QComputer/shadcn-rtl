@@ -128,17 +128,27 @@ describe("customer SSO on guarded local PostgreSQL", { concurrency: false }, () 
     assert.equal(await db.customerPhoneSession.count({ where: { userId: p.user.id } }), 1);
   });
 
-  it("requires existing active target club membership and never enrolls or reactivates", async () => {
-    for (const status of ["BLOCKED", "LEFT", "PAUSED", "MISSING"] as const) {
+  it("preserves explicit target club restrictions and never reactivates", async () => {
+    for (const status of ["BLOCKED", "LEFT", "PAUSED"] as const) {
       const p = await principal(); const issued = await ticketFor(p);
       const where = { organizationId_customerId: { organizationId: organizations[1].id, customerId: p.user.id } };
-      if (status === "MISSING") await db.customerClubMembership.delete({ where });
-      else await db.customerClubMembership.update({ where, data: { status } });
+      await db.customerClubMembership.update({ where, data: { status } });
       await assert.rejects(service.issue(issued.input), CustomerSsoError);
       await assert.rejects(service.redeem(issued.redeem), CustomerSsoError);
-      assert.equal((await db.customerClubMembership.findUnique({ where }))?.status, status === "MISSING" ? undefined : status);
+      assert.equal((await db.customerClubMembership.findUnique({ where }))?.status, status);
       assert.equal(await db.customerPhoneSession.count({ where: { userId: p.user.id } }), 1);
     }
+  });
+
+  it("permits first-visit SSO without enrolling in either club and retains tenant-bound sessions", async () => {
+    const p = await principal();
+    await db.customerClubMembership.deleteMany({ where: { customerId: p.user.id, organizationId: { in: [organizations[0].id, organizations[1].id] } } });
+    assert.equal(await validateCustomerPhoneSession({ sessionId: p.source.id, userId: p.user.id, organizationId: organizations[0].id }, db), true);
+    const issued = await ticketFor(p);
+    const target = await service.redeem(issued.redeem);
+    assert.equal(await db.customerClubMembership.count({ where: { customerId: p.user.id } }), 0);
+    assert.equal(await validateCustomerPhoneSession({ sessionId: target.phoneSessionId, userId: p.user.id, organizationId: organizations[1].id }, db), true);
+    assert.equal(await validateCustomerPhoneSession({ sessionId: target.phoneSessionId, userId: p.user.id, organizationId: organizations[0].id }, db), false);
   });
 
   it("requires current verified nonstaff CUSTOMER and refuses source-session/user substitution", async () => {

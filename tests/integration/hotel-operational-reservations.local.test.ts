@@ -95,7 +95,6 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     const other = await db.user.create({ data: { name: `operational-other-${token}`, password: "fixture-only", role: "CUSTOMER", isTeamMember: false } }); users.push(other.id);
     const staff = await db.user.create({ data: { name: `operational-staff-${token}`, password: "fixture-only", role: "ADMIN", isTeamMember: true } }); users.push(staff.id);
     const foreignStaff = await db.user.create({ data: { name: `operational-foreign-${token}`, password: "fixture-only", role: "ADMIN", isTeamMember: true } }); users.push(foreignStaff.id);
-    await db.customerClubMembership.createMany({ data: [a, b].map(o => ({ organizationId: o.id, customerId: customer.id, status: "ACTIVE", source: "PUBLIC_SHOP" })) });
     await db.customerClubMembership.create({ data: { organizationId: a.id, customerId: other.id, status: "ACTIVE", source: "PUBLIC_SHOP" } });
     await db.organizationMember.createMany({ data: [
       { organizationId: a.id, organizationSlug: a.slug, userId: staff.id, role: "ADMIN", isActive: true },
@@ -128,6 +127,13 @@ test("operational reservations enforce tenant ownership, atomic inventory claims
     await service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION" });
     await service.configure(foreignReceptionist, b.id, pb.id, { mode: "RESERVATION" });
     process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED = "1"; process.env.HOTEL_GUEST_PORTAL_ENABLED = "1";
+    assert.equal(await db.customerClubMembership.count({ where: { customerId: customer.id } }), 0);
+    await assert.rejects(() => service.get({ ...guestA, customerContextVerified: false }, a.id, pa.id), /customer context|forbidden/i);
+    for (const status of ["BLOCKED", "PAUSED", "LEFT"] as const) {
+      await db.customerClubMembership.create({ data: { organizationId: a.id, customerId: customer.id, status } });
+      await assert.rejects(() => service.get(guestA, a.id, pa.id), /customer context|forbidden/i);
+      await db.customerClubMembership.delete({ where: { organizationId_customerId: { organizationId: a.id, customerId: customer.id } } });
+    }
     assert.equal((await service.get(guestA, a.id, pa.id) as OperationalResult).confirmationPolicy?.manualConfirmationPolicy, "DISABLED", "manual confirmation is disabled by default");
     assert.equal((await service.get(guestA, a.id, pa.id) as OperationalResult).confirmationPolicy?.pendingPaymentMinutes, 15, "pending payment deadline defaults to 15 minutes");
     await assert.rejects(() => service.configure(receptionist, a.id, pa.id, { mode: "RESERVATION", manualConfirmationPolicy: "CASH_ON_ARRIVAL", allowedOfflinePaymentMethods: ["BANK_TRANSFER"], minimumVerifiedDepositAmount: null }), /cash-on-arrival/i);

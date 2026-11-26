@@ -1,6 +1,6 @@
 # Kilo Code overlay delivery playbook
 
-Version: 1.2 (2026-11-26) — repository delivery standard; includes PR184 pre-push typecheck gate.
+Version: 1.3 (2026-11-26) — repository delivery standard; includes PR184 snapshot and naming lessons.
 Scope: BazarBaaz platform, QComputer/shadcn-rtl. Hotel-specific gates below are the current PMS profile, not universal rules for every platform change.
 
 ## 1. Delivery contract
@@ -122,3 +122,9 @@ This document is the single reusable process reference. AGENTS.md links to it; m
 - This repository uses Base UI Button, not Radix Button. Inspect the actual component contract; for navigation use `Link` with `buttonVariants` rather than unsupported `asChild` or nested interactive elements.
 - For functional TypeScript/TSX overlays, before commit/push require the exact candidate to pass Prisma client generation, Next route type generation (`next typegen`), and `tsc --noEmit` using existing locked dependencies and a sanitized synthetic environment. Prefer an isolated tracked-source snapshot to exclude pre-existing untracked user files and stale `.next` artifacts. Fail closed on any error; report the first causal diagnostic to the Main Agent. Do not substitute syntax transpilation, ESLint, `tsx` tests or a full build for this check.
 - An isolated pre-push typecheck is not a substitute for the hosted acceptance gates. For a fix on an open PR verify the cumulative manifest against the original PR base and verify all required CI gates on the new exact head. Do not restart unrelated local regression suites unless affected.
+
+### PR184 Fix2 lessons — snapshot completeness and execution names
+- Canonical brand: `BazarBaaz`, lowercase `bazarbaaz`, Persian بازارباز, domain `bazarbaaz.ir`. Use these spellings in all new temp directories, identifiers, evidence and documentation. Never rename an active directory mid-execution or modify historical names solely for spelling.
+- Exact staged-tree snapshots must include source JS/TS/JSX/TSX/JSON modules in `public` and `artifacts`, not only app/lib TypeScript; these are real module imports, not optional media. Use Git tree enumeration and literal pathspecs in bounded Windows-safe batches, verify critical imported blobs, exclude secrets/generated `.next`/untracked files. Never stub imports or exclude tests to silence tsc. Reuse the snapshot for typegen, full tsc and applicable tests when feasible.
+- Shell invocations may re-inherit `NODE_TLS_REJECT_UNAUTHORIZED=0`. Remove the insecure process-scoped override in the SAME invocation as each runner/local check; keep TLS verification enabled. Do not modify persistent settings without approval.
+- If GitHub read access fails, report the evidence as Kilo-reported, not independently verified. For an exact archived source candidate, compare all pinned base blobs and actual remote main in the real checkout before apply; stop on mismatch and return exact source. No admin bypass or inferred success.

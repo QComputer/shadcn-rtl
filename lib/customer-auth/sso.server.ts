@@ -72,7 +72,8 @@ export class CustomerSsoService {
     if (!source) throw new CustomerSsoError();
     for (const organizationId of new Set([input.sourceOrganizationId, input.targetOrganizationId])) {
       const membership = await tx.customerClubMembership.findUnique({ where: { organizationId_customerId: { organizationId, customerId: input.userId } }, select: { status: true } });
-      if (membership?.status !== "ACTIVE") throw new CustomerSsoError();
+      // No club enrollment or entitlement is implied by an origin-bound identity transfer.
+      if (membership && membership.status !== "ACTIVE") throw new CustomerSsoError();
     }
     return user;
   }

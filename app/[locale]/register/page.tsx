@@ -182,7 +182,7 @@ function RegisterForm({ locale }: { locale: string }) {
             </CardTitle>
             <CardDescription>
               {hotelGuestSignup
-                ? locale === "fa" ? "ایجاد حساب مهمان هتل؛ عضویت فقط برای دامنه هتل انتخاب‌شده ثبت می‌شود." : locale === "ar" ? "إنشاء حساب ضيف؛ تُسجّل العضوية للفندق المرتبط بهذا النطاق فقط." : "Create a hotel guest account; membership is added only to the hotel serving this domain."
+                ? locale === "fa" ? "ایجاد حساب برای رزرو هتل؛ عضویت در باشگاه مشتریان الزامی نیست." : locale === "ar" ? "إنشاء حساب للحجز؛ العضوية في نادي العملاء ليست إلزامية." : "Create an account for your hotel reservation; customer club membership is optional."
                 : t("auth.registerDesc") || "ایجاد حساب کاربری جدید"}
             </CardDescription>
           </CardHeader>

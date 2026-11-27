@@ -1,3 +1,4 @@
+import { guestClaimHttpEnabled } from "@/lib/customer-auth/guest-claim-http.contract";
 import { progressiveCustomerEnrollmentEnabled } from "@/lib/customer-auth/progressive-contract";
 import { resolveCustomerAuthContext } from "@/lib/customer-auth/context.server";
 import { customerPhoneAuthAvailable } from "@/lib/customer-auth/core.server";
@@ -14,6 +15,7 @@ export async function GET(request: Request) {
   const available = Boolean(context && await customerPhoneAuthAvailable());
   return Response.json({
     available,
+    guestClaim: Boolean(context && guestClaimHttpEnabled()),
     progressiveEnrollment: Boolean(context && progressiveCustomerEnrollmentEnabled()),
     ssoAvailable: Boolean(context && customerSsoAvailable()),
     organization: context ? { id: context.organizationId, slug: context.slug, name: context.name, logo: context.logo } : null,

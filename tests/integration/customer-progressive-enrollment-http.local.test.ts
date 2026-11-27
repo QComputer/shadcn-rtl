@@ -9,6 +9,9 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { CustomerPhoneAuthService } from "../../lib/customer-auth/core.server";
 import { customerAuthDigest, decryptCustomerAuthPayload } from "../../lib/customer-auth/crypto";
 import { isProgressiveChallengeId } from "../../lib/customer-auth/progressive-contract";
+import { guestOrderScope } from "../../lib/retail/guest-order-scope";
+import { appointmentGuestScope } from "../../lib/appointments/guest-scope";
+import type { GuestClaimScope, GuestClaimKind } from "../../lib/customer-auth/guest-claim.contract";
 import type { CustomerVerificationPurpose } from "../../lib/customer-auth/core.server";
 
 // Local HTTP acceptance only. Never loads dotenv/config or uses provider transport.
@@ -33,6 +36,7 @@ const ownedOrgIds: string[] = [];
 const ownedPhones = new Set<string>();
 
 const ownedQuotaKeys = new Set<string>();
+const claimOrders: string[] = [], claimAppointments: string[] = [], claimGuests: string[] = [], claimServices: string[] = [], claimCategories: string[] = [];
 let organization: Organization;
 let server: ChildProcess | undefined;
 let serverOutput = "";
@@ -46,7 +50,7 @@ function isolatedServerEnv() {
     LOCAL_PRISMA_EXPECTED_PORT: "55439", RETAIL_HERO_EXPECTED_DATABASE: "retail_hero_test", DATABASE_RUNTIME_ADAPTER: "postgresql",
     NODE_ENV: "development", PORT: port, NEXT_TELEMETRY_DISABLED: "1", NEXTAUTH_URL: baseUrl, NEXTAUTH_URL_INTERNAL: baseUrl,
     NEXTAUTH_SECRET: secret, AUTH_TRUST_HOST: "true", NEXT_PUBLIC_APP_URL: baseUrl, NEXT_PUBLIC_DEPLOYED_APP_URL: baseUrl,
-    BAZAR_BAZ_PLATFORM_HOSTS: "localhost,127.0.0.1", CUSTOMER_PHONE_AUTH_ENABLED: "1", CUSTOMER_PROGRESSIVE_ENROLLMENT_ENABLED: "1", RETAIL_GUEST_CHECKOUT_ENABLED: "0",
+    BAZAR_BAZ_PLATFORM_HOSTS: "localhost,127.0.0.1", CUSTOMER_PHONE_AUTH_ENABLED: "1", CUSTOMER_PROGRESSIVE_ENROLLMENT_ENABLED: "1", CUSTOMER_GUEST_CLAIM_ENABLED: "1", RETAIL_GUEST_CHECKOUT_ENABLED: "0",
     SMS_PROVIDER: "DRY_RUN", SMS_DRY_RUN: "true", SMS_REAL_SEND_ENABLED: "false", SMS_GUEST_REAL_SEND_ENABLED: "false",
     EMAIL_PROVIDER: "DRY_RUN", EMAIL_REAL_SEND_ENABLED: "false", CUSTOM_DOMAIN_PROVIDER_ENABLED: "false",
     CUSTOM_DOMAIN_REAL_MUTATION_ENABLED: "false", VERCEL_DOMAIN_AUTOMATION_DRY_RUN: "true", RUNFLARE_DOMAIN_AUTOMATION_DRY_RUN: "true",
@@ -112,6 +116,13 @@ after(async () => {
   try {
     if (server && server.exitCode === null) { server.kill(); await Promise.race([new Promise<void>(resolve => server?.once("exit", () => resolve())), delay(10_000)]); }
     const ids = await db.customerPhoneIdentity.findMany({ where: { phone: { in: [...ownedPhones] } }, select: { userId: true } });
+    await db.auditLog.deleteMany({ where: { organizationId: { in: ownedOrgIds }, entityType: { in: ["GuestOrderClaim", "GuestAppointmentClaim"] } } });
+    await db.payment.deleteMany({ where: { orderId: { in: claimOrders } } });
+    await db.order.deleteMany({ where: { id: { in: claimOrders } } });
+    await db.appointment.deleteMany({ where: { id: { in: claimAppointments } } });
+    await db.guestCustomer.deleteMany({ where: { id: { in: claimGuests } } });
+    await db.service.deleteMany({ where: { id: { in: claimServices } } });
+    await db.serviceCategory.deleteMany({ where: { id: { in: claimCategories } } });
     await db.customerClubMembership.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
     await db.organizationDomain.deleteMany({ where: { organizationId: { in: ownedOrgIds } } });
     await db.organization.deleteMany({ where: { id: { in: ownedOrgIds } } });
@@ -283,5 +294,113 @@ describe("progressive enrollment isolated HTTP and browser", { concurrency: fals
         throw error;
       }
     } finally { await browser.close(); }
+  });
+  it("guest claim API rejects anonymous, cross-origin and authority injection", async () => {
+    const config = await request("/api/auth/customer/config"); assert.equal((await config.json()).guestClaim, true);
+    const post = (body: unknown, origin = tenantUrl) => request("/api/auth/customer/guest-claim", { method: "POST", headers: { origin, "content-type": "application/json", cookie: `guest_session_id=${randomUUID()}` }, body: JSON.stringify(body) });
+    const denied = await post({ action: "LIST", kind: "ORDER" }); assert.equal(denied.status, 403); assert.match(denied.headers.get("cache-control") ?? "", /no-store/);
+    assert.equal((await post({ action: "LIST", kind: "ORDER" }, "http://foreign.localhost")).status, 403);
+    for (const field of ["phone", "guestSessionId", "organizationId", "userId", "sessionId", "origin"]) assert.equal((await post({ action: "LIST", kind: "ORDER", [field]: "x" })).status, 400);
+    assert.equal((await post({ action: "REQUEST", kind: "ORDER", recordId: "x", claimConfirmed: false })).status, 400);
+  });
+  it("real tenant browser lists only its records and explicitly claims order and appointment with a record-bound proof", async () => {
+    // Preserve earlier legacy SHOP fixture behavior; opt into dual capability only for this final test.
+    await db.organization.update({ where: { id: organization.id }, data: { capabilitiesInitializedAt: new Date(), capabilities: { create: [{ key: "SHOP", status: "ACTIVE", enabledAt: new Date() }, { key: "APPOINTMENT", status: "ACTIVE", enabledAt: new Date() }] } } });
+    const browser = await chromium.launch({ headless: true, args: ["--host-resolver-rules=MAP phone-auth.localhost 127.0.0.1", "--no-proxy-server"] });
+    let stage = "login";
+    try {
+      const ctx = await browser.newContext({ serviceWorkers: "block" });
+      await ctx.route("**/*", route => [tenantUrl, baseUrl].includes(new URL(route.request().url()).origin) ? route.continue() : route.abort());
+      const page = await ctx.newPage(); const phone = await freshPhone();
+      let enrollmentOtp = "";
+      await page.route("**/api/auth/customer/progressive/request", async route => {
+        const issued = await issue(phone, "ACCOUNT_ENROLL"); enrollmentOtp = issued.otp;
+        await route.fulfill({ status: 202, json: { accepted: true, challengeId: issued.challengeId } });
+      });
+      const document = await page.goto(`${tenantUrl}/fa/login/phone?organization=${encodeURIComponent(prefix)}`, { waitUntil: "domcontentloaded", timeout: 120_000 });
+      assert.equal(document?.status(), 200);
+      await page.getByTestId("progressive-enroll").waitFor({ timeout: 120_000 });
+      await page.getByTestId("progressive-phone").fill(phone); await page.getByTestId("progressive-enroll").check(); await page.getByTestId("progressive-consent").check();
+      await page.getByTestId("progressive-request").click(); await page.getByTestId("progressive-otp").waitFor({ timeout: 30_000 });
+      assert.match(enrollmentOtp, /^\d{4}$/); await page.getByTestId("progressive-otp").fill(enrollmentOtp);
+      const callbackResponse = page.waitForResponse(r => new URL(r.url()).origin === tenantUrl && new URL(r.url()).pathname === "/api/auth/callback/customer-phone" && r.request().method() === "POST", { timeout: 30_000 });
+      await page.getByTestId("progressive-verify").click(); await callbackResponse;
+      const probe = await ctx.newPage(); let session: { user?: { id?: string; role?: string; organizationId?: string; phoneSessionId?: string } } | null = null;
+      try {
+        const deadline = Date.now() + 30_000;
+        while (Date.now() < deadline) {
+          const r = await probe.goto(`${tenantUrl}/api/auth/session`, { waitUntil: "domcontentloaded", timeout: Math.max(1, deadline - Date.now()) });
+          assert.equal(r?.status(), 200); assert.equal(new URL(r!.url()).origin, tenantUrl); session = await r!.json();
+          if (session?.user?.id) break; await delay(500);
+        }
+      } finally { await probe.close(); }
+      assert.equal(session?.user?.role, "CUSTOMER"); assert.equal(session?.user?.organizationId, organization.id);
+      const userId = session?.user?.id, sessionId = session?.user?.phoneSessionId; assert.ok(userId && sessionId);
+      // Synthetic original-browser fixture cookies only. Account authentication was obtained via real NextAuth callback.
+      const guestSessionId = randomUUID();
+      await ctx.addCookies([{ name: "guest_session_id", value: guestSessionId, url: tenantUrl, httpOnly: true, sameSite: "Lax" }, { name: "guest_session_id_local", value: guestSessionId, url: tenantUrl, httpOnly: true, sameSite: "Lax" }]);
+      const old = new Date(Date.now() - 3_600_000);
+      async function makeOrder(cookie: string) {
+        const key = randomUUID(); const guest = await db.guestCustomer.create({ data: { name: "fixture guest", phone, sessionId: `${guestOrderScope(organization.slug, cookie)}${key}` } }); claimGuests.push(guest.id);
+        const row = await db.order.create({ data: { orderNumber: `G3B2-${randomUUID()}`, retailCheckoutKey: key, organizationSlug: organization.slug, guestCustomerId: guest.id, type: "PICK_UP", status: "PICKED_UP", subtotal: 100, total: 100, paymentMethod: "CASH", paymentStatus: "COMPLETED", createdAt: old, payment: { create: { amount: 100, method: "CASH", status: "COMPLETED" } } } }); claimOrders.push(row.id); return row;
+      }
+      const order = await makeOrder(guestSessionId), other = await makeOrder(randomUUID());
+      const category = await db.serviceCategory.create({ data: { name: prefix, organizationId: organization.id } }); claimCategories.push(category.id);
+      const service = await db.service.create({ data: { name: prefix, organizationId: organization.id, categoryId: category.id, price: 10, duration: 30 } }); claimServices.push(service.id);
+      const guest = await db.guestCustomer.create({ data: { name: "fixture appointment guest", phone, sessionId: `${appointmentGuestScope(organization.id, guestSessionId)}${randomUUID()}` } }); claimGuests.push(guest.id);
+      const appointment = await db.appointment.create({ data: { serviceId: service.id, guestCustomerId: guest.id, status: "COMPLETED", date: old, startTime: old, endTime: old, createdAt: old, customerPhoneAtBooking: phone, customerNameAtBooking: "fixture" } }); claimAppointments.push(appointment.id);
+      const issuer = new CustomerPhoneAuthService(db, { enabled: true, guestClaimEnabled: true, secret, senderAvailable: () => true });
+      const ip = "2001:db8::31"; for (const key of [`phone:${customerAuthDigest(phone, secret)}`, `ip:${customerAuthDigest(ip, secret)}`, `org:${organization.id}`]) ownedQuotaKeys.add(key);
+      let expectedKind: GuestClaimKind = "ORDER", expectedId = order.id, proof: { challengeId: string; otp: string } | null = null;
+      const realPost = (body: unknown) => page.evaluate(async input => { const r = await fetch("/api/auth/customer/guest-claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) }); return { status: r.status, body: await r.json(), cache: r.headers.get("cache-control") }; }, body);
+      stage = "order-discovery";
+      const orderDoc = await page.goto(`${tenantUrl}/fa/shop/profile`, { waitUntil: "domcontentloaded", timeout: 120_000 }); assert.equal(orderDoc?.status(), 200);
+      const list = await realPost({ action: "LIST", kind: "ORDER" }); assert.equal(list.status, 200); assert.match(list.cache ?? "", /no-store/);
+      assert.deepEqual(list.body.items.map((row: { recordId: string }) => row.recordId), [order.id]);
+      const suppressed = await realPost({ action: "REQUEST", kind: "ORDER", recordId: other.id, claimConfirmed: true }); assert.equal(suppressed.status, 202); assert.equal(await db.customerAccessLink.count({ where: { id: suppressed.body.challengeId } }), 0);
+      const cookieHeaderValue = cookieHeader((await ctx.cookies(tenantUrl)).map(c => `${c.name}=${c.value}`));
+      const crossOrigin = await request("/api/auth/customer/guest-claim", { method: "POST", headers: { origin: "http://foreign.localhost", cookie: cookieHeaderValue, "content-type": "application/json" }, body: JSON.stringify({ action: "LIST", kind: "ORDER" }) }); assert.equal(crossOrigin.status, 403);
+      // Only real delivery is suppressed. Issue a real encrypted proof in the disposable fixture when UI requests it.
+      await page.route("**/api/auth/customer/guest-claim", async route => {
+        const input = route.request().postDataJSON(); if (input.action !== "REQUEST") { await route.continue(); return; }
+        assert.deepEqual(input, { action: "REQUEST", kind: expectedKind, recordId: expectedId, claimConfirmed: true });
+        const scope: GuestClaimScope = { kind: expectedKind, recordId: expectedId, userId, sessionId, organizationId: organization.id, origin: tenantUrl, guestSessionId, phone, claimConfirmed: true };
+        const result = await issuer.requestGuestClaim(scope, ip); const link = await db.customerAccessLink.findUniqueOrThrow({ where: { id: result.challengeId }, include: { smsOutbox: true } }); assert.ok(link.smsOutbox);
+        const decoded = decryptCustomerAuthPayload(link.smsOutbox.encryptedPayload, secret, link.id); assert.match(decoded.url, /^OTP:\d{4}$/); proof = { challengeId: link.id, otp: decoded.url.slice(4) };
+        await route.fulfill({ status: 202, json: result });
+      });
+      async function transfer() {
+        const panel = page.getByTestId("guest-claim-panel"); await panel.waitFor({ timeout: 120_000 });
+        await panel.getByTestId("guest-claim-load").click(); const radio = panel.getByTestId("guest-claim-record"); await radio.waitFor({ timeout: 30_000 }); assert.equal(await radio.count(), 1); await radio.check();
+        assert.equal(await panel.getByTestId("guest-claim-request").isDisabled(), true);
+        await panel.getByTestId("guest-claim-consent").check(); await panel.getByTestId("guest-claim-request").click();
+        await panel.getByTestId("guest-claim-otp").waitFor({ timeout: 30_000 });
+        const issued = proof as { challengeId: string; otp: string } | null; assert.ok(issued);
+        const wrong = await realPost({ action: "CLAIM", kind: expectedKind, recordId: expectedKind === "ORDER" ? other.id : randomUUID(), claimConfirmed: true, ...issued }); assert.equal(wrong.status, 403); await notConsumed(issued.challengeId);
+        await panel.getByTestId("guest-claim-otp").fill(issued.otp);
+        const completed = page.waitForResponse(r => new URL(r.url()).pathname === "/api/auth/customer/guest-claim" && r.request().method() === "POST" && r.request().postDataJSON()?.action === "CLAIM", { timeout: 30_000 });
+        await panel.getByTestId("guest-claim-verify").click(); const r = await completed; assert.equal(r.status(), 200); assert.deepEqual(await r.json(), { outcome: "CLAIMED", kind: expectedKind, recordId: expectedId });
+        await panel.getByTestId("guest-claim-otp").waitFor({ state: "hidden", timeout: 30_000 });
+        const replay = await realPost({ action: "CLAIM", kind: expectedKind, recordId: expectedId, claimConfirmed: true, ...issued }); assert.equal(replay.status, 403);
+        const after = await realPost({ action: "LIST", kind: expectedKind }); assert.equal(after.status, 200); assert.deepEqual(after.body.items, []);
+      }
+      stage = "order-claim"; await transfer();
+      assert.equal((await db.order.findUniqueOrThrow({ where: { id: order.id } })).customerId, userId);
+      assert.equal((await db.order.findUniqueOrThrow({ where: { id: other.id } })).customerId, null);
+      assert.equal((await db.payment.findUniqueOrThrow({ where: { orderId: order.id } })).status, "COMPLETED");
+      assert.equal(await db.auditLog.count({ where: { entityType: "GuestOrderClaim", entityId: order.id, userId } }), 1);
+      expectedKind = "APPOINTMENT"; expectedId = appointment.id; proof = null;
+      stage = "appointment-claim"; const apptDoc = await page.goto(`${tenantUrl}/fa/appointment/my-appointments`, { waitUntil: "domcontentloaded", timeout: 120_000 }); assert.equal(apptDoc?.status(), 200); await transfer();
+      assert.equal((await db.appointment.findUniqueOrThrow({ where: { id: appointment.id } })).customerId, userId);
+      assert.equal(await db.auditLog.count({ where: { entityType: "GuestAppointmentClaim", entityId: appointment.id, userId } }), 1);
+      assert.equal(await db.customerClubMembership.count({ where: { customerId: userId } }), 0);
+      assert.equal(await db.customerPhoneIdentity.count({ where: { userId } }), 1);
+      stage = "account-owned-projection";
+      await ctx.clearCookies({ name: "guest_session_id" }); await ctx.clearCookies({ name: "guest_session_id_local" });
+      const appointmentHistory = await page.evaluate(async slug => { const response = await fetch("/api/public/appointments/lookup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ organizationSlug: slug }) }); return { status: response.status, body: await response.json() }; }, prefix);
+      assert.equal(appointmentHistory.status, 200); assert.ok(appointmentHistory.body.appointments.some((row: { id: string }) => row.id === appointment.id));
+      const orderHistory = await page.evaluate(async orderNumber => { const response = await fetch(`/api/public/orders/${encodeURIComponent(orderNumber)}`, { cache: "no-store" }); return response.status; }, order.orderNumber);
+      assert.equal(orderHistory, 200);
+    } catch (error) { console.error("G3B2_BROWSER_DIAGNOSTIC", JSON.stringify({ stage, errorType: error instanceof Error ? error.name : "unknown" })); throw error; } finally { await browser.close(); }
   });
 });

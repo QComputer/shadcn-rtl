@@ -9,6 +9,11 @@ on:
       - "prisma/migrations/**"
       - "scripts/db/validate-hotel-migration-gap-upgrade.ts"
       - "scripts/db/validate-hotel-production-shape-migrations.ts"
+      - "scripts/db/validate-hotel-pr192-proof-upgrade.ts"
+      - "scripts/db/hotel-migration-lineage.mjs"
+      - "scripts/db/hotel-proof-rehearsal-guard.mjs"
+      - "tests/unit/hotel-proof-rehearsal-guard.test.mjs"
+      - "tests/unit/hotel-migration-lineage.test.mjs"
       - "scripts/hotel/validate-damoon-room-reconciliation.mjs"
       - "lib/hotel/management/hotel-management.service.ts"
       - "docs/hotel/damoon/OWNER-DECISIONS-2026-11-17.md"
@@ -65,7 +70,12 @@ jobs:
           pnpm exec prisma generate
       - name: Validate the non-bookable 31-unit draft reconciliation manifest
         run: node scripts/hotel/validate-damoon-room-reconciliation.mjs --plan
-      - name: Rehearse the six pending migrations and tenant-scoped property update
+      - name: Validate migration lineage guards
+        run: node --test tests/unit/hotel-migration-lineage.test.mjs tests/unit/hotel-proof-rehearsal-guard.test.mjs
+      - name: Rehearse the historical checkpoint and subsequent migrations
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs scripts/db/validate-hotel-migration-gap-upgrade.ts
       - name: Rehearse six migrations against the sanitized current Production Hotel table shape
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs scripts/db/validate-hotel-production-shape-migrations.ts
+
+      - name: Rehearse PR192 to proof migration with existing reservations
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs scripts/db/validate-hotel-pr192-proof-upgrade.ts

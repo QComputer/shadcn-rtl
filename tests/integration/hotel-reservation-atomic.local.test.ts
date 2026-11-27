@@ -5,6 +5,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaHotelRepositories, HotelReservationIntegrityError, HotelIdempotencyConflictError } from "../../lib/hotel/persistence/prisma-hotel-repositories";
 import type { ReservationRecord } from "../../lib/hotel/persistence/hotel-repositories";
+import { buildHotelGuestReservationProof } from "../../lib/hotel/domain/guest-reservation-proof";
 
 const enabled = process.env.HOTEL_RESERVATION_PG_ACCEPTANCE === "1";
 const nights = ["2027-12-10", "2027-12-11"];
@@ -87,6 +88,45 @@ test("Hotel reservation atomically consumes its scoped hold on disposable Postgr
     assert.equal(created.status, "PENDING_PAYMENT");
     assert.equal((await db.hotelBookingHold.findUniqueOrThrow({ where: { id: hold.id } })).status, "CONSUMED");
     assert.deepEqual((await db.hotelInventory.findMany({ where: { organizationId: orgA.id, roomTypeId: rtA.id }, orderBy: { date: "asc" } })).map((row) => [row.held, row.booked]), [[0, 1], [0, 1]]);
+
+    // A modern anonymous reservation stores only the proof, never account ownership.
+    assert.equal(await db.hotelGuestReservationProof.count({ where: { reservationId: created.id } }), 0);
+    await setInventory(1);
+    const proofHold = await createHold("proof");
+    const proofRecord = recordFor(proofHold.id, "proof");
+    const proofScope = { reservationId: proofRecord.id, organizationId: orgA.id, propertyId: pA.id, origin: "https://fixture.example" };
+    const proofSecret = "isolated-fixture-proof-secret-0123456789";
+    const firstProof = buildHotelGuestReservationProof(proofScope, Buffer.alloc(32, 1).toString("base64url"), "09123456789", proofSecret, now)!;
+    const stored = await repo.createReservation({ ...proofRecord, guestClaimProof: firstProof });
+    assert.equal(stored.guestClaimProof, undefined, "provenance never leaks through repository result");
+    assert.deepEqual(await db.hotelGuestReservationProof.findUniqueOrThrow({ where: { reservationId: stored.id } }), firstProof);
+    const otherProof = buildHotelGuestReservationProof(proofScope, Buffer.alloc(32, 2).toString("base64url"), "09123456789", proofSecret, now)!;
+    await repo.createReservation({ ...proofRecord, guestClaimProof: otherProof });
+    assert.deepEqual(await db.hotelGuestReservationProof.findUniqueOrThrow({ where: { reservationId: stored.id } }), firstProof, "replay cannot replace original proof");
+    assert.equal((await db.hotelReservation.findUniqueOrThrow({ where: { id: stored.id } })).guestCustomerId, null, "capture does not grant account ownership");
+    await assert.rejects(() => db.hotelGuestReservationProof.create({ data: { ...firstProof, reservationId: created.id, organizationId: orgB.id, propertyId: pB.id } }), "composite foreign key denies foreign tenant proof");
+    await setInventory(1);
+    const invalidProofHold = await createHold("proof-invalid");
+    const invalidRecord = recordFor(invalidProofHold.id, "proof-invalid");
+    await assert.rejects(() => repo.createReservation({ ...invalidRecord, guestClaimProof: firstProof }), HotelReservationIntegrityError);
+    assert.equal((await db.hotelBookingHold.findUniqueOrThrow({ where: { id: invalidProofHold.id } })).status, "ACTIVE");
+    assert.deepEqual((await db.hotelInventory.findMany({ where: { organizationId: orgA.id, roomTypeId: rtA.id }, orderBy: { date: "asc" } })).map(row => [row.held, row.booked]), [[1, 0], [1, 0]]);
+
+    const lateProof = buildHotelGuestReservationProof({ ...proofScope, reservationId: created.id }, Buffer.alloc(32, 3).toString("base64url"), "09123456789", proofSecret, now)!;
+    await repo.createReservation({ ...recordFor(hold.id, "valid"), guestClaimProof: lateProof });
+    assert.equal(await db.hotelGuestReservationProof.count({ where: { reservationId: created.id } }), 0, "legacy replay never backfills proof");
+    await setInventory(1);
+    const proofRollbackHold = await createHold("proof-rollback");
+    const proofRollbackRecord = recordFor(proofRollbackHold.id, "proof-rollback");
+    const rollbackProof = buildHotelGuestReservationProof({ ...proofScope, reservationId: proofRollbackRecord.id }, Buffer.alloc(32, 4).toString("base64url"), "09123456789", proofSecret, now)!;
+    await assert.rejects(() => db.$transaction(async tx => {
+      await repo.createReservation({ ...proofRollbackRecord, guestClaimProof: rollbackProof }, tx);
+      throw new Error("synthetic rollback after proof insertion");
+    }), /synthetic rollback after proof insertion/);
+    assert.equal(await db.hotelGuestReservationProof.count({ where: { reservationId: proofRollbackRecord.id } }), 0);
+    assert.equal(await db.hotelReservation.count({ where: { id: proofRollbackRecord.id } }), 0);
+    assert.equal((await db.hotelBookingHold.findUniqueOrThrow({ where: { id: proofRollbackHold.id } })).status, "ACTIVE");
+    assert.deepEqual((await db.hotelInventory.findMany({ where: { organizationId: orgA.id, roomTypeId: rtA.id }, orderBy: { date: "asc" } })).map(row => [row.held, row.booked]), [[1, 0], [1, 0]]);
 
     await setInventory(1);
     const concurrentHold = await createHold("concurrent");

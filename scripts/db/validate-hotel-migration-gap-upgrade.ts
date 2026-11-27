@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PrismaClient } from "@prisma/client";
+import { validateLineage } from "./hotel-migration-lineage.mjs";
 import {
   HotelManagementAuthorizationError,
   HotelManagementService,
@@ -25,15 +26,6 @@ const PENDING_MIGRATIONS = [
   "20261114170000_hotel_offline_payment_audit",
   "20261120160000_hotel_reservation_occupancy",
 ] as const;
-// Later migrations are excluded from the historical checkpoint but applied by
-// the final deployment, so their ordering and compatibility are rehearsed too.
-const LATER_MIGRATIONS = [
-  "20261121120000_hotel_draft_accommodations",
-  "20261121130000_hotel_guest_request_preferred_category",
-  "20261121140000_hotel_draft_accommodation_promotion",
-  "20261122110000_hotel_room_maintenance_blocks",
-] as const;
-
 function assertDisposableDatabase(): string {
   const databaseUrl = process.env.DATABASE_URL;
   const directUrl = process.env.DIRECT_URL;
@@ -69,9 +61,9 @@ async function makeTemporaryPreGapSchema(): Promise<{ directory: string; schemaP
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort();
-  assert.deepEqual(migrationNames.slice(-(PENDING_MIGRATIONS.length + LATER_MIGRATIONS.length)), [...PENDING_MIGRATIONS, ...LATER_MIGRATIONS]);
+  const lineage = validateLineage(migrationNames);
 
-  for (const name of [...PENDING_MIGRATIONS, ...LATER_MIGRATIONS]) {
+  for (const name of lineage.pending) {
     assert.ok(migrationNames.includes(name), `Expected pending migration ${name} is missing from source`);
     await rm(path.join(migrationsPath, name), { recursive: true, force: true });
   }
@@ -199,7 +191,7 @@ async function main(): Promise<void> {
     const beforeGapCount = await db.$queryRawUnsafe<Array<{ count: number }>>(
       `SELECT count(DISTINCT migration_name)::int AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL`,
     );
-    assert.equal(beforeGapCount[0]?.count, temporary.migrationNames.length - PENDING_MIGRATIONS.length - LATER_MIGRATIONS.length);
+    assert.equal(beforeGapCount[0]?.count, validateLineage(temporary.migrationNames).preGap.length);
     await seedExistingPropertyRows(db);
     await db.$disconnect();
     db = undefined;
@@ -211,6 +203,8 @@ async function main(): Promise<void> {
     const finalMigrations = await db.$queryRawUnsafe<Array<{ migration_name: string; finished: boolean; rolledBack: boolean }>>(
       `SELECT migration_name, finished_at IS NOT NULL AS finished, rolled_back_at IS NOT NULL AS "rolledBack" FROM "_prisma_migrations"`,
     );
+    assert.equal(finalMigrations.length, temporary.migrationNames.length, "ledger must contain exactly one row per migration");
+    assert.ok(finalMigrations.every((row) => row.finished && !row.rolledBack), "all ledger rows must be finished and active");
     const completed = new Set(finalMigrations.filter((row) => row.finished && !row.rolledBack).map((row) => row.migration_name));
     for (const name of PENDING_MIGRATIONS) assert.ok(completed.has(name), `${name} was not recorded as completed`);
     assert.equal(completed.size, temporary.migrationNames.length, "Every source migration must be completed exactly once in the fresh rehearsal ledger");

@@ -1,18 +1,16 @@
 import "server-only";
-import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import type { NextRequest } from "next/server";
 import { ApiError } from "@/lib/api-guards";
 import { cartPrincipal, hasGuestCart, requireCartStore } from "@/lib/retail/cart-access.server";
+import { guestOrderScope } from "./guest-order-scope";
 
 // Only server-resolved principals may reach this service. The string form keeps
 // the established authenticated service callers compatible. No client owner IDs.
 export type RetailCheckoutOwner = string | { guestSessionId: string };
 export const guestCheckoutEnabled = () => process.env.RETAIL_GUEST_CHECKOUT_ENABLED === "1";
 export const checkoutCustomerId = (owner: RetailCheckoutOwner) => typeof owner === "string" ? owner : null;
-export function guestOrderScope(organizationSlug: string, sessionId: string) {
-  return `retail-order:v1:${createHash("sha256").update(JSON.stringify([organizationSlug, sessionId])).digest("hex")}:`;
-}
+export { guestOrderScope } from "./guest-order-scope";
 export function checkoutOwnerKey(owner: RetailCheckoutOwner, slug: string) {
   return typeof owner === "string" ? owner : guestOrderScope(slug, owner.guestSessionId);
 }

@@ -9,6 +9,7 @@ import { resolveDamoonDemoProperty } from "@/lib/hotel/services/damoon-demo-book
 import { hashCustomerIdentifier, normalizeCustomerPhone, resolveCustomerIdentity } from "@/lib/customer-identity/customer-identity.service";
 import { bookingRequestSchema } from "@/lib/hotel/validation/hotel-contracts";
 import { z } from "zod";
+import { prepareHotelGuestReservationProof } from "@/lib/hotel/services/guest-reservation-proof.server";
 
 const requestSchema = bookingRequestSchema.extend({
   holdId: z.string().uuid(),
@@ -77,10 +78,14 @@ export async function POST(request: Request) {
       ? [{ fullName: "Demo Guest", isPrimary: true, isChild: false, phoneHash }]
       : body.guests.map((guest) => ({ ...guest, ...(guest.isPrimary ? { phoneHash } : {}) }));
     if (!demo && !guests.some((guest) => guest.isPrimary)) guests.unshift({ fullName: body.contact.fullName, isPrimary: true, isChild: false, phoneHash });
+    const reservationId = randomUUID();
+    const primaryGuests = guests.filter(guest => guest.isPrimary);
+    const provenance = !demo && phone && primaryGuests.length === 1 && !primaryGuests[0].isChild ? await prepareHotelGuestReservationProof(request, { reservationId, organizationId: tenant.organizationId, propertyId: property.id }, phone, new Date()) : null;
     const result = await confirmBookingHold({ booking: repositories, payments: repositories, now: () => new Date() }, {
       scope,
       holdId: body.holdId,
-      reservationId: randomUUID(),
+      reservationId,
+      ...(provenance ? { guestClaimProof: provenance.proof } : {}),
       ratePlanId: plan.id,
       guests,
       occupancy: body.occupancy,
@@ -91,7 +96,13 @@ export async function POST(request: Request) {
       idempotencyKey: body.idempotencyKey,
     });
     if (!result.isConfirmed) throw new ApiError(409, "The booking hold can no longer be converted to a reservation");
-    return Response.json({ reference: result.reservation.reference, status: result.reservation.status, paymentStatus: demo ? "PENDING_SIMULATION" : "UNPAID", totalAmount: String(result.reservation.totalAmount), currency: result.reservation.currency, ...(demo ? { mode: "DEMO_BOOKING", synthetic: true } : {}) }, { status: 201 });
+    const response = Response.json({ reference: result.reservation.reference, status: result.reservation.status, paymentStatus: demo ? "PENDING_SIMULATION" : "UNPAID", totalAmount: String(result.reservation.totalAmount), currency: result.reservation.currency, ...(demo ? { mode: "DEMO_BOOKING", synthetic: true } : {}) }, { status: 201 });
+    if (provenance && result.reservation.id === reservationId) {
+      response.headers.append("Set-Cookie", provenance.setCookie);
+      response.headers.set("Cache-Control", "private, no-store");
+      response.headers.set("Vary", "Cookie, Host, Origin");
+    }
+    return response;
   } catch (error) {
     return jsonError(error);
   }

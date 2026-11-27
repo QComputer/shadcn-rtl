@@ -33,6 +33,8 @@ import type {
   TomanAmount,
 } from "@/lib/hotel/domain/types";
 
+import type { HotelGuestReservationProof } from "../domain/guest-reservation-proof";
+
 export type TenantScope = {
   readonly organizationId: string
 };
@@ -107,6 +109,8 @@ export type ReservationRecord = {
   readonly totalAmount: TomanAmount
   readonly currency: string
   readonly cancellationPolicySnapshot: ReservationCancellationPolicySnapshot | null
+  /** Write-only provenance, never returned by persistence reads. */
+  readonly guestClaimProof?: HotelGuestReservationProof
   readonly paymentRequestPublicId?: string
   readonly holdId?: string
   readonly createdAt: Date

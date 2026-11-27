@@ -6,6 +6,8 @@ import { normalizeIranianMobile } from "@/lib/integrations/inoti-ussd/parser";
 import { normalizeDomainHost } from "@/lib/custom-domain-routing";
 import { createCustomerAccessToken, customerAuthDigest, encryptCustomerAuthPayload } from "./crypto";
 import { customerAuthSmsRuntimeAvailable } from "./sms-runtime.server";
+import { guestClaimBinding, type GuestClaimScope } from "./guest-claim.contract";
+import { completeGuestClaim, guestClaimEligible } from "./guest-claim.server";
 
 export class CustomerPhoneAuthError extends Error {
   readonly code = "CUSTOMER_AUTH_UNAVAILABLE";
@@ -13,6 +15,8 @@ export class CustomerPhoneAuthError extends Error {
 }
 export interface CustomerPhoneAuthOptions {
   enabled?: boolean;
+  /** Isolated test override; production requires both explicitly enabled gates. */
+  guestClaimEnabled?: boolean;
   secret?: string;
   senderAvailable?: () => boolean;
   now?: () => Date;
@@ -42,17 +46,20 @@ function hashOtp(otp: string, secret: string): string {
 type PhoneAuthRequest = { phone: string; organizationId: string; origin: string; ip: string; source: "WEB" | "USSD"; idempotencyKey?: string };
 type PhoneAuthConsume = { token?: string; otp?: string; phone?: string; organizationId: string; origin: string };
 export type CustomerVerificationPurpose = "PHONE_PROOF" | "ACCOUNT_SIGN_IN" | "ACCOUNT_ENROLL";
-type ChallengePurpose = CustomerVerificationPurpose | "LEGACY";
+type ChallengePurpose = CustomerVerificationPurpose | "LEGACY" | "GUEST_RECORD_CLAIM";
 type PurposeOtpInput = { challengeId: string; otp: string; phone: string; organizationId: string; origin: string };
 type ChallengeScope = { id: string; phone: string; organizationId: string; origin: string };
-const purposeTag = (purpose: CustomerVerificationPurpose) => `g3:v1:${purpose}:`;
-function challengeHash(otp: string, secret: string, purpose: ChallengePurpose, scope: ChallengeScope) {
+const purposeTag = (purpose: Exclude<ChallengePurpose, "LEGACY">, binding?: string) =>
+  purpose === "GUEST_RECORD_CLAIM" ? `g3:v1:${purpose}:${binding}:` : `g3:v1:${purpose}:`;
+function challengeHash(otp: string, secret: string, purpose: ChallengePurpose, scope: ChallengeScope, binding?: string) {
   if (purpose === "LEGACY") return hashOtp(otp, secret);
-  return purposeTag(purpose) + customerAuthDigest(JSON.stringify(["g3:v1", purpose, scope.id, scope.phone, scope.organizationId, scope.origin, otp]), secret);
+  const fields = ["g3:v1", purpose, scope.id, scope.phone, scope.organizationId, scope.origin, otp];
+  if (purpose === "GUEST_RECORD_CLAIM") fields.push(binding ?? "");
+  return purposeTag(purpose, binding) + customerAuthDigest(JSON.stringify(fields), secret);
 }
-function matchesPurpose(hash: string | null | undefined, purpose: ChallengePurpose) {
+function matchesPurpose(hash: string | null | undefined, purpose: ChallengePurpose, binding?: string) {
   if (purpose === "LEGACY") return typeof hash === "string" && /^[a-f0-9]{64}$/.test(hash);
-  return typeof hash === "string" && hash.startsWith(purposeTag(purpose)) && /^[a-f0-9]{64}$/.test(hash.slice(purposeTag(purpose).length));
+  return typeof hash === "string" && hash.startsWith(purposeTag(purpose, binding)) && /^[a-f0-9]{64}$/.test(hash.slice(purposeTag(purpose, binding).length));
 }
 
 export class CustomerPhoneAuthService {
@@ -87,7 +94,32 @@ export class CustomerPhoneAuthService {
     return { accepted: true as const, challengeId };
   }
 
-  private async requestForPurpose(input: PhoneAuthRequest, purpose: ChallengePurpose, id: string): Promise<{ accepted: true }> {
+  private guestClaimEnabled() {
+    return this.options.guestClaimEnabled ?? (process.env.CUSTOMER_GUEST_CLAIM_ENABLED === "1" && process.env.CUSTOMER_PROGRESSIVE_ENROLLMENT_ENABLED === "1");
+  }
+
+  /** Internal record-bound challenge. No public endpoint or bearer proof. */
+  async requestGuestClaim(scope: GuestClaimScope, ip: string) {
+    const challengeId = randomUUID();
+    const binding = this.guestClaimEnabled() ? guestClaimBinding(scope, this.secret()) : null;
+    if (binding) await this.requestForPurpose({ phone: scope.phone, organizationId: scope.organizationId, origin: scope.origin, ip, source: "WEB" },
+      "GUEST_RECORD_CLAIM", challengeId, { scope, binding });
+    return { accepted: true as const, challengeId };
+  }
+
+  /** The explicit claim and OTP consumption commit or roll back together. */
+  async claimGuestRecord(scope: GuestClaimScope, challengeId: string, otp: string) {
+    const binding = this.guestClaimEnabled() ? guestClaimBinding(scope, this.secret()) : null;
+    if (!binding) throw new CustomerPhoneAuthError();
+    return this.consumeForPurpose({ phone: scope.phone, organizationId: scope.organizationId, origin: scope.origin, otp },
+      "GUEST_RECORD_CLAIM", challengeId, async (tx, _link, now) => {
+        const result = await completeGuestClaim(tx, scope, now);
+        if (!result) throw new CustomerPhoneAuthError();
+        return result;
+      }, binding);
+  }
+
+  private async requestForPurpose(input: PhoneAuthRequest, purpose: ChallengePurpose, id: string, guestClaim?: { scope: GuestClaimScope; binding: string }): Promise<{ accepted: true }> {
     const accepted = { accepted: true as const };
     const phone = normalizeIranianMobile(input.phone);
     if (!phone || !this.enabled() || !(this.options.senderAvailable ?? customerPhoneAuthSenderAvailable)()) return accepted;
@@ -107,6 +139,7 @@ export class CustomerPhoneAuthService {
         ].sort((a, b) => a.key.localeCompare(b.key));
         for (const item of keys) await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${item.key}, 0))::text`;
         const now = this.now();
+        if (purpose === "GUEST_RECORD_CLAIM" && (!guestClaim || !await guestClaimEligible(tx, guestClaim.scope, now))) return;
         if (issuanceKey && await tx.customerAccessLink.findUnique({ where: { issuanceKey }, select: { id: true } })) return;
         // 60-second resend cooldown: do not issue a new OTP if an unconsumed
         // link for the same phone+org+origin was created within the last 60s.
@@ -137,7 +170,7 @@ export class CustomerPhoneAuthService {
         const url = new URL(`/${locale}/login/phone`, input.origin);
         url.searchParams.set("organization", destination.slug);
         url.hash = new URLSearchParams({ token }).toString();
-        await tx.customerAccessLink.create({ data: { id, phone, organizationId: input.organizationId, origin: input.origin, source: input.source, tokenDigest: customerAuthDigest(token, secret), issuanceKey, expiresAt: new Date(now.getTime() + 300_000), createdAt: now, otpCodeHash: challengeHash(otp, secret, purpose, { id, phone, organizationId: input.organizationId, origin: input.origin }), otpExpiresAt: new Date(now.getTime() + 120_000), otpAttempts: 0, smsOutbox: { create: { encryptedPayload: encryptCustomerAuthPayload({ phone, url: `OTP:${otp}` }, secret, id), nextAttemptAt: now } } } });
+        await tx.customerAccessLink.create({ data: { id, phone, organizationId: input.organizationId, origin: input.origin, source: input.source, tokenDigest: customerAuthDigest(token, secret), issuanceKey, expiresAt: new Date(now.getTime() + 300_000), createdAt: now, otpCodeHash: challengeHash(otp, secret, purpose, { id, phone, organizationId: input.organizationId, origin: input.origin }, guestClaim?.binding), otpExpiresAt: new Date(now.getTime() + 120_000), otpAttempts: 0, smsOutbox: { create: { encryptedPayload: encryptCustomerAuthPayload({ phone, url: `OTP:${otp}` }, secret, id), nextAttemptAt: now } } } });
       }, { maxWait: 5000, timeout: 10_000 });
     } catch (error) {
       if (!(error instanceof CustomerPhoneAuthError)) console.warn("CUSTOMER_PHONE_AUTH_REQUEST_FAILED");
@@ -168,7 +201,7 @@ export class CustomerPhoneAuthService {
     return this.consumeForPurpose(input, "ACCOUNT_ENROLL", input.challengeId, (tx, link, now) => this.completeAccount(tx, link, now, "ACCOUNT_ENROLL"));
   }
 
-  private async consumeForPurpose<T>(input: PhoneAuthConsume, purpose: ChallengePurpose, challengeId: string | undefined, complete: (tx: Prisma.TransactionClient, link: ChallengeScope, now: Date) => Promise<T>): Promise<T> {
+  private async consumeForPurpose<T>(input: PhoneAuthConsume, purpose: ChallengePurpose, challengeId: string | undefined, complete: (tx: Prisma.TransactionClient, link: ChallengeScope, now: Date) => Promise<T>, binding?: string): Promise<T> {
     if (purpose !== "LEGACY" && (!challengeId || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(challengeId) || !input.otp || input.token)) throw new CustomerPhoneAuthError();
     if (!this.enabled() || this.secret().length < 32) throw new CustomerPhoneAuthError();
     try {
@@ -188,10 +221,10 @@ export class CustomerPhoneAuthService {
           link = await tx.customerAccessLink.findFirst({ where: { phone, organizationId: input.organizationId, origin: input.origin, otpCodeHash: { not: null } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }] });
           if (!link || link.consumedAt || link.otpConsumedAt || link.expiresAt <= now || !link.otpExpiresAt || link.otpExpiresAt <= now || link.otpAttempts >= 3 || !link.otpCodeHash) throw new CustomerPhoneAuthError();
           // Never spend another purpose's attempts or revive a prior challenge.
-          if (!matchesPurpose(link.otpCodeHash, purpose) || (purpose !== "LEGACY" && link.id !== challengeId)) throw new CustomerPhoneAuthError();
+          if (!matchesPurpose(link.otpCodeHash, purpose, binding) || (purpose !== "LEGACY" && link.id !== challengeId)) throw new CustomerPhoneAuthError();
           const code = input.otp.replace(/\s/g, "");
           const expectedHash = Buffer.from(link.otpCodeHash);
-          const hash = Buffer.from(challengeHash(code, this.secret(), purpose, link));
+          const hash = Buffer.from(challengeHash(code, this.secret(), purpose, link, binding));
           if (!/^\d{4}$/.test(code) || expectedHash.length !== hash.length || !timingSafeEqual(expectedHash, hash)) {
             await tx.customerAccessLink.updateMany({ where: { id: link.id, otpAttempts: { lt: 3 }, consumedAt: null, otpConsumedAt: null, expiresAt: { gt: now }, otpExpiresAt: { gt: now } }, data: { otpAttempts: { increment: 1 } } });
             // Returning rather than throwing commits the failed attempt in this transaction.
@@ -213,7 +246,7 @@ export class CustomerPhoneAuthService {
         const claimed = await tx.customerAccessLink.updateMany({ where: { id: link.id, consumedAt: null, expiresAt: { gt: now }, ...(usingOtp ? { otpConsumedAt: null, otpExpiresAt: { gt: now }, otpAttempts: { lt: 3 } } : {}) }, data: { consumedAt: now, otpConsumedAt: now } });
         if (claimed.count !== 1) throw new CustomerPhoneAuthError();
         return complete(tx, link, now);
-      }, { maxWait: 5000, timeout: 15_000 });
+      }, { maxWait: 5000, timeout: 15_000, ...(purpose === "GUEST_RECORD_CLAIM" ? { isolationLevel: "Serializable" as const } : {}) });
       if (!result) throw new CustomerPhoneAuthError();
       return result;
     } catch (error) {
@@ -222,7 +255,7 @@ export class CustomerPhoneAuthService {
     }
   }
 
-  private async completeAccount(tx: Prisma.TransactionClient, link: ChallengeScope, now: Date, purpose: Exclude<ChallengePurpose, "PHONE_PROOF">) {
+  private async completeAccount(tx: Prisma.TransactionClient, link: ChallengeScope, now: Date, purpose: Exclude<ChallengePurpose, "PHONE_PROOF" | "GUEST_RECORD_CLAIM">) {
     const identity = await tx.customerPhoneIdentity.findUnique({ where: { phone: link.phone } });
     let user;
     if (identity) {

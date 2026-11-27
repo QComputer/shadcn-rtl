@@ -1,4 +1,5 @@
 "use client"
+import { GuestClaimPanel } from "@/components/customer/guest-claim-panel";
 import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect, use } from "react"
@@ -226,6 +227,7 @@ export default function ShopProfilePage({
 
        <section className="pb-8">
          <div className="container mx-auto px-4">
+           <GuestClaimPanel key={slug} locale={locale} slug={slug} kind="ORDER" />
            <WebPushOptIn organizationSlug={profile.slug} organizationName={profile.name} locale={locale} />
          </div>
        </section>

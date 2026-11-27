@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { GuestClaimPanel } from "@/components/customer/guest-claim-panel";
 import { appFetch } from "@/lib/app-base-path";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,6 +57,7 @@ export function PrivateAppointmentTracking({ locale: rawLocale, slug, appointmen
   }
   return <main className="container mx-auto max-w-3xl space-y-5 px-4 py-8" dir={locale === "en" ? "ltr" : "rtl"}>
     <h1 className="text-2xl font-bold">{t.title}</h1><p className="text-muted-foreground">{t.note}</p>
+    {!appointmentId && <GuestClaimPanel key={slug} locale={locale} slug={slug} kind="APPOINTMENT" />}
     {!appointmentId && <form onSubmit={lookup} className="space-y-3"><label htmlFor="booking-reference">{t.ref}</label><Input id="booking-reference" value={ref} onChange={event => setRef(event.target.value.toUpperCase())} maxLength={64} autoComplete="off" dir="ltr" /><Button disabled={loading} type="submit">{loading ? t.loading : t.show}</Button></form>}
     {loading && <p role="status">{t.loading}</p>}{error && <p role="alert" className="text-destructive">{t.denied}</p>}
     {result && <section className="space-y-3">{result.items.length === 0 && <p>{t.none}</p>}{result.items.map(item => <AppointmentCard key={item.id} item={item} locale={locale} detail={Boolean(appointmentId)} href={routes.href} />)}{result.hasMore && <p>{t.more}</p>}</section>}

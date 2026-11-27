@@ -102,3 +102,32 @@ export async function completeGuestClaim(tx: Prisma.TransactionClient, scope: Gu
     description: "Explicit guest record ownership claim v1", previousValue: { customerId: null }, newValue: { customerId: scope.userId } } });
   return { outcome: "CLAIMED" as const, kind: current.kind, recordId: current.rowId };
 }
+
+/** Private discovery: only scoped modern browser records, exact core eligibility, bounded output. */
+export async function listGuestClaimCandidates(tx: Prisma.TransactionClient, scope: Omit<GuestClaimScope, "recordId">, now: Date) {
+  const phone = normalizeIranianMobile(scope.phone);
+  if (!phone) return [];
+  const actor = await currentActor(tx, { ...scope, recordId: "list" }, phone, now);
+  if (!actor) return [];
+  const org = actor.organization;
+  const capability = scope.kind === "ORDER" ? "SHOP" : "APPOINTMENT";
+  if (!hasOrganizationCapability({ legacyType: org.type, capabilitiesInitializedAt: org.capabilitiesInitializedAt, capabilities: org.capabilities }, capability)) return [];
+  const bound = { ...scope, recordId: "list" };
+  if (scope.kind === "ORDER") {
+    if (org.branding?.retailPreviewOnly) return [];
+    const where = orderWhere(bound, org.slug, now);
+    delete where.id;
+    const rows = await tx.order.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 20,
+      select: { id: true, orderNumber: true, createdAt: true } });
+    const result = [];
+    for (const row of rows) if (await guestClaimEligible(tx, { ...scope, recordId: row.id }, now)) result.push({ recordId: row.id, reference: row.orderNumber, date: row.createdAt.toISOString() });
+    return result;
+  }
+  const where = appointmentWhere(bound, now);
+  delete where.id;
+  const rows = await tx.appointment.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 20,
+    select: { id: true, bookingReference: true, startTime: true } });
+  const result = [];
+  for (const row of rows) if (await guestClaimEligible(tx, { ...scope, recordId: row.id }, now)) result.push({ recordId: row.id, reference: row.bookingReference, date: row.startTime.toISOString() });
+  return result;
+}

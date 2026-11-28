@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { reconcile } from "../../scripts/hotel/damoon-real-data-import.mjs";
+import { applyReviewedImport, reconcile } from "../../scripts/hotel/damoon-real-data-import.mjs";
 const units = Array.from({length:31},(_,i)=>({unit_code:String(i+100),category:"double",floor:null}));
 const source={units:{units}};
 const room={id:"room-a",code:"100",deletedAt:null,updatedAt:new Date("2026-01-01"),reservationCount:0,maintenanceCount:0,mediaCount:0};
@@ -16,4 +16,9 @@ test("physical identity needs explicit verification and never derives from hypot
 });
 test("ambiguous, duplicate and cross-property attestations fail closed",()=>{
  for(const entries of [[{...verification,roomId:"foreign"}],[verification,verification],[{...verification,externalDependenciesAbsent:false}],[{...verification,sourceCode:"999"}]]) assert.throws(()=>reconcile(source,[],[room],entries));
+});
+
+test("apply rejects production environment before using its database client", async () => {
+ const previous=process.env.NODE_ENV; process.env.NODE_ENV="production"; let touched=false;
+ try { await assert.rejects(()=>applyReviewedImport({$transaction:()=>{touched=true;}},{organizationId:"org",propertyId:"prop"},source,[])); assert.equal(touched,false); } finally { if(previous===undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV=previous; }
 });

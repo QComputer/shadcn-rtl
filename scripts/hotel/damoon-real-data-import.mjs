@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { PrismaClient } from "@prisma/client";
-import { verifyLocalDamoonDatabase } from "./verify-damoon-local-e2e-db.mjs";
+import { validateLocalDamoonTarget, verifyLocalDamoonDatabase } from "./verify-damoon-local-e2e-db.mjs";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const manifest = JSON.parse(fs.readFileSync(path.join(repo, "docs/hotel/damoon/DAMOON-31-UNIT-DRAFT-RECONCILIATION-2026-11-17.json"), "utf8"));
@@ -98,9 +98,13 @@ async function scopedInventory(tx, scope) {
 }
 /** Persist an exact staging snapshot and reconcile only explicitly verified, dependency-free physical rooms. */
 export async function applyReviewedImport(prisma, scope, source, verifications = []) {
+  const target = validateLocalDamoonTarget();
+  if (!target.ok) throw new Error(target.errors.join(" "));
   const canonical = [...verifications].sort((a,b) => a.sourceCode.localeCompare(b.sourceCode));
   const digest = createHash("sha256").update(JSON.stringify([source.units,source.tariffs,canonical])).digest("hex");
   return prisma.$transaction(async tx => {
+    const [identity] = await tx.$queryRaw`SELECT current_database() AS "databaseName", current_user AS "userName", current_schema() AS "schemaName", current_setting('server_version_num')::int AS "version", inet_server_port() AS "serverPort", inet_server_addr()::text AS "serverAddress"`;
+    if (identity?.databaseName !== target.databaseName || identity.userName !== target.databaseUser || identity.schemaName !== "public" || identity.version < 170000 || identity.version >= 180000 || identity.serverPort !== 5432 || !identity.serverAddress) throw new Error("Connected target identity does not match the isolated PostgreSQL 17 test database");
     const locked = await tx.$queryRaw`SELECT "id" FROM "HotelProperty" WHERE "id"=${scope.propertyId} AND "organizationId"=${scope.organizationId} AND "deletedAt" IS NULL FOR UPDATE`;
     if (locked.length !== 1) throw new Error("Scoped property unavailable");
     const previous = await tx.hotelDamoonDataImport.findUnique({ where:{organizationId_propertyId_sourceDigest:{...scope,sourceDigest:digest}} });

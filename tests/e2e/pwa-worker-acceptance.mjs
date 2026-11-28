@@ -19,21 +19,70 @@ export async function verifyWorkerAcceptance({ browser, origin, startPath, expec
   const offlineScreenshot = path.join(outputDir, `${safeLabel}-offline.png`);
   const reconnectedScreenshot = path.join(outputDir, `${safeLabel}-reconnected.png`);
   const page = await browser.newPage();
+  const browserErrors = [];
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
 
   try {
     const response = await page.goto(startUrl.href, { waitUntil: "domcontentloaded" });
     assert.equal(response?.status(), 200, "tenant start page loads before worker checks");
 
-    const workerState = await page.waitForFunction(async () => {
-      if (!globalThis.isSecureContext || !("serviceWorker" in navigator)) return null;
-      const registration = await navigator.serviceWorker.ready;
-      return {
-        scope: registration.scope,
-        active: Boolean(registration.active),
-        controller: Boolean(navigator.serviceWorker.controller),
-      };
-    }, undefined, { timeout: 20_000 });
-    const initialWorker = await workerState.jsonValue();
+    const browserContext = await page.evaluate(() => ({
+      secure: globalThis.isSecureContext,
+      serviceWorkerSupported: "serviceWorker" in navigator,
+      origin: location.origin,
+    }));
+    assert.equal(browserContext.secure, true, `service-worker origin must be secure: ${JSON.stringify(browserContext)}`);
+    assert.equal(browserContext.serviceWorkerSupported, true, `service workers must be supported: ${JSON.stringify(browserContext)}`);
+    try {
+      await page.waitForFunction(async () => {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        return registrations.some((registration) => Boolean(registration.active));
+      }, undefined, { timeout: 20_000 });
+    } catch (error) {
+      const diagnostic = await page.evaluate(async () => {
+        const response = await fetch("/web-push-sw.js", { cache: "no-store" }).catch(() => null);
+        let manualRegistration = null;
+        let manualRegistrationError = null;
+        try {
+          const registration = await navigator.serviceWorker.register("/web-push-sw.js", { scope: "/" });
+          manualRegistration = { scope: registration.scope, active: Boolean(registration.active), installing: Boolean(registration.installing), waiting: Boolean(registration.waiting) };
+        } catch (registrationError) {
+          manualRegistrationError = String(registrationError?.message || registrationError);
+        }
+        return {
+          secure: isSecureContext,
+          origin: location.origin,
+          serviceWorkerSupported: "serviceWorker" in navigator,
+          registrations: "serviceWorker" in navigator ? (await navigator.serviceWorker.getRegistrations()).map((registration) => ({ scope: registration.scope, active: Boolean(registration.active) })) : [],
+          script: response ? { status: response.status, contentType: response.headers.get("content-type") } : null,
+          manualRegistration,
+          manualRegistrationError,
+        };
+      });
+      throw new Error(`Application did not register an active worker: ${JSON.stringify(diagnostic)}; browserErrors=${JSON.stringify(browserErrors.slice(0, 20))}; ${String(error?.message || error)}`);
+    }
+    const initialWorker = await page.evaluate(async () => {
+      // Read the registration and its active worker together in the page that
+      // passed the active-worker wait. A short bounded retry handles the
+      // browser lifecycle gap between Playwright's wait callback and this
+      // inspection without relaxing the active/root-scope requirements.
+      const deadline = Date.now() + 5_000;
+      while (Date.now() < deadline) {
+        const registration = (await navigator.serviceWorker.getRegistrations())
+          .find((candidate) => Boolean(candidate.active));
+        if (registration) {
+          return {
+            scope: registration.scope,
+            active: Boolean(registration.active),
+            controller: Boolean(navigator.serviceWorker.controller),
+          };
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      return null;
+    });
+    assert.ok(initialWorker, `an active origin registration must be readable: ${JSON.stringify(await page.evaluate(async () => ({ secure: isSecureContext, origin: location.origin, registrations: (await navigator.serviceWorker.getRegistrations()).map((registration) => ({ scope: registration.scope, active: Boolean(registration.active) })) })))}`);
     assert.equal(new URL(initialWorker.scope).origin, baseUrl.origin, "worker scope uses the tested origin");
     assert.equal(new URL(initialWorker.scope).pathname, "/", "worker controls the origin root");
     assert.equal(initialWorker.active, true, "a service worker is active");

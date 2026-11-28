@@ -1,6 +1,6 @@
 # Kilo Code overlay delivery playbook
 
-Version: 1.6 (2026-11-27) — repository delivery standard; includes G3-B1 detached execution, diagnostic CI and owner deployment decisions.
+Version: 1.8 (2026-11-28) — adds actual production-container runtime and browser acceptance before any provider cutover.
 Scope: BazarBaaz platform, QComputer/shadcn-rtl. Hotel-specific gates below are the current PMS profile, not universal rules for every platform change.
 
 ## 1. Delivery contract
@@ -90,6 +90,14 @@ Merge only after required acceptance and repository rules permit; do not merge d
 
 No production DB migration or mutation, real payment activation, SMS, or production configuration changes without explicit authorization. For schema changes, check the actual deployment/migration behavior before merge: if merge could auto-apply a production migration or start a dependent feature without authorization, resolve the release gate first. Use disposable PostgreSQL for migration tests. Current PMS boundary: stop before any Housekeeping implementation; owner defines intervening phase and explicitly authorizes resumption.
 
+### Deterministic RunFlare builds
+
+The managed Next.js builder observed on service `87432` automatically runs `npm install --force` when no `yarn.lock` exists; it does not honor `pnpm-lock.yaml` or `packageManager`. A repository `prebuild` gate runs only after that automatic install succeeds, so it cannot make the provider's first install deterministic. Before attempting a build fix, inspect provider UI and supported docs for an install-command/package-manager override, record current settings and a reversible recovery procedure, and preserve runtime variables, domains, storage and networking.
+
+If the managed builder exposes no supported way to disable its automatic installer, do not add another manifest/lockfile or weaken dependency/security gates. Prepare a separate Docker-service candidate with a digest-pinned Node base, exact Corepack pnpm version, one `pnpm install --frozen-lockfile`, existing `pnpm run build` gates, and existing `next start` behavior. Build and review that candidate independently; do not switch an existing Production service type, merge it or deploy it without separate authorization and a verified provider-native recovery path. RunFlare documents Dockerfile builds for its Docker service; that does not prove the existing managed Next.js service will use a Dockerfile.
+
+After a provider build configuration change, verify the exact source commit, successful image identity and startup before route/browser acceptance. A failed prebuild is not code regression acceptance. Keep rollback bounded to the last known-good provider image or a documented source-revert build, and re-check the active revision before smoke tests.
+
 Update applicable roadmap/status and active handoff with delivered scope, remaining scope, known blockers and next action in the next functional PR. Do not claim the current PR is merged before merge; reference actual PR/Git history for final evidence. Keep the final Kilo report compact:
 
 ```text
@@ -107,6 +115,8 @@ Next: stop; or exact blocking error with full diagnostics
 This document is the single reusable process reference. AGENTS.md links to it; module docs contain module-specific status, not another full copy of the process. Version and update this document in the next relevant functional PR when a repeated failure or a verified improvement warrants it. Keep protocol changes backward-compatible or explicitly versioned. No separate PR solely for routine bookkeeping. Prefer deterministic script improvements over longer prompts. Track avoidable CI cycles, unnecessary installs and accidental staging qualitatively; optimize actual delivery latency, not the number of steps alone.
 
 ### Change history
+
+- v1.8: For a Docker-service candidate, prove the exact image runs as its configured non-root user against disposable PostgreSQL before deployment. Acceptance includes health and Prisma client runtime, public assets, synthetic guest checkout/payment methods, server-component browser regressions, tenant custom-domain/PWA browser coverage, persistent storage across restart, graceful stop, unchanged migration ledger during startup, and image secret/file-boundary inspection. Keep Docker image building non-publishing unless a separately authorized release explicitly requires otherwise. A hosted build that only assembles an image is not runtime acceptance.
 
 - v1.0: consolidates PR174 (ES2017/BigInt), PR175 (Playwright URL and accessible names), PR176 (workflow paths), PR178 (UTF-8 and blob integrity), PR179/180 (accepted guarded delivery), and 1C-E execution incident (stale session, accidental staging, wrong test runner, unnecessary install).
 

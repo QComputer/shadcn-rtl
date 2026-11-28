@@ -19,20 +19,24 @@ import { verifyWorkerAcceptance } from "./pwa-worker-acceptance.mjs";
 const require = createRequire(import.meta.url);
 const prisma = new PrismaClient();
 const localPwaAcceptance = process.env.LOCAL_PWA_ACCEPTANCE === "1";
+const externalRuntime = process.env.PWA_EXTERNAL_RUNTIME === "1";
 const runId = localPwaAcceptance ? process.env.HOTEL_ONBOARDING_RUN_ID : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const artifactDir = path.resolve(process.env.PWA_BROWSER_ARTIFACTS || process.env.TENANT_PWA_ARTIFACTS || process.env.HOTEL_ONBOARDING_ARTIFACTS || ".tmp/tenant-pwa-ci");
 mkdirSync(artifactDir, { recursive: true });
 const logPath = `${artifactDir}/next-start.log`;
-const port = await reservePort();
+const externalRuntimePort = Number(process.env.PWA_EXTERNAL_RUNTIME_PORT || "3000");
+assert.ok(!externalRuntime || Number.isInteger(externalRuntimePort) && externalRuntimePort > 0 && externalRuntimePort < 65536,
+  "PWA_EXTERNAL_RUNTIME_PORT must be a valid TCP port when testing an external runtime");
+const port = externalRuntime ? externalRuntimePort : await reservePort();
 const hosts = {
-  alpha: "tenant-alpha.pwa-ci.test",
-  beta: "tenant-beta.pwa-ci.test",
-  gamma: "tenant-gamma.pwa-ci.test",
-  inactive: "tenant-inactive.pwa-ci.test",
-  unverified: "tenant-unverified.pwa-ci.test",
-  incomplete: "tenant-incomplete.pwa-ci.test",
-  unknown: "tenant-unknown.pwa-ci.test",
-  broken: "tenant-broken.pwa-ci.test",
+  alpha: "tenant-alpha.pwa-ci.localhost",
+  beta: "tenant-beta.pwa-ci.localhost",
+  gamma: "tenant-gamma.pwa-ci.localhost",
+  inactive: "tenant-inactive.pwa-ci.localhost",
+  unverified: "tenant-unverified.pwa-ci.localhost",
+  incomplete: "tenant-incomplete.pwa-ci.localhost",
+  unknown: "tenant-unknown.pwa-ci.localhost",
+  broken: "tenant-broken.pwa-ci.localhost",
 };
 const organizations = [];
 let server;
@@ -185,7 +189,7 @@ async function manifestFor(host, extraHeaders = {}) {
 async function waitForServer() {
   const healthUrl = `http://127.0.0.1:${port}/manifest.webmanifest`;
   for (let attempt = 0; attempt < 60; attempt += 1) {
-    if (server.exitCode !== null) throw new Error(`Next.js exited with ${server.exitCode}`);
+    if (server && server.exitCode !== null) throw new Error(`Next.js exited with ${server.exitCode}`);
     try {
       const response = await fetch(healthUrl, { signal: AbortSignal.timeout(2_000) });
       if (response.ok) return;
@@ -281,19 +285,29 @@ async function verifySameOriginPathCustomerAccess({ browser, first, second, orig
         await page.locator("#username").fill(username);
         await page.locator("#password").fill(password);
         await page.locator('button[type="submit"]').click();
-      } else {
-        await page.goto(new URL(profilePath, origin).toString(), { waitUntil: "domcontentloaded" });
+        await page.getByText("نام کاربری یا رمز عبور اشتباه است", { exact: true }).waitFor({ state: "visible" });
+        assert.equal(new URL(page.url()).pathname, "/fa/login", "platform-origin password login cannot create a customer session without a verified tenant domain");
+        const rejectedSession = await page.evaluate(async () => {
+          const response = await fetch("/api/users/me", { credentials: "same-origin", cache: "no-store" });
+          return { status: response.status, body: await response.json().catch(() => ({})) };
+        });
+        assert.equal(rejectedSession.status, 401, "the rejected path-only login leaves no authenticated customer session");
+        for (const key of ["id", "name", "email", "firstName", "lastName"]) assert.equal(Object.hasOwn(rejectedSession.body, key), false);
+        checks.push({ slug: tenant.slug, customerLoginBoundary: "PLATFORM_ORIGIN_DENIED", privateProfile: "UNAUTHENTICATED" });
       }
-      await page.waitForURL((url) => url.origin === origin && url.pathname === profilePath, { waitUntil: "domcontentloaded" });
+      await page.goto(new URL(profilePath, origin).toString(), { waitUntil: "domcontentloaded" });
+      const currentUrl = new URL(page.url());
+      assert.equal(currentUrl.origin, origin, "path tenant navigation stays on the same origin");
+      assert.equal(currentUrl.pathname, profilePath, "the tenant profile resolves at the requested path");
       await page.getByRole("heading", { name: tenant.name, exact: true }).waitFor();
+      const profileBody = await page.locator("body").innerText();
+      assert.ok(!profileBody.includes(username) && !profileBody.includes(email), "public path tenant profile does not expose the synthetic customer's private identity");
       const ownProfile = await page.evaluate(async () => {
         const response = await fetch("/api/users/me", { credentials: "same-origin", cache: "no-store" });
         return { status: response.status, body: await response.json().catch(() => ({})) };
       });
-      assert.equal(ownProfile.status, 200, "the same-origin customer session remains authenticated");
-      assert.equal(ownProfile.body.id, user.id);
-      assert.equal(ownProfile.body.name, username);
-      assert.equal(ownProfile.body.email, email);
+      assert.equal(ownProfile.status, 401, "path-only tenant profile remains private without verified-domain customer authentication");
+      for (const key of ["id", "name", "email", "firstName", "lastName"]) assert.equal(Object.hasOwn(ownProfile.body, key), false);
       const publicOrganization = await page.evaluate(async (slug) => {
         const response = await fetch(`/api/public/organizations/${encodeURIComponent(slug)}`, { cache: "no-store" });
         return { status: response.status, body: await response.json().catch(() => ({})) };
@@ -302,11 +316,22 @@ async function verifySameOriginPathCustomerAccess({ browser, first, second, orig
       const organization = publicOrganization.body.organization || publicOrganization.body;
       assert.equal(organization.slug, tenant.slug);
       assert.equal(organization.name, tenant.name);
-      checks.push({ slug: tenant.slug, profilePath, renderedOrganization: tenant.name, authenticatedUserId: ownProfile.body.id, customerDtoSafe: !Object.hasOwn(ownProfile.body, "password") });
+      checks.push({ slug: tenant.slug, profilePath, renderedOrganization: tenant.name, privateProfile: "DENIED", noCustomerDataLeak: true });
+      if (tenant === first) {
+        const checkoutPath = `/fa/${tenant.slug}/shop/checkout`;
+        await page.goto(new URL(checkoutPath, origin).toString(), { waitUntil: "domcontentloaded" });
+        await page.locator("[data-empty-cart]").waitFor({ state: "visible" });
+        const checkoutBody = await page.locator("body").innerText();
+        assert.doesNotMatch(checkoutBody, /برای ثبت نهایی سفارش در این نسخه وارد حساب شوید/,
+          "guest Shop checkout remains available without a mandatory login gate");
+        assert.equal(await page.getByRole("button", { name: "ثبت سفارش", exact: true }).count(), 0,
+          "an empty guest cart cannot submit an order");
+        checks.push({ slug: tenant.slug, checkoutPath, guestCheckout: "PASSED", noOrderSubmission: true });
+      }
     }
     const cookieMetadata = (await context.cookies(origin)).map(({ name, domain, path, httpOnly, secure, sameSite }) => ({ name, domain, path, httpOnly, secure, sameSite }));
-    assert.ok(cookieMetadata.some(({ name }) => /(?:auth|session)/i.test(name)), "the same-origin profile carries an authentication cookie");
-    return { status: "PASSED", origin, sharedOriginCookieStorage: true, cookieMetadata, checks, note: "Same-origin tenants share browser cookies by design; tenant data resolution was verified against each persisted path organization." };
+    assert.ok(!cookieMetadata.some(({ name }) => /session-token$/i.test(name)), "a rejected path-only customer login leaves no authentication cookie");
+    return { status: "PASSED", origin, sharedOriginCookieStorage: true, cookieMetadata, checks, note: "Path-based tenant pages remain public, customer identity stays private, and platform-origin password login fails closed without a verified tenant domain." };
   } finally {
     await context.close();
     await prisma.user.deleteMany({ where: { id: user.id, name: username, email } });
@@ -315,11 +340,31 @@ async function verifySameOriginPathCustomerAccess({ browser, first, second, orig
 
 async function retailStorefrontEvidence({ host, path, name, logoPath, screenshot, viewport }) {
   const page = await browser.newPage({ viewport });
+  const browserErrors = [];
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
   try {
     const response = await page.goto(`http://${host}:${port}${path}`, { waitUntil: "domcontentloaded" });
     assert.equal(response?.status(), 200, `Retail storefront route loads for ${host}${path}`);
-    await page.locator('[data-retail-display-mode="browser"]').waitFor({ state: "visible" });
-    const brand = page.locator(`header img[alt="${name}"]`);
+    try {
+      await page.locator('[data-retail-display-mode="browser"]').waitFor({ state: "visible" });
+    } catch (error) {
+      const diagnostic = {
+        host,
+        requestedPath: path,
+        finalUrl: page.url(),
+        status: response?.status(),
+        title: await page.title().catch(() => ""),
+        body: (await page.locator("body").innerText().catch(() => "")).slice(0, 2000),
+        retailMarkerCount: await page.locator("[data-retail-display-mode]").count().catch(() => -1),
+        browserErrors: browserErrors.slice(0, 20),
+      };
+      writeFileSync(`${artifactDir}/retail-storefront-failure-${host}.json`, JSON.stringify(diagnostic, null, 2));
+      throw new Error(`Modern Retail storefront did not hydrate: ${JSON.stringify(diagnostic)}; ${String(error?.message || error)}`);
+    }
+    const brandLink = page.locator("header").getByRole("link", { name, exact: true });
+    await brandLink.waitFor({ state: "visible" });
+    const brand = brandLink.locator('img[alt=""]');
     await brand.waitFor({ state: "visible" });
     const image = await brand.evaluate((element) => ({ src: element.getAttribute("src"), complete: element.complete, width: element.naturalWidth, height: element.naturalHeight }));
     assert.ok(image.src?.includes(logoPath), `correct tenant logo on Retail storefront: ${image.src}`);
@@ -340,8 +385,12 @@ async function retailStorefrontEvidence({ host, path, name, logoPath, screenshot
     assert.ok(navigation.some(link => link.path.endsWith("/checkout")));
     const manifestHref = await page.locator('link[rel="manifest"]').getAttribute("href");
     assert.ok(manifestHref?.includes("pwa-manifest"), `Retail page advertises its tenant manifest: ${manifestHref}`);
-    const mobileNavigation = page.getByRole("navigation", { name: "پیمایش موبایل فروشگاه" });
-    if (viewport.width < 768) await mobileNavigation.waitFor({ state: "visible" });
+    if (viewport.width < 768) {
+      const mobileNavigation = page.locator("nav:visible").filter({ has: page.locator('a[href$="/checkout"]') });
+      await mobileNavigation.first().waitFor({ state: "visible" });
+      assert.ok(await mobileNavigation.locator('a[href$="/profile"]').count(), "mobile tenant navigation retains its profile destination");
+      assert.ok(await mobileNavigation.locator('a[href$="/checkout"]').count(), "mobile tenant navigation retains its checkout destination");
+    }
     await page.screenshot({ path: `${artifactDir}/${screenshot}`, fullPage: true });
     await page.context().setOffline(true);
     await page.getByRole("status").filter({ hasText: "اتصال اینترنت قطع است" }).waitFor({ state: "visible" });
@@ -465,13 +514,17 @@ try {
   await createTenant({ suffix: "unverified", host: hosts.unverified, verified: false, label: "Unverified", assets: {} });
   await createTenant({ suffix: "incomplete", host: hosts.incomplete, label: "Incomplete", assets: {}, withBranding: false });
 
-  const nextBin = require.resolve("next/dist/bin/next");
   const nextOrigin = `http://localhost:${port}`;
-  server = spawn(process.execPath, [nextBin, "start", "--hostname", "127.0.0.1", "--port", String(port)], {
-    env: { ...process.env, NODE_ENV: "production", PORT: String(port), AUTH_TRUST_HOST: "true", NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || randomBytes(32).toString("hex"), NEXTAUTH_URL: nextOrigin, NEXT_PUBLIC_APP_URL: nextOrigin },
-    stdio: ["ignore", "pipe", "pipe"],
-    windowsHide: true,
-  });
+  if (externalRuntime) {
+    writeFileSync(logPath, "External production container runtime; logs are collected by the caller.\n");
+  } else {
+    const nextBin = require.resolve("next/dist/bin/next");
+    server = spawn(process.execPath, [nextBin, "start", "--hostname", "127.0.0.1", "--port", String(port)], {
+      env: { ...process.env, NODE_ENV: "production", PORT: String(port), AUTH_TRUST_HOST: "true", NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || randomBytes(32).toString("hex"), NEXTAUTH_URL: nextOrigin, NEXT_PUBLIC_APP_URL: nextOrigin },
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    });
+  }
   const databaseUrlForRedaction = process.env.DATABASE_URL || "";
   const databasePasswordForRedaction = databaseUrlForRedaction ? new URL(databaseUrlForRedaction).password : "";
   const safeLogChunk = (chunk) => {
@@ -480,16 +533,15 @@ try {
     if (databasePasswordForRedaction) text = text.replaceAll(databasePasswordForRedaction, "<redacted>");
     return text;
   };
-  server.stdout.on("data", (chunk) => appendFileSync(logPath, safeLogChunk(chunk)));
-  server.stderr.on("data", (chunk) => appendFileSync(logPath, safeLogChunk(chunk)));
+  server?.stdout.on("data", (chunk) => appendFileSync(logPath, safeLogChunk(chunk)));
+  server?.stderr.on("data", (chunk) => appendFileSync(logPath, safeLogChunk(chunk)));
   await waitForServer();
 
   const chromeExecutable = process.env.CHROME_EXECUTABLE_PATH || process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || process.env.CHROME_EXECUTABLE || process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe";
-  const insecureFixtureOrigins = [...Object.values(hosts).map((host) => `http://${host}:${port}`), `http://localhost:${port}`].join(",");
   const launchOptions = {
     headless: process.env.PWA_HEADED !== "1",
     ...(existsSync(chromeExecutable) ? { executablePath: chromeExecutable } : {}),
-    args: ["--no-proxy-server", "--host-resolver-rules=MAP *.pwa-ci.test 127.0.0.1, EXCLUDE localhost", `--unsafely-treat-insecure-origin-as-secure=${insecureFixtureOrigins}`],
+    args: ["--no-proxy-server"],
   };
   if (localPwaAcceptance && process.env.PWA_HEADED === "1") {
     nativeProfileDirectory = path.resolve(os.tmpdir(), `bb-pwa-r6-${runId}`);

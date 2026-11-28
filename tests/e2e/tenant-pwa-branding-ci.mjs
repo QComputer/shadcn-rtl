@@ -319,10 +319,28 @@ async function verifySameOriginPathCustomerAccess({ browser, first, second, orig
 
 async function retailStorefrontEvidence({ host, path, name, logoPath, screenshot, viewport }) {
   const page = await browser.newPage({ viewport });
+  const browserErrors = [];
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
   try {
     const response = await page.goto(`http://${host}:${port}${path}`, { waitUntil: "domcontentloaded" });
     assert.equal(response?.status(), 200, `Retail storefront route loads for ${host}${path}`);
-    await page.locator('[data-retail-display-mode="browser"]').waitFor({ state: "visible" });
+    try {
+      await page.locator('[data-retail-display-mode="browser"]').waitFor({ state: "visible" });
+    } catch (error) {
+      const diagnostic = {
+        host,
+        requestedPath: path,
+        finalUrl: page.url(),
+        status: response?.status(),
+        title: await page.title().catch(() => ""),
+        body: (await page.locator("body").innerText().catch(() => "")).slice(0, 2000),
+        retailMarkerCount: await page.locator("[data-retail-display-mode]").count().catch(() => -1),
+        browserErrors: browserErrors.slice(0, 20),
+      };
+      writeFileSync(`${artifactDir}/retail-storefront-failure-${host}.json`, JSON.stringify(diagnostic, null, 2));
+      throw new Error(`Modern Retail storefront did not hydrate: ${JSON.stringify(diagnostic)}; ${String(error?.message || error)}`);
+    }
     const brand = page.locator(`header img[alt="${name}"]`);
     await brand.waitFor({ state: "visible" });
     const image = await brand.evaluate((element) => ({ src: element.getAttribute("src"), complete: element.complete, width: element.naturalWidth, height: element.naturalHeight }));

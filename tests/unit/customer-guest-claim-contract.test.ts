@@ -32,3 +32,14 @@ test("extracted guest order scope is byte-compatible with accepted G2", () => {
   assert.equal(guestOrderScope("shop-a", scope.guestSessionId), expected);
   assert.notEqual(guestOrderScope("shop-b", scope.guestSessionId), expected);
 });
+
+test("hotel binding requires canonical original browser proof and binds the record", () => {
+  const token = Buffer.alloc(32, 9).toString("base64url");
+  const hotel: GuestClaimScope = { ...scope, kind: "HOTEL", guestSessionId: token };
+  const binding = guestClaimBinding(hotel, secret);
+  assert.match(binding ?? "", /^[a-f0-9]{64}$/);
+  assert.notEqual(guestClaimBinding({ ...hotel, recordId: "another" }, secret), binding);
+  assert.notEqual(guestClaimBinding({ ...hotel, guestSessionId: Buffer.alloc(32, 8).toString("base64url") }, secret), binding);
+  assert.equal(guestClaimBinding({ ...hotel, guestSessionId: "invalid" }, secret), null);
+  assert.equal(guestClaimBinding({ ...hotel, claimConfirmed: false } as unknown as GuestClaimScope, secret), null);
+});

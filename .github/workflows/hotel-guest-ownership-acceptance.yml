@@ -1,0 +1,61 @@
+name: Hotel guest ownership isolated acceptance
+on:
+  pull_request:
+    branches: [codex/hotel-guest-proof-g3b31a, main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  hotel-guest-ownership:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: retail_hero_test
+          POSTGRES_USER: hero_test
+          POSTGRES_PASSWORD: local_admin_fixture_only
+        ports: ['55439:5432']
+        options: >-
+          --health-cmd "pg_isready -U hero_test -d retail_hero_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      NODE_ENV: test
+      CI: 'true'
+      DATABASE_URL: postgresql://hero_test:local_admin_fixture_only@127.0.0.1:55439/retail_hero_test
+      DIRECT_URL: postgresql://hero_test:local_admin_fixture_only@127.0.0.1:55439/retail_hero_test
+      DATABASE_RUNTIME_ADAPTER: postgresql
+      LOCAL_PRISMA_EXPECTED_PORT: '55439'
+      RETAIL_HERO_EXPECTED_DATABASE: retail_hero_test
+      NEXTAUTH_SECRET: isolated-synthetic-only-secret-minimum-32-characters
+      AI_MEDIA_APPLICATION_STORAGE_ADAPTER: local-test
+      NEXT_TELEMETRY_DISABLED: '1'
+      SMS_DRY_RUN: 'true'
+      SMS_REAL_SEND_ENABLED: 'false'
+      INOTI_ALLOW_LIVE_SMS: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma validate && pnpm exec prisma generate && pnpm exec prisma migrate deploy
+      - name: Verify claim and provenance contracts
+        run: node --import tsx --require ./scripts/e2e/register-server-only.cjs --test tests/unit/customer-guest-claim-contract.test.ts tests/unit/customer-guest-claim-http-contract.test.ts tests/unit/hotel/guest-reservation-proof.test.ts
+      - name: Verify scoped transactional ownership
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-guest-claim.local.test.ts
+      - name: Install browser dependencies
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Verify isolated network guard
+        run: node --test tests/unit/hotel-claim-network-guard.test.cjs
+      - name: Verify authenticated browser claim
+        env:
+          NODE_OPTIONS: --require=./scripts/e2e/hotel-claim-fixture-dns.cjs
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-guest-claim-http.local.test.ts

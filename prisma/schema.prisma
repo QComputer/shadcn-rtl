@@ -1919,6 +1919,7 @@ model Notification {
 }
 
 model User {
+  hotelReservationOwnerships HotelReservationOwnership[]
   customerSsoTickets CustomerSsoTicket[]
   customerPhoneIdentity CustomerPhoneIdentity?
   customerPhoneSessions CustomerPhoneSession[]
@@ -5853,6 +5854,7 @@ model HotelReservation {
   offlinePayments HotelOfflinePayment[]
   guestProfileLinks HotelGuestProfileLink[]
   guestClaimProof HotelGuestReservationProof?
+  customerOwnership HotelReservationOwnership?
 
   @@unique([organizationId, reference])
   @@unique([organizationId, idempotencyKey])
@@ -5880,6 +5882,19 @@ model HotelGuestReservationProof {
 
   @@unique([reservationId, organizationId, propertyId], map: "HotelGuestReservationProof_scope_key")
   @@index([organizationId, propertyId, expiresAt], map: "HotelGuestReservationProof_expiry_idx")
+}
+
+/// Explicit individual account ownership; booking contact and guest snapshots remain unchanged.
+model HotelReservationOwnership {
+  reservationId String @id
+  organizationId String
+  propertyId String
+  userId String
+  claimedAt DateTime @default(now())
+  reservation HotelReservation @relation(fields: [reservationId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Restrict, map: "HotelReservationOwnership_reservation_fkey")
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  @@unique([reservationId, organizationId, propertyId], map: "HotelReservationOwnership_scope_key")
+  @@index([organizationId, userId, claimedAt])
 }
 
 /// An offline collection or an unverified bank-transfer claim.

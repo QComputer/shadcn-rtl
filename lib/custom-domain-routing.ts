@@ -655,7 +655,7 @@ export function isCustomDomainBypassPath(pathname: string) {
 export function isHotelGuestApplicationPath(pathname: string) {
   const { pathnameWithoutLocale } = splitLocalePrefix(pathname);
   const parts = pathnameWithoutLocale.split("/").filter(Boolean);
-  return (parts[0] === "hotel-reservations" && parts.length === 2 && parts[1] === "start") ||
+  return (parts[0] === "hotel-reservations" && parts.length === 2 && (parts[1] === "start" || parts[1] === "claims")) ||
     (parts[0] === "hotel-reservations" && parts.length === 3 && parts[1] !== "start") ||
     (parts[0] === "hotel" && parts.length === 3);
 }

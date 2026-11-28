@@ -17,6 +17,7 @@ const policySchema = z.object({
   bankTransferEnabled: z.boolean(),
   cashEnabled: z.boolean(),
   inotiUssdEnabled: z.boolean(),
+  snappPayInstallmentsEnabled: z.boolean().default(false),
   bankCardNumber: z.string().regex(/^\d{16}$/).nullable(),
   bankAccountOwner: z.string().trim().min(2).max(120).nullable(),
   cashModes: z.array(cashMode).min(1),
@@ -37,7 +38,7 @@ export const retailPaymentPolicyInput = policySchema;
 export type RetailPaymentPolicy = z.infer<typeof policySchema>;
 
 const defaults: RetailPaymentPolicy = {
-  bankTransferEnabled: false, cashEnabled: false, inotiUssdEnabled: false,
+  bankTransferEnabled: false, cashEnabled: false, inotiUssdEnabled: false, snappPayInstallmentsEnabled: false,
   bankCardNumber: null, bankAccountOwner: null,
   cashModes: ["COUNTER"], cashBeforeConfirmation: true,
   paymentDeadlinesMinutes: defaultRetailPaymentDeadlinesMinutes,
@@ -56,6 +57,9 @@ export async function getRetailPaymentPolicy(organizationSlug: string) {
 }
 
 export async function saveRetailPaymentPolicy(organizationSlug: string, organizationId: string, actorUserId: string, policy: RetailPaymentPolicy) {
+  if (policy.snappPayInstallmentsEnabled) {
+    throw new ApiError(409, "SnappPay installments remain unavailable until Self API validation, merchant uplift approval, and Stage acceptance are complete.");
+  }
   if (policy.inotiUssdEnabled && !await getRetailInotiReadiness(organizationId)) {
     throw new ApiError(409, "A verified tenant iNoti integration and payment rollout are required before enabling USSD.");
   }
@@ -74,9 +78,9 @@ export async function saveRetailPaymentPolicy(organizationSlug: string, organiza
       organizationId, organizationSlug, userId: actorUserId,
       description: "Merchant updated retail payment policy",
       previousValue: { bankTransferEnabled: before.bankTransferEnabled, cashEnabled: before.cashEnabled,
-        inotiUssdEnabled: before.inotiUssdEnabled },
+        inotiUssdEnabled: before.inotiUssdEnabled, snappPayInstallmentsEnabled: before.snappPayInstallmentsEnabled },
       newValue: { bankTransferEnabled: policy.bankTransferEnabled, cashEnabled: policy.cashEnabled,
-        inotiUssdEnabled: policy.inotiUssdEnabled, cashModes: policy.cashModes,
+        inotiUssdEnabled: policy.inotiUssdEnabled, snappPayInstallmentsEnabled: policy.snappPayInstallmentsEnabled, cashModes: policy.cashModes,
         cashBeforeConfirmation: policy.cashBeforeConfirmation,
         paymentDeadlinesMinutes: policy.paymentDeadlinesMinutes },
     } });
@@ -84,10 +88,13 @@ export async function saveRetailPaymentPolicy(organizationSlug: string, organiza
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
-export async function requireEnabledRetailPaymentMethod(organizationSlug: string, organizationId: string, method: "BANK_TRANSFER" | "CASH" | "INOTI_USSD") {
+export async function requireEnabledRetailPaymentMethod(organizationSlug: string, organizationId: string, method: "BANK_TRANSFER" | "CASH" | "INOTI_USSD" | "SNAPPPAY_INSTALLMENT") {
   const policy = await getRetailPaymentPolicy(organizationSlug);
   if (method === "BANK_TRANSFER" && policy.bankTransferEnabled && policy.bankCardNumber && policy.bankAccountOwner) return policy;
   if (method === "CASH" && policy.cashEnabled) return policy;
   if (method === "INOTI_USSD" && policy.inotiUssdEnabled && await getRetailInotiReadiness(organizationId)) return policy;
+  if (method === "SNAPPPAY_INSTALLMENT" && policy.snappPayInstallmentsEnabled) {
+    throw new ApiError(409, "SnappPay installments remain unavailable until Self API validation, merchant uplift approval, and Stage acceptance are complete.");
+  }
   throw new ApiError(409, "Selected payment method is not available.");
 }

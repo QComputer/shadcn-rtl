@@ -14,7 +14,7 @@ export const retailRecipientFields = {
 export const retailCheckoutQuoteInput = z.object({
   organization: z.string().trim().min(1).max(120), type: z.nativeEnum(OrderType),
   deliveryAddress: z.string().trim().min(8).max(500).optional(), couponCode: z.string().trim().min(2).max(40).optional(),
-  paymentMethod: z.enum(["BANK_TRANSFER", "CASH", "INOTI_USSD"]).optional(),
+  paymentMethod: z.enum(["BANK_TRANSFER", "CASH", "INOTI_USSD", "SNAPPPAY_INSTALLMENT"]).optional(),
   cashMode: z.enum(["COUNTER", "PICKUP", "COURIER"]).optional(),
   ...retailRecipientFields,
 }).strict().superRefine((value, context) => {
@@ -25,7 +25,7 @@ export type QuoteInput = z.infer<typeof retailCheckoutQuoteInput>;
 export const retailCheckoutInput = z.object({
   organization: z.string().trim().min(1).max(120), idempotencyKey: z.string().uuid(), type: z.nativeEnum(OrderType),
   deliveryAddress: z.string().trim().min(8).max(500).optional(), couponCode: z.string().trim().min(2).max(40).optional(),
-  paymentMethod: z.enum(["BANK_TRANSFER", "CASH", "INOTI_USSD"]), cashMode: z.enum(["COUNTER", "PICKUP", "COURIER"]).optional(),
+  paymentMethod: z.enum(["BANK_TRANSFER", "CASH", "INOTI_USSD", "SNAPPPAY_INSTALLMENT"]), cashMode: z.enum(["COUNTER", "PICKUP", "COURIER"]).optional(),
   reviewToken: z.string().min(20).max(100).optional(), ...retailRecipientFields,
 }).strict().superRefine((value, context) => {
   if (value.type === "DELIVERY" && !value.deliveryAddress) context.addIssue({ code: "custom", path: ["deliveryAddress"], message: "Delivery address is required." });

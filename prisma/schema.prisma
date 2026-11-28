@@ -204,6 +204,7 @@ enum IntegrationProvider {
   INOTI_IAM
   INOTI_EBC
   PAYMENT
+  SNAPPPAY
   SMS
   OTHER
 }
@@ -440,6 +441,7 @@ enum PaymentMethod {
   WALLET
   BANK_TRANSFER
   INOTI_USSD
+  SNAPPPAY_INSTALLMENT
 }
 
 enum RetailPaymentReportKind {

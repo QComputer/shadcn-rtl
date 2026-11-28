@@ -67,6 +67,12 @@ export const INTEGRATION_CATALOG = {
     supportedCapabilities: ["SHOP"],
     secretStrategy: "credentialProfile",
   },
+  SNAPPPAY: {
+    provider: "SNAPPPAY",
+    type: "PAYMENT",
+    supportedCapabilities: ["SHOP"],
+    secretStrategy: "credentialProfile",
+  },
   SMS: {
     provider: "SMS",
     type: "SMS",

@@ -74,7 +74,7 @@ export type OrderType = "DELIVERY" | "PICK_UP";
 export type OrderStatus = "PENDING" | "PLACED" | "ACCEPTED" | "PREPARING" | "READY" | "PICKED_UP" | "DELIVERED" | "RECEIVED" | "CANCELLED" | "REFUNDED";
 export type DayOfWeek = "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY";
 export type PaymentStatus = "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED";
-export type PaymentMethod = "CREDIT_CARD" | "DEBIT_CARD" | "CASH" | "WALLET" | "BANK_TRANSFER";
+export type PaymentMethod = "CREDIT_CARD" | "DEBIT_CARD" | "CASH" | "WALLET" | "BANK_TRANSFER" | "INOTI_USSD" | "SNAPPPAY_INSTALLMENT";
 export type AuditAction = "CREATE" | "UPDATE" | "DELETE" | "LOGIN" | "LOGOUT" | "RESET_PASSWORD" | "VERIFY_EMAIL" | "ASSIGN_ROLE" | "CHANGE_STATUS";
 
 // Extended types with relations

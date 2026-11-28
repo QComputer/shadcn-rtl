@@ -16,7 +16,7 @@ export type CheckoutQuote = {
   fulfillment: Array<{ type: "PICK_UP" | "DELIVERY"; label: string; fee: number }>;
   customer: { name: string | null; mobile: string | null; address?: string | null }; issues: string[];
 };
-export type CheckoutPaymentMethod = { method: "BANK_TRANSFER" | "CASH" | "INOTI_USSD"; label: string; cashModes?: string[]; bankCardNumber?: string | null; bankAccountOwner?: string | null; dialString?: string };
+export type CheckoutPaymentMethod = { method: "BANK_TRANSFER" | "CASH" | "INOTI_USSD" | "SNAPPPAY_INSTALLMENT"; label: string; cashModes?: string[]; bankCardNumber?: string | null; bankAccountOwner?: string | null; dialString?: string };
 export type CheckoutOrder = {
   orderNumber: string; total: number; subtotal: number; discount: number; deliveryFee: number;
   orderStatus: string; paymentStatus: string; paymentMethod: string | null; type: string;

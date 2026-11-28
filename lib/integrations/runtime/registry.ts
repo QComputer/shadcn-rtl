@@ -7,6 +7,7 @@ import {
   DryRunIntegrationAdapter,
   InotiSmsAdapter,
   InotiUssdAdapter,
+  SnappPayBlockedAdapter,
   type IntegrationAdapter,
 } from "@/lib/integrations/runtime/adapters";
 
@@ -18,6 +19,7 @@ const adapters = {
   INOTI_IAM: new DryRunIntegrationAdapter("INOTI_IAM", INTEGRATION_CATALOG.INOTI_IAM.supportedCapabilities),
   INOTI_EBC: new DryRunIntegrationAdapter("INOTI_EBC", INTEGRATION_CATALOG.INOTI_EBC.supportedCapabilities),
   PAYMENT: new DryRunIntegrationAdapter("PAYMENT", INTEGRATION_CATALOG.PAYMENT.supportedCapabilities),
+  SNAPPPAY: new SnappPayBlockedAdapter(),
   SMS: new DryRunIntegrationAdapter("SMS", INTEGRATION_CATALOG.SMS.supportedCapabilities),
   OTHER: new DryRunIntegrationAdapter("OTHER", INTEGRATION_CATALOG.OTHER.supportedCapabilities),
 } as const satisfies Record<IntegrationProvider, IntegrationAdapter>;

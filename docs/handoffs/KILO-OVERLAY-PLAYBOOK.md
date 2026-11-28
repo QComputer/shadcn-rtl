@@ -1,6 +1,6 @@
 # Kilo Code overlay delivery playbook
 
-Version: 1.6 (2026-11-27) — repository delivery standard; includes G3-B1 detached execution, diagnostic CI and owner deployment decisions.
+Version: 1.7 (2026-11-28) — repository delivery standard; adds deterministic RunFlare package installation and deployment-aware recovery.
 Scope: BazarBaaz platform, QComputer/shadcn-rtl. Hotel-specific gates below are the current PMS profile, not universal rules for every platform change.
 
 ## 1. Delivery contract
@@ -89,6 +89,14 @@ On failure, stop and report full head SHA, gate/job URL, first meaningful error,
 Merge only after required acceptance and repository rules permit; do not merge duplicate historical PRs or change a completed phase based on stale context. Record PR URL, original base, accepted head, merge SHA and current main separately (squash and merge commits differ from PR head). Main Agent independently reads GitHub metadata, checks gate conclusions and relevant final blob(s); verify full manifest in main when integrity risk warrants it. Report tool/access limitations honestly. A successful CI run is not proof of live deployment, production migration or payment acceptance.
 
 No production DB migration or mutation, real payment activation, SMS, or production configuration changes without explicit authorization. For schema changes, check the actual deployment/migration behavior before merge: if merge could auto-apply a production migration or start a dependent feature without authorization, resolve the release gate first. Use disposable PostgreSQL for migration tests. Current PMS boundary: stop before any Housekeeping implementation; owner defines intervening phase and explicitly authorizes resumption.
+
+### Deterministic RunFlare builds
+
+The managed Next.js builder observed on service `87432` automatically runs `npm install --force` when no `yarn.lock` exists; it does not honor `pnpm-lock.yaml` or `packageManager`. A repository `prebuild` gate runs only after that automatic install succeeds, so it cannot make the provider's first install deterministic. Before attempting a build fix, inspect provider UI and supported docs for an install-command/package-manager override, record current settings and a reversible recovery procedure, and preserve runtime variables, domains, storage and networking.
+
+If the managed builder exposes no supported way to disable its automatic installer, do not add another manifest/lockfile or weaken dependency/security gates. Prepare a separate Docker-service candidate with a digest-pinned Node base, exact Corepack pnpm version, one `pnpm install --frozen-lockfile`, existing `pnpm run build` gates, and existing `next start` behavior. Build and review that candidate independently; do not switch an existing Production service type, merge it or deploy it without separate authorization and a verified provider-native recovery path. RunFlare documents Dockerfile builds for its Docker service; that does not prove the existing managed Next.js service will use a Dockerfile.
+
+After a provider build configuration change, verify the exact source commit, successful image identity and startup before route/browser acceptance. A failed prebuild is not code regression acceptance. Keep rollback bounded to the last known-good provider image or a documented source-revert build, and re-check the active revision before smoke tests.
 
 Update applicable roadmap/status and active handoff with delivered scope, remaining scope, known blockers and next action in the next functional PR. Do not claim the current PR is merged before merge; reference actual PR/Git history for final evidence. Keep the final Kilo report compact:
 

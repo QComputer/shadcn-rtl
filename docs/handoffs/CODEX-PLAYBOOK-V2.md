@@ -1,10 +1,16 @@
-# BazarBaaz Codex Engineering Playbook v2.1
+# BazarBaaz Codex Engineering Playbook v2.2
 
 Owner directive: delivery speed first. Codex is the autonomous software engineer; the Main Agent is technical lead and independent final reviewer. Follow the owner's current task instructions where they are more specific than this playbook.
 
 ## Delivery
 
 - Owner policy: use one primary agent and the shared checkout/environment; execute work sequentially. Do not create additional worktrees, install duplicate dependency trees, or delegate to parallel agents unless the owner explicitly changes this policy. Preserve other work and inspect Git state before switching branches.
+
+- Diagnose configuration, deployed revision, existing capability and current behavior before editing. When the defect is an existing disabled setting and the owner confirms that enabling it resolves the issue, do not rebuild the feature or create a code PR for that incident.
+- Delivery speed is the primary priority. Prefer the smallest safe change, reuse the existing checkout, locked dependencies and disposable infrastructure, and avoid repeated dependency installation, full-suite repetition and already accepted investigations.
+- Use risk-based checks: run the focused unit, database, browser, security or migration checks affected by the change; retain exact-head evidence when its inputs still apply. Expand validation for data, authorization, compatibility or deployment risk, not by default.
+- An external release blocker does not pause independent repository engineering. Continue unaffected implementation and disposable acceptance, and record the precise blocked operation and minimum owner action.
+- Report implementation, commit/CI, deployment, feature activation and operational acceptance as separate states. CI or a successful build never proves deployment or live behavior; owner confirmation of live behavior is operational evidence and does not imply source changes.
 
 - Inspect the actual checkout, branch, staged and unstaged changes, and relevant current evidence before editing. Preserve unrelated work and use the shared checkout unless explicitly instructed otherwise.
 - Implement cohesive functional work autonomously within authorized scope. Fix related code, tests and fixtures when evidence warrants it. Make routine engineering decisions without asking for approval.
@@ -23,6 +29,7 @@ Owner directive: delivery speed first. Codex is the autonomous software engineer
 
 - Preserve inherited work; stage explicit task-owned paths, verify the diff and exact tree, and serialize Git operations. Avoid destructive cleanup, resets, force pushes and unrelated changes without authorization.
 - Commit, push, open PR and monitor applicable CI when authorized. Do not amend accepted commits or replace a PR unless asked. Keep known non-blocking issues visible; do not repeatedly reopen accepted work.
+- Before pushing a release candidate, verify whether its branch can trigger automatic Production deployment. If that cannot be established with authorized evidence, keep the candidate local and continue all other validation.
 - For migration-bearing releases, determine actual Git-triggered build/start/migration behavior and backward compatibility before merge. Missing production configuration evidence is a release blocker when the owner makes it a merge condition. Production database access, migration, configuration changes, deployment, feature activation and real provider calls require their own authorization.
 - After an authorized merge, verify merge commit and deployment revision and record real health evidence when available. Never infer deployment or migration success from CI alone.
 

@@ -5221,6 +5221,7 @@ model HotelProperty {
   roomTypes            HotelRoomType[]
   rooms                HotelRoom[]
   draftAccommodations  HotelDraftAccommodation[]
+  damoonDataImports    HotelDamoonDataImport[]
   amenities            HotelAmenity[]
   ratePlans            HotelRatePlan[]
   cancellationPolicies HotelCancellationPolicy[]
@@ -5241,6 +5242,22 @@ model HotelProperty {
   @@unique([organizationId, slug])
   @@unique([id, organizationId])
   @@index([organizationId, isActive])
+}
+
+/// Internal, non-published staging record. Amounts remain in their source IRR units.
+model HotelDamoonDataImport {
+  id String @id @default(cuid())
+  organizationId String
+  propertyId String
+  sourceDigest String @db.VarChar(64)
+  units Json
+  tariffs Json
+  mapping Json
+  createdAt DateTime @default(now())
+  property HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "HotelDamoonDataImport_property_fkey")
+
+  @@unique([organizationId, propertyId, sourceDigest], map: "HotelDamoonDataImport_scope_digest_key")
+  @@index([organizationId, propertyId, createdAt], map: "HotelDamoonDataImport_scope_created_idx")
 }
 
 /// An internal accommodation worksheet with no link to sellable inventory.

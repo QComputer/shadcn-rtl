@@ -26,6 +26,24 @@ const PENDING_MIGRATIONS = [
   "20261114170000_hotel_offline_payment_audit",
   "20261120160000_hotel_reservation_occupancy",
 ] as const;
+// These historic post-checkpoint migrations are pinned independently so a
+// later branch cannot silently skip or reorder the production-gap coverage.
+const LATER_MIGRATIONS = [
+  "20261121120000_hotel_draft_accommodations",
+  "20261121130000_hotel_guest_request_preferred_category",
+  "20261121140000_hotel_draft_accommodation_promotion",
+  "20261122110000_hotel_room_maintenance_blocks",
+] as const;
+const POST_GAP_MIGRATIONS = [
+  "20261126170000_hotel_guest_profiles",
+  "20261126180000_hotel_reception_waitlist",
+] as const;
+const POST_PR192_MIGRATIONS = [
+  "20261127130000_hotel_guest_reservation_proof",
+  "20261127150000_hotel_reservation_ownership",
+  "20261128120000_hotel_guest_recovery",
+  "20261128130000_hotel_damoon_data_import",
+] as const;
 function assertDisposableDatabase(): string {
   const databaseUrl = process.env.DATABASE_URL;
   const directUrl = process.env.DIRECT_URL;
@@ -49,7 +67,7 @@ function runPrismaMigrateDeploy(schemaPath: string): void {
   assert.equal(result.status, 0, "Prisma migrate deploy failed against the disposable rehearsal database");
 }
 
-async function makeTemporaryPreGapSchema(): Promise<{ directory: string; schemaPath: string; migrationNames: string[] }> {
+async function makeTemporaryPreGapSchema(): Promise<{ directory: string; schemaPath: string; migrationNames: string[]; pendingNames: string[] }> {
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), "damoon-migration-gap-"));
   const sourcePrisma = path.join(REPO_ROOT, "prisma");
   const schemaPath = path.join(temporaryDirectory, "schema.prisma");
@@ -62,12 +80,27 @@ async function makeTemporaryPreGapSchema(): Promise<{ directory: string; schemaP
     .map((entry) => entry.name)
     .sort();
   const lineage = validateLineage(migrationNames);
+  const checkpoint = migrationNames.indexOf("20261114120000_hotel_guest_request_rate_limits");
+  assert.ok(checkpoint >= 0, "historical checkpoint must exist");
+  const pendingNames = migrationNames.slice(checkpoint + 1);
+  assert.deepEqual(lineage.pending, pendingNames, "validated lineage must include every pending migration");
+  assert.deepEqual(
+    pendingNames.slice(0, PENDING_MIGRATIONS.length + LATER_MIGRATIONS.length),
+    [...PENDING_MIGRATIONS, ...LATER_MIGRATIONS],
+    "the six production-gap migrations and four historical follow-up migrations must remain ordered",
+  );
+  assert.deepEqual(
+    pendingNames.slice(PENDING_MIGRATIONS.length + LATER_MIGRATIONS.length),
+    [...POST_GAP_MIGRATIONS, ...POST_PR192_MIGRATIONS],
+    "guest-profile, waitlist, proof, ownership, recovery and Damoon import migrations must remain in release order",
+  );
+  assert.deepEqual(lineage.afterPr192, POST_PR192_MIGRATIONS, "the PR192 lineage must be followed by proof, ownership, recovery and Damoon import");
 
-  for (const name of lineage.pending) {
+  for (const name of pendingNames) {
     assert.ok(migrationNames.includes(name), `Expected pending migration ${name} is missing from source`);
     await rm(path.join(migrationsPath, name), { recursive: true, force: true });
   }
-  return { directory: temporaryDirectory, schemaPath, migrationNames };
+  return { directory: temporaryDirectory, schemaPath, migrationNames, pendingNames };
 }
 
 async function seedExistingPropertyRows(db: PrismaClient): Promise<void> {
@@ -191,12 +224,13 @@ async function main(): Promise<void> {
     const beforeGapCount = await db.$queryRawUnsafe<Array<{ count: number }>>(
       `SELECT count(DISTINCT migration_name)::int AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL`,
     );
+    assert.equal(beforeGapCount[0]?.count, temporary.migrationNames.length - temporary.pendingNames.length);
     assert.equal(beforeGapCount[0]?.count, validateLineage(temporary.migrationNames).preGap.length);
     await seedExistingPropertyRows(db);
     await db.$disconnect();
     db = undefined;
 
-    console.log("Applying the six pending Hotel migrations with standard prisma migrate deploy.");
+    console.log(`Applying ${temporary.pendingNames.length} ordered migrations after the historical checkpoint with standard prisma migrate deploy.`);
     runPrismaMigrateDeploy(path.join(REPO_ROOT, "prisma", "schema.prisma"));
 
     db = new PrismaClient();
@@ -207,7 +241,15 @@ async function main(): Promise<void> {
     assert.ok(finalMigrations.every((row) => row.finished && !row.rolledBack), "all ledger rows must be finished and active");
     const completed = new Set(finalMigrations.filter((row) => row.finished && !row.rolledBack).map((row) => row.migration_name));
     for (const name of PENDING_MIGRATIONS) assert.ok(completed.has(name), `${name} was not recorded as completed`);
+    for (const name of LATER_MIGRATIONS) assert.ok(completed.has(name), `${name} was not recorded as completed`);
+    for (const name of POST_PR192_MIGRATIONS) assert.ok(completed.has(name), `${name} was not recorded as completed`);
     assert.equal(completed.size, temporary.migrationNames.length, "Every source migration must be completed exactly once in the fresh rehearsal ledger");
+    assert.deepEqual(temporary.pendingNames.slice(-2), [
+      "20261128120000_hotel_guest_recovery",
+      "20261128130000_hotel_damoon_data_import",
+    ]);
+    assert.equal(await db.hotelGuestRecoveryCredential.count(), 0, "recovery migration must not backfill existing reservations");
+    assert.equal(await db.hotelDamoonDataImport.count(), 0, "real-data migration must not import or backfill source rows");
 
     const targetAfterMigrations = await db.hotelProperty.findUniqueOrThrow({ where: { id: TARGET_PROPERTY_ID } });
     const otherAfterMigrations = await db.hotelProperty.findUniqueOrThrow({ where: { id: OTHER_PROPERTY_ID } });
@@ -222,7 +264,8 @@ async function main(): Promise<void> {
     assert.equal(otherAfterMigrations.checkOutTime, "10:30");
 
     await verifyAndExercisePropertyService(db);
-    console.log("PASS: six pending migrations apply to an existing-data checkpoint without losing tenant/property settings.");
+    console.log(`PASS: ${temporary.pendingNames.length} ordered migrations apply to an existing-data checkpoint without losing tenant/property settings.`);
+    console.log("PASS: recovery and real-data migrations apply in order without backfill.");
     console.log("PASS: the authorized HotelManagementService changes only the target property's checkOutTime to 12:00.");
     console.log("PASS: cross-tenant property update is denied without changing the foreign property.");
   } finally {

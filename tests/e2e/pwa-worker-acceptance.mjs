@@ -19,6 +19,9 @@ export async function verifyWorkerAcceptance({ browser, origin, startPath, expec
   const offlineScreenshot = path.join(outputDir, `${safeLabel}-offline.png`);
   const reconnectedScreenshot = path.join(outputDir, `${safeLabel}-reconnected.png`);
   const page = await browser.newPage();
+  const browserErrors = [];
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
 
   try {
     const response = await page.goto(startUrl.href, { waitUntil: "domcontentloaded" });
@@ -31,10 +34,34 @@ export async function verifyWorkerAcceptance({ browser, origin, startPath, expec
     }));
     assert.equal(browserContext.secure, true, `service-worker origin must be secure: ${JSON.stringify(browserContext)}`);
     assert.equal(browserContext.serviceWorkerSupported, true, `service workers must be supported: ${JSON.stringify(browserContext)}`);
-    await page.waitForFunction(async () => {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      return registrations.some((registration) => Boolean(registration.active));
-    }, undefined, { timeout: 20_000 });
+    try {
+      await page.waitForFunction(async () => {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        return registrations.some((registration) => Boolean(registration.active));
+      }, undefined, { timeout: 20_000 });
+    } catch (error) {
+      const diagnostic = await page.evaluate(async () => {
+        const response = await fetch("/web-push-sw.js", { cache: "no-store" }).catch(() => null);
+        let manualRegistration = null;
+        let manualRegistrationError = null;
+        try {
+          const registration = await navigator.serviceWorker.register("/web-push-sw.js", { scope: "/" });
+          manualRegistration = { scope: registration.scope, active: Boolean(registration.active), installing: Boolean(registration.installing), waiting: Boolean(registration.waiting) };
+        } catch (registrationError) {
+          manualRegistrationError = String(registrationError?.message || registrationError);
+        }
+        return {
+          secure: isSecureContext,
+          origin: location.origin,
+          serviceWorkerSupported: "serviceWorker" in navigator,
+          registrations: "serviceWorker" in navigator ? (await navigator.serviceWorker.getRegistrations()).map((registration) => ({ scope: registration.scope, active: Boolean(registration.active) })) : [],
+          script: response ? { status: response.status, contentType: response.headers.get("content-type") } : null,
+          manualRegistration,
+          manualRegistrationError,
+        };
+      });
+      throw new Error(`Application did not register an active worker: ${JSON.stringify(diagnostic)}; browserErrors=${JSON.stringify(browserErrors.slice(0, 20))}; ${String(error?.message || error)}`);
+    }
     const initialWorker = await page.evaluate(async () => {
       const registration = await navigator.serviceWorker.getRegistration();
       return registration ? {

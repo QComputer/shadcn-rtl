@@ -1,14 +1,9 @@
-# Damoon real-data import — incomplete handoff
+# Damoon real-data import — staging implementation
 
-This work is intentionally incomplete. M1 source validation has been locally verified against the external staging files; M2 is not accepted and no import capability is accepted.
+PR195 remains unmerged and production operations are not authorized. The management source supersedes the historical assumed inventory classification; hypothetical `DRAFT-*` identifiers are not physical room identities.
 
-- Branch: `kilo/damoon-real-data-01`; PR: https://github.com/QComputer/shadcn-rtl/pull/195
-- Source package (preserved outside Git): `C:\Users\disso\damoon-real-data`
-- Implemented partial files: `scripts/hotel/damoon-real-data-import.mjs`, `docs/hotel/damoon/real-data/EXECUTION-CHECKLIST.md`.
-- Retired partial dependency tree was removed; primary checkout dependencies were reused. A task-owned loopback PostgreSQL 17 container on port 55440 applied all 132 existing migrations and was stopped/auto-removed. No application rows were imported.
-- Source validator accepted 31 uniquely coded unit rows and eight tariff rows. `double_or_twin` and `quint_suite` IR amounts cannot be represented exactly in integer TOMAN; keep them inactive. Other rates remain staging-only and inactive.
-- Prisma read-only dry-run failed closed because the disposable database had no scoped synthetic property/draft fixtures. The current staging documents do not map physical unit codes to existing draft IDs. Do not infer those mappings.
-- Remaining: create only a proven synthetic property/draft fixture for dry-run; supply/derive a reviewed explicit source-code-to-draft-ID mapping without guessing; implement transaction/idempotency and rollback/replay only after mapping; preserve unresolved fields, tariff exactness, existing IDs, reservations, media and VTour associations; focused regression/TS/lint, commit, push, and hosted CI.
-- Do not use Production. Do not modify Codex 1's separate environment. Do not merge PR195.
+The local-only importer validates the 31 unit and eight tariff source entries, provides a scoped read-only dry-run, and atomically stores an exact source/proposal snapshot. No real source package is committed. Missing physical codes become creation proposals; unpromoted historical drafts become supersession proposals; both require further reconciliation and are not automatically created, archived or published. A room is updated only when an optional reviewed verification names its exact physical code and ID, pins its timestamp, explicitly confirms no external dependencies, and the database reports no reservation, maintenance or room-type media links. All other existing rooms are preserved for review. No category matching, row-order matching or unverified draft mapping is used.
 
-The current source JSON is deliberately external and must be read from the path above. This handoff does not copy or commit it.
+The source amounts remain exact IRR in the staging snapshot. `double_or_twin` and `quint_suite` are not exactly representable as integer TOMAN. No tariff, publication, room sale or booking gate is activated. The CLI requires the existing guarded disposable PostgreSQL target even for `--apply`; it refuses Production.
+
+Synthetic PostgreSQL acceptance covers dry-run, rollback, tenant isolation, dependency preservation and idempotent replay. Additional operator review must establish any real physical-code attestations and external VTour links; this package neither inspects Production nor claims such evidence. See EXECUTION-CHECKLIST.md and PR history for current CI evidence.

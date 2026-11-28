@@ -148,3 +148,8 @@
 ## بازگشایی پذیرش بصری D1
 
 پس از رد ظاهر v45 توسط صاحب پروژه، لندینگ طبق دو مرجع بازسازی شد. پذیرش عملکرد محلی نهایی ۱۸۱/۱۸۱ موفق است؛ نتیجهٔ بصری و حدود آن در `DESIGN-REFERENCE-REBUILD-2026-10-28.md` ثبت شد. PR #41 ادغام و RunFlare v46 با main `4f0eb5d` فعال شد؛ پذیرش عمومی ۲۰۱/۲۰۱ با exitCode=0 و cleanup=PASSED موفق است. گزارش `DELIVERY-2026-10-29.md` و تصاویر عمومی ثبت شدند. پذیرش عملکرد قبلی، پذیرش ظاهر فرض نمی‌شود.
+
+
+### DAMOON-REAL-DATA-01 — staging reconciliation candidate
+
+The management-provided 31-unit and eight-tariff source supersedes the historical assumed classification. The local guarded importer stages exact source records, proposes unmatched physical codes and hypothetical draft supersession, and reconciles only explicitly verified, dependency-free matching physical records. No categories, prices, publication or sale are activated. Remaining: independent review of physical identity and external VTour dependencies, CI and production release authorization before any real operation.

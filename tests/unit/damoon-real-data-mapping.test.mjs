@@ -13,7 +13,8 @@ test("physical identity needs explicit verification and never derives from hypot
  assert.equal(reconcile(source,drafts,[room],[verification]).rows[0].action,"RECONCILE_EXISTING");
  assert.equal(reconcile(source,drafts,[{...room,reservationCount:1}],[verification]).rows[0].action,"PRESERVE_REVIEW");
  assert.equal(reconcile(source,drafts,[{...room,mediaCount:1}],[verification]).rows[0].action,"PRESERVE_REVIEW");
+ assert.equal(reconcile(source,drafts,[room],[{...verification,externalDependenciesAbsent:false}]).rows[0].action,"PRESERVE_REVIEW");
 });
 test("ambiguous, duplicate and cross-property attestations fail closed",()=>{
- for(const entries of [[{...verification,roomId:"foreign"}],[verification,verification],[{...verification,externalDependenciesAbsent:false}],[{...verification,sourceCode:"999"}]]) assert.throws(()=>reconcile(source,[],[room],entries));
+ for(const entries of [[{...verification,roomId:"foreign"}],[verification,verification],[{...verification,sourceCode:"999"}]]) assert.throws(()=>reconcile(source,[],[room],entries));
 });

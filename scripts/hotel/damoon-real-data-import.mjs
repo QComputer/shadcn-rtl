@@ -79,7 +79,7 @@ export function reconcile(source, drafts, rooms = [], verifications = []) {
   for (const entry of verifications) {
     assert.ok(entry && Object.keys(entry).sort().join(",") === "externalDependenciesAbsent,roomId,sourceCode,updatedAt", "invalid verification fields");
     const room = byCode.get(entry.sourceCode);
-    assert.ok(sourceCodes.has(entry.sourceCode) && room && room.id === entry.roomId && entry.externalDependenciesAbsent === true && typeof entry.updatedAt === "string" && !Number.isNaN(Date.parse(entry.updatedAt)), "verification must identify an exact scoped physical code and confirm no external dependencies");
+    assert.ok(sourceCodes.has(entry.sourceCode) && room && room.id === entry.roomId && typeof entry.externalDependenciesAbsent === "boolean" && typeof entry.updatedAt === "string" && !Number.isNaN(Date.parse(entry.updatedAt)), "verification must identify an exact scoped physical code and state external dependency status");
     assert.ok(!checked.has(entry.sourceCode), "duplicate physical verification"); checked.set(entry.sourceCode, entry);
   }
   const historicalIds = new Set(manifest.draftUnits.map(item => item.draftUnitId));
@@ -88,7 +88,7 @@ export function reconcile(source, drafts, rooms = [], verifications = []) {
     if (!room) return { sourceCode:unit.unit_code, action:"PROPOSE_CREATE", reason:"NO_PHYSICAL_CODE_MATCH" };
     const dependent = room.reservationCount > 0 || room.maintenanceCount > 0 || room.mediaCount > 0;
     const verified = checked.get(unit.unit_code);
-    if (dependent || !verified || room.deletedAt) return { sourceCode:unit.unit_code, roomId:room.id, action:"PRESERVE_REVIEW", reason:dependent ? "HAS_DEPENDENCIES" : "IDENTITY_OR_STATUS_UNVERIFIED" };
+    if (dependent || !verified || !verified.externalDependenciesAbsent || room.deletedAt) return { sourceCode:unit.unit_code, roomId:room.id, action:"PRESERVE_REVIEW", reason:dependent || (verified && !verified.externalDependenciesAbsent) ? "HAS_DEPENDENCIES" : "IDENTITY_OR_STATUS_UNVERIFIED" };
     return { sourceCode:unit.unit_code, roomId:room.id, expectedUpdatedAt:verified.updatedAt, action:"RECONCILE_EXISTING" };
   });
   const draftProposals = drafts.map(draft => ({ draftId:draft.id, temporaryCode:draft.temporaryCode, action:historicalIds.has(draft.temporaryCode) && !draft.promotedRoomId ? "PROPOSE_SUPERSEDE_REVIEW" : "PRESERVE_REVIEW" }));

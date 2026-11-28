@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import bcrypt from "bcryptjs";
 
@@ -188,7 +188,21 @@ async function getJson(page, pathname) {
 
 async function capture(page, artifactDir, filename) {
   const file = path.join(artifactDir, filename);
-  await page.screenshot({ path: file, fullPage: true });
+  // Playwright's screenshot helper waits for document.fonts.ready. A remote
+  // font can remain pending in the isolated CI network after the page itself
+  // is fully usable, so capture the same rendered page through Chromium CDP.
+  const session = await page.context().newCDPSession(page);
+  try {
+    const { cssContentSize } = await session.send("Page.getLayoutMetrics");
+    const { data } = await session.send("Page.captureScreenshot", {
+      format: "png",
+      captureBeyondViewport: true,
+      clip: { x: 0, y: 0, width: cssContentSize.width, height: cssContentSize.height, scale: 1 },
+    });
+    await writeFile(file, Buffer.from(data, "base64"));
+  } finally {
+    await session.detach();
+  }
   return file;
 }
 

@@ -1,3 +1,5 @@
+import { buildHotelRecoveryEvidence, createHotelRecoverySecret } from "@/lib/hotel/domain/guest-recovery-secret";
+import { resolveCustomerAuthContext } from "@/lib/customer-auth/context.server";
 import { createHash, randomUUID } from "node:crypto";
 import { ApiError, jsonError } from "@/lib/api-guards";
 import prisma from "@/lib/db";
@@ -12,6 +14,7 @@ import { z } from "zod";
 import { prepareHotelGuestReservationProof } from "@/lib/hotel/services/guest-reservation-proof.server";
 
 const requestSchema = bookingRequestSchema.extend({
+  recoveryOptIn: z.boolean().optional(),
   holdId: z.string().uuid(),
   holdIdempotencyKey: z.string().min(8).max(128),
 });
@@ -81,11 +84,22 @@ export async function POST(request: Request) {
     const reservationId = randomUUID();
     const primaryGuests = guests.filter(guest => guest.isPrimary);
     const provenance = !demo && phone && primaryGuests.length === 1 && !primaryGuests[0].isChild ? await prepareHotelGuestReservationProof(request, { reservationId, organizationId: tenant.organizationId, propertyId: property.id }, phone, new Date()) : null;
+    let recovery: { credential: string; evidence: NonNullable<ReturnType<typeof buildHotelRecoveryEvidence>> } | null = null;
+    if (body.recoveryOptIn) {
+      if (process.env.HOTEL_GUEST_RECOVERY_ISSUANCE_ENABLED !== "1" || demo || !phone || primaryGuests.length !== 1 || primaryGuests[0].isChild) throw new ApiError(400, "Recovery is unavailable");
+      const context = await resolveCustomerAuthContext(request);
+      if (!context || context.organizationId !== tenant.organizationId || request.headers.get("origin") !== context.origin) throw new ApiError(403, "Recovery is unavailable");
+      const credential = createHotelRecoverySecret();
+      const evidence = buildHotelRecoveryEvidence({ reservationId, organizationId: tenant.organizationId, propertyId: property.id, origin: context.origin }, credential, phone, process.env.NEXTAUTH_SECRET ?? "", new Date(), new Date(`${hold.checkOut}T00:00:00.000Z`));
+      if (!evidence) throw new ApiError(400, "Recovery is unavailable");
+      recovery = { credential, evidence };
+    }
     const result = await confirmBookingHold({ booking: repositories, payments: repositories, now: () => new Date() }, {
       scope,
       holdId: body.holdId,
       reservationId,
       ...(provenance ? { guestClaimProof: provenance.proof } : {}),
+      ...(recovery ? { guestRecoveryCredential: recovery.evidence } : {}),
       ratePlanId: plan.id,
       guests,
       occupancy: body.occupancy,
@@ -96,7 +110,8 @@ export async function POST(request: Request) {
       idempotencyKey: body.idempotencyKey,
     });
     if (!result.isConfirmed) throw new ApiError(409, "The booking hold can no longer be converted to a reservation");
-    const response = Response.json({ reference: result.reservation.reference, status: result.reservation.status, paymentStatus: demo ? "PENDING_SIMULATION" : "UNPAID", totalAmount: String(result.reservation.totalAmount), currency: result.reservation.currency, ...(demo ? { mode: "DEMO_BOOKING", synthetic: true } : {}) }, { status: 201 });
+    const response = Response.json({ reference: result.reservation.reference, status: result.reservation.status, paymentStatus: demo ? "PENDING_SIMULATION" : "UNPAID", totalAmount: String(result.reservation.totalAmount), currency: result.reservation.currency, ...(recovery && result.reservation.id === reservationId ? { recoveryCredential: recovery.credential, recoveryExpiresAt: recovery.evidence.expiresAt.toISOString() } : {}), ...(demo ? { mode: "DEMO_BOOKING", synthetic: true } : {}) }, { status: 201 });
+    if (recovery && result.reservation.id === reservationId) { response.headers.set("Cache-Control", "private, no-store"); response.headers.set("Vary", "Cookie, Host, Origin"); }
     if (provenance && result.reservation.id === reservationId) {
       response.headers.append("Set-Cookie", provenance.setCookie);
       response.headers.set("Cache-Control", "private, no-store");

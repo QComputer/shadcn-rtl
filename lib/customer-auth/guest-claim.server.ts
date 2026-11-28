@@ -1,3 +1,4 @@
+import { matchesHotelRecoveryEvidence } from "../hotel/domain/guest-recovery-secret";
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { hasOrganizationCapability } from "../organization-capabilities";
@@ -57,8 +58,14 @@ async function eligible(tx: Prisma.TransactionClient, scope: GuestClaimScope, no
   const capability = scope.kind === "ORDER" ? "SHOP" : scope.kind === "HOTEL" ? "HOTEL_BOOKING" : "APPOINTMENT";
   if (!hasOrganizationCapability({ legacyType: org.type, capabilitiesInitializedAt: org.capabilitiesInitializedAt, capabilities: org.capabilities }, capability)) return null;
   if (scope.kind === "HOTEL") {
-    const row = await tx.hotelReservation.findFirst({ where: { id: scope.recordId, organizationId: scope.organizationId, status: "CHECKED_OUT", checkedOutAt: { lte: now }, customerOwnership: null, guestClaimProof: { isNot: null }, property: { isActive: true, deletedAt: null } }, select: { id: true, propertyId: true, guestClaimProof: true } });
-    if (!row?.guestClaimProof || !matchesHotelGuestReservationProof(row.guestClaimProof, { reservationId: row.id, organizationId: scope.organizationId, propertyId: row.propertyId, origin: scope.origin }, scope.guestSessionId, phone, secret, now)) return null;
+    const row = await tx.hotelReservation.findFirst({ where: { id: scope.recordId, organizationId: scope.organizationId, status: "CHECKED_OUT", checkedOutAt: { lte: now }, customerOwnership: null, property: { isActive: true, deletedAt: null } }, select: { id: true, propertyId: true, guestClaimProof: true } });
+    if (!row) return null;
+    const proofScope = { reservationId: row.id, organizationId: scope.organizationId, propertyId: row.propertyId, origin: scope.origin };
+    if (scope.recovery) {
+      if (process.env.HOTEL_GUEST_RECOVERY_REDEMPTION_ENABLED !== "1") return null;
+      const recovery = await tx.hotelGuestRecoveryCredential.findUnique({ where: { reservationId: row.id } });
+      if (!recovery || !matchesHotelRecoveryEvidence(recovery, proofScope, scope.guestSessionId, phone, secret, now)) return null;
+    } else if (!row.guestClaimProof || !matchesHotelGuestReservationProof(row.guestClaimProof, proofScope, scope.guestSessionId, phone, secret, now)) return null;
     return { kind: "HOTEL" as const, rowId: row.id, guestId: "", slug: org.slug, propertyId: row.propertyId };
   }
   if (scope.kind === "ORDER") {
@@ -101,8 +108,12 @@ export async function completeGuestClaim(tx: Prisma.TransactionClient, scope: Gu
   const current = await eligible(tx, scope, now, secret);
   if (!current || current.kind !== initial.kind || current.guestId !== initial.guestId || current.rowId !== initial.rowId) return null;
   if (current.kind === "HOTEL") {
+    if (scope.recovery) {
+      const consumed = await tx.hotelGuestRecoveryCredential.deleteMany({ where: { reservationId: current.rowId, organizationId: scope.organizationId, propertyId: current.propertyId, redeemedAt: null, expiresAt: { gt: now } } });
+      if (consumed.count !== 1) return null;
+    }
     await tx.hotelReservationOwnership.create({ data: { reservationId: current.rowId, organizationId: scope.organizationId, propertyId: current.propertyId, userId: scope.userId, claimedAt: now } });
-    await tx.auditLog.create({ data: { action: "CREATE", entityType: "HotelGuestReservationClaim", entityId: current.rowId, userId: scope.userId, organizationId: scope.organizationId, organizationSlug: current.slug, description: "Explicit hotel reservation ownership claim v1" } });
+    await tx.auditLog.create({ data: { action: "CREATE", entityType: "HotelGuestReservationClaim", entityId: current.rowId, userId: scope.userId, organizationId: scope.organizationId, organizationSlug: current.slug, description: scope.recovery ? "Explicit hotel reservation recovery claim v1" : "Explicit hotel reservation ownership claim v1" } });
     return { outcome: "CLAIMED" as const, kind: current.kind, recordId: current.rowId };
   }
   const result = current.kind === "ORDER"

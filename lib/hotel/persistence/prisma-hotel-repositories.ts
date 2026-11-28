@@ -1,3 +1,4 @@
+import { validHotelRecoveryEvidence } from "@/lib/hotel/domain/guest-recovery-secret";
 import { isDeepStrictEqual } from "node:util";
 import { validHotelGuestReservationProof } from "@/lib/hotel/domain/guest-reservation-proof";
 import { Prisma, type PrismaClient } from "@prisma/client";
@@ -468,7 +469,7 @@ export class PrismaHotelRepositories
         if (!sameRequest(existing)) throw new HotelIdempotencyConflictError();
         return existing;
       }
-      if (!validRecord || (record.guestClaimProof && !validHotelGuestReservationProof(record.guestClaimProof, record))) throw invalid();
+      if (!validRecord || (record.guestClaimProof && !validHotelGuestReservationProof(record.guestClaimProof, record)) || (record.guestRecoveryCredential && !validHotelRecoveryEvidence(record.guestRecoveryCredential, record))) throw invalid();
       const plan = await tx.hotelRatePlan.findFirst({ where: { id: record.ratePlanId, organizationId: record.organizationId, propertyId: record.propertyId, roomTypeId: record.roomTypeId, ...(record.holdId ? { isActive: true } : {}) }, select: { id: true, currency: true } });
       if (!plan || plan.currency !== record.currency) throw invalid();
       if (record.holdId) {
@@ -496,6 +497,7 @@ export class PrismaHotelRepositories
       // Insert only for the first creation. A replay returns before this point,
       // so a later browser cannot attach or replace provenance for an existing stay.
       if (record.guestClaimProof) await tx.hotelGuestReservationProof.create({ data: record.guestClaimProof });
+      if (record.guestRecoveryCredential) await tx.hotelGuestRecoveryCredential.create({ data: record.guestRecoveryCredential });
       return reservation(row);
     }, transaction, { maxWait: 5000, timeout: 10000 });
   }

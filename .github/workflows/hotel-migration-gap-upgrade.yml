@@ -2,7 +2,7 @@ name: Hotel Production-Gap Upgrade Rehearsal
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, codex/hotel-guest-claim-g3b31b]
     paths:
       - ".github/workflows/hotel-migration-gap-upgrade.yml"
       - "prisma/schema.prisma"
@@ -11,6 +11,7 @@ on:
       - "scripts/db/validate-hotel-production-shape-migrations.ts"
       - "scripts/db/validate-hotel-pr192-proof-upgrade.ts"
       - "scripts/db/validate-hotel-proof-ownership-upgrade.ts"
+      - "scripts/db/validate-hotel-ownership-recovery-upgrade.ts"
       - "scripts/db/hotel-migration-lineage.mjs"
       - "scripts/db/hotel-proof-rehearsal-guard.mjs"
       - "tests/unit/hotel-proof-rehearsal-guard.test.mjs"
@@ -83,3 +84,6 @@ jobs:
 
       - name: Rehearse proof to ownership migration with existing reservations
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs scripts/db/validate-hotel-proof-ownership-upgrade.ts
+
+      - name: Rehearse PR194 to recovery migration with existing ownership
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs scripts/db/validate-hotel-ownership-recovery-upgrade.ts

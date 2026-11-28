@@ -5854,6 +5854,7 @@ model HotelReservation {
   offlinePayments HotelOfflinePayment[]
   guestProfileLinks HotelGuestProfileLink[]
   guestClaimProof HotelGuestReservationProof?
+  guestRecoveryCredential HotelGuestRecoveryCredential?
   customerOwnership HotelReservationOwnership?
 
   @@unique([organizationId, reference])
@@ -5868,6 +5869,23 @@ model HotelReservation {
 /// Browser provenance for a newly created anonymous reservation. This is NOT
 /// account ownership, a guest dossier link, a payment permission or a bearer token.
 /// Never backfill from contact fields, references or idempotency keys.
+model HotelGuestRecoveryCredential {
+  reservationId String @id
+  organizationId String
+  propertyId String
+  origin String
+  secretDigest String
+  contactDigest String
+  createdAt DateTime
+  expiresAt DateTime
+  redeemedAt DateTime?
+
+  reservation HotelReservation @relation(fields: [reservationId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Cascade, map: "HotelGuestRecoveryCredential_reservation_fkey")
+
+  @@unique([reservationId, organizationId, propertyId], map: "HotelGuestRecoveryCredential_scope_key")
+  @@index([organizationId, propertyId, expiresAt], map: "HotelGuestRecoveryCredential_expiry_idx")
+}
+
 model HotelGuestReservationProof {
   reservationId  String @id
   organizationId String

@@ -341,7 +341,9 @@ async function retailStorefrontEvidence({ host, path, name, logoPath, screenshot
       writeFileSync(`${artifactDir}/retail-storefront-failure-${host}.json`, JSON.stringify(diagnostic, null, 2));
       throw new Error(`Modern Retail storefront did not hydrate: ${JSON.stringify(diagnostic)}; ${String(error?.message || error)}`);
     }
-    const brand = page.locator(`header img[alt="${name}"]`);
+    const brandLink = page.locator("header").getByRole("link", { name, exact: true });
+    await brandLink.waitFor({ state: "visible" });
+    const brand = brandLink.locator('img[alt=""]');
     await brand.waitFor({ state: "visible" });
     const image = await brand.evaluate((element) => ({ src: element.getAttribute("src"), complete: element.complete, width: element.naturalWidth, height: element.naturalHeight }));
     assert.ok(image.src?.includes(logoPath), `correct tenant logo on Retail storefront: ${image.src}`);

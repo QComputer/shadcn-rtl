@@ -205,3 +205,8 @@ PR193 head 0545a9d934fa20c0ef12de6895812940532fc367 passed the four hosted execu
 ### G3-B3.1b — hotel guest ownership claim candidate
 
 Explicit completed-stay ownership uses the original reservation-bound browser proof, a verified tenant customer session, matching verified contact, explicit consent and a record-bound OTP. The new tenant-scoped ownership relation and audit are written atomically with OTP consumption; existing guest and reservation snapshots are retained. The HOTEL_GUEST_RESERVATION_CLAIM_ENABLED gate is default OFF and requires the existing customer claim gates. This candidate requires local and hosted acceptance, migration release review and a separate activation decision. No phone-only or cross-browser recovery is provided; G3-B3.2 remains open. AUTH-QA-001 and HOTEL-QA-001 remain open.
+
+
+### G3-B3.2 — independent hotel recovery candidate
+
+New opt-in bookings can issue a one-time recovery credential whose scoped digests expire 180 days after booked checkout. A verified customer with matching contact, explicit consent and record-bound OTP can recover a completed stay without the original browser; OTP, digest deletion, ownership and audit commit together. The separately gated retention job targets expired digests after seven days in bounded batches. Both issuance and redemption are default off. This candidate depends on PR194 and an additive migration; production migration, monitored retention throughput, distributed ingress limiting and activation remain separate release gates. Local acceptance is not hosted or deployment evidence. AUTH-QA-001 and HOTEL-QA-001 remain open.

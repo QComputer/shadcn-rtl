@@ -1,3 +1,4 @@
+import { validHotelGuestBrowserToken } from "../hotel/domain/guest-reservation-proof";
 import { normalizeDigits } from "../integrations/inoti-ussd/parser";
 import { isProgressiveChallengeId } from "./progressive-contract";
 import type { GuestClaimKind } from "./guest-claim.contract";
@@ -5,9 +6,16 @@ export type GuestClaimInput = { action: "LIST"; kind: "ORDER" | "APPOINTMENT" } 
 export function guestClaimHttpEnabled(env: Record<string, string | undefined> = process.env) {
   return env.CUSTOMER_GUEST_CLAIM_ENABLED === "1" && env.CUSTOMER_PROGRESSIVE_ENROLLMENT_ENABLED === "1" && env.CUSTOMER_PHONE_AUTH_ENABLED === "1";
 }
-export function parseGuestClaimInput(value: unknown): GuestClaimInput | null {
+export function parseGuestClaimInput(value: unknown): (GuestClaimInput & { recoveryCredential?: string }) | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const v = value as Record<string, unknown>;
+  const original = value as Record<string, unknown>;
+  if (Object.prototype.hasOwnProperty.call(original, "recoveryCredential")) {
+    if (original.kind !== "HOTEL" || typeof original.recoveryCredential !== "string" || !validHotelGuestBrowserToken(original.recoveryCredential)) return null;
+    const { recoveryCredential, ...rest } = original;
+    const parsed = parseGuestClaimInput(rest);
+    return parsed ? { ...parsed, recoveryCredential: recoveryCredential as string } : null;
+  }
+  const v = original;
   if (v.kind !== "ORDER" && v.kind !== "APPOINTMENT" && v.kind !== "HOTEL") return null;
   const keys = Object.keys(v);
   if (v.action === "LIST") {

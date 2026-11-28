@@ -1,4 +1,4 @@
-# BazarBaaz Codex Engineering Playbook v2.0
+# BazarBaaz Codex Engineering Playbook v2.1
 
 Owner directive: delivery speed first. Codex is the autonomous software engineer; the Main Agent is technical lead and independent final reviewer. Follow the owner's current task instructions where they are more specific than this playbook.
 
@@ -12,6 +12,7 @@ Owner directive: delivery speed first. Codex is the autonomous software engineer
 ## Validation and recovery
 
 - Select checks for the change and its risks. Use locked dependencies, existing CI and isolated fixtures. Carry accepted results only when their exact inputs and conditions remain valid; do not repeat unrelated acceptance without a reason.
+- For concurrent worktrees, isolate candidate snapshots, test ports, databases and logs; do not stop or modify another task’s processes or resources. Prewarm development routes before one-time browser flows, and retain evidence of interrupted runs.
 - Record exact source tree, suite counts, failures, skipped cases and evidence hashes. Distinguish local, CI, deployment, public runtime and real provider evidence.
 - Diagnose failures from logs and source. Apply narrow fixes and evidence-based retries; preserve failed evidence. Use bounded asynchronous processes, durable logs, monotonic timing and cleanup only of resources proven task-owned.
 - Protect tenant isolation, authorization, production data, secrets and the integrity of existing tests. Keep flags off until separately authorized. Never weaken checks to obtain a pass.

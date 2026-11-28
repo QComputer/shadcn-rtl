@@ -16,6 +16,8 @@ export async function GET(request: Request) {
   return Response.json({
     available,
     guestClaim: Boolean(context && guestClaimHttpEnabled()),
+    hotelGuestRecoveryIssuance: Boolean(context && process.env.HOTEL_GUEST_RECOVERY_ISSUANCE_ENABLED === "1"),
+    hotelGuestRecovery: Boolean(context && guestClaimHttpEnabled() && process.env.HOTEL_GUEST_RESERVATION_CLAIM_ENABLED === "1" && process.env.HOTEL_GUEST_RECOVERY_REDEMPTION_ENABLED === "1"),
     hotelGuestClaim: Boolean(context && guestClaimHttpEnabled() && process.env.HOTEL_GUEST_RESERVATION_CLAIM_ENABLED === "1"),
     progressiveEnrollment: Boolean(context && progressiveCustomerEnrollmentEnabled()),
     ssoAvailable: Boolean(context && customerSsoAvailable()),

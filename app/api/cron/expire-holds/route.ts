@@ -50,6 +50,11 @@ async function executeExpiration(now: Date) {
     }
   }
 
+  // Retention requires a separately enabled, monitored scheduler. Process a bounded
+  // batch; ownership and audit records are independent and remain untouched.
+  if (process.env.HOTEL_GUEST_RECOVERY_RETENTION_ENABLED === "1") {
+    await prisma.$executeRaw`DELETE FROM "HotelGuestRecoveryCredential" WHERE "reservationId" IN (SELECT "reservationId" FROM "HotelGuestRecoveryCredential" WHERE "expiresAt" < ${new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)} OR "redeemedAt" < ${new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)} ORDER BY "expiresAt" LIMIT 1000)`;
+  }
   return results;
 }
 

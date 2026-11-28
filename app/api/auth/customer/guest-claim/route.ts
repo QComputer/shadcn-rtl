@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
   const input = parseGuestClaimInput(body);
   if (!input) return unavailable(400);
   if (input.kind === "HOTEL" && process.env.HOTEL_GUEST_RESERVATION_CLAIM_ENABLED !== "1") return unavailable(404);
+  if (input.recoveryCredential && process.env.HOTEL_GUEST_RECOVERY_REDEMPTION_ENABLED !== "1") return unavailable(404);
   try {
     const session = await requireAuthSession(request);
     const context = session.customerContext;
@@ -31,14 +32,14 @@ export async function POST(request: NextRequest) {
     // Do not accept ambiguous duplicate bearer cookies; never issue a new one here.
     const cookies = request.cookies.getAll(name);
     const rawNames = (request.headers.get("cookie") ?? "").split(";").map(part => part.trim().split("=", 1)[0]);
-    const browser = cookies.length === 1 && rawNames.filter(key => key === name).length === 1 ? cookies[0].value : "";
+    const browser = input.recoveryCredential ?? (cookies.length === 1 && rawNames.filter(key => key === name).length === 1 ? cookies[0].value : "");
     if (!(input.kind === "HOTEL" ? validHotelGuestBrowserToken(browser) : appointmentGuestSessionPattern.test(browser))) return unavailable(403);
     // Per-process authenticated defense in depth; distributed ingress limits remain an activation gate.
     const limit = input.action === "LIST" ? 20 : input.action === "REQUEST" ? 10 : 12;
     if (!checkRateLimit({ key: `guest-claim:${context.organizationId}:${session.user.id}:${input.action}`, limit, windowMs: 60_000 }).allowed) return unavailable(429);
     const identity = await prisma.customerPhoneIdentity.findUnique({ where: { userId: session.user.id }, select: { phone: true, verifiedAt: true } });
     if (!identity || identity.verifiedAt > new Date()) return unavailable(403);
-    const scope = { kind: input.kind, userId: session.user.id, sessionId: session.user.phoneSessionId, organizationId: context.organizationId, origin: context.origin, phone: identity.phone, guestSessionId: browser, claimConfirmed: true as const };
+    const scope = { kind: input.kind, userId: session.user.id, sessionId: session.user.phoneSessionId, organizationId: context.organizationId, origin: context.origin, phone: identity.phone, guestSessionId: browser, ...(input.recoveryCredential ? { recovery: true as const } : {}), claimConfirmed: true as const };
     if (input.action === "LIST") return reply({ items: await prisma.$transaction(tx => listGuestClaimCandidates(tx, scope, new Date(), input.kind === "HOTEL" ? input.reference : undefined), { isolationLevel: "RepeatableRead" }) }, 200);
     const bound = { ...scope, recordId: input.recordId };
     if (input.action === "REQUEST") {

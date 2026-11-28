@@ -11,3 +11,12 @@ test("unknown fields, operations and record types fail closed", () => { for (con
 test("hotel claims require an explicit record and consent", () => { const hotel = {...request,kind:"HOTEL"}; assert.deepEqual(parseGuestClaimInput(hotel),hotel); assert.equal(parseGuestClaimInput({...hotel,claimConfirmed:false}),null); });
 
 test("hotel discovery accepts only one literal bounded reference", () => { assert.deepEqual(parseGuestClaimInput({action:"LIST",kind:"HOTEL",reference:"H-123"}),{action:"LIST",kind:"HOTEL",reference:"H-123"}); for(const reference of [undefined,"","%","x".repeat(129)]) assert.equal(parseGuestClaimInput({action:"LIST",kind:"HOTEL",reference}),null); assert.equal(parseGuestClaimInput({action:"LIST",kind:"HOTEL",reference:"H-123",phone:"x"}),null); });
+
+test("recovery credential is limited to hotel requests and canonical 256-bit values", () => {
+  const recoveryCredential = Buffer.alloc(32, 7).toString("base64url");
+  const lookup = { action: "LIST", kind: "HOTEL", reference: "H-123", recoveryCredential };
+  assert.deepEqual(parseGuestClaimInput(lookup), lookup);
+  assert.equal(parseGuestClaimInput({ ...lookup, recoveryCredential: "bad" }), null);
+  assert.equal(parseGuestClaimInput({ action: "LIST", kind: "ORDER", recoveryCredential }), null);
+  assert.equal(parseGuestClaimInput({ ...lookup, organizationId: "other" }), null);
+});

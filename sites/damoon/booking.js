@@ -218,9 +218,15 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   let dialogOpener = null;
   let focusISO = "";
   let flow = { step: savedCoordination?.step || "search", options: [], selected: null, hold: null, busy: false, message: "", error: false, draftContact: savedCoordination?.draftContact || { fullName: "", phone: "", email: "" }, draftSpecialRequests: savedCoordination?.draftSpecialRequests || "", request: savedCoordination?.request || null, requestStatus: savedCoordination?.request?.status || "", policyAccepted: false };
+  let recoveryIssuanceAvailable = false;
+  let recoveryOptIn = false;
   let holdAttempt = { key: "", fingerprint: "", payload: null };
   let coordinationAttempt = savedCoordination?.pendingAttempt || null;
   function clearHoldAttempt() { holdAttempt = { key: "", fingerprint: "", payload: null }; }
+  fetch("/api/auth/customer/config", { cache: "no-store" }).then(response => response.ok ? response.json() : null).then(data => {
+    recoveryIssuanceAvailable = data?.hotelGuestRecoveryIssuance === true;
+    if (flow.step === "details") renderFlow();
+  }).catch(() => {});
   function persistCoordinationDraft() {
     try {
       if (!requestOnly) return;
@@ -364,6 +370,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
         <label class="booking-field booking-field--text"><span>${escapeHtml(ui.email || "Email")}</span><input data-guest-email type="email" autocomplete="email" maxlength="200" dir="ltr" value="${escapeHtml(draft.email || "")}" /></label>
       </div>`}
       ${requestOnly ? `<p class="booking-policy__text">${escapeHtml(requestCopy[locale]?.notBooking || requestCopy.en.notBooking)}</p><label class="booking-field booking-field--text"><span>${escapeHtml(locale === "fa" ? "درخواست ویژه (اختیاری)" : locale === "ar" ? "طلبات خاصة (اختياري)" : "Special requests (optional)")}</span><textarea data-special-request maxlength="500">${escapeHtml(flow.draftSpecialRequests || "")}</textarea></label>` : `<div class="booking-policy"><p class="booking-step__label">${escapeHtml(ui.policies || "Policy")}</p><div class="booking-policy__text">${escapeHtml(demoModeActive ? (locale === "fa" ? "شرایط نمایشی: بدون پرداخت واقعی یا تعهد رزرو" : locale === "ar" ? "شروط تجريبية: بلا دفع حقيقي أو التزام حجز" : "Demo terms: no real payment or booking commitment") : summary || policy?.name || policy?.key || "—")}</div><label class="booking-policy__accept"><input type="checkbox" data-policy-accept ${policy?.key ? "" : "disabled"} ${flow.policyAccepted ? "checked" : ""} /> <span>${escapeHtml(demoModeActive ? (locale === "fa" ? "شرایط نمایشی را می‌پذیرم" : locale === "ar" ? "أوافق على الشروط التجريبية" : "I accept the demo terms") : ui.policyAcceptance || "I accept the cancellation policy.")}</span></label></div>`}
+      ${!requestOnly && !demoModeActive && recoveryIssuanceAvailable ? `<label class="booking-policy__accept"><input type="checkbox" data-recovery-opt-in ${recoveryOptIn ? "checked" : ""} /> <span>${escapeHtml(locale === "fa" ? "می‌خواهم کد بازیابی یک‌بارنمایش را برای نگهداری دریافت کنم." : locale === "ar" ? "أريد الحصول على رمز استرداد يُعرض مرة واحدة للاحتفاظ به." : "I want a recovery credential shown once for me to save.")}</span></label>` : ""}
       <div class="booking-step__actions"><button type="button" class="booking-submit" data-create-${requestOnly ? "request" : "hold"} ${flow.busy || (!requestOnly && !policy?.key) ? "disabled" : ""}>${escapeHtml(requestOnly ? (requestCopy[locale]?.submit || requestCopy.en.submit) : (ui.holdRoom || "Reserve"))}</button></div>
     </section>`;
   }
@@ -400,8 +407,9 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     const expires = h.expiresAt ? new Date(h.expiresAt) : null;
     const expiresText = expires && !Number.isNaN(expires.getTime()) ? expires.toLocaleString(locale === "fa" ? "fa-IR" : locale === "ar" ? "ar" : "en-US") : String(h.expiresAt || "");
     const reservation = h.reservation;
+    const recoveryMarkup = reservation?.recoveryCredential ? `<div class="booking-policy"><p>${escapeHtml(locale === "fa" ? "این کد فقط اکنون نمایش داده می‌شود. آن را در محل امن نگه دارید؛ در صورت گم شدن بازیابی خودکار ممکن نیست." : locale === "ar" ? "يظهر هذا الرمز الآن فقط. احتفظ به بأمان؛ لا يمكن استعادته تلقائياً عند فقده." : "This credential is shown only now. Save it securely; it cannot be recovered if lost.")}</p><code dir="ltr" data-recovery-credential>${escapeHtml(reservation.recoveryCredential)}</code><button type="button" class="booking-link" data-export-recovery>${escapeHtml(locale === "fa" ? "دریافت کد" : locale === "ar" ? "تنزيل الرمز" : "Download credential")}</button></div>` : "";
     const statusText = locale === "fa" ? (reservation?.status === "PENDING_PAYMENT" ? "در انتظار پرداخت و تأیید پذیرش" : "رزرو موقت") : locale === "ar" ? (reservation?.status === "PENDING_PAYMENT" ? "بانتظار الدفع وتأكيد الاستقبال" : "حجز مؤقت") : (reservation?.status === "PENDING_PAYMENT" ? "Awaiting payment and reception confirmation" : "Temporary hold");
-    return `<section class="booking-step booking-step--confirmed"><h4>${escapeHtml(reservation ? (locale === "fa" ? "درخواست رزرو ثبت شد" : locale === "ar" ? "تم تسجيل طلب الحجز" : "Reservation request received") : (ui.holdCreated || "Hold created"))}</h4><p><strong>${escapeHtml(ui.holdReference || "Reference")}:</strong> <span dir="ltr">${escapeHtml(reservation?.reference || h.reference || h.holdId || "")}</span></p><p><strong>${escapeHtml(ui.totalPrice || "Total")}:</strong> ${escapeHtml(formatMoney(reservation?.totalAmount || h.totalRate || h.totalAmount, reservation?.currency || h.currency, locale))}</p><p><strong>${escapeHtml(locale === "fa" ? "وضعیت" : locale === "ar" ? "الحالة" : "Status")}:</strong> ${escapeHtml(reservation ? statusText : expiresText)}</p>${reservation ? `<p>${escapeHtml(locale === "fa" ? "وضعیت پرداخت: " + (reservation.paymentStatus === "PAID" ? "پرداخت آزمایشی تأیید شد" : "پرداخت‌نشده") + "؛ تأیید نهایی اقامت با پذیرش هتل است." : locale === "ar" ? "حالة الدفع: " + (reservation.paymentStatus === "PAID" ? "تم التحقق من الدفع التجريبي" : "غير مدفوع") + "؛ ويظل التأكيد النهائي لدى الاستقبال." : "Payment: " + (reservation.paymentStatus === "PAID" ? "sandbox payment verified" : "unpaid") + "; reception still confirms the stay.")}</p><div class="booking-step__actions">${reservation.paymentStatus !== "PAID" && reservation.status === "PENDING_PAYMENT" ? `<button type="button" class="booking-submit" data-start-sandbox-payment ${flow.busy ? "disabled" : ""}>${escapeHtml(locale === "fa" ? "پرداخت آزمایشی" : locale === "ar" ? "الدفع التجريبي" : "Sandbox payment")}</button>` : ""}<button type="button" class="booking-link" data-check-reservation>${escapeHtml(locale === "fa" ? "بررسی وضعیت" : locale === "ar" ? "تحقق من الحالة" : "Check status")}</button>${reservation.paymentStatus !== "PAID" && reservation.status === "PENDING_PAYMENT" ? `<button type="button" class="booking-link" data-cancel-reservation>${escapeHtml(locale === "fa" ? "لغو رزرو پرداخت‌نشده" : locale === "ar" ? "إلغاء الحجز غير المدفوع" : "Cancel unpaid reservation")}</button>` : ""}</div>` : ""}<div class="booking-step__actions"><button type="button" class="booking-link" data-flow-reset>${escapeHtml(ui.backToOptions || "Back")}</button></div></section>`;
+    return `<section class="booking-step booking-step--confirmed"><h4>${escapeHtml(reservation ? (locale === "fa" ? "درخواست رزرو ثبت شد" : locale === "ar" ? "تم تسجيل طلب الحجز" : "Reservation request received") : (ui.holdCreated || "Hold created"))}</h4><p><strong>${escapeHtml(ui.holdReference || "Reference")}:</strong> <span dir="ltr">${escapeHtml(reservation?.reference || h.reference || h.holdId || "")}</span></p><p><strong>${escapeHtml(ui.totalPrice || "Total")}:</strong> ${escapeHtml(formatMoney(reservation?.totalAmount || h.totalRate || h.totalAmount, reservation?.currency || h.currency, locale))}</p><p><strong>${escapeHtml(locale === "fa" ? "وضعیت" : locale === "ar" ? "الحالة" : "Status")}:</strong> ${escapeHtml(reservation ? statusText : expiresText)}</p>${reservation ? `<p>${escapeHtml(locale === "fa" ? "وضعیت پرداخت: " + (reservation.paymentStatus === "PAID" ? "پرداخت آزمایشی تأیید شد" : "پرداخت‌نشده") + "؛ تأیید نهایی اقامت با پذیرش هتل است." : locale === "ar" ? "حالة الدفع: " + (reservation.paymentStatus === "PAID" ? "تم التحقق من الدفع التجريبي" : "غير مدفوع") + "؛ ويظل التأكيد النهائي لدى الاستقبال." : "Payment: " + (reservation.paymentStatus === "PAID" ? "sandbox payment verified" : "unpaid") + "; reception still confirms the stay.")}</p><div class="booking-step__actions">${reservation.paymentStatus !== "PAID" && reservation.status === "PENDING_PAYMENT" ? `<button type="button" class="booking-submit" data-start-sandbox-payment ${flow.busy ? "disabled" : ""}>${escapeHtml(locale === "fa" ? "پرداخت آزمایشی" : locale === "ar" ? "الدفع التجريبي" : "Sandbox payment")}</button>` : ""}<button type="button" class="booking-link" data-check-reservation>${escapeHtml(locale === "fa" ? "بررسی وضعیت" : locale === "ar" ? "تحقق من الحالة" : "Check status")}</button>${reservation.paymentStatus !== "PAID" && reservation.status === "PENDING_PAYMENT" ? `<button type="button" class="booking-link" data-cancel-reservation>${escapeHtml(locale === "fa" ? "لغو رزرو پرداخت‌نشده" : locale === "ar" ? "إلغاء الحجز غير المدفوع" : "Cancel unpaid reservation")}</button>` : ""}</div>` : ""}${recoveryMarkup}<div class="booking-step__actions"><button type="button" class="booking-link" data-flow-reset>${escapeHtml(ui.backToOptions || "Back")}</button></div></section>`;
   }
   function renderFlow() {
     if (message) message.textContent = flow.message || ""; else message.textContent = "";
@@ -466,6 +474,12 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     return parseChildAges(inputs.map((i) => i.value), children);
   }
   function bindFlow() {
+    slot.querySelector("[data-export-recovery]")?.addEventListener("click", () => {
+      const value = flow.hold?.reservation?.recoveryCredential;
+      if (!value) return;
+      const url = URL.createObjectURL(new Blob([value], { type: "text/plain;charset=utf-8" }));
+      const link = document.createElement("a"); link.href = url; link.download = "reservation-recovery.txt"; link.click(); URL.revokeObjectURL(url);
+    });
     slot.querySelector("[data-copy-request-reference]")?.addEventListener("click", async () => {
       const reference = flow.request?.reference;
       const feedback = slot.querySelector("[data-copy-reference-feedback]");
@@ -678,6 +692,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
         }
         return;
       }
+      recoveryOptIn = Boolean(slot.querySelector("[data-recovery-opt-in]")?.checked);
       const accepted = slot.querySelector("[data-policy-accept]")?.checked;
       const policyKey = flow.selected.ratePlan?.cancellationPolicy?.key || "";
       if (!policyKey || !accepted) { flow.draftContact = contact.value; flow.policyAccepted = Boolean(accepted); setMessage(ui.policyRequired || "Accept the cancellation policy.", true); renderFlow(); return; }
@@ -700,10 +715,18 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       }
       if (result.ok && result.data?.holdId) {
         const holdKey = holdAttempt.key;
-        const confirmation = await postJson("/api/hotel/v1/reservations", { ...submitPayload, idempotencyKey: holdKey, holdId: result.data.holdId, holdIdempotencyKey: holdKey });
+        let confirmation;
+        try {
+          confirmation = await postJson("/api/hotel/v1/reservations", { ...submitPayload, idempotencyKey: holdKey, holdId: result.data.holdId, holdIdempotencyKey: holdKey, ...(recoveryOptIn ? { recoveryOptIn: true } : {}) });
+        } catch {
+          flow.busy = false;
+          setMessage(locale === "fa" ? "پاسخ رزرو دریافت نشد. با همان درخواست تلاش کنید؛ اگر رزرو ثبت شده باشد کد بازیابی دوباره نمایش داده نمی‌شود." : locale === "ar" ? "لم يصل رد الحجز. أعد المحاولة بنفس الطلب؛ إذا تم الحجز فلن يظهر رمز الاسترداد مجدداً." : "No booking response. Retry the same request; if the booking was created, its recovery credential cannot be shown again.", true);
+          renderFlow(); return;
+        }
         if (confirmation.ok && typeof confirmation.data?.reference === "string") {
           clearHoldAttempt();
-          flow = { ...flow, step: "confirmed", hold: { ...result.data, idempotencyKey: holdKey, reservation: confirmation.data }, message: "", error: false, policyAccepted: false };
+          const missingRecovery = recoveryOptIn && !confirmation.data.recoveryCredential;
+          flow = { ...flow, step: "confirmed", hold: { ...result.data, idempotencyKey: holdKey, reservation: confirmation.data }, message: missingRecovery ? (locale === "fa" ? "رزرو قبلاً ثبت شده و کد بازیابی دیگر قابل نمایش نیست." : locale === "ar" ? "تم الحجز سابقاً ولا يمكن عرض رمز الاسترداد مجدداً." : "This booking already exists and its recovery credential cannot be displayed again.") : "", error: missingRecovery, policyAccepted: false };
           renderFlow(); return;
         }
         flow.busy = false;

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mock, test } from "node:test";
 
 const enabled = process.env.RETAIL_P13_ORDER_OPS_PG_ACCEPTANCE === "1";
@@ -30,7 +30,7 @@ test("Retail R2 fulfillment settings, quote, handover history, and owner trackin
     },
   } });
 
-  const [{ PrismaClient }, settingsModule, quoteModule, checkoutModule, paymentPolicyModule, merchant, customerModule, { ApiError }] = await Promise.all([
+  const [{ PrismaClient }, settingsModule, quoteModule, checkoutModule, paymentPolicyModule, merchant, customerModule, eventLedger, { ApiError }] = await Promise.all([
     import("@prisma/client"),
     import("@/lib/retail/fulfillment-settings.server"),
     import("@/lib/retail/checkout-quote.server"),
@@ -38,9 +38,10 @@ test("Retail R2 fulfillment settings, quote, handover history, and owner trackin
     import("@/lib/retail/payment-policy.server"),
     import("@/lib/retail/merchant-orders.server"),
     import("@/lib/retail/customer-order.server"),
+    import("@/lib/payments/provider-event-ledger.server"),
     import("@/lib/api-guards"),
   ]);
-  const db = new PrismaClient({ log: ["error"] });
+  const db = new PrismaClient();
   const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
   const slug = `retail-r2-fulfillment-${suffix}`;
   const foreignSlug = `retail-r2-foreign-${suffix}`;
@@ -65,6 +66,9 @@ test("Retail R2 fulfillment settings, quote, handover history, and owner trackin
       db.organization.create({ data: { name: `Retail R2 foreign ${suffix}`, slug: foreignSlug, type: "SHOP", capabilitiesInitializedAt: new Date() } }),
     ]);
     organizationIds.push(organization.id, foreignOrganization.id);
+    const [integration, foreignIntegration] = await Promise.all([organization, foreignOrganization].map((tenant, index) => db.organizationIntegration.create({
+      data: { organizationId: tenant.id, provider: "SNAPPPAY", codeName: `r2-snappay-${suffix}-${index}` },
+    })));
     await db.organizationCapability.createMany({ data: organizationIds.map((organizationId) => ({
       organizationId, key: "SHOP" as const, status: "ACTIVE" as const, enabledAt: new Date(),
     })) });
@@ -78,12 +82,54 @@ test("Retail R2 fulfillment settings, quote, handover history, and owner trackin
     const wrongSlugContext = { ...context, organizationSlug: foreignSlug };
     const wrongOrganizationContext = { ...context, organizationId: foreignOrganization.id };
 
+    const callbackMaterial = `synthetic-callback-${suffix}`;
+    const callbackDigest = createHash("sha256").update(`body-${suffix}`).digest("hex");
+    const callbackInput = { organizationId: organization.id, providerIntegrationId: integration.id,
+      deduplicationMaterial: callbackMaterial, payloadDigest: callbackDigest, eventKind: "PAYMENT_CALLBACK", disposition: "ACCEPTED" };
+    const callbackResults = await Promise.all([
+      db.$transaction(tx => eventLedger.recordProviderEvent(tx, callbackInput)),
+      db.$transaction(tx => eventLedger.recordProviderEvent(tx, callbackInput)),
+    ]);
+    assert.deepEqual(callbackResults.map(result => result.kind).sort(), ["RECORDED", "REPLAY"]);
+    const callbackKeyHash = createHash("sha256").update(callbackMaterial).digest("hex");
+    assert.equal(await db.paymentProviderEvent.count({ where: { organizationId: organization.id, providerIntegrationId: integration.id, deduplicationKeyHash: callbackKeyHash } }), 1,
+      "concurrent callback delivery creates one durable tenant-scoped event");
+    const conflictResult = await db.$transaction(tx => eventLedger.recordProviderEvent(tx, { ...callbackInput, payloadDigest: "f".repeat(64) }));
+    assert.deepEqual(conflictResult, { kind: "CONFLICT" }, "reused event identity with different content is rejected");
+    const foreignResult = await db.$transaction(tx => eventLedger.recordProviderEvent(tx, { ...callbackInput, organizationId: foreignOrganization.id, providerIntegrationId: foreignIntegration.id }));
+    assert.equal(foreignResult.kind, "RECORDED", "deduplication is isolated by tenant and provider integration");
+    const rolledBackMaterial = `synthetic-rollback-${suffix}`;
+    await assert.rejects(() => db.$transaction(async tx => {
+      await eventLedger.recordProviderEvent(tx, { ...callbackInput, deduplicationMaterial: rolledBackMaterial });
+      throw new Error("synthetic rollback");
+    }), /synthetic rollback/);
+    const rolledBackHash = createHash("sha256").update(rolledBackMaterial).digest("hex");
+    assert.equal(await db.paymentProviderEvent.count({ where: { organizationId: organization.id, deduplicationKeyHash: rolledBackHash } }), 0,
+      "provider event writes roll back with their enclosing payment transaction");
+
     await db.organizationSettings.create({ data: { organizationSlug: slug, enablePickup: true, enableDelivery: true, deliveryFee: 300,
       settings: { unrelatedConfiguration: { keep: true }, anotherFeature: "unchanged" } } });
     await paymentPolicyModule.saveRetailPaymentPolicy(slug, organization.id, admin.id, {
       bankTransferEnabled: false, cashEnabled: true, inotiUssdEnabled: false, snappPayInstallmentsEnabled: false, installmentMarkupPercent: "0", installmentPricingPolicyVersion: 0, bankCardNumber: null, bankAccountOwner: null,
       cashModes: ["COUNTER"], cashBeforeConfirmation: true,
       paymentDeadlinesMinutes: paymentPolicyModule.defaultRetailPaymentDeadlinesMinutes,
+    });
+    const initialMerchantPolicy = await paymentPolicyModule.getRetailPaymentPolicy(slug);
+    assert.equal(initialMerchantPolicy.installmentMarkupPercent, "0", "new non-Aka tenant starts without an installment uplift");
+    assert.equal((await paymentPolicyModule.getRetailPaymentPolicy(foreignSlug)).installmentMarkupPercent, "0",
+      "pricing policy reads remain isolated to their tenant");
+    const concurrentPricingUpdates = await Promise.allSettled([
+      paymentPolicyModule.saveRetailPaymentPolicy(slug, organization.id, admin.id, { ...initialMerchantPolicy, installmentMarkupPercent: "4.125" }),
+      paymentPolicyModule.saveRetailPaymentPolicy(slug, organization.id, manager.id, { ...initialMerchantPolicy, installmentMarkupPercent: "8.5" }),
+    ]);
+    assert.equal(concurrentPricingUpdates.filter(result => result.status === "fulfilled").length, 2,
+      "concurrent merchant pricing updates serialize and both complete");
+    const concurrentMerchantPolicy = await paymentPolicyModule.getRetailPaymentPolicy(slug);
+    assert.ok(["4.125", "8.5"].includes(concurrentMerchantPolicy.installmentMarkupPercent));
+    assert.ok(concurrentMerchantPolicy.installmentPricingPolicyVersion >= 2,
+      "concurrent policy changes retain a monotonic pricing version");
+    await paymentPolicyModule.saveRetailPaymentPolicy(slug, organization.id, admin.id, {
+      ...concurrentMerchantPolicy, installmentMarkupPercent: "0",
     });
 
     const initial = await settingsModule.getRetailFulfillmentSettings(context);
@@ -184,6 +230,32 @@ test("Retail R2 fulfillment settings, quote, handover history, and owner trackin
     assert.equal(placementQuote.quote.deliveryFee, 451);
     assert.equal(placementQuote.quote.fulfillmentInfo.pickupAddress, "12 Synthetic Lane");
     assert.equal(placementQuote.quote.fulfillmentInfo.fulfillmentInstructions, "Reviewed fulfillment instructions");
+    const cashMerchandiseAmount = placementQuote.quote.subtotal;
+    const withElevenPercent = await paymentPolicyModule.saveRetailPaymentPolicy(slug, organization.id, manager.id, {
+      ...await paymentPolicyModule.getRetailPaymentPolicy(slug), installmentMarkupPercent: "11",
+    });
+    const installmentQuote11 = await quoteModule.quoteInTransaction(db, organization, customer.id, {
+      ...quoteInput, paymentMethod: "SNAPPPAY_INSTALLMENT", cashMode: undefined,
+    });
+    assert.equal(installmentQuote11.quote.installmentPricing.markupPercent, "11");
+    assert.equal(installmentQuote11.quote.installmentPricing.originalMerchandiseAmount, cashMerchandiseAmount);
+    assert.equal(installmentQuote11.quote.installmentPricing.adjustedMerchandiseAmount, 1110);
+    assert.equal(installmentQuote11.quote.deliveryFee, 451, "installment markup does not apply to delivery");
+    assert.equal(installmentQuote11.quote.total, 1561);
+    const afterPolicyChange = await paymentPolicyModule.saveRetailPaymentPolicy(slug, organization.id, manager.id, {
+      ...withElevenPercent, installmentMarkupPercent: "12",
+    });
+    const installmentQuote12 = await quoteModule.quoteInTransaction(db, organization, customer.id, {
+      ...quoteInput, paymentMethod: "SNAPPPAY_INSTALLMENT", cashMode: undefined,
+    });
+    assert.equal(installmentQuote12.quote.installmentPricing.adjustedMerchandiseAmount, 1120);
+    assert.notEqual(installmentQuote12.quote.reviewToken, installmentQuote11.quote.reviewToken,
+      "a merchant pricing-policy change invalidates an earlier installment review token");
+    assert.equal(placementQuote.quote.subtotal, cashMerchandiseAmount,
+      "ordinary CASH merchandise remains unchanged by installment price policy updates");
+    await paymentPolicyModule.saveRetailPaymentPolicy(slug, organization.id, manager.id, {
+      ...afterPolicyChange, installmentMarkupPercent: "0",
+    });
     const placed = await checkoutModule.createRetailCheckout(customer.id, {
       ...quoteInput, idempotencyKey: randomUUID(), reviewToken: placementQuote.quote.reviewToken,
     });
@@ -196,6 +268,17 @@ test("Retail R2 fulfillment settings, quote, handover history, and owner trackin
       pickupAddress: "12 Synthetic Lane", pickupInstructions: "Use side entrance", deliveryRestrictions: "No oversized parcels",
       fulfillmentInstructions: "Reviewed fulfillment instructions", contact: "09120000000",
     }, "payment snapshot captures the exact fulfillment details reviewed during checkout");
+
+    const duplicateAttemptRequest = await db.paymentRequest.create({ data: {
+      organizationId: organization.id, providerIntegrationId: integration.id, amountToman: BigInt(1000), purpose: "synthetic-duplicate-attempt",
+    } });
+    const duplicateAttempts = await Promise.allSettled([0, 1].map(() => db.paymentProviderAttempt.create({ data: {
+      organizationId: organization.id, paymentRequestId: duplicateAttemptRequest.id, providerIntegrationId: integration.id,
+      provider: "SNAPPPAY", amountToman: BigInt(1000), idempotencyKey: `attempt-${suffix}`,
+    } })));
+    assert.equal(duplicateAttempts.filter(result => result.status === "fulfilled").length, 1,
+      "database tenant/idempotency uniqueness permits one concurrent provider attempt");
+    assert.equal(duplicateAttempts.filter(result => result.status === "rejected").length, 1);
     assert.ok(restored.version);
     const laterSettings = await settingsModule.updateRetailFulfillmentSettings(managerContext, {
       ...restored.settings, deliveryFee: 999, pickupAddress: "Later pickup address", pickupInstructions: "Later pickup instructions",

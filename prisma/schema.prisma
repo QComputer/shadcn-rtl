@@ -2923,10 +2923,10 @@ model RetailInstallmentQuoteSnapshot {
   paymentRequestId            String?  @unique
   policyVersion              Int
   appliedMarkupPercent       Decimal  @db.Decimal(8, 4)
-  originalMerchandiseAmount  Decimal  @db.Decimal(20, 4)
-  adjustedMerchandiseAmount  Decimal  @db.Decimal(20, 4)
-  deliveryAmount             Decimal  @db.Decimal(20, 4)
-  discountAmount             Decimal  @db.Decimal(20, 4)
+  originalMerchandiseAmount  Decimal  @db.Decimal(30, 12)
+  adjustedMerchandiseAmount  Decimal  @db.Decimal(30, 12)
+  deliveryAmount             Decimal  @db.Decimal(30, 12)
+  discountAmount             Decimal  @db.Decimal(30, 12)
   finalPayableAmountToman    BigInt
   currency                   String   @default("TOMAN")
   createdAt                  DateTime @default(now())
@@ -2949,10 +2949,10 @@ model RetailInstallmentQuoteSnapshotLine {
   productIdSnapshot     String
   variantIdSnapshot     String?
   quantity              Int
-  originalUnitAmount    Decimal @db.Decimal(20, 4)
-  adjustedUnitAmount    Decimal @db.Decimal(20, 4)
-  originalLineAmount    Decimal @db.Decimal(20, 4)
-  adjustedLineAmount    Decimal @db.Decimal(20, 4)
+  originalUnitAmount    Decimal @db.Decimal(30, 12)
+  adjustedUnitAmount    Decimal @db.Decimal(30, 12)
+  originalLineAmount    Decimal @db.Decimal(30, 12)
+  adjustedLineAmount    Decimal @db.Decimal(30, 12)
 
   snapshot RetailInstallmentQuoteSnapshot @relation(fields: [snapshotId, organizationSlug], references: [id, organizationSlug], onDelete: Cascade)
 

@@ -21,12 +21,23 @@ export function RetailPaymentSettings({ locale }: { locale: Locale }) {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  useEffect(() => {
+    let active = true;
+    void fetch(appPath("/api/dashboard/retail/payment-settings"), { credentials: "same-origin", cache: "no-store" })
+      .then(async response => {
+        const data = await response.json();
+        if (!response.ok) throw new Error("load");
+        if (active) setSettings({ ...defaults, ...data.settings, paymentDeadlinesMinutes: { ...defaults.paymentDeadlinesMinutes, ...data.settings?.paymentDeadlinesMinutes }, cashModes: Array.isArray(data.settings?.cashModes) ? data.settings.cashModes : [] });
+      })
+      .catch(() => { if (active) setError(t.error); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [t.error]);
   const load = useCallback(async () => {
     setLoading(true); setError(""); setNotice("");
     try { const response = await fetch(appPath("/api/dashboard/retail/payment-settings"), { credentials: "same-origin", cache: "no-store" }); const data = await response.json(); if (!response.ok) throw new Error("load"); setSettings({ ...defaults, ...data.settings, paymentDeadlinesMinutes: { ...defaults.paymentDeadlinesMinutes, ...data.settings?.paymentDeadlinesMinutes }, cashModes: Array.isArray(data.settings?.cashModes) ? data.settings.cashModes : [] }); }
     catch { setError(t.error); } finally { setLoading(false); }
   }, [t.error]);
-  useEffect(() => { void load(); }, [load]);
   function toggleMode(mode: CashMode) { setSettings(current => ({ ...current, cashModes: current.cashModes.includes(mode) ? current.cashModes.filter(item => item !== mode) : [...current.cashModes, mode] })); }
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setSaving(true); setError(""); setNotice("");

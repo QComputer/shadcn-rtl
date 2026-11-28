@@ -73,7 +73,7 @@ export async function saveRetailPaymentPolicy(organizationSlug: string, organiza
   if (policy.inotiUssdEnabled && !await getRetailInotiReadiness(organizationId)) {
     throw new ApiError(409, "A verified tenant iNoti integration and payment rollout are required before enabling USSD.");
   }
-  return prisma.$transaction(async (tx) => {
+  const persist = () => prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "Organization" WHERE "id" = ${organizationId} AND "slug" = ${organizationSlug} FOR UPDATE`;
     const previousPricing = await tx.retailInstallmentPricingPolicy.findUnique({ where: { organizationId }, select: { id: true, markupPercent: true, version: true } });
     const previousMarkup = previousPricing?.markupPercent ?? new Prisma.Decimal(0);
@@ -111,6 +111,15 @@ export async function saveRetailPaymentPolicy(organizationSlug: string, organiza
     } });
     return savedPolicy;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try { return await persist(); }
+    catch (error) {
+      const retryableSerializationConflict = error instanceof Prisma.PrismaClientKnownRequestError &&
+        (error.code === "P2034" || (error.code === "P2010" && ["40001", "40P01"].includes(String(error.meta?.code))));
+      if (!retryableSerializationConflict || attempt === 2) throw error;
+    }
+  }
+  throw new ApiError(409, "Merchant pricing policy is busy. Please retry.");
 }
 
 export async function requireEnabledRetailPaymentMethod(organizationSlug: string, organizationId: string, method: "BANK_TRANSFER" | "CASH" | "INOTI_USSD" | "SNAPPPAY_INSTALLMENT") {

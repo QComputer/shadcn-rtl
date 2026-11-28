@@ -29,6 +29,9 @@ INSERT INTO "RetailInstallmentPricingPolicy" ("id", "organizationId", "markupPer
 SELECT 'installment_policy_' || md5("id"), "id", 11.0000, 1, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 FROM "Organization"
 WHERE "slug" = 'aka-shoes'
+  AND "type" = 'SHOP'
+  AND "isPlatformOwner" = false
+  AND "deletedAt" IS NULL
 ON CONFLICT ("organizationId") DO NOTHING;
 
 -- Tenant-safe composite order identity for the immutable installment quote.
@@ -42,10 +45,10 @@ CREATE TABLE "RetailInstallmentQuoteSnapshot" (
     "paymentRequestId" TEXT,
     "policyVersion" INTEGER NOT NULL,
     "appliedMarkupPercent" DECIMAL(8,4) NOT NULL,
-    "originalMerchandiseAmount" DECIMAL(20,4) NOT NULL,
-    "adjustedMerchandiseAmount" DECIMAL(20,4) NOT NULL,
-    "deliveryAmount" DECIMAL(20,4) NOT NULL,
-    "discountAmount" DECIMAL(20,4) NOT NULL,
+    "originalMerchandiseAmount" DECIMAL(30,12) NOT NULL,
+    "adjustedMerchandiseAmount" DECIMAL(30,12) NOT NULL,
+    "deliveryAmount" DECIMAL(30,12) NOT NULL,
+    "discountAmount" DECIMAL(30,12) NOT NULL,
     "finalPayableAmountToman" BIGINT NOT NULL,
     "currency" TEXT NOT NULL DEFAULT 'TOMAN',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -53,7 +56,13 @@ CREATE TABLE "RetailInstallmentQuoteSnapshot" (
     CONSTRAINT "RetailInstallmentQuoteSnapshot_policyVersion_check" CHECK ("policyVersion" >= 0),
     CONSTRAINT "RetailInstallmentQuoteSnapshot_markupPercent_check" CHECK ("appliedMarkupPercent" >= 0 AND "appliedMarkupPercent" <= 1000),
     CONSTRAINT "RetailInstallmentQuoteSnapshot_finalAmount_check" CHECK ("finalPayableAmountToman" > 0),
-    CONSTRAINT "RetailInstallmentQuoteSnapshot_currency_check" CHECK ("currency" = 'TOMAN')
+    CONSTRAINT "RetailInstallmentQuoteSnapshot_currency_check" CHECK ("currency" = 'TOMAN'),
+    CONSTRAINT "RetailInstallmentQuoteSnapshot_amounts_check" CHECK (
+      "originalMerchandiseAmount" >= 0 AND "adjustedMerchandiseAmount" >= 0 AND
+      "deliveryAmount" >= 0 AND "discountAmount" >= 0 AND
+      "discountAmount" <= "adjustedMerchandiseAmount" AND
+      "finalPayableAmountToman"::numeric = "adjustedMerchandiseAmount" + "deliveryAmount" - "discountAmount"
+    )
 );
 
 CREATE UNIQUE INDEX "RetailInstallmentQuoteSnapshot_orderId_key" ON "RetailInstallmentQuoteSnapshot"("orderId");
@@ -81,17 +90,58 @@ CREATE TABLE "RetailInstallmentQuoteSnapshotLine" (
     "productIdSnapshot" TEXT NOT NULL,
     "variantIdSnapshot" TEXT,
     "quantity" INTEGER NOT NULL,
-    "originalUnitAmount" DECIMAL(20,4) NOT NULL,
-    "adjustedUnitAmount" DECIMAL(20,4) NOT NULL,
-    "originalLineAmount" DECIMAL(20,4) NOT NULL,
-    "adjustedLineAmount" DECIMAL(20,4) NOT NULL,
+    "originalUnitAmount" DECIMAL(30,12) NOT NULL,
+    "adjustedUnitAmount" DECIMAL(30,12) NOT NULL,
+    "originalLineAmount" DECIMAL(30,12) NOT NULL,
+    "adjustedLineAmount" DECIMAL(30,12) NOT NULL,
     CONSTRAINT "RetailInstallmentQuoteSnapshotLine_pkey" PRIMARY KEY ("id"),
     CONSTRAINT "RetailInstallmentQuoteSnapshotLine_quantity_check" CHECK ("quantity" > 0),
     CONSTRAINT "RetailInstallmentQuoteSnapshotLine_amounts_check" CHECK (
       "originalUnitAmount" >= 0 AND "adjustedUnitAmount" >= 0 AND
-      "originalLineAmount" >= 0 AND "adjustedLineAmount" >= 0
+      "originalLineAmount" >= 0 AND "adjustedLineAmount" >= 0 AND
+      "originalLineAmount" = "originalUnitAmount" * "quantity" AND
+      "adjustedLineAmount" = "adjustedUnitAmount" * "quantity"
     )
 );
+
+CREATE FUNCTION "validate_installment_snapshot_line"() RETURNS trigger AS $$
+DECLARE
+  policy_percent DECIMAL(8,4);
+BEGIN
+  SELECT "appliedMarkupPercent" INTO policy_percent
+    FROM "RetailInstallmentQuoteSnapshot"
+    WHERE "id" = NEW."snapshotId" AND "organizationSlug" = NEW."organizationSlug";
+  IF NOT FOUND OR NEW."adjustedUnitAmount" <> NEW."originalUnitAmount" * (100 + policy_percent) / 100 THEN
+    RAISE EXCEPTION 'Installment line prices must match the immutable merchant pricing policy';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER "RetailInstallmentQuoteSnapshotLine_validate_insert"
+    BEFORE INSERT ON "RetailInstallmentQuoteSnapshotLine"
+    FOR EACH ROW EXECUTE FUNCTION "validate_installment_snapshot_line"();
+
+CREATE FUNCTION "verify_installment_snapshot_totals"() RETURNS trigger AS $$
+DECLARE
+  original_total DECIMAL(30,12);
+  adjusted_total DECIMAL(30,12);
+BEGIN
+  SELECT COALESCE(SUM("originalLineAmount"), 0), COALESCE(SUM("adjustedLineAmount"), 0)
+    INTO original_total, adjusted_total
+    FROM "RetailInstallmentQuoteSnapshotLine"
+    WHERE "snapshotId" = NEW."id" AND "organizationSlug" = NEW."organizationSlug";
+  IF original_total <> NEW."originalMerchandiseAmount" OR adjusted_total <> NEW."adjustedMerchandiseAmount" THEN
+    RAISE EXCEPTION 'Installment quote merchandise totals must match immutable lines';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE CONSTRAINT TRIGGER "RetailInstallmentQuoteSnapshot_totals_check"
+    AFTER INSERT ON "RetailInstallmentQuoteSnapshot"
+    DEFERRABLE INITIALLY DEFERRED
+    FOR EACH ROW EXECUTE FUNCTION "verify_installment_snapshot_totals"();
 
 CREATE INDEX "RetailInstallmentQuoteSnapshotLine_organizationSlug_snapshotId_idx"
     ON "RetailInstallmentQuoteSnapshotLine"("organizationSlug", "snapshotId");
@@ -185,3 +235,17 @@ ALTER TABLE "PaymentProviderEvent"
 CREATE TRIGGER "PaymentProviderEvent_immutable_update"
     BEFORE UPDATE ON "PaymentProviderEvent"
     FOR EACH ROW EXECUTE FUNCTION "reject_immutable_payment_evidence_update"();
+
+CREATE FUNCTION "reject_bound_payment_request_amount_change"() RETURNS trigger AS $$
+BEGIN
+  IF (NEW."amountToman", NEW."currency") IS DISTINCT FROM (OLD."amountToman", OLD."currency")
+     AND EXISTS (SELECT 1 FROM "RetailInstallmentQuoteSnapshot" WHERE "paymentRequestId" = OLD."id" AND "organizationId" = OLD."organizationId") THEN
+    RAISE EXCEPTION 'A PaymentRequest bound to an installment quote cannot change amount or currency';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER "PaymentRequest_bound_installment_amount_immutable"
+    BEFORE UPDATE ON "PaymentRequest"
+    FOR EACH ROW EXECUTE FUNCTION "reject_bound_payment_request_amount_change"();

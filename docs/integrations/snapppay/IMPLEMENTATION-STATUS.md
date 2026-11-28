@@ -23,10 +23,19 @@ This status accompanies the SnappPay protocol handoff registered separately by P
 4. Review and implement the callback, verification, reconciliation, credential-vault resolution, and operational runbooks against the validated contract.
 5. Obtain separate owner authorization before changing any rollout setting, credential, Production database, or live integration state.
 
+## Independent acceptance update — 2026-11-29
+
+- The complete historical migration chain through PR #197, PR #201, and `20261128150000_snapppay_payment_lifecycle` applied to disposable PostgreSQL 16. The run preserved an existing PaymentRequest and bank-transfer setting, initialized only the active non-platform `SHOP` tenant with the exact `aka-shoes` slug, preserved a manager-edited policy during repeated initialization, and confirmed no quote/event backfill.
+- Database acceptance confirmed immutable quote/event updates are rejected, line arithmetic follows the captured percentage, header totals match line sums, the PaymentRequest binding is tenant-scoped and exact, a linked amount/currency cannot change, and provider-event identity is unique per tenant and integration.
+- The existing Retail R2 checkout/fulfillment integration suite passed on disposable PostgreSQL 16 with the repository's explicit PostgreSQL runtime adapter. It also exercises concurrent merchant pricing updates (both serialize successfully with monotonically increasing versions), 11% quote math and stale-token rejection, concurrent provider-event replay, cross-tenant event isolation, transactional rollback, and unique provider-attempt idempotency. The first run using the default Neon runtime correctly refused the local socket; the acceptance run selected PostgreSQL explicitly and used no hosted database.
+- TypeScript, Prisma schema validation, and focused ESLint passed after the local acceptance changes. Hosted CI evidence from the previously accepted PR #202 head does not cover these follow-up edits; the updated PR head must receive its own hosted checks.
+- Searchwise is outside the active roadmap by owner direction effective 2026-11-29. No Searchwise implementation or branch was started. Preserve PR #200 unchanged; resume Searchwise research or work only after explicit owner authorization.
+
 ## Current follow-up boundary
 
 - PR #200 tag search/docs and PR #201 pricing/tenant integration foundation remain separate and unchanged by this lifecycle follow-up.
 - The lifecycle PR is based on PR #201. Agent 1 confirmed there is no PR199 migration overlap and no ordering conflict with `20261128150000_snapppay_payment_lifecycle`.
 - Durable local callback replay protection is implemented through the digest-only event ledger. Provider transaction identity persistence and authoritative state changes remain pending official Self API details.
+- Next action: refresh the updated PR #202 head's required hosted checks and complete financial, security, lifecycle, and checkout acceptance. Searchwise remains suspended pending explicit owner authorization.
 
 No SnappPay purchase is exposed or activated by this change. Bank transfer, cash, guest checkout, customer identity, and existing payment records retain their current behavior.

@@ -285,19 +285,29 @@ async function verifySameOriginPathCustomerAccess({ browser, first, second, orig
         await page.locator("#username").fill(username);
         await page.locator("#password").fill(password);
         await page.locator('button[type="submit"]').click();
-      } else {
-        await page.goto(new URL(profilePath, origin).toString(), { waitUntil: "domcontentloaded" });
+        await page.getByText("نام کاربری یا رمز عبور اشتباه است", { exact: true }).waitFor({ state: "visible" });
+        assert.equal(new URL(page.url()).pathname, "/fa/login", "platform-origin password login cannot create a customer session without a verified tenant domain");
+        const rejectedSession = await page.evaluate(async () => {
+          const response = await fetch("/api/users/me", { credentials: "same-origin", cache: "no-store" });
+          return { status: response.status, body: await response.json().catch(() => ({})) };
+        });
+        assert.equal(rejectedSession.status, 401, "the rejected path-only login leaves no authenticated customer session");
+        for (const key of ["id", "name", "email", "firstName", "lastName"]) assert.equal(Object.hasOwn(rejectedSession.body, key), false);
+        checks.push({ slug: tenant.slug, customerLoginBoundary: "PLATFORM_ORIGIN_DENIED", privateProfile: "UNAUTHENTICATED" });
       }
-      await page.waitForURL((url) => url.origin === origin && url.pathname === profilePath, { waitUntil: "domcontentloaded" });
+      await page.goto(new URL(profilePath, origin).toString(), { waitUntil: "domcontentloaded" });
+      const currentUrl = new URL(page.url());
+      assert.equal(currentUrl.origin, origin, "path tenant navigation stays on the same origin");
+      assert.equal(currentUrl.pathname, profilePath, "the tenant profile resolves at the requested path");
       await page.getByRole("heading", { name: tenant.name, exact: true }).waitFor();
+      const profileBody = await page.locator("body").innerText();
+      assert.ok(!profileBody.includes(username) && !profileBody.includes(email), "public path tenant profile does not expose the synthetic customer's private identity");
       const ownProfile = await page.evaluate(async () => {
         const response = await fetch("/api/users/me", { credentials: "same-origin", cache: "no-store" });
         return { status: response.status, body: await response.json().catch(() => ({})) };
       });
-      assert.equal(ownProfile.status, 200, "the same-origin customer session remains authenticated");
-      assert.equal(ownProfile.body.id, user.id);
-      assert.equal(ownProfile.body.name, username);
-      assert.equal(ownProfile.body.email, email);
+      assert.equal(ownProfile.status, 401, "path-only tenant profile remains private without verified-domain customer authentication");
+      for (const key of ["id", "name", "email", "firstName", "lastName"]) assert.equal(Object.hasOwn(ownProfile.body, key), false);
       const publicOrganization = await page.evaluate(async (slug) => {
         const response = await fetch(`/api/public/organizations/${encodeURIComponent(slug)}`, { cache: "no-store" });
         return { status: response.status, body: await response.json().catch(() => ({})) };
@@ -306,28 +316,22 @@ async function verifySameOriginPathCustomerAccess({ browser, first, second, orig
       const organization = publicOrganization.body.organization || publicOrganization.body;
       assert.equal(organization.slug, tenant.slug);
       assert.equal(organization.name, tenant.name);
-      checks.push({ slug: tenant.slug, profilePath, renderedOrganization: tenant.name, authenticatedUserId: ownProfile.body.id, customerDtoSafe: !Object.hasOwn(ownProfile.body, "password") });
+      checks.push({ slug: tenant.slug, profilePath, renderedOrganization: tenant.name, privateProfile: "DENIED", noCustomerDataLeak: true });
       if (tenant === first) {
         const checkoutPath = `/fa/${tenant.slug}/shop/checkout`;
         await page.goto(new URL(checkoutPath, origin).toString(), { waitUntil: "domcontentloaded" });
         await page.locator("[data-empty-cart]").waitFor({ state: "visible" });
         const checkoutBody = await page.locator("body").innerText();
         assert.doesNotMatch(checkoutBody, /برای ثبت نهایی سفارش در این نسخه وارد حساب شوید/,
-          "authenticated Shop checkout remains available without a mandatory login gate");
+          "guest Shop checkout remains available without a mandatory login gate");
         assert.equal(await page.getByRole("button", { name: "ثبت سفارش", exact: true }).count(), 0,
-          "an empty signed-in cart cannot submit an order");
-        const checkoutSession = await page.evaluate(async () => {
-          const response = await fetch("/api/users/me", { credentials: "same-origin", cache: "no-store" });
-          return { status: response.status, body: await response.json().catch(() => ({})) };
-        });
-        assert.equal(checkoutSession.status, 200, "the signed-in customer session is preserved through checkout");
-        assert.equal(checkoutSession.body.id, user.id);
-        checks.push({ slug: tenant.slug, checkoutPath, authenticatedCheckout: "PASSED", noOrderSubmission: true });
+          "an empty guest cart cannot submit an order");
+        checks.push({ slug: tenant.slug, checkoutPath, guestCheckout: "PASSED", noOrderSubmission: true });
       }
     }
     const cookieMetadata = (await context.cookies(origin)).map(({ name, domain, path, httpOnly, secure, sameSite }) => ({ name, domain, path, httpOnly, secure, sameSite }));
-    assert.ok(cookieMetadata.some(({ name }) => /(?:auth|session)/i.test(name)), "the same-origin profile carries an authentication cookie");
-    return { status: "PASSED", origin, sharedOriginCookieStorage: true, cookieMetadata, checks, note: "Same-origin tenants share browser cookies by design; tenant data resolution was verified against each persisted path organization." };
+    assert.ok(!cookieMetadata.some(({ name }) => /session-token$/i.test(name)), "a rejected path-only customer login leaves no authentication cookie");
+    return { status: "PASSED", origin, sharedOriginCookieStorage: true, cookieMetadata, checks, note: "Path-based tenant pages remain public, customer identity stays private, and platform-origin password login fails closed without a verified tenant domain." };
   } finally {
     await context.close();
     await prisma.user.deleteMany({ where: { id: user.id, name: username, email } });

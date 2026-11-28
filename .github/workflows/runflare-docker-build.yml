@@ -59,6 +59,7 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - uses: docker/setup-buildx-action@v3
       - name: Install the locked test harness
         run: pnpm install --frozen-lockfile
       - name: Validate and migrate the disposable PostgreSQL database
@@ -70,6 +71,7 @@ jobs:
       - name: Build the deterministic container without publishing
         run: >-
           docker buildx build --load --tag bazarbaaz-runflare-ci:${GITHUB_SHA}
+          --cache-from type=gha --cache-to type=gha,mode=max
           --build-arg DATABASE_URL --build-arg DIRECT_URL
           --build-arg NEXT_TELEMETRY_DISABLED
           --secret id=nextauth_secret,env=NEXTAUTH_SECRET

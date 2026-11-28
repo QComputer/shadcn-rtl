@@ -32,6 +32,13 @@ const LATER_MIGRATIONS = [
   "20261121130000_hotel_guest_request_preferred_category",
   "20261121140000_hotel_draft_accommodation_promotion",
   "20261122110000_hotel_room_maintenance_blocks",
+  "20261126170000_hotel_guest_profiles",
+  "20261126180000_hotel_reception_waitlist",
+  "20261127130000_hotel_guest_reservation_proof",
+  "20261127150000_hotel_reservation_ownership",
+  "20261128120000_hotel_guest_recovery",
+  "20261128130000_hotel_damoon_data_import",
+  "20261128140000_snapppay_installments",
 ] as const;
 
 function assertDisposableDatabase(): string {
@@ -57,7 +64,7 @@ function runPrismaMigrateDeploy(schemaPath: string): void {
   assert.equal(result.status, 0, "Prisma migrate deploy failed against the disposable rehearsal database");
 }
 
-async function makeTemporaryPreGapSchema(): Promise<{ directory: string; schemaPath: string; migrationNames: string[] }> {
+async function makeTemporaryPreGapSchema(): Promise<{ directory: string; schemaPath: string; migrationNames: string[]; testedMigrationNames: string[] }> {
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), "damoon-migration-gap-"));
   const sourcePrisma = path.join(REPO_ROOT, "prisma");
   const schemaPath = path.join(temporaryDirectory, "schema.prisma");
@@ -69,13 +76,16 @@ async function makeTemporaryPreGapSchema(): Promise<{ directory: string; schemaP
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort();
-  assert.deepEqual(migrationNames.slice(-(PENDING_MIGRATIONS.length + LATER_MIGRATIONS.length)), [...PENDING_MIGRATIONS, ...LATER_MIGRATIONS]);
+  const presentLaterMigrations = LATER_MIGRATIONS.filter((name) => migrationNames.includes(name));
+  const testedMigrationNames = [...PENDING_MIGRATIONS, ...presentLaterMigrations];
+  assert.deepEqual(migrationNames.slice(-testedMigrationNames.length), testedMigrationNames,
+    "The tested checkpoint and currently available later migrations must remain in chronological order");
 
-  for (const name of [...PENDING_MIGRATIONS, ...LATER_MIGRATIONS]) {
+  for (const name of testedMigrationNames) {
     assert.ok(migrationNames.includes(name), `Expected pending migration ${name} is missing from source`);
     await rm(path.join(migrationsPath, name), { recursive: true, force: true });
   }
-  return { directory: temporaryDirectory, schemaPath, migrationNames };
+  return { directory: temporaryDirectory, schemaPath, migrationNames, testedMigrationNames };
 }
 
 async function seedExistingPropertyRows(db: PrismaClient): Promise<void> {
@@ -199,7 +209,7 @@ async function main(): Promise<void> {
     const beforeGapCount = await db.$queryRawUnsafe<Array<{ count: number }>>(
       `SELECT count(DISTINCT migration_name)::int AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL`,
     );
-    assert.equal(beforeGapCount[0]?.count, temporary.migrationNames.length - PENDING_MIGRATIONS.length - LATER_MIGRATIONS.length);
+    assert.equal(beforeGapCount[0]?.count, temporary.migrationNames.length - temporary.testedMigrationNames.length);
     await seedExistingPropertyRows(db);
     await db.$disconnect();
     db = undefined;
@@ -212,7 +222,7 @@ async function main(): Promise<void> {
       `SELECT migration_name, finished_at IS NOT NULL AS finished, rolled_back_at IS NOT NULL AS "rolledBack" FROM "_prisma_migrations"`,
     );
     const completed = new Set(finalMigrations.filter((row) => row.finished && !row.rolledBack).map((row) => row.migration_name));
-    for (const name of PENDING_MIGRATIONS) assert.ok(completed.has(name), `${name} was not recorded as completed`);
+    for (const name of temporary.testedMigrationNames) assert.ok(completed.has(name), `${name} was not recorded as completed`);
     assert.equal(completed.size, temporary.migrationNames.length, "Every source migration must be completed exactly once in the fresh rehearsal ledger");
 
     const targetAfterMigrations = await db.hotelProperty.findUniqueOrThrow({ where: { id: TARGET_PROPERTY_ID } });

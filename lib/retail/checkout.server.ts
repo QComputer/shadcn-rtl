@@ -12,6 +12,7 @@ import { type CheckoutInput } from "@/lib/retail/checkout.contract";
 import { checkoutCartOwner, checkoutCustomerId, checkoutOrderOwner, guestOrderScope, requireGuestCheckout, type RetailCheckoutOwner } from "@/lib/retail/checkout-owner.server";
 
 import { assertGuestCheckoutBudget } from "@/lib/retail/guest-checkout-budget.server";
+import { isWholeTomanAmount, retailProductPriceForPaymentMethod } from "@/lib/retail/snappay-installment-pricing";
 
 const money = (value: Prisma.Decimal | number | string) => new Prisma.Decimal(value);
 const code = (value: string) => value.trim().toUpperCase();
@@ -89,7 +90,8 @@ export async function createRetailCheckout(owner: RetailCheckoutOwner, input: Ch
     if (!activePolicy.success || (input.paymentMethod === "BANK_TRANSFER" && !activePolicy.data.bankTransferEnabled) ||
         (input.paymentMethod === "CASH" && (!activePolicy.data.cashEnabled ||
           (input.cashMode && !activePolicy.data.cashModes.includes(input.cashMode)))) ||
-        (input.paymentMethod === "INOTI_USSD" && !activePolicy.data.inotiUssdEnabled)) {
+        (input.paymentMethod === "INOTI_USSD" && !activePolicy.data.inotiUssdEnabled) ||
+        (input.paymentMethod === "SNAPPPAY_INSTALLMENT" && !activePolicy.data.snappPayInstallmentsEnabled)) {
       throw new ApiError(409, "Selected payment method is no longer available.");
     }
     const cart = await tx.shopCart.findFirst({
@@ -137,7 +139,8 @@ export async function createRetailCheckout(owner: RetailCheckoutOwner, input: Ch
         select: { id: true },
       });
       if (!category) throw new ApiError(409, "Cart contains an unavailable category.");
-      const price = discountedUnitPrice(product, variant.price);
+      const ordinaryPrice = discountedUnitPrice(product, variant.price);
+      const price = retailProductPriceForPaymentMethod(ordinaryPrice, input.paymentMethod);
       subtotal = subtotal.add(price.mul(line.quantity));
       items.push({ variantId: variant.id, productId: product.id, quantity: line.quantity,
         price, trackInventory: product.trackInventory, allowBackOrder: variant.allowBackOrder,
@@ -167,6 +170,9 @@ export async function createRetailCheckout(owner: RetailCheckoutOwner, input: Ch
     const total = Prisma.Decimal.max(0, subtotal.add(deliveryFee).sub(discount));
     if (input.paymentMethod === "INOTI_USSD" && (total.lte(0) || !total.isInteger())) {
       throw new ApiError(409, "USSD requires a positive whole-Toman order amount.");
+    }
+    if (input.paymentMethod === "SNAPPPAY_INSTALLMENT" && !isWholeTomanAmount(total)) {
+      throw new ApiError(409, "Installment payment requires a positive whole-Toman total.");
     }
     const createdAt = new Date();
     const deadlineMinutes = input.paymentMethod === "BANK_TRANSFER"

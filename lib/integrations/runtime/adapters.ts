@@ -117,6 +117,24 @@ export class DryRunIntegrationAdapter implements IntegrationAdapter {
   }
 }
 
+/** SnappPay remains blocked until the merchant Self API contract and Stage flow are validated. */
+export class SnappPayBlockedAdapter extends DryRunIntegrationAdapter {
+  constructor() {
+    super("SNAPPPAY", ["SHOP"]);
+  }
+
+  async checkHealth(context: IntegrationRuntimeContext): Promise<IntegrationHealthResult> {
+    return {
+      status: "BLOCKED",
+      connected: false,
+      checkedAt: new Date(),
+      errorCode: "SNAPPPAY_PROVIDER_READINESS_REQUIRED",
+      errorMessage: "SnappPay Self API and Stage acceptance are required before connection checks can run.",
+      metadata: { provider: context.provider, realPaymentExecution: false },
+    };
+  }
+}
+
 export class InotiUssdAdapter extends DryRunIntegrationAdapter {
   constructor() {
     super("INOTI_USSD", ["USSD"], ["HEALTH_CHECK", "BUSINESS_EVENT_RECORD", "USSD_SESSION_START", "USSD_PAYMENT_INITIATE", "USSD_PAYMENT_VERIFY"]);

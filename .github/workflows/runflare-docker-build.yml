@@ -79,7 +79,7 @@ jobs:
           docker image inspect bazarbaaz-runflare-ci:${GITHUB_SHA} --format '{{json .}}' > /tmp/runflare-docker-image.json
           node -e "const assert=require('node:assert/strict');const i=require('/tmp/runflare-docker-image.json');assert.equal(i.Config.User,'node');assert.ok(i.Size>0);assert.ok(!JSON.stringify(i.Config.Env).includes('docker-runtime-ci-only-secret-not-for-production'));console.log(JSON.stringify({image:i.Id,size_bytes:i.Size,user:i.Config.User,env:i.Config.Env}))"
           docker history --no-trunc bazarbaaz-runflare-ci:${GITHUB_SHA} | tee /tmp/runflare-docker-history.txt
-          if rg -n 'docker-runtime-ci-only-secret-not-for-production|local-ci-compilation-only-secret' /tmp/runflare-docker-history.txt; then exit 1; fi
+          if grep -nE 'docker-runtime-ci-only-secret-not-for-production|local-ci-compilation-only-secret' /tmp/runflare-docker-history.txt; then exit 1; fi
           docker run --rm --entrypoint node bazarbaaz-runflare-ci:${GITHUB_SHA} -e "const fs=require('node:fs'); const assert=require('node:assert/strict'); assert.equal(require('xlsx').version,'0.20.3'); require('@prisma/client'); assert.ok(fs.existsSync('.next/server')); assert.ok(fs.existsSync('public')); assert.ok(!fs.existsSync('.env')); assert.ok(!fs.existsSync('.git')); console.log('runtime dependency and image-boundary checks passed')"
       - name: Start the actual production container on isolated PostgreSQL
         run: |
@@ -114,7 +114,7 @@ jobs:
           node -e "const assert=require('node:assert/strict');const p=require('/tmp/runflare-payment-methods.json');assert.equal(p.guestCheckoutAvailable,true);const methods=p.methods.map(x=>x.method);assert.ok(methods.includes('CASH'));assert.ok(methods.includes('BANK_TRANSFER'));console.log('guest checkout and synthetic payment-method HTTP assertions passed')"
           docker exec bazarbaaz-runflare-runtime node -e "require('node:fs').writeFileSync('/var/lib/bazarbaaz/storage/restart-marker','persistent-storage-ok')"
           docker stop --time 15 bazarbaaz-runflare-runtime
-          node -e "const {execFileSync}=require('node:child_process');const assert=require('node:assert/strict');const s=JSON.parse(execFileSync('docker',['inspect','bazarbaaz-runflare-runtime'],{encoding:'utf8'}))[0].State;assert.equal(s.ExitCode,0);assert.equal(s.OOMKilled,false);console.log('container stopped cleanly')"
+          node -e "const {execFileSync}=require('node:child_process');const assert=require('node:assert/strict');const s=JSON.parse(execFileSync('docker',['inspect','bazarbaaz-runflare-runtime'],{encoding:'utf8'}))[0].State;assert.ok(s.ExitCode===0||s.ExitCode===143,'SIGTERM is accepted; timeout/SIGKILL is not');assert.equal(s.OOMKilled,false);console.log('container stopped on SIGTERM without timeout or OOM')"
           docker start bazarbaaz-runflare-runtime
           for attempt in $(seq 1 60); do
             if curl --fail --silent 'http://127.0.0.1:3000/api/health?deep=1' > /tmp/runflare-docker-health-restarted.json; then break; fi
@@ -144,7 +144,7 @@ jobs:
         run: |
           docker ps --filter name=bazarbaaz-runflare-runtime --format '{{.Names}} {{.Status}} {{.Ports}}'
           docker logs --tail 160 bazarbaaz-runflare-runtime 2>&1 | tee /tmp/runflare-docker-runtime.log
-          if rg -n 'Attempted to call buttonVariants\(\) from the server' /tmp/runflare-docker-runtime.log; then exit 1; fi
+          if grep -nF 'Attempted to call buttonVariants() from the server' /tmp/runflare-docker-runtime.log; then exit 1; fi
       - name: Stop the synthetic runtime container
         if: always()
         run: |

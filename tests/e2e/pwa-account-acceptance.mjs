@@ -111,11 +111,13 @@ export async function verifyRetailAccount({ browser, prisma, origin, slug, artif
       for (const key of privateIdentityKeys) assert.equal(Object.hasOwn(anonymousProfile.body, key), false, `anonymous profile response must not expose ${key}`);
 
       await page.goto(checkoutUrl, { waitUntil: "domcontentloaded" });
-      await page.getByRole("link", { name: "ورود به حساب کاربری", exact: true }).waitFor();
+      await page.getByRole("heading", { name: "سبد خریدتان هنوز خالی است", exact: true }).waitFor();
       const anonymousCheckoutText = await page.locator("body").innerText();
       assert.doesNotMatch(anonymousCheckoutText, new RegExp(escapeRegExp(username), "i"));
       assert.doesNotMatch(anonymousCheckoutText, new RegExp(escapeRegExp(email), "i"));
-      checks.push(`${viewport.name}: anonymous cart/checkout shows the sign-in gate and no private customer data`);
+      assert.doesNotMatch(anonymousCheckoutText, /برای ثبت نهایی سفارش در این نسخه وارد حساب شوید/,
+        "guest checkout must not require an account for order placement");
+      checks.push(`${viewport.name}: anonymous checkout remains available without mandatory registration and exposes no private customer data`);
       screenshots.push(await capture(page, artifacts, `${run}-${viewport.name}-checkout-anonymous.png`));
 
       const callback = `${basePath}${checkoutPath}`;

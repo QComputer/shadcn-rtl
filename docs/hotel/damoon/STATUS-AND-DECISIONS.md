@@ -134,3 +134,8 @@
 ## بازطراحی ۲۰۲۶-۱۰-۲۹
 
 ظاهر v45 توسط صاحب پروژه رد و D1 بصری بازگشایی شد. بازسازی PR #41 روی RunFlare v46، image613731 فعال است؛ ۱۸۱ بررسی محلی و ۲۰۱ بررسی عمومی موفق‌اند. گزارش `DELIVERY-2026-10-29.md` مرجع جدید این انتشار است. تأیید بصری صاحب پروژه از تست عملکرد استنباط نمی‌شود.
+
+
+### DAMOON-REAL-DATA-01 — local candidate
+
+Management source is authoritative for proposed physical-code reconciliation; historical draft IDs are hypothetical. The guarded staging importer preserves exact IRR and unresolved values, uses tenant-scoped serializable transactions and exact replay, and leaves new units and supersession as proposals. Two tariff entries cannot be represented exactly as integer TOMAN and remain inactive along with all other proposed rates. Local disposable PostgreSQL checks do not establish production state, physical-code verification or VTour-link absence. See real-data/HANDOFF.md for the next action and release restrictions.

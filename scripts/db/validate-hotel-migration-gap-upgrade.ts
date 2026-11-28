@@ -57,7 +57,7 @@ function runPrismaMigrateDeploy(schemaPath: string): void {
   assert.equal(result.status, 0, "Prisma migrate deploy failed against the disposable rehearsal database");
 }
 
-async function makeTemporaryPreGapSchema(): Promise<{ directory: string; schemaPath: string; migrationNames: string[] }> {
+async function makeTemporaryPreGapSchema(): Promise<{ directory: string; schemaPath: string; migrationNames: string[]; pendingNames: string[] }> {
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), "damoon-migration-gap-"));
   const sourcePrisma = path.join(REPO_ROOT, "prisma");
   const schemaPath = path.join(temporaryDirectory, "schema.prisma");
@@ -69,13 +69,16 @@ async function makeTemporaryPreGapSchema(): Promise<{ directory: string; schemaP
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort();
-  assert.deepEqual(migrationNames.slice(-(PENDING_MIGRATIONS.length + LATER_MIGRATIONS.length)), [...PENDING_MIGRATIONS, ...LATER_MIGRATIONS]);
+  const checkpoint = migrationNames.indexOf("20261114120000_hotel_guest_request_rate_limits");
+  assert.ok(checkpoint >= 0, "historical checkpoint must exist");
+  const pendingNames = migrationNames.slice(checkpoint + 1);
+  assert.deepEqual(pendingNames.slice(0, PENDING_MIGRATIONS.length + LATER_MIGRATIONS.length), [...PENDING_MIGRATIONS, ...LATER_MIGRATIONS]);
 
-  for (const name of [...PENDING_MIGRATIONS, ...LATER_MIGRATIONS]) {
+  for (const name of pendingNames) {
     assert.ok(migrationNames.includes(name), `Expected pending migration ${name} is missing from source`);
     await rm(path.join(migrationsPath, name), { recursive: true, force: true });
   }
-  return { directory: temporaryDirectory, schemaPath, migrationNames };
+  return { directory: temporaryDirectory, schemaPath, migrationNames, pendingNames };
 }
 
 async function seedExistingPropertyRows(db: PrismaClient): Promise<void> {
@@ -199,7 +202,7 @@ async function main(): Promise<void> {
     const beforeGapCount = await db.$queryRawUnsafe<Array<{ count: number }>>(
       `SELECT count(DISTINCT migration_name)::int AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL`,
     );
-    assert.equal(beforeGapCount[0]?.count, temporary.migrationNames.length - PENDING_MIGRATIONS.length - LATER_MIGRATIONS.length);
+    assert.equal(beforeGapCount[0]?.count, temporary.migrationNames.length - temporary.pendingNames.length);
     await seedExistingPropertyRows(db);
     await db.$disconnect();
     db = undefined;

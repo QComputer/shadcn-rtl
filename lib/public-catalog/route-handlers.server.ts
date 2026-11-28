@@ -34,7 +34,11 @@ export async function productsHandler(request: NextRequest, context: Organizatio
   const { organizationIdentifier } = await context.params;
   try {
     const params = request.nextUrl.searchParams;
-    const query = publicCatalogListQuerySchema.parse({ ...Object.fromEntries(params), ...(params.has("filter") ? { filter: params.getAll("filter") } : {}) });
+    const query = publicCatalogListQuerySchema.parse({
+      ...Object.fromEntries(params),
+      ...(params.has("filter") ? { filter: params.getAll("filter") } : {}),
+      ...(params.has("tag") ? { tag: params.getAll("tag") } : {}),
+    });
     let productIds: string[] | undefined;
     if (query.saved) {
       const session = await requireAuthSession();

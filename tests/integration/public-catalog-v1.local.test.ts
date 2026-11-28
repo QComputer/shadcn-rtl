@@ -6,6 +6,7 @@ import { productsHandler } from "@/lib/public-catalog/route-handlers.server";
 import {
   getPublicCatalogCategory,
   getPublicCatalogProduct,
+  getPublicCatalogFacets,
   getPublicCatalogSnapshot,
   listPublicCatalogCategories,
   listPublicCatalogProducts,
@@ -18,6 +19,8 @@ let categoryAId = "";
 let categoryBId = "";
 let productAId = "";
 let productBId = "";
+let draftProductId = "";
+let bulkProductId = "";
 
 describe("Public Catalog API v1 local integration", () => {
   before(async () => {
@@ -45,6 +48,12 @@ describe("Public Catalog API v1 local integration", () => {
     ]);
     productAId = productA.id;
     productBId = productB.id;
+    const [tagSharedA, tagWinter, tagDraft, tagSharedB] = await prisma.$transaction([
+      prisma.productTag.create({ data: { organizationId: orgA.id, name: "کفش روزمره", normalizedName: "کفش روزمره" } }),
+      prisma.productTag.create({ data: { organizationId: orgA.id, name: "زمستان", normalizedName: "زمستان" } }),
+      prisma.productTag.create({ data: { organizationId: orgA.id, name: "فقط پیش‌نویس", normalizedName: "فقط پیش‌نویس" } }),
+      prisma.productTag.create({ data: { organizationId: orgB.id, name: "کفش روزمره", normalizedName: "کفش روزمره" } }),
+    ]);
     await prisma.productVariant.createMany({ data: [
       { productId: productA.id, name: "In stock", price: 220000, inventory: 3 },
       { productId: productA.id, name: "Out", price: 230000, inventory: 0 },
@@ -62,7 +71,19 @@ describe("Public Catalog API v1 local integration", () => {
       })),
     });
     await prisma.productCategory.create({ data: { organizationId: orgA.id, organizationSlug: orgA.slug, name: "Hidden", slug: "hidden", isActive: false } });
-    await prisma.product.create({ data: { organizationId: orgA.id, organizationSlug: orgA.slug, categoryId: categoryA.id, name: "Hidden product", slug: "hidden-product", basePrice: 1, isActive: false } });
+    const [bulkOne, draftProduct] = await Promise.all([
+      prisma.product.findFirstOrThrow({ where: { organizationId: orgA.id, slug: "bulk-1" }, select: { id: true } }),
+      prisma.product.create({ data: { organizationId: orgA.id, organizationSlug: orgA.slug, categoryId: categoryA.id, name: "Hidden product", slug: "hidden-product", basePrice: 1, isActive: false } }),
+    ]);
+    bulkProductId = bulkOne.id;
+    draftProductId = draftProduct.id;
+    await prisma.productTagAssignment.createMany({ data: [
+      { organizationId: orgA.id, productId: productA.id, tagId: tagSharedA.id },
+      { organizationId: orgA.id, productId: bulkOne.id, tagId: tagSharedA.id },
+      { organizationId: orgA.id, productId: bulkOne.id, tagId: tagWinter.id },
+      { organizationId: orgA.id, productId: draftProduct.id, tagId: tagDraft.id },
+      { organizationId: orgB.id, productId: productB.id, tagId: tagSharedB.id },
+    ] });
   });
 
   after(async () => {
@@ -120,6 +141,36 @@ describe("Public Catalog API v1 local integration", () => {
     );
     assert.equal(response.status, 400);
     assert.equal(response.headers.get("cache-control"), "no-store");
+  });
+
+  it("filters repeated public tag facets with OR semantics, scoped counts, stable paging, and tenant isolation", async () => {
+    const facets = await getPublicCatalogFacets(slugs.a);
+    assert.equal(facets.tags.find(tag => tag.value === "کفش روزمره")?.count, 2);
+    assert.equal(facets.tags.find(tag => tag.value === "زمستان")?.count, 1);
+    assert.equal(facets.tags.some(tag => tag.value === "فقط پیش‌نویس"), false, "draft-only tags are not exposed");
+
+    const first = await listPublicCatalogProducts({ organizationIdentifier: slugs.a, page: 1, limit: 1, tag: ["کفش روزمره", "زمستان"], sort: "name-asc" });
+    const second = await listPublicCatalogProducts({ organizationIdentifier: slugs.a, page: 2, limit: 1, tag: ["کفش روزمره", "زمستان"], sort: "name-asc" });
+    assert.equal(first.pagination.total, 2);
+    assert.equal(second.pagination.total, 2);
+    assert.deepEqual(new Set([...first.products, ...second.products].map(product => product.id)), new Set([productAId, bulkProductId]));
+    assert.ok(![...first.products, ...second.products].some(product => product.id === productBId || product.id === draftProductId));
+
+    const params = new URLSearchParams();
+    params.append("tag", "کفش روزمره");
+    params.append("tag", "زمستان");
+    params.set("limit", "10");
+    const response = await productsHandler(
+      new NextRequest(`https://bazarbaaz.ir/api/public/v1/organizations/${slugs.a}/products?${params}`),
+      { params: Promise.resolve({ organizationIdentifier: slugs.a }) },
+    );
+    assert.equal(response.status, 200);
+    const payload = await response.json() as { data: { products: Array<{ id: string }>; pagination: { total: number } } };
+    assert.equal(payload.data.pagination.total, 2);
+    assert.equal(payload.data.products.some(product => product.id === productBId), false);
+
+    const unknown = await listPublicCatalogProducts({ organizationIdentifier: slugs.a, page: 1, limit: 10, tag: "missing-tag" });
+    assert.equal(unknown.pagination.total, 0);
   });
 
   it("keeps representative responses compact", async () => {

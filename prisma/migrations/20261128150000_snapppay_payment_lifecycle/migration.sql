@@ -23,6 +23,14 @@ ALTER TABLE "RetailInstallmentPricingPolicy"
     FOREIGN KEY ("organizationId") REFERENCES "Organization"("id")
     ON DELETE CASCADE ON UPDATE CASCADE;
 
+-- Apply the owner's initial merchant pricing decision to Aka Shoes only.
+-- Existing manager configuration is preserved by the tenant unique conflict.
+INSERT INTO "RetailInstallmentPricingPolicy" ("id", "organizationId", "markupPercent", "version", "updatedByUserId", "createdAt", "updatedAt")
+SELECT 'installment_policy_' || md5("id"), "id", 11.0000, 1, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM "Organization"
+WHERE "slug" = 'aka-shoes'
+ON CONFLICT ("organizationId") DO NOTHING;
+
 -- Tenant-safe composite order identity for the immutable installment quote.
 CREATE UNIQUE INDEX "Order_id_organizationSlug_key" ON "Order"("id", "organizationSlug");
 

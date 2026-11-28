@@ -42,7 +42,7 @@ try {
   run("pnpm", ["exec", "prisma", "migrate", "deploy", "--schema=prisma/schema.prisma"], env);
 
   const orgId = `snapppay_org_${randomUUID().replaceAll("-", "").slice(0, 12)}`;
-  const slug = `snapppay-synthetic-${randomUUID().slice(0, 8)}`;
+  const slug = "aka-shoes";
   const requestId = `snapppay_request_${randomUUID().replaceAll("-", "").slice(0, 12)}`;
   const publicId = randomUUID();
   const paymentPublicId = randomUUID();
@@ -60,10 +60,10 @@ INSERT INTO "PaymentSettings" (id, "organizationSlug", settings) VALUES ('${paym
   if (request !== "12345|TOMAN|existing-bank-transfer") throw new Error(`Existing payment request changed: ${request}`);
   const bankTransfer = psql(`SELECT (settings->'retailR4'->>'bankTransferEnabled') || '|' || (settings->'retailR4'->>'snappPayInstallmentsEnabled') FROM "PaymentSettings" WHERE id='${paymentSettingsId}'`);
   if (bankTransfer !== "true|false") throw new Error(`Existing CASH/BANK_TRANSFER policy changed: ${bankTransfer}`);
-  const emptyPolicy = psql(`SELECT count(*) FROM "RetailInstallmentPricingPolicy"`);
+  const initialAkaPolicy = psql(`SELECT "markupPercent"::text || '|' || "version"::text FROM "RetailInstallmentPricingPolicy" WHERE "organizationId"='${orgId}'`);
   const emptySnapshots = psql(`SELECT (SELECT count(*) FROM "RetailInstallmentQuoteSnapshot") || '|' || (SELECT count(*) FROM "RetailInstallmentQuoteSnapshotLine")`);
   const emptyEvents = psql(`SELECT count(*) FROM "PaymentProviderEvent"`);
-  if (emptyPolicy !== "0" || emptySnapshots !== "0|0" || emptyEvents !== "0") throw new Error("Lifecycle migration unexpectedly backfilled payment policy, snapshot, or event rows.");
+  if (initialAkaPolicy !== "11.0000|1" || emptySnapshots !== "0|0" || emptyEvents !== "0") throw new Error("Lifecycle migration did not initialize only Aka pricing or unexpectedly backfilled snapshots/events.");
   const integrationId = `snapppay_integration_${randomUUID().replaceAll("-", "").slice(0, 12)}`;
   const integrationPublicId = randomUUID();
   const orderId = `snapppay_order_${randomUUID().replaceAll("-", "").slice(0, 12)}`;
@@ -98,7 +98,7 @@ INSERT INTO "PaymentProviderEvent" (id, "organizationId", "providerIntegrationId
   console.log("PASS: PR197/PR201 historical chain applied before lifecycle migration.");
   console.log("PASS: existing PaymentRequest amount, currency, and purpose preserved.");
   console.log("PASS: existing bank-transfer enabled state retained; SnappPay remains disabled.");
-  console.log("PASS: additive tables were not backfilled; legacy payments were unchanged.");
+  console.log("PASS: only the owner-requested Aka Shoes 11% policy is initialized; snapshots/events are not backfilled.");
   console.log("PASS: quote snapshots and event rows reject updates; duplicate provider event keys are blocked.");
   console.log("PASS: quote snapshot binds once to an exact-amount, same-tenant PaymentRequest.");
   console.log("PASS: lifecycle migration applied on a disposable PostgreSQL 16 database.");

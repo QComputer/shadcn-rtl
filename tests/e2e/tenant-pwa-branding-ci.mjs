@@ -364,8 +364,12 @@ async function retailStorefrontEvidence({ host, path, name, logoPath, screenshot
     assert.ok(navigation.some(link => link.path.endsWith("/checkout")));
     const manifestHref = await page.locator('link[rel="manifest"]').getAttribute("href");
     assert.ok(manifestHref?.includes("pwa-manifest"), `Retail page advertises its tenant manifest: ${manifestHref}`);
-    const mobileNavigation = page.getByRole("navigation", { name: "پیمایش موبایل فروشگاه" });
-    if (viewport.width < 768) await mobileNavigation.waitFor({ state: "visible" });
+    if (viewport.width < 768) {
+      const mobileNavigation = page.locator("nav:visible").filter({ has: page.locator('a[href$="/checkout"]') });
+      await mobileNavigation.first().waitFor({ state: "visible" });
+      assert.ok(await mobileNavigation.locator('a[href$="/profile"]').count(), "mobile tenant navigation retains its profile destination");
+      assert.ok(await mobileNavigation.locator('a[href$="/checkout"]').count(), "mobile tenant navigation retains its checkout destination");
+    }
     await page.screenshot({ path: `${artifactDir}/${screenshot}`, fullPage: true });
     await page.context().setOffline(true);
     await page.getByRole("status").filter({ hasText: "اتصال اینترنت قطع است" }).waitFor({ state: "visible" });

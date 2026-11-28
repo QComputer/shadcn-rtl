@@ -4,6 +4,8 @@ Owner directive: delivery speed first. Codex is the autonomous software engineer
 
 ## Delivery
 
+- Owner policy: use one primary agent and the shared checkout/environment; execute work sequentially. Do not create additional worktrees, install duplicate dependency trees, or delegate to parallel agents unless the owner explicitly changes this policy. Preserve other work and inspect Git state before switching branches.
+
 - Inspect the actual checkout, branch, staged and unstaged changes, and relevant current evidence before editing. Preserve unrelated work and use the shared checkout unless explicitly instructed otherwise.
 - Implement cohesive functional work autonomously within authorized scope. Fix related code, tests and fixtures when evidence warrants it. Make routine engineering decisions without asking for approval.
 - Keep updates concise. Stop only for a genuine blocker, unavailable authority or credentials, a consequential architecture decision, or an explicitly required review boundary.

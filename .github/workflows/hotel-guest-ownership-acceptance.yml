@@ -1,7 +1,7 @@
 name: Hotel guest ownership isolated acceptance
 on:
   pull_request:
-    branches: [codex/hotel-guest-proof-g3b31a, main]
+    branches: [codex/hotel-guest-proof-g3b31a, codex/hotel-guest-claim-g3b31b, main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -48,14 +48,25 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec prisma validate && pnpm exec prisma generate && pnpm exec prisma migrate deploy
       - name: Verify claim and provenance contracts
-        run: node --import tsx --require ./scripts/e2e/register-server-only.cjs --test tests/unit/customer-guest-claim-contract.test.ts tests/unit/customer-guest-claim-http-contract.test.ts tests/unit/hotel/guest-reservation-proof.test.ts
+        run: node --import tsx --require ./scripts/e2e/register-server-only.cjs --test tests/unit/customer-guest-claim-contract.test.ts tests/unit/customer-guest-claim-http-contract.test.ts tests/unit/hotel/guest-reservation-proof.test.ts tests/unit/hotel-guest-recovery-secret.test.ts
       - name: Verify scoped transactional ownership
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-guest-claim.local.test.ts
+      - name: Verify recovery issuance and transactional security
+        run: |
+          pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-guest-recovery-issuance.local.test.ts
+          pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-guest-recovery.local.test.ts
       - name: Install browser dependencies
         run: pnpm exec playwright install --with-deps chromium
+      - name: Verify booking recovery opt-in and export
+        run: pnpm exec node --test sites/damoon/tests/booking-recovery-ui.test.mjs
       - name: Verify isolated network guard
         run: node --test tests/unit/hotel-claim-network-guard.test.cjs
       - name: Verify authenticated browser claim
         env:
           NODE_OPTIONS: --require=./scripts/e2e/hotel-claim-fixture-dns.cjs
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-guest-claim-http.local.test.ts
+
+      - name: Verify recovery in a separate browser context
+        env:
+          NODE_OPTIONS: --require=./scripts/e2e/hotel-claim-fixture-dns.cjs
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-guest-recovery-http.local.test.ts

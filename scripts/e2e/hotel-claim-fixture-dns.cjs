@@ -6,7 +6,7 @@ const {syncBuiltinESMExports} = require('node:module');
 const allowed = new Set(['phone-auth.localhost','wrong-phone-auth.localhost','appointment-auth.localhost','source-sso.localhost','target-sso.localhost']);
 const original = dns.lookup;
 dns.lookup = function(host, opts, cb) {
-  if (!allowed.has(host)) return Reflect.apply(original, this, arguments);
+  if (!allowed.has(host) && !/^recovery-[0-9a-f-]{36}\.localhost$/.test(host)) return Reflect.apply(original, this, arguments);
   if (typeof opts === 'function') {cb=opts;opts={};}
   if (typeof opts === 'number') opts={family:opts};
   opts=opts||{};

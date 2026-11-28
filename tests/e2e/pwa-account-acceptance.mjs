@@ -26,7 +26,7 @@ export async function verifyRetailAccount({ browser, prisma, origin, slug, artif
   const storefrontPath = `/fa/retail/${encodeURIComponent(slug)}`;
   const accountPath = `${storefrontPath}/account`;
   const checkoutPath = `${storefrontPath}/checkout`;
-  const accountUrl = appUrl(accountPath);
+  let accountUrl = appUrl(accountPath);
   const checkoutUrl = appUrl(checkoutPath);
   const artifacts = path.resolve(artifactDir);
   await mkdir(artifacts, { recursive: true });
@@ -90,8 +90,15 @@ export async function verifyRetailAccount({ browser, prisma, origin, slug, artif
       // single main h1. Wait for its visible account navigation contract,
       // which is also the control this acceptance is about to exercise.
       await accountLink.waitFor({ state: "visible" });
+      const accountHref = await accountLink.getAttribute("href");
+      assert.ok(accountHref, `${viewport.name}: account navigation has a destination`);
+      const linkedAccountUrl = new URL(accountHref, target.origin);
+      assert.equal(linkedAccountUrl.origin, target.origin, `${viewport.name}: account navigation stays on this storefront origin`);
+      assert.ok(linkedAccountUrl.pathname.startsWith(`${storefrontPath}/`), `${viewport.name}: account navigation stays bound to this tenant: ${linkedAccountUrl.pathname}`);
+      assert.match(linkedAccountUrl.pathname, /\/(?:account|profile)\/?$/, `${viewport.name}: account navigation targets a supported profile route`);
+      accountUrl = linkedAccountUrl.toString();
       await accountLink.click();
-      await page.waitForURL((url) => url.pathname === new URL(accountUrl).pathname);
+      await page.waitForURL((url) => url.pathname.replace(/\/$/, "") === linkedAccountUrl.pathname.replace(/\/$/, ""), { waitUntil: "domcontentloaded" });
       await page.getByRole("heading", { name: organization.name, exact: true }).waitFor();
       let accountText = await page.locator("body").innerText();
       assert.doesNotMatch(accountText, new RegExp(escapeRegExp(username), "i"));

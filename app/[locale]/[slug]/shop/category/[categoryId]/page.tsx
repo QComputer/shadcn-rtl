@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Package, ShoppingBag } from "lucide-react";
 import prisma from "@/lib/db";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { normalizePagination } from "@/lib/pagination";
 import {

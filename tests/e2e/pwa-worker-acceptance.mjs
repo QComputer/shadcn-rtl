@@ -63,17 +63,24 @@ export async function verifyWorkerAcceptance({ browser, origin, startPath, expec
       throw new Error(`Application did not register an active worker: ${JSON.stringify(diagnostic)}; browserErrors=${JSON.stringify(browserErrors.slice(0, 20))}; ${String(error?.message || error)}`);
     }
     const initialWorker = await page.evaluate(async () => {
-      // `getRegistration()` only returns a registration matching the current
-      // document URL. Use the full same-origin list after the active-worker
-      // wait so a valid origin-scoped registration is not lost to a lookup
-      // race or a tenant route rewrite.
-      const registration = (await navigator.serviceWorker.getRegistrations())
-        .find((candidate) => Boolean(candidate.active));
-      return registration ? {
-        scope: registration.scope,
-        active: Boolean(registration.active),
-        controller: Boolean(navigator.serviceWorker.controller),
-      } : null;
+      // Read the registration and its active worker together in the page that
+      // passed the active-worker wait. A short bounded retry handles the
+      // browser lifecycle gap between Playwright's wait callback and this
+      // inspection without relaxing the active/root-scope requirements.
+      const deadline = Date.now() + 5_000;
+      while (Date.now() < deadline) {
+        const registration = (await navigator.serviceWorker.getRegistrations())
+          .find((candidate) => Boolean(candidate.active));
+        if (registration) {
+          return {
+            scope: registration.scope,
+            active: Boolean(registration.active),
+            controller: Boolean(navigator.serviceWorker.controller),
+          };
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      return null;
     });
     assert.ok(initialWorker, `an active origin registration must be readable: ${JSON.stringify(await page.evaluate(async () => ({ secure: isSecureContext, origin: location.origin, registrations: (await navigator.serviceWorker.getRegistrations()).map((registration) => ({ scope: registration.scope, active: Boolean(registration.active) })) })))}`);
     assert.equal(new URL(initialWorker.scope).origin, baseUrl.origin, "worker scope uses the tested origin");

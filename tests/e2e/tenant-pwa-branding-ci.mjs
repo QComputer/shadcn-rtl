@@ -19,11 +19,15 @@ import { verifyWorkerAcceptance } from "./pwa-worker-acceptance.mjs";
 const require = createRequire(import.meta.url);
 const prisma = new PrismaClient();
 const localPwaAcceptance = process.env.LOCAL_PWA_ACCEPTANCE === "1";
+const externalRuntime = process.env.PWA_EXTERNAL_RUNTIME === "1";
 const runId = localPwaAcceptance ? process.env.HOTEL_ONBOARDING_RUN_ID : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const artifactDir = path.resolve(process.env.PWA_BROWSER_ARTIFACTS || process.env.TENANT_PWA_ARTIFACTS || process.env.HOTEL_ONBOARDING_ARTIFACTS || ".tmp/tenant-pwa-ci");
 mkdirSync(artifactDir, { recursive: true });
 const logPath = `${artifactDir}/next-start.log`;
-const port = await reservePort();
+const externalRuntimePort = Number(process.env.PWA_EXTERNAL_RUNTIME_PORT || "3000");
+assert.ok(!externalRuntime || Number.isInteger(externalRuntimePort) && externalRuntimePort > 0 && externalRuntimePort < 65536,
+  "PWA_EXTERNAL_RUNTIME_PORT must be a valid TCP port when testing an external runtime");
+const port = externalRuntime ? externalRuntimePort : await reservePort();
 const hosts = {
   alpha: "tenant-alpha.pwa-ci.test",
   beta: "tenant-beta.pwa-ci.test",
@@ -185,7 +189,7 @@ async function manifestFor(host, extraHeaders = {}) {
 async function waitForServer() {
   const healthUrl = `http://127.0.0.1:${port}/manifest.webmanifest`;
   for (let attempt = 0; attempt < 60; attempt += 1) {
-    if (server.exitCode !== null) throw new Error(`Next.js exited with ${server.exitCode}`);
+    if (server && server.exitCode !== null) throw new Error(`Next.js exited with ${server.exitCode}`);
     try {
       const response = await fetch(healthUrl, { signal: AbortSignal.timeout(2_000) });
       if (response.ok) return;
@@ -465,13 +469,17 @@ try {
   await createTenant({ suffix: "unverified", host: hosts.unverified, verified: false, label: "Unverified", assets: {} });
   await createTenant({ suffix: "incomplete", host: hosts.incomplete, label: "Incomplete", assets: {}, withBranding: false });
 
-  const nextBin = require.resolve("next/dist/bin/next");
   const nextOrigin = `http://localhost:${port}`;
-  server = spawn(process.execPath, [nextBin, "start", "--hostname", "127.0.0.1", "--port", String(port)], {
-    env: { ...process.env, NODE_ENV: "production", PORT: String(port), AUTH_TRUST_HOST: "true", NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || randomBytes(32).toString("hex"), NEXTAUTH_URL: nextOrigin, NEXT_PUBLIC_APP_URL: nextOrigin },
-    stdio: ["ignore", "pipe", "pipe"],
-    windowsHide: true,
-  });
+  if (externalRuntime) {
+    writeFileSync(logPath, "External production container runtime; logs are collected by the caller.\n");
+  } else {
+    const nextBin = require.resolve("next/dist/bin/next");
+    server = spawn(process.execPath, [nextBin, "start", "--hostname", "127.0.0.1", "--port", String(port)], {
+      env: { ...process.env, NODE_ENV: "production", PORT: String(port), AUTH_TRUST_HOST: "true", NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || randomBytes(32).toString("hex"), NEXTAUTH_URL: nextOrigin, NEXT_PUBLIC_APP_URL: nextOrigin },
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    });
+  }
   const databaseUrlForRedaction = process.env.DATABASE_URL || "";
   const databasePasswordForRedaction = databaseUrlForRedaction ? new URL(databaseUrlForRedaction).password : "";
   const safeLogChunk = (chunk) => {
@@ -480,8 +488,8 @@ try {
     if (databasePasswordForRedaction) text = text.replaceAll(databasePasswordForRedaction, "<redacted>");
     return text;
   };
-  server.stdout.on("data", (chunk) => appendFileSync(logPath, safeLogChunk(chunk)));
-  server.stderr.on("data", (chunk) => appendFileSync(logPath, safeLogChunk(chunk)));
+  server?.stdout.on("data", (chunk) => appendFileSync(logPath, safeLogChunk(chunk)));
+  server?.stderr.on("data", (chunk) => appendFileSync(logPath, safeLogChunk(chunk)));
   await waitForServer();
 
   const chromeExecutable = process.env.CHROME_EXECUTABLE_PATH || process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || process.env.CHROME_EXECUTABLE || process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe";

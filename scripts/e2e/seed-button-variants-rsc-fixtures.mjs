@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { PrismaClient } from "@prisma/client";
 
-const databaseName = "bb_button_variants_rsc";
-const port = "55439";
+const databaseName = process.env.BUTTON_VARIANTS_EXPECTED_DATABASE || "bb_button_variants_rsc";
+const port = process.env.LOCAL_PRISMA_EXPECTED_PORT || "55439";
 const expectedPort = process.env.LOCAL_PRISMA_EXPECTED_PORT;
 const expectedDatabase = process.env.BUTTON_VARIANTS_EXPECTED_DATABASE;
 const slugs = ["bb-rsc-shop-synthetic", "bb-rsc-appointment-synthetic"];
@@ -35,6 +35,7 @@ async function cleanup() {
   await prisma.serviceCategory.deleteMany({ where: { organizationId: { in: ids } } });
   await prisma.productCategory.deleteMany({ where: { organizationId: { in: ids } } });
   await prisma.organizationCapability.deleteMany({ where: { organizationId: { in: ids } } });
+  await prisma.paymentSettings.deleteMany({ where: { organizationSlug: { in: slugs } } });
   await prisma.organization.deleteMany({ where: { id: { in: ids } } });
 }
 
@@ -60,6 +61,29 @@ async function seed() {
     isActive: true,
     trackInventory: false,
   })) });
+  await prisma.paymentSettings.upsert({
+    where: { organizationSlug: shop.slug },
+    create: { organizationSlug: shop.slug, settings: { retailR4: {
+      bankTransferEnabled: true,
+      cashEnabled: true,
+      inotiUssdEnabled: false,
+      bankCardNumber: "1234567890123456",
+      bankAccountOwner: "Synthetic Test Store",
+      cashModes: ["COUNTER"],
+      cashBeforeConfirmation: true,
+      paymentDeadlinesMinutes: { bankTransfer: 1440, cash: 2880, inotiUssd: 15 },
+    } } },
+    update: { settings: { retailR4: {
+      bankTransferEnabled: true,
+      cashEnabled: true,
+      inotiUssdEnabled: false,
+      bankCardNumber: "1234567890123456",
+      bankAccountOwner: "Synthetic Test Store",
+      cashModes: ["COUNTER"],
+      cashBeforeConfirmation: true,
+      paymentDeadlinesMinutes: { bankTransfer: 1440, cash: 2880, inotiUssd: 15 },
+    } } },
+  });
   await prisma.service.createMany({ data: Array.from({ length: 25 }, (_, index) => ({
     organizationId: appointment.id,
     categoryId: serviceCategory.id,

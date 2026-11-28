@@ -1,6 +1,6 @@
 # Kilo Code overlay delivery playbook
 
-Version: 1.7 (2026-11-28) — repository delivery standard; adds deterministic RunFlare package installation and deployment-aware recovery.
+Version: 1.8 (2026-11-28) — adds actual production-container runtime and browser acceptance before any provider cutover.
 Scope: BazarBaaz platform, QComputer/shadcn-rtl. Hotel-specific gates below are the current PMS profile, not universal rules for every platform change.
 
 ## 1. Delivery contract
@@ -115,6 +115,8 @@ Next: stop; or exact blocking error with full diagnostics
 This document is the single reusable process reference. AGENTS.md links to it; module docs contain module-specific status, not another full copy of the process. Version and update this document in the next relevant functional PR when a repeated failure or a verified improvement warrants it. Keep protocol changes backward-compatible or explicitly versioned. No separate PR solely for routine bookkeeping. Prefer deterministic script improvements over longer prompts. Track avoidable CI cycles, unnecessary installs and accidental staging qualitatively; optimize actual delivery latency, not the number of steps alone.
 
 ### Change history
+
+- v1.8: For a Docker-service candidate, prove the exact image runs as its configured non-root user against disposable PostgreSQL before deployment. Acceptance includes health and Prisma client runtime, public assets, synthetic guest checkout/payment methods, server-component browser regressions, tenant custom-domain/PWA browser coverage, persistent storage across restart, graceful stop, unchanged migration ledger during startup, and image secret/file-boundary inspection. Keep Docker image building non-publishing unless a separately authorized release explicitly requires otherwise. A hosted build that only assembles an image is not runtime acceptance.
 
 - v1.0: consolidates PR174 (ES2017/BigInt), PR175 (Playwright URL and accessible names), PR176 (workflow paths), PR178 (UTF-8 and blob integrity), PR179/180 (accepted guarded delivery), and 1C-E execution incident (stale session, accidental staging, wrong test runner, unnecessary install).
 

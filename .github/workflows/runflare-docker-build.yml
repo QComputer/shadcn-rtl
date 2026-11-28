@@ -1,4 +1,4 @@
-name: RunFlare deterministic Docker build
+name: RunFlare deterministic Docker runtime acceptance
 
 on:
   pull_request:
@@ -12,26 +12,149 @@ on:
       - next.config.ts
       - prisma/**
       - scripts/build/**
+      - scripts/e2e/seed-button-variants-rsc-fixtures.mjs
+      - tests/e2e/tenant-pwa-branding-ci.mjs
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  docker-build:
+  docker-build-and-runtime:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 65
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: bazarbaaz_tenant_pwa_ci
+          POSTGRES_USER: tenant_pwa_ci
+          POSTGRES_PASSWORD: tenant_pwa_ci_only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U tenant_pwa_ci -d bazarbaaz_tenant_pwa_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 20
     env:
-      DATABASE_URL: postgresql://fixture:fixture@127.0.0.1:5432/fixture
-      DIRECT_URL: postgresql://fixture:fixture@127.0.0.1:5432/fixture
-      NEXT_TELEMETRY_DISABLED: '1'
+      CI: "true"
+      DATABASE_URL: postgresql://tenant_pwa_ci:tenant_pwa_ci_only@127.0.0.1:5432/bazarbaaz_tenant_pwa_ci?schema=public
+      DIRECT_URL: postgresql://tenant_pwa_ci:tenant_pwa_ci_only@127.0.0.1:5432/bazarbaaz_tenant_pwa_ci?schema=public
+      PSQL_DATABASE_URL: postgresql://tenant_pwa_ci:tenant_pwa_ci_only@127.0.0.1:5432/bazarbaaz_tenant_pwa_ci
+      DATABASE_RUNTIME_ADAPTER: postgresql
+      LOCAL_PRISMA_EXPECTED_PORT: "5432"
+      BUTTON_VARIANTS_EXPECTED_DATABASE: bazarbaaz_tenant_pwa_ci
+      NEXTAUTH_SECRET: docker-runtime-ci-only-secret-not-for-production
+      AUTH_TRUST_HOST: "true"
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_DEPLOYED_APP_URL: http://127.0.0.1:3000
+      NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Build deterministic RunFlare image without publishing
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install the locked test harness
+        run: pnpm install --frozen-lockfile
+      - name: Validate and migrate the disposable PostgreSQL database
+        run: pnpm exec prisma validate && pnpm exec prisma generate && pnpm exec prisma migrate deploy
+      - name: Prepare synthetic PWA assets and category tenants
+        run: |
+          node scripts/e2e/prepare-tenant-pwa-fixtures.mjs
+          node scripts/e2e/seed-button-variants-rsc-fixtures.mjs seed
+      - name: Build the deterministic container without publishing
         run: >-
           docker buildx build --load --tag bazarbaaz-runflare-ci:${GITHUB_SHA}
           --build-arg DATABASE_URL --build-arg DIRECT_URL
           --build-arg NEXT_TELEMETRY_DISABLED
+          --secret id=nextauth_secret,env=NEXTAUTH_SECRET
           --file Dockerfile .
+      - name: Review image size, layers, runtime files, and secret boundaries
+        run: |
+          docker image inspect bazarbaaz-runflare-ci:${GITHUB_SHA} --format '{{json .}}' > /tmp/runflare-docker-image.json
+          node -e "const assert=require('node:assert/strict');const i=require('/tmp/runflare-docker-image.json');assert.equal(i.Config.User,'node');assert.ok(i.Size>0);assert.ok(!JSON.stringify(i.Config.Env).includes('docker-runtime-ci-only-secret-not-for-production'));console.log(JSON.stringify({image:i.Id,size_bytes:i.Size,user:i.Config.User,env:i.Config.Env}))"
+          docker history --no-trunc bazarbaaz-runflare-ci:${GITHUB_SHA} | tee /tmp/runflare-docker-history.txt
+          if rg -n 'docker-runtime-ci-only-secret-not-for-production|local-ci-compilation-only-secret' /tmp/runflare-docker-history.txt; then exit 1; fi
+          docker run --rm --entrypoint node bazarbaaz-runflare-ci:${GITHUB_SHA} -e "const fs=require('node:fs'); const assert=require('node:assert/strict'); assert.equal(require('xlsx').version,'0.20.3'); require('@prisma/client'); assert.ok(fs.existsSync('.next/server')); assert.ok(fs.existsSync('public')); assert.ok(!fs.existsSync('.env')); assert.ok(!fs.existsSync('.git')); console.log('runtime dependency and image-boundary checks passed')"
+      - name: Start the actual production container on isolated PostgreSQL
+        run: |
+          psql "$PSQL_DATABASE_URL" -X -At -c 'SELECT count(*) FROM "_prisma_migrations"' > /tmp/migrations-before-runtime.txt
+          docker volume create bazarbaaz-runflare-runtime-storage
+          docker run --detach --name bazarbaaz-runflare-runtime --network host \
+            --mount source=bazarbaaz-runflare-runtime-storage,target=/var/lib/bazarbaaz/storage \
+            --env NODE_ENV=production \
+            --env DATABASE_RUNTIME_ADAPTER \
+            --env DATABASE_URL --env DIRECT_URL \
+            --env NEXTAUTH_SECRET --env AUTH_TRUST_HOST \
+            --env NEXT_PUBLIC_APP_URL --env NEXT_PUBLIC_DEPLOYED_APP_URL \
+            --env NEXTAUTH_URL=http://127.0.0.1:3000 \
+            --env RETAIL_GUEST_CHECKOUT_ENABLED=1 \
+            --env PWA_ENABLED=true \
+            --env HOTEL_OPERATIONAL_RESERVATIONS_ENABLED=0 \
+            --env HOTEL_GUEST_PORTAL_ENABLED=0 \
+            --env HOTEL_PAYMENT_OPERATIONAL_ENABLED=0 \
+            --env HOTEL_PUBLICATION_OPERATIONAL_ENABLED=0 \
+            --env HOTEL_GUEST_BOOKING_REQUEST_ENABLED=0 \
+            bazarbaaz-runflare-ci:${GITHUB_SHA}
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent 'http://127.0.0.1:3000/api/health?deep=1' > /tmp/runflare-docker-health.json; then break; fi
+            sleep 2
+          done
+          node -e "const x=require('/tmp/runflare-docker-health.json'); if(x.status!=='ok'||x.checks?.database?.ok!==true) process.exit(1); console.log('container health and PostgreSQL runtime checks passed')"
+          curl --fail --silent --show-error http://127.0.0.1:3000/fa >/dev/null
+          curl --fail --silent --show-error http://127.0.0.1:3000/manifest.webmanifest >/dev/null
+          curl --fail --silent --show-error http://127.0.0.1:3000/web-push-sw.js >/dev/null
+          curl --fail --silent --show-error 'http://127.0.0.1:3000/fa/bb-rsc-shop-synthetic/shop/checkout' >/dev/null
+          curl --fail --silent --show-error 'http://127.0.0.1:3000/api/retail/v1/payment-methods?organization=bb-rsc-shop-synthetic' > /tmp/runflare-payment-methods.json
+          node -e "const assert=require('node:assert/strict');const p=require('/tmp/runflare-payment-methods.json');assert.equal(p.guestCheckoutAvailable,true);const methods=p.methods.map(x=>x.method);assert.ok(methods.includes('CASH'));assert.ok(methods.includes('BANK_TRANSFER'));console.log('guest checkout and synthetic payment-method HTTP assertions passed')"
+          docker exec bazarbaaz-runflare-runtime node -e "require('node:fs').writeFileSync('/var/lib/bazarbaaz/storage/restart-marker','persistent-storage-ok')"
+          docker stop --time 15 bazarbaaz-runflare-runtime
+          node -e "const {execFileSync}=require('node:child_process');const assert=require('node:assert/strict');const s=JSON.parse(execFileSync('docker',['inspect','bazarbaaz-runflare-runtime'],{encoding:'utf8'}))[0].State;assert.equal(s.ExitCode,0);assert.equal(s.OOMKilled,false);console.log('container stopped cleanly')"
+          docker start bazarbaaz-runflare-runtime
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent 'http://127.0.0.1:3000/api/health?deep=1' > /tmp/runflare-docker-health-restarted.json; then break; fi
+            sleep 2
+          done
+          docker exec bazarbaaz-runflare-runtime node -e "const fs=require('node:fs');const assert=require('node:assert/strict');assert.equal(fs.readFileSync('/var/lib/bazarbaaz/storage/restart-marker','utf8'),'persistent-storage-ok')"
+          node -e "const assert=require('node:assert/strict');const h=require('/tmp/runflare-docker-health-restarted.json');assert.equal(h.status,'ok');assert.equal(h.checks?.database?.ok,true);console.log('container restarted with database and persistent storage intact')"
+          psql "$PSQL_DATABASE_URL" -X -At -c 'SELECT count(*) FROM "_prisma_migrations"' > /tmp/migrations-after-runtime.txt
+          diff -u /tmp/migrations-before-runtime.txt /tmp/migrations-after-runtime.txt
+          echo 'runtime startup did not apply migrations'
+      - name: Install Chromium for container browser acceptance
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Exercise real container pagination and server-safe button routes
+        env:
+          BUTTON_VARIANTS_BASE_URL: http://127.0.0.1:3000
+          BUTTON_VARIANTS_PLAYWRIGHT_ENTRY: ${{ github.workspace }}/node_modules/playwright/index.mjs
+        run: node scripts/e2e/button-variants-rsc-browser.mjs
+      - name: Exercise container tenant branding, custom domains, theme, manifest, and service worker
+        env:
+          PWA_EXTERNAL_RUNTIME: "1"
+          PWA_EXTERNAL_RUNTIME_PORT: "3000"
+          PWA_ENABLED: "true"
+          PWA_BROWSER_ARTIFACTS: artifacts/runflare-docker-pwa
+        run: node tests/e2e/tenant-pwa-branding-ci.mjs
+      - name: Assert runtime remains active and capture bounded container logs
+        if: always()
+        run: |
+          docker ps --filter name=bazarbaaz-runflare-runtime --format '{{.Names}} {{.Status}} {{.Ports}}'
+          docker logs --tail 160 bazarbaaz-runflare-runtime 2>&1 | tee /tmp/runflare-docker-runtime.log
+          if rg -n 'Attempted to call buttonVariants\(\) from the server' /tmp/runflare-docker-runtime.log; then exit 1; fi
+      - name: Stop the synthetic runtime container
+        if: always()
+        run: |
+          docker rm --force bazarbaaz-runflare-runtime >/dev/null 2>&1 || true
+          docker volume rm bazarbaaz-runflare-runtime-storage >/dev/null 2>&1 || true
+      - name: Upload container browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runflare-docker-runtime-${{ github.sha }}
+          path: artifacts/runflare-docker-pwa/
+          if-no-files-found: ignore
+          retention-days: 7

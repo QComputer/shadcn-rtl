@@ -16,13 +16,17 @@ COPY . .
 ARG DATABASE_URL
 ARG DIRECT_URL
 ARG NEXT_TELEMETRY_DISABLED=1
-RUN RUNFLARE_ENFORCE_LOCKFILE=1 NEXTAUTH_SECRET=local-ci-compilation-only-secret-not-for-production pnpm run build
+RUN --mount=type=secret,id=nextauth_secret \
+    NEXTAUTH_SECRET="$(cat /run/secrets/nextauth_secret)" RUNFLARE_ENFORCE_LOCKFILE=1 pnpm run build
 RUN pnpm prune --prod
 
 FROM base AS runtime
 ENV NODE_ENV=production \
     PORT=3000 \
-    HOSTNAME=0.0.0.0
+    HOSTNAME=0.0.0.0 \
+    MEDIA_STORAGE_ROOT=/var/lib/bazarbaaz/storage
+
+RUN mkdir -p /var/lib/bazarbaaz/storage && chown node:node /var/lib/bazarbaaz/storage
 
 COPY --from=build --chown=node:node /app/package.json ./package.json
 COPY --from=build --chown=node:node /app/node_modules ./node_modules

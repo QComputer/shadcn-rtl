@@ -8,7 +8,7 @@ export function guestClaimHttpEnabled(env: Record<string, string | undefined> = 
 export function parseGuestClaimInput(value: unknown): GuestClaimInput | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const v = value as Record<string, unknown>;
-  if (v.kind !== "ORDER" && v.kind !== "APPOINTMENT") return null;
+  if (v.kind !== "ORDER" && v.kind !== "APPOINTMENT" && v.kind !== "HOTEL") return null;
   const keys = Object.keys(v);
   if (v.action === "LIST") return keys.every(k => ["action", "kind"].includes(k)) ? { action: v.action, kind: v.kind } : null;
   if (v.action !== "REQUEST" && v.action !== "CLAIM") return null;

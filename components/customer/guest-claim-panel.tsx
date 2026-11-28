@@ -15,6 +15,8 @@ export function GuestClaimPanel({ locale, slug, kind }: { locale: string; slug: 
   const t = copy[locale === "en" || locale === "ar" ? locale : "fa"];
   const [enabled, setEnabled] = useState(false);
   const [items, setItems] = useState<Item[] | null>(null);
+  const [history, setHistory] = useState<Array<{reference:string;checkIn:string;checkOut:string;status:string}>>([]);
+  async function refreshHotelHistory() { if (kind !== "HOTEL") return; const r = await appFetch("/api/auth/customer/guest-claim", { cache: "no-store" }); if (r.ok) { const data = await r.json(); if (Array.isArray(data.items)) setHistory(data.items); } }
   const [selected, setSelected] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [challenge, setChallenge] = useState("");
@@ -24,9 +26,10 @@ export function GuestClaimPanel({ locale, slug, kind }: { locale: string; slug: 
   useEffect(() => {
     const controller = new AbortController();
     appFetch(`/api/auth/customer/config?organization=${encodeURIComponent(slug)}`, { cache: "no-store", signal: controller.signal })
-      .then(r => r.ok ? r.json() : null).then(data => { if (!controller.signal.aborted) setEnabled(data?.guestClaim === true); }).catch(() => {});
+      .then(r => r.ok ? r.json() : null).then(data => { if (!controller.signal.aborted) setEnabled(kind === "HOTEL" ? data?.hotelGuestClaim === true : data?.guestClaim === true); }).catch(() => {});
+    if (kind === "HOTEL") void refreshHotelHistory().catch(() => {});
     return () => controller.abort();
-  }, [slug]);
+  }, [slug, kind]);
   function reset() { setSelected(""); setConfirmed(false); setChallenge(""); setOtp(""); }
   async function act(action: "LIST" | "REQUEST" | "CLAIM") {
     if (busy || (action !== "LIST" && (!selected || !confirmed)) || (action === "CLAIM" && (!challenge || !/^\d{4}$/.test(otp)))) return;
@@ -37,7 +40,7 @@ export function GuestClaimPanel({ locale, slug, kind }: { locale: string; slug: 
       const data = await response.json();
       if (action === "LIST") { if (!Array.isArray(data.items)) throw Error("unavailable"); reset(); setItems(data.items); }
       else if (action === "REQUEST") { if (data.accepted !== true || typeof data.challengeId !== "string") throw Error("unavailable"); setChallenge(data.challengeId); setOtp(""); setMessage(t.sent); }
-      else { if (data.outcome !== "CLAIMED" || data.kind !== kind || data.recordId !== selected) throw Error("unavailable"); setItems(old => old?.filter(x => x.recordId !== selected) ?? null); reset(); setMessage(t.done); }
+      else { if (data.outcome !== "CLAIMED" || data.kind !== kind || data.recordId !== selected) throw Error("unavailable"); setItems(old => old?.filter(x => x.recordId !== selected) ?? null); reset(); setMessage(t.done); if (kind === "HOTEL") void refreshHotelHistory().catch(() => {}); }
     } catch { setMessage(t.error); } finally { setBusy(false); }
   }
   if (!enabled) return null;
@@ -48,6 +51,7 @@ export function GuestClaimPanel({ locale, slug, kind }: { locale: string; slug: 
     {selected && <div className="space-y-2"><label className="flex items-start gap-2"><input type="checkbox" data-testid="guest-claim-consent" checked={confirmed} disabled={busy || !!challenge} onChange={e => setConfirmed(e.target.checked)} />{t.consent}</label>
       {!challenge ? <Button type="button" data-testid="guest-claim-request" disabled={!confirmed || busy} onClick={() => void act("REQUEST")}>{t.request}</Button> : <><label className="block">{t.code}<Input data-testid="guest-claim-otp" dir="ltr" inputMode="numeric" autoComplete="one-time-code" maxLength={4} value={otp} disabled={busy} onChange={e => setOtp(normalizeDigits(e.target.value).replace(/[^0-9]/g, "").slice(0,4))} /></label><Button type="button" data-testid="guest-claim-verify" disabled={busy || !/^\d{4}$/.test(otp)} onClick={() => void act("CLAIM")}>{t.verify}</Button></>}
       <Button type="button" variant="outline" disabled={busy} onClick={() => { reset(); setMessage(""); }}>{t.reset}</Button></div>}
+    {kind === "HOTEL" && history.length > 0 && <ul data-testid="hotel-owned-history">{history.map(item => <li key={item.reference}>{item.reference} · {new Intl.DateTimeFormat(locale === "en" || locale === "ar" ? locale : "fa", { dateStyle: "medium" }).format(new Date(item.checkIn))} – {new Intl.DateTimeFormat(locale === "en" || locale === "ar" ? locale : "fa", { dateStyle: "medium" }).format(new Date(item.checkOut))}</li>)}</ul>}
     {message && <p role="status" data-testid="guest-claim-message">{message}</p>}
   </section>;
 }

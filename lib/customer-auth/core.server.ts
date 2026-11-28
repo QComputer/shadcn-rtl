@@ -101,7 +101,7 @@ export class CustomerPhoneAuthService {
   /** Internal record-bound challenge. No public endpoint or bearer proof. */
   async requestGuestClaim(scope: GuestClaimScope, ip: string) {
     const challengeId = randomUUID();
-    const binding = this.guestClaimEnabled() ? guestClaimBinding(scope, this.secret()) : null;
+    const binding = this.guestClaimEnabled() && (scope.kind !== "HOTEL" || process.env.HOTEL_GUEST_RESERVATION_CLAIM_ENABLED === "1") ? guestClaimBinding(scope, this.secret()) : null;
     if (binding) await this.requestForPurpose({ phone: scope.phone, organizationId: scope.organizationId, origin: scope.origin, ip, source: "WEB" },
       "GUEST_RECORD_CLAIM", challengeId, { scope, binding });
     return { accepted: true as const, challengeId };
@@ -109,11 +109,11 @@ export class CustomerPhoneAuthService {
 
   /** The explicit claim and OTP consumption commit or roll back together. */
   async claimGuestRecord(scope: GuestClaimScope, challengeId: string, otp: string) {
-    const binding = this.guestClaimEnabled() ? guestClaimBinding(scope, this.secret()) : null;
+    const binding = this.guestClaimEnabled() && (scope.kind !== "HOTEL" || process.env.HOTEL_GUEST_RESERVATION_CLAIM_ENABLED === "1") ? guestClaimBinding(scope, this.secret()) : null;
     if (!binding) throw new CustomerPhoneAuthError();
     return this.consumeForPurpose({ phone: scope.phone, organizationId: scope.organizationId, origin: scope.origin, otp },
       "GUEST_RECORD_CLAIM", challengeId, async (tx, _link, now) => {
-        const result = await completeGuestClaim(tx, scope, now);
+        const result = await completeGuestClaim(tx, scope, now, this.secret());
         if (!result) throw new CustomerPhoneAuthError();
         return result;
       }, binding);
@@ -139,7 +139,7 @@ export class CustomerPhoneAuthService {
         ].sort((a, b) => a.key.localeCompare(b.key));
         for (const item of keys) await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${item.key}, 0))::text`;
         const now = this.now();
-        if (purpose === "GUEST_RECORD_CLAIM" && (!guestClaim || !await guestClaimEligible(tx, guestClaim.scope, now))) return;
+        if (purpose === "GUEST_RECORD_CLAIM" && (!guestClaim || !await guestClaimEligible(tx, guestClaim.scope, now, this.secret()))) return;
         if (issuanceKey && await tx.customerAccessLink.findUnique({ where: { issuanceKey }, select: { id: true } })) return;
         // 60-second resend cooldown: do not issue a new OTP if an unconsumed
         // link for the same phone+org+origin was created within the last 60s.

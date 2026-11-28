@@ -10,6 +10,7 @@ on:
       - "scripts/db/validate-hotel-migration-gap-upgrade.ts"
       - "scripts/db/validate-hotel-production-shape-migrations.ts"
       - "scripts/db/validate-hotel-pr192-proof-upgrade.ts"
+      - "scripts/db/validate-hotel-proof-ownership-upgrade.ts"
       - "scripts/db/hotel-migration-lineage.mjs"
       - "scripts/db/hotel-proof-rehearsal-guard.mjs"
       - "tests/unit/hotel-proof-rehearsal-guard.test.mjs"
@@ -79,3 +80,6 @@ jobs:
 
       - name: Rehearse PR192 to proof migration with existing reservations
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs scripts/db/validate-hotel-pr192-proof-upgrade.ts
+
+      - name: Rehearse proof to ownership migration with existing reservations
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs scripts/db/validate-hotel-proof-ownership-upgrade.ts

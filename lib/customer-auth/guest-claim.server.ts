@@ -4,6 +4,7 @@ import { hasOrganizationCapability } from "../organization-capabilities";
 import { normalizeIranianMobile } from "../integrations/inoti-ussd/parser";
 import { appointmentGuestScope } from "../appointments/guest-scope";
 import { guestOrderScope } from "../retail/guest-order-scope";
+import { matchesHotelGuestReservationProof } from "../hotel/domain/guest-reservation-proof";
 import type { GuestClaimScope } from "./guest-claim.contract";
 
 // Do not move records out of the G2 rolling guest-creation budget. The first
@@ -13,7 +14,7 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{1
 const privileged = ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF", "DRIVER"] as const;
 const samePhone = (value: string | null, phone: string) => !!value && normalizeIranianMobile(value) === phone;
 
-async function currentActor(tx: Prisma.TransactionClient, scope: GuestClaimScope, phone: string, now: Date) {
+export async function currentClaimActor(tx: Prisma.TransactionClient, scope: GuestClaimScope, phone: string, now: Date) {
   return tx.customerPhoneSession.findFirst({ where: {
     id: scope.sessionId, userId: scope.userId, organizationId: scope.organizationId, revokedAt: null, expiresAt: { gt: now },
     user: { role: "CUSTOMER", isActive: true, isTeamMember: false, deletedAt: null,
@@ -47,14 +48,19 @@ function appointmentWhere(scope: GuestClaimScope, now: Date): Prisma.Appointment
   };
 }
 
-async function eligible(tx: Prisma.TransactionClient, scope: GuestClaimScope, now: Date) {
+async function eligible(tx: Prisma.TransactionClient, scope: GuestClaimScope, now: Date, secret = process.env.NEXTAUTH_SECRET ?? "") {
   const phone = normalizeIranianMobile(scope.phone);
   if (!phone) return null;
-  const actor = await currentActor(tx, scope, phone, now);
+  const actor = await currentClaimActor(tx, scope, phone, now);
   if (!actor) return null;
   const org = actor.organization;
-  const capability = scope.kind === "ORDER" ? "SHOP" : "APPOINTMENT";
+  const capability = scope.kind === "ORDER" ? "SHOP" : scope.kind === "HOTEL" ? "HOTEL_BOOKING" : "APPOINTMENT";
   if (!hasOrganizationCapability({ legacyType: org.type, capabilitiesInitializedAt: org.capabilitiesInitializedAt, capabilities: org.capabilities }, capability)) return null;
+  if (scope.kind === "HOTEL") {
+    const row = await tx.hotelReservation.findFirst({ where: { id: scope.recordId, organizationId: scope.organizationId, status: "CHECKED_OUT", checkedOutAt: { lte: now }, customerOwnership: null, guestClaimProof: { isNot: null }, property: { isActive: true, deletedAt: null } }, select: { id: true, propertyId: true, guestClaimProof: true } });
+    if (!row?.guestClaimProof || !matchesHotelGuestReservationProof(row.guestClaimProof, { reservationId: row.id, organizationId: scope.organizationId, propertyId: row.propertyId, origin: scope.origin }, scope.guestSessionId, phone, secret, now)) return null;
+    return { kind: "HOTEL" as const, rowId: row.id, guestId: "", slug: org.slug, propertyId: row.propertyId };
+  }
   if (scope.kind === "ORDER") {
     if (org.branding?.retailPreviewOnly) return null;
     const where = orderWhere(scope, org.slug, now);
@@ -72,15 +78,15 @@ async function eligible(tx: Prisma.TransactionClient, scope: GuestClaimScope, no
 }
 
 /** Called only after the identity lock and origin validation in the OTP core. */
-export async function guestClaimEligible(tx: Prisma.TransactionClient, scope: GuestClaimScope, now: Date) {
-  return Boolean(await eligible(tx, scope, now));
+export async function guestClaimEligible(tx: Prisma.TransactionClient, scope: GuestClaimScope, now: Date, secret?: string) {
+  return Boolean(await eligible(tx, scope, now, secret));
 }
 
 /** Runs inside the OTP consume transaction. Never expose as an independent route.
  * Null means the caller must throw and roll back OTP consumption. The existing
  * guest row and all payment/inventory/booking snapshots stay intact. */
-export async function completeGuestClaim(tx: Prisma.TransactionClient, scope: GuestClaimScope, now: Date) {
-  const initial = await eligible(tx, scope, now);
+export async function completeGuestClaim(tx: Prisma.TransactionClient, scope: GuestClaimScope, now: Date, secret?: string) {
+  const initial = await eligible(tx, scope, now, secret);
   if (!initial) return null;
   // Revalidate after locks. Concurrent revocation/ownership updates serialize or fail closed.
   await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${scope.userId} FOR UPDATE`;
@@ -88,11 +94,17 @@ export async function completeGuestClaim(tx: Prisma.TransactionClient, scope: Gu
   await tx.$queryRaw`SELECT "id" FROM "OrganizationMember" WHERE "userId" = ${scope.userId} ORDER BY "id" FOR UPDATE`;
   await tx.$queryRaw`SELECT "id" FROM "CustomerClubMembership" WHERE "customerId" = ${scope.userId} AND "organizationId" = ${scope.organizationId} FOR UPDATE`;
   await tx.$queryRaw`SELECT "id" FROM "CustomerPhoneSession" WHERE "id" = ${scope.sessionId} FOR UPDATE`;
-  await tx.$queryRaw`SELECT "id" FROM "GuestCustomer" WHERE "id" = ${initial.guestId} FOR UPDATE`;
+  if (initial.kind !== "HOTEL") await tx.$queryRaw`SELECT "id" FROM "GuestCustomer" WHERE "id" = ${initial.guestId} FOR UPDATE`;
   if (initial.kind === "ORDER") await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${initial.rowId} FOR UPDATE`;
-  else await tx.$queryRaw`SELECT "id" FROM "Appointment" WHERE "id" = ${initial.rowId} FOR UPDATE`;
-  const current = await eligible(tx, scope, now);
+  else if (initial.kind === "APPOINTMENT") await tx.$queryRaw`SELECT "id" FROM "Appointment" WHERE "id" = ${initial.rowId} FOR UPDATE`;
+  else await tx.$queryRaw`SELECT "id" FROM "HotelReservation" WHERE "id" = ${initial.rowId} AND "organizationId" = ${scope.organizationId} FOR UPDATE`;
+  const current = await eligible(tx, scope, now, secret);
   if (!current || current.kind !== initial.kind || current.guestId !== initial.guestId || current.rowId !== initial.rowId) return null;
+  if (current.kind === "HOTEL") {
+    await tx.hotelReservationOwnership.create({ data: { reservationId: current.rowId, organizationId: scope.organizationId, propertyId: current.propertyId, userId: scope.userId, claimedAt: now } });
+    await tx.auditLog.create({ data: { action: "CREATE", entityType: "HotelGuestReservationClaim", entityId: current.rowId, userId: scope.userId, organizationId: scope.organizationId, organizationSlug: current.slug, description: "Explicit hotel reservation ownership claim v1" } });
+    return { outcome: "CLAIMED" as const, kind: current.kind, recordId: current.rowId };
+  }
   const result = current.kind === "ORDER"
     ? await tx.order.updateMany({ where: { ...current.where, guestCustomerId: current.guestId }, data: { customerId: scope.userId } })
     : await tx.appointment.updateMany({ where: { ...current.where, guestCustomerId: current.guestId }, data: { customerId: scope.userId } });
@@ -107,11 +119,16 @@ export async function completeGuestClaim(tx: Prisma.TransactionClient, scope: Gu
 export async function listGuestClaimCandidates(tx: Prisma.TransactionClient, scope: Omit<GuestClaimScope, "recordId">, now: Date) {
   const phone = normalizeIranianMobile(scope.phone);
   if (!phone) return [];
-  const actor = await currentActor(tx, { ...scope, recordId: "list" }, phone, now);
+  const actor = await currentClaimActor(tx, { ...scope, recordId: "list" }, phone, now);
   if (!actor) return [];
   const org = actor.organization;
-  const capability = scope.kind === "ORDER" ? "SHOP" : "APPOINTMENT";
+  const capability = scope.kind === "ORDER" ? "SHOP" : scope.kind === "HOTEL" ? "HOTEL_BOOKING" : "APPOINTMENT";
   if (!hasOrganizationCapability({ legacyType: org.type, capabilitiesInitializedAt: org.capabilitiesInitializedAt, capabilities: org.capabilities }, capability)) return [];
+  if (scope.kind === "HOTEL") {
+    const rows = await tx.hotelReservation.findMany({ where: { organizationId: scope.organizationId, status: "CHECKED_OUT", checkedOutAt: { lte: now }, customerOwnership: null, guestClaimProof: { isNot: null } }, select: { id: true, reference: true, checkIn: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 20 });
+    const result = []; for (const row of rows) if (await guestClaimEligible(tx, { ...scope, recordId: row.id }, now)) result.push({ recordId: row.id, reference: row.reference, date: row.checkIn.toISOString() });
+    return result;
+  }
   const bound = { ...scope, recordId: "list" };
   if (scope.kind === "ORDER") {
     if (org.branding?.retailPreviewOnly) return [];

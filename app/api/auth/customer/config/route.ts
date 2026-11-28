@@ -16,6 +16,7 @@ export async function GET(request: Request) {
   return Response.json({
     available,
     guestClaim: Boolean(context && guestClaimHttpEnabled()),
+    hotelGuestClaim: Boolean(context && guestClaimHttpEnabled() && process.env.HOTEL_GUEST_RESERVATION_CLAIM_ENABLED === "1"),
     progressiveEnrollment: Boolean(context && progressiveCustomerEnrollmentEnabled()),
     ssoAvailable: Boolean(context && customerSsoAvailable()),
     organization: context ? { id: context.organizationId, slug: context.slug, name: context.name, logo: context.logo } : null,

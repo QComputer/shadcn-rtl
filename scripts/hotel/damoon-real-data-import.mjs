@@ -20,14 +20,37 @@ export function validateSources(sourceDir) {
   const codes = units.units.map((unit) => unit.unit_code);
   assert.equal(new Set(codes).size, 31, "source unit codes must be unique");
   assert.ok(codes.every((code) => typeof code === "string" && /^\d{3}$/.test(code)));
+  const categories = new Set(["double", "single", "twin", "triple_suite", "quad_suite", "quint_suite", "royal", "vip"]);
+  const requiredUnitFields = ["row", "unit_code", "floor", "category", "category_fa", "kind", "capacity_as_written", "bed_configuration_read", "area_m2_read", "area_evidence", "window_or_natural_light", "western_toilet", "extra_service_allowed_as_printed", "operational_status_read", "photo_ref", "source_pages", "issues", "sale_enabled", "publication_allowed", "approval_status"];
+  for (const [index, unit] of units.units.entries()) {
+    assert.deepEqual(Object.keys(unit).sort(), [...requiredUnitFields].sort(), `unit ${index + 1} fields must match the reviewed source schema`);
+    assert.equal(unit.row, index + 1);
+    assert.ok(categories.has(unit.category), `unit ${unit.unit_code} has unsupported source category`);
+    assert.ok(["room", "suite"].includes(unit.kind));
+    assert.ok(Number.isInteger(unit.floor) || unit.floor === null);
+    assert.ok(Number.isInteger(unit.area_m2_read) || unit.area_m2_read === null);
+    assert.ok(unit.capacity_as_written && typeof unit.capacity_as_written === "object");
+    assert.ok(unit.bed_configuration_read && typeof unit.bed_configuration_read === "object");
+    assert.ok(unit.source_pages && typeof unit.source_pages === "object");
+    assert.ok(Array.isArray(unit.issues));
+    assert.ok(typeof unit.extra_service_allowed_as_printed === "boolean" || unit.extra_service_allowed_as_printed === null);
+  }
   assert.ok(units.units.every((unit) => unit.sale_enabled === false && unit.publication_allowed === false));
   assert.equal(tariffs.status, "STAGING_REVIEW_NOT_FOR_PRODUCTION");
   assert.equal(tariffs.currency, "IRR");
   assert.equal(tariffs.tariffs.length, 8);
   assert.equal(new Set(tariffs.tariffs.map((item) => item.category)).size, 8);
   assert.ok(tariffs.tariffs.every((item) => Number.isSafeInteger(item.amount_irr) && item.amount_irr > 0 && item.sale_enabled === false));
+  assert.ok(tariffs.tariffs.every((item) => typeof item.label_fa === "string" && item.label_fa.length > 0));
   assert.ok(units.units.every((unit) => unit.approval_status === "STAGING_REVIEW"));
-  return { units, tariffs };
+  const tariffIntegrations = tariffs.tariffs.map((tariff) => {
+    const irr = BigInt(tariff.amount_irr);
+    const exactToman = irr % 10n === 0n;
+    return { category: tariff.category, amountIRR: irr.toString(), amountToman: exactToman ? (irr / 10n).toString() : null,
+      exactIntegerToman: exactToman, activationAllowed: false,
+      reason: exactToman ? "STAGING_ONLY_UNPUBLISHED" : "IRR_NOT_EXACTLY_REPRESENTABLE_AS_INTEGER_TOMAN" };
+  });
+  return { units, tariffs, tariffIntegrations };
 }
 
 function reconcile(source, drafts) {
@@ -62,7 +85,7 @@ async function run() {
     if (!property) throw new Error("Scoped synthetic property does not exist in disposable database.");
     const drafts = await prisma.hotelDraftAccommodation.findMany({ where: { organizationId, propertyId, archivedAt: null }, select: { id: true, temporaryCode: true, promotedRoomId: true, version: true } });
     const report = reconcile(source, drafts);
-    console.log(JSON.stringify({ database: identity, propertyId, organizationId, mode: "READ_ONLY_DRY_RUN", ...report }, null, 2));
+    console.log(JSON.stringify({ database: identity, propertyId, organizationId, mode: "READ_ONLY_DRY_RUN", tariffs: source.tariffIntegrations, ...report }, null, 2));
   } finally { await prisma.$disconnect(); }
 }
 

@@ -116,7 +116,7 @@ export async function completeGuestClaim(tx: Prisma.TransactionClient, scope: Gu
 }
 
 /** Private discovery: only scoped modern browser records, exact core eligibility, bounded output. */
-export async function listGuestClaimCandidates(tx: Prisma.TransactionClient, scope: Omit<GuestClaimScope, "recordId">, now: Date) {
+export async function listGuestClaimCandidates(tx: Prisma.TransactionClient, scope: Omit<GuestClaimScope, "recordId">, now: Date, reference?: string) {
   const phone = normalizeIranianMobile(scope.phone);
   if (!phone) return [];
   const actor = await currentClaimActor(tx, { ...scope, recordId: "list" }, phone, now);
@@ -125,9 +125,10 @@ export async function listGuestClaimCandidates(tx: Prisma.TransactionClient, sco
   const capability = scope.kind === "ORDER" ? "SHOP" : scope.kind === "HOTEL" ? "HOTEL_BOOKING" : "APPOINTMENT";
   if (!hasOrganizationCapability({ legacyType: org.type, capabilitiesInitializedAt: org.capabilitiesInitializedAt, capabilities: org.capabilities }, capability)) return [];
   if (scope.kind === "HOTEL") {
-    const rows = await tx.hotelReservation.findMany({ where: { organizationId: scope.organizationId, status: "CHECKED_OUT", checkedOutAt: { lte: now }, customerOwnership: null, guestClaimProof: { isNot: null } }, select: { id: true, reference: true, checkIn: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 20 });
-    const result = []; for (const row of rows) if (await guestClaimEligible(tx, { ...scope, recordId: row.id }, now)) result.push({ recordId: row.id, reference: row.reference, date: row.checkIn.toISOString() });
-    return result;
+    if (!reference || !/^[A-Za-z0-9_-]{1,128}$/.test(reference)) return [];
+    const row = await tx.hotelReservation.findUnique({ where: { organizationId_reference: { organizationId: scope.organizationId, reference } }, select: { id: true, reference: true, checkIn: true } });
+    if (!row || !await guestClaimEligible(tx, { ...scope, recordId: row.id }, now)) return [];
+    return [{ recordId: row.id, reference: row.reference, date: row.checkIn.toISOString() }];
   }
   const bound = { ...scope, recordId: "list" };
   if (scope.kind === "ORDER") {

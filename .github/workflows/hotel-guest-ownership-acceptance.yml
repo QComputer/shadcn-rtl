@@ -53,6 +53,8 @@ jobs:
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-guest-claim.local.test.ts
       - name: Install browser dependencies
         run: pnpm exec playwright install --with-deps chromium
+      - name: Verify isolated network guard
+        run: node --test tests/unit/hotel-claim-network-guard.test.cjs
       - name: Verify authenticated browser claim
         env:
           NODE_OPTIONS: --require=./scripts/e2e/hotel-claim-fixture-dns.cjs

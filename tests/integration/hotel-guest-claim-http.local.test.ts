@@ -52,13 +52,13 @@ function isolatedServerEnv() {
     LOCAL_PRISMA_EXPECTED_PORT: "55439", RETAIL_HERO_EXPECTED_DATABASE: "retail_hero_test", DATABASE_RUNTIME_ADAPTER: "postgresql",
     NODE_ENV: "development", PORT: port, NEXT_TELEMETRY_DISABLED: "1", NEXTAUTH_URL: baseUrl, NEXTAUTH_URL_INTERNAL: baseUrl,
     NEXTAUTH_SECRET: secret, AUTH_TRUST_HOST: "true", NEXT_PUBLIC_APP_URL: baseUrl, NEXT_PUBLIC_DEPLOYED_APP_URL: baseUrl,
-    BAZAR_BAZ_PLATFORM_HOSTS: "localhost,127.0.0.1", CUSTOMER_PHONE_AUTH_ENABLED: "1", CUSTOMER_PROGRESSIVE_ENROLLMENT_ENABLED: "1", CUSTOMER_GUEST_CLAIM_ENABLED: "1", HOTEL_GUEST_RESERVATION_CLAIM_ENABLED: "1", RETAIL_GUEST_CHECKOUT_ENABLED: "0",
+    BAZAR_BAZ_PLATFORM_HOSTS: "localhost,127.0.0.1", CUSTOMER_PHONE_AUTH_ENABLED: "1", CUSTOMER_PROGRESSIVE_ENROLLMENT_ENABLED: "1", CUSTOMER_GUEST_CLAIM_ENABLED: "1", HOTEL_GUEST_RESERVATION_CLAIM_ENABLED: "1", CUSTOMER_AUTH_SMS_WORKER_ENABLED: "1", INOTI_ALLOW_LIVE_SMS: "true", INOTI_RUNTIME_MUTATIONS_APPROVED: "true", INOTI_PLATFORM_SMS_TOKEN: "synthetic-fixture-token", INOTI_PLATFORM_SMS_LINE_NO: "1000", RETAIL_GUEST_CHECKOUT_ENABLED: "0",
     SMS_PROVIDER: "DRY_RUN", SMS_DRY_RUN: "true", SMS_REAL_SEND_ENABLED: "false", SMS_GUEST_REAL_SEND_ENABLED: "false",
     EMAIL_PROVIDER: "DRY_RUN", EMAIL_REAL_SEND_ENABLED: "false", CUSTOM_DOMAIN_PROVIDER_ENABLED: "false",
     CUSTOM_DOMAIN_REAL_MUTATION_ENABLED: "false", VERCEL_DOMAIN_AUTOMATION_DRY_RUN: "true", RUNFLARE_DOMAIN_AUTOMATION_DRY_RUN: "true",
     WEB_PUSH_ENABLED: "false", WEB_PUSH_REAL_SEND_ENABLED: "false", BLOB_READ_WRITE_TOKEN: "", VERCEL_API_TOKEN: "",
     VERCEL_ACCESS_TOKEN: "", STRIPE_SECRET_KEY: "", STRIPE_WEBHOOK_SECRET: "",
-    NODE_OPTIONS: `--require=${`${process.cwd()}/scripts/dev/isolated-next-env.cjs`.replaceAll("\\", "/")}`,
+    NODE_OPTIONS: `--require=${`${process.cwd()}/scripts/dev/isolated-next-env.cjs`.replaceAll("\\", "/")} --require=${`${process.cwd()}/scripts/e2e/hotel-claim-network-guard.cjs`.replaceAll("\\", "/")}`,
   });
   return env;
 }
@@ -202,23 +202,40 @@ describe("hotel ownership claim isolated browser", { concurrency: false }, () =>
       const reservation=await db.hotelReservation.create({data:{organizationId:organization.id,propertyId:property.id,roomTypeId:room.id,ratePlanId:"fixture",reference:`HOTEL-${randomUUID()}`,checkIn:new Date("2025-01-01"),checkOut:new Date("2025-01-02"),status:"CHECKED_OUT",checkedOutAt:new Date(Date.now()-1000),totalAmount:BigInt(100),cancellationPolicyKey:"fixture",cancellationPolicySnapshot:{},idempotencyKey:randomUUID()}});
       const provenance=buildHotelGuestReservationProof({reservationId:reservation.id,organizationId:organization.id,propertyId:property.id,origin:tenantUrl},token,phone,secret,new Date()); assert.ok(provenance); await db.hotelGuestReservationProof.create({data:provenance});
       assert.equal(await db.$transaction(tx => guestClaimEligible(tx,{kind:"HOTEL",recordId:reservation.id,userId,sessionId,organizationId:organization.id,origin:tenantUrl,guestSessionId:token,phone,claimConfirmed:true},new Date(),secret)),true);
+      // More than 20 newer tenant stays must not hide the exact proof-bound record.
+      let otherReference = "";
+      for (let i=0;i<21;i++) {
+        const other=await db.hotelReservation.create({data:{organizationId:organization.id,propertyId:property.id,roomTypeId:room.id,ratePlanId:"fixture",reference:`OTHER-${randomUUID()}`,checkIn:new Date("2025-01-01"),checkOut:new Date("2025-01-02"),status:"CHECKED_OUT",checkedOutAt:new Date(Date.now()-1000),totalAmount:BigInt(100),cancellationPolicyKey:"fixture",cancellationPolicySnapshot:{},idempotencyKey:randomUUID(),createdAt:new Date(Date.now()+1000+i)}});
+        otherReference = other.reference;
+        const otherProof=buildHotelGuestReservationProof({reservationId:other.id,organizationId:organization.id,propertyId:property.id,origin:tenantUrl},Buffer.alloc(32,6).toString("base64url"),phone,secret,new Date()); assert.ok(otherProof); await db.hotelGuestReservationProof.create({data:otherProof});
+      }
       const browserCookies=(await ctx.cookies(tenantUrl)).map(c => `${c.name}=${c.value}`);
       const authCookies=browserCookies.filter(c => !c.startsWith("bazarbaaz_hotel_claim_dev="));
-      const listBody=JSON.stringify({action:"LIST",kind:"HOTEL"});
+      const listBody=JSON.stringify({action:"LIST",kind:"HOTEL",reference:reservation.reference});
       const negative = async (cookie: string, origin?: string) => request("/api/auth/customer/guest-claim", { method:"POST",headers:{cookie,"content-type":"application/json",...(origin ? {origin} : {})},body:listBody });
       assert.equal((await negative(cookieHeader(authCookies),tenantUrl)).status,403, "missing browser proof must fail");
       assert.equal((await negative(cookieHeader(browserCookies),"http://foreign.localhost")).status,403, "foreign origin must fail");
       assert.equal((await negative(cookieHeader(browserCookies))).status,403, "missing origin must fail");
       assert.equal((await negative(`${cookieHeader(browserCookies)}; bazarbaaz_hotel_claim_dev=${token}`,tenantUrl)).status,403, "duplicate proof cookie must fail");
+      const lookup = async (reference: string) => request("/api/auth/customer/guest-claim", { method:"POST", headers:{cookie:cookieHeader(browserCookies),origin:tenantUrl,"content-type":"application/json"}, body: JSON.stringify({action:"LIST",kind:"HOTEL",reference}) });
+      const foreignRecord = await lookup(otherReference), missingRecord = await lookup(`MISSING-${randomUUID()}`);
+      assert.equal(foreignRecord.status, 200); assert.equal(missingRecord.status, 200);
+      assert.deepEqual(await foreignRecord.json(), { items: [] }); assert.deepEqual(await missingRecord.json(), { items: [] });
       const page=await ctx.newPage();
       page.on("framenavigated", frame => { if (frame === page.mainFrame()) console.log("HOTEL_NAV", new URL(frame.url()).pathname); });
       page.on("requestfailed", req => { if (new URL(req.url()).pathname === "/api/auth/customer/guest-claim") console.log("HOTEL_FAILED", req.failure()?.errorText); });
       page.on("response", r => { if (new URL(r.url()).pathname === "/api/auth/customer/guest-claim") console.log("HOTEL_RESPONSE", r.status(), r.request().method()); });
       const doc=await page.goto(`${tenantUrl}/fa/hotel-reservations/claims`,{waitUntil:"domcontentloaded",timeout:120000}); assert.equal(doc?.status(),200); await page.waitForLoadState("networkidle", { timeout: 120000 });
-      const panel=page.getByTestId("guest-claim-panel"); await panel.waitFor({timeout:120000}); const listing=page.waitForResponse(r=>new URL(r.url()).pathname==="/api/auth/customer/guest-claim" && r.request().method()==="POST" && r.request().postDataJSON()?.action==="LIST"); await panel.getByTestId("guest-claim-load").click(); const listed=await listing; const listData=await listed.json(); console.log("HOTEL_CLAIM_LIST_DIAG",JSON.stringify({status:listed.status(),items:Array.isArray(listData.items)?listData.items.length:-1,origin:new URL(page.url()).origin,cookies:(await ctx.cookies(tenantUrl)).filter(c=>c.name==="bazarbaaz_hotel_claim_dev").length})); assert.equal(listed.status(),200); const radio=panel.getByTestId("guest-claim-record"); await radio.waitFor({timeout:30000}); assert.equal(await radio.count(),1); await radio.check(); assert.equal(await panel.getByTestId("guest-claim-request").isDisabled(),true);
-      let otp="", challenge=""; const issuer=new CustomerPhoneAuthService(db,{enabled:true,guestClaimEnabled:true,secret,senderAvailable:()=>true}); const ip="2001:db8::33"; for(const key of [`phone:${customerAuthDigest(phone,secret)}`,`ip:${customerAuthDigest(ip,secret)}`,`org:${organization.id}`])ownedQuotaKeys.add(key);
-      await page.route("**/api/auth/customer/guest-claim",async route=>{ if(route.request().method()!=="POST")return route.continue(); console.log("HOTEL_CLAIM_ROUTE",route.request().postDataJSON()?.action); if(route.request().postDataJSON()?.action!=="REQUEST")return route.continue(); const input=route.request().postDataJSON(); assert.deepEqual(input,{action:"REQUEST",kind:"HOTEL",recordId:reservation.id,claimConfirmed:true}); console.log("HOTEL_CLAIM_ISSUE_START"); const issued=await issuer.requestGuestClaim({kind:"HOTEL",recordId:reservation.id,userId,sessionId,organizationId:organization.id,origin:tenantUrl,guestSessionId:token,phone,claimConfirmed:true},ip); challenge=issued.challengeId; const link=await db.customerAccessLink.findUniqueOrThrow({where:{id:challenge},include:{smsOutbox:true}}); console.log("HOTEL_CLAIM_ISSUE_READY"); assert.ok(link.smsOutbox); otp=decryptCustomerAuthPayload(link.smsOutbox.encryptedPayload,secret,link.id).url.slice(4); await route.fulfill({status:202,json:issued}); });
-      await panel.getByTestId("guest-claim-consent").check(); await panel.getByTestId("guest-claim-request").click(); await panel.getByTestId("guest-claim-otp").waitFor(); assert.match(otp,/^\d{4}$/); await panel.getByTestId("guest-claim-otp").fill(otp);
+      const panel=page.getByTestId("guest-claim-panel"); await panel.waitFor({timeout:120000}); await panel.getByTestId("hotel-claim-reference").fill(reservation.reference); const listing=page.waitForResponse(r=>new URL(r.url()).pathname==="/api/auth/customer/guest-claim" && r.request().method()==="POST" && r.request().postDataJSON()?.action==="LIST"); await panel.getByTestId("guest-claim-load").click(); const listed=await listing; const listData=await listed.json(); console.log("HOTEL_CLAIM_LIST_DIAG",JSON.stringify({status:listed.status(),items:Array.isArray(listData.items)?listData.items.length:-1,origin:new URL(page.url()).origin,cookies:(await ctx.cookies(tenantUrl)).filter(c=>c.name==="bazarbaaz_hotel_claim_dev").length})); assert.equal(listed.status(),200); const radio=panel.getByTestId("guest-claim-record"); await radio.waitFor({timeout:30000}); assert.equal(await radio.count(),1); await radio.check(); assert.equal(await panel.getByTestId("guest-claim-request").isDisabled(),true);
+      // The actual HTTP REQUEST creates an encrypted outbox row; no worker is started.
+      // Synthetic provider credentials enable availability, while the fixture preload blocks all external sockets.
+      const ip="unknown"; for(const key of [`phone:${customerAuthDigest(phone,secret)}`,`ip:${customerAuthDigest(ip,secret)}`,`org:${organization.id}`])ownedQuotaKeys.add(key);
+      await panel.getByTestId("guest-claim-consent").check();
+      const issuance=page.waitForResponse(r=>new URL(r.url()).pathname==="/api/auth/customer/guest-claim" && r.request().method()==="POST" && r.request().postDataJSON()?.action==="REQUEST", {timeout:90000});
+      await panel.getByTestId("guest-claim-request").click(); const issuanceResponse=await issuance; assert.equal(issuanceResponse.status(),202); const issued=await issuanceResponse.json() as {accepted:boolean;challengeId:string}; assert.equal(issued.accepted,true);
+      const challenge=issued.challengeId; const link=await db.customerAccessLink.findUniqueOrThrow({where:{id:challenge},include:{smsOutbox:true}}); assert.ok(link.smsOutbox); assert.equal(link.smsOutbox.status, "PENDING"); assert.equal(link.smsOutbox.attempts, 0); assert.equal(link.smsOutbox.sentAt, null);
+      const payload=decryptCustomerAuthPayload(link.smsOutbox.encryptedPayload,secret,link.id); assert.match(payload.url,/^OTP:\d{4}$/); const otp=payload.url.slice(4);
+      await panel.getByTestId("guest-claim-otp").waitFor(); await panel.getByTestId("guest-claim-otp").fill(otp);
       const completed=page.waitForResponse(r=>new URL(r.url()).pathname==="/api/auth/customer/guest-claim" && r.request().method()==="POST" && r.request().postDataJSON()?.action==="CLAIM", { timeout: 90000 }); await panel.getByTestId("guest-claim-verify").click(); assert.equal((await completed).status(),200);
       assert.equal((await db.hotelReservationOwnership.findUniqueOrThrow({where:{reservationId:reservation.id}})).userId,userId); assert.equal(await db.auditLog.count({where:{entityType:"HotelGuestReservationClaim",entityId:reservation.id}}),1);
       const historyPage = await ctx.newPage();

@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     const identity = await prisma.customerPhoneIdentity.findUnique({ where: { userId: session.user.id }, select: { phone: true, verifiedAt: true } });
     if (!identity || identity.verifiedAt > new Date()) return unavailable(403);
     const scope = { kind: input.kind, userId: session.user.id, sessionId: session.user.phoneSessionId, organizationId: context.organizationId, origin: context.origin, phone: identity.phone, guestSessionId: browser, claimConfirmed: true as const };
-    if (input.action === "LIST") return reply({ items: await prisma.$transaction(tx => listGuestClaimCandidates(tx, scope, new Date()), { isolationLevel: "RepeatableRead" }) }, 200);
+    if (input.action === "LIST") return reply({ items: await prisma.$transaction(tx => listGuestClaimCandidates(tx, scope, new Date(), input.kind === "HOTEL" ? input.reference : undefined), { isolationLevel: "RepeatableRead" }) }, 200);
     const bound = { ...scope, recordId: input.recordId };
     if (input.action === "REQUEST") {
       // Same generic response for eligible, ineligible, throttled or disabled delivery.

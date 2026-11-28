@@ -9,3 +9,5 @@ test("claim binds exact challenge and normalizes OTP digits", () => { const inpu
 test("unknown fields, operations and record types fail closed", () => { for (const value of [null,[],{...request,phone:"09120000000"},{...request,kind:"UNKNOWN"},{...request,action:"AUTO"},{...request,otp:"1234"}]) assert.equal(parseGuestClaimInput(value),null); });
 
 test("hotel claims require an explicit record and consent", () => { const hotel = {...request,kind:"HOTEL"}; assert.deepEqual(parseGuestClaimInput(hotel),hotel); assert.equal(parseGuestClaimInput({...hotel,claimConfirmed:false}),null); });
+
+test("hotel discovery accepts only one literal bounded reference", () => { assert.deepEqual(parseGuestClaimInput({action:"LIST",kind:"HOTEL",reference:"H-123"}),{action:"LIST",kind:"HOTEL",reference:"H-123"}); for(const reference of [undefined,"","%","x".repeat(129)]) assert.equal(parseGuestClaimInput({action:"LIST",kind:"HOTEL",reference}),null); assert.equal(parseGuestClaimInput({action:"LIST",kind:"HOTEL",reference:"H-123",phone:"x"}),null); });

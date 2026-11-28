@@ -94,6 +94,10 @@ export async function createRetailCheckout(owner: RetailCheckoutOwner, input: Ch
         (input.paymentMethod === "SNAPPPAY_INSTALLMENT" && !activePolicy.data.snappPayInstallmentsEnabled)) {
       throw new ApiError(409, "Selected payment method is no longer available.");
     }
+    const installmentPricingPolicy = input.paymentMethod === "SNAPPPAY_INSTALLMENT"
+      ? await tx.retailInstallmentPricingPolicy.findUnique({ where: { organizationId: organization.id }, select: { markupPercent: true, version: true } }) : null;
+    const installmentMarkupPercent = installmentPricingPolicy?.markupPercent ?? money(0);
+    const installmentPricingPolicyVersion = installmentPricingPolicy?.version ?? 0;
     const cart = await tx.shopCart.findFirst({
       where: checkoutCartOwner(owner, organization.slug),
       include: { items: { include: { variant: { include: {
@@ -122,7 +126,7 @@ export async function createRetailCheckout(owner: RetailCheckoutOwner, input: Ch
     }
     let subtotal = money(0);
     const items: Array<{
-      variantId: string; productId: string; quantity: number; price: Prisma.Decimal;
+      variantId: string; productId: string; quantity: number; price: Prisma.Decimal; originalPrice: Prisma.Decimal;
       trackInventory: boolean; allowBackOrder: boolean; skuSnapshot: string | null;
       productNameSnapshot: string; variantNameSnapshot: string | null; variantOptionsSnapshot: Prisma.InputJsonArray;
     }> = [];
@@ -140,10 +144,10 @@ export async function createRetailCheckout(owner: RetailCheckoutOwner, input: Ch
       });
       if (!category) throw new ApiError(409, "Cart contains an unavailable category.");
       const ordinaryPrice = discountedUnitPrice(product, variant.price);
-      const price = retailProductPriceForPaymentMethod(ordinaryPrice, input.paymentMethod);
+      const price = retailProductPriceForPaymentMethod(ordinaryPrice, input.paymentMethod, installmentMarkupPercent);
       subtotal = subtotal.add(price.mul(line.quantity));
       items.push({ variantId: variant.id, productId: product.id, quantity: line.quantity,
-        price, trackInventory: product.trackInventory, allowBackOrder: variant.allowBackOrder,
+        price, originalPrice: ordinaryPrice, trackInventory: product.trackInventory, allowBackOrder: variant.allowBackOrder,
         productNameSnapshot: product.name, skuSnapshot: variant.sku, variantNameSnapshot: variant.name,
         variantOptionsSnapshot: variant.optionValues
           .filter(({ definition }) => definition.organizationId === organization.id && definition.isActive && definition.scope === "VARIANT_OPTION")
@@ -208,8 +212,25 @@ export async function createRetailCheckout(owner: RetailCheckoutOwner, input: Ch
           skuSnapshot: item.skuSnapshot, variantNameSnapshot: item.variantNameSnapshot,
           variantOptionsSnapshot: item.variantOptionsSnapshot })) },
       },
-      select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, paymentMethod: true, publicTrackingToken: true, retailPaymentDeadlineAt: true },
+      select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, paymentMethod: true, publicTrackingToken: true, retailPaymentDeadlineAt: true,
+        items: { select: { id: true, productId: true, variantId: true, quantity: true } } },
     });
+    if (input.paymentMethod === "SNAPPPAY_INSTALLMENT") {
+      const originalMerchandiseAmount = items.reduce((sum, item) => sum.add(item.originalPrice.mul(item.quantity)), money(0));
+      await tx.retailInstallmentQuoteSnapshot.create({ data: {
+        organizationId: organization.id, organizationSlug: organization.slug, orderId: order.id,
+        policyVersion: installmentPricingPolicyVersion, appliedMarkupPercent: installmentMarkupPercent,
+        originalMerchandiseAmount, adjustedMerchandiseAmount: subtotal, deliveryAmount: deliveryFee, discountAmount: discount,
+        finalPayableAmountToman: BigInt(total.toFixed(0)), currency: "TOMAN",
+        lines: { create: order.items.map((orderItem) => {
+          const item = items.find((candidate) => candidate.productId === orderItem.productId && candidate.variantId === orderItem.variantId);
+          if (!item) throw new ApiError(500, "Installment snapshot item could not be matched.");
+          return { organizationSlug: organization.slug, productIdSnapshot: item.productId, variantIdSnapshot: item.variantId,
+            quantity: orderItem.quantity, originalUnitAmount: item.originalPrice, adjustedUnitAmount: item.price,
+            originalLineAmount: item.originalPrice.mul(item.quantity), adjustedLineAmount: item.price.mul(item.quantity) };
+        }) },
+      } });
+    }
     for (const item of items) {
       if (!item.trackInventory) continue;
       const updated = await tx.$queryRaw<Array<{ inventory: number }>>`

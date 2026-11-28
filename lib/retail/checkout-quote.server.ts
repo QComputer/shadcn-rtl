@@ -49,7 +49,11 @@ export async function quoteInTransaction(tx: Tx, organization: { id: string; slu
     } } } } },
   });
   if (!cart?.items.length) throw new ApiError(409, "Cart is empty.");
-  let subtotal = money(0); let hasUnorderable = false;
+  const installmentPricingPolicy = input.paymentMethod === "SNAPPPAY_INSTALLMENT"
+    ? await tx.retailInstallmentPricingPolicy.findUnique({ where: { organizationId: organization.id }, select: { markupPercent: true, version: true } }) : null;
+  const installmentMarkupPercent = installmentPricingPolicy?.markupPercent ?? new Prisma.Decimal(0);
+  const installmentPricingPolicyVersion = installmentPricingPolicy?.version ?? 0;
+  let subtotal = money(0); let ordinaryMerchandiseSubtotal = money(0); let hasUnorderable = false;
   const items = [] as Array<{ id: string; variantId: string; quantity: number; unitPrice: number; lineTotal: number; orderable: boolean; reason: string | null }>;
   const facts: unknown[] = [];
   for (const line of cart.items) {
@@ -59,14 +63,15 @@ export async function quoteInTransaction(tx: Tx, organization: { id: string; slu
     const category = reason ? null : await tx.productCategory.findFirst({ where: { id: product.categoryId, organizationId: organization.id, isActive: true, deletedAt: null }, select: { id: true } });
     if (!reason && !category) reason = "unavailable";
     const ordinaryPrice = unitPrice(product, variant.price);
-    const price = retailProductPriceForPaymentMethod(ordinaryPrice, input.paymentMethod);
+    const price = retailProductPriceForPaymentMethod(ordinaryPrice, input.paymentMethod, installmentMarkupPercent);
     const available = Math.max(0, variant.inventory - variant.reservedQuantity);
     if (!reason && product.trackInventory && !variant.allowBackOrder && line.quantity > available) reason = "insufficient_stock";
     const orderable = reason === null;
     if (!orderable) hasUnorderable = true;
     subtotal = subtotal.add(price.mul(line.quantity));
+    ordinaryMerchandiseSubtotal = ordinaryMerchandiseSubtotal.add(ordinaryPrice.mul(line.quantity));
     items.push({ id: line.id, variantId: variant.id, quantity: line.quantity, unitPrice: price.toNumber(), lineTotal: price.mul(line.quantity).toNumber(), orderable, reason });
-    facts.push([line.id, variant.id, line.quantity, price.toString(), product.trackInventory, variant.inventory, variant.reservedQuantity, variant.allowBackOrder, variant.manuallyUnavailable, reason]);
+    facts.push([line.id, variant.id, line.quantity, ordinaryPrice.toString(), price.toString(), product.trackInventory, variant.inventory, variant.reservedQuantity, variant.allowBackOrder, variant.manuallyUnavailable, reason]);
   }
   const settings = await tx.organizationSettings.findUnique({ where: { organizationSlug: organization.slug }, select: { deliveryFee: true, enablePickup: true, enableDelivery: true, settings: true, organization: {select: {address: true, phone: true}} } });
   const fulfillmentInfo = {...readFulfillmentDetails(settings?.settings), contact: settings?.organization.phone ?? null};
@@ -100,8 +105,9 @@ export async function quoteInTransaction(tx: Tx, organization: { id: string; slu
   const installmentAmountIssue = input.paymentMethod === "SNAPPPAY_INSTALLMENT" && !isWholeTomanAmount(total)
     ? "Installment payment requires a positive whole-Toman total." : null;
   const issues = [...(hasUnorderable ? ["Cart contains unavailable or insufficient-stock items."] : []), ...(couponIssue ? [couponIssue] : []), ...(fulfillmentIssue ? [fulfillmentIssue] : []), ...(installmentAmountIssue ? [installmentAmountIssue] : [])];
-  const factsHash = createHash("sha256").update(JSON.stringify([organization.id, checkoutOwnerKey(owner, organization.slug), input.type, input.deliveryAddress ?? null, input.recipientName ?? null, input.recipientMobile ?? null, input.deliveryNotes ?? null, input.paymentMethod ?? null, input.cashMode ?? null, facts, subtotal.toString(), discount.toString(), deliveryFee.toString(), total.toString(), couponFacts, settings?.enablePickup ?? true, settings?.enableDelivery ?? true, fulfillmentInfo])).digest("base64url");
+  const factsHash = createHash("sha256").update(JSON.stringify([organization.id, checkoutOwnerKey(owner, organization.slug), input.type, input.deliveryAddress ?? null, input.recipientName ?? null, input.recipientMobile ?? null, input.deliveryNotes ?? null, input.paymentMethod ?? null, input.cashMode ?? null, installmentMarkupPercent.toString(), installmentPricingPolicyVersion, facts, subtotal.toString(), discount.toString(), deliveryFee.toString(), total.toString(), couponFacts, settings?.enablePickup ?? true, settings?.enableDelivery ?? true, fulfillmentInfo])).digest("base64url");
   return { quote: { reviewToken: factsHash, subtotal: subtotal.toNumber(), discount: discount.toNumber(), deliveryFee: deliveryFee.toNumber(), total: total.toNumber(), currency: "TOMAN" as const,
+    installmentPricing: input.paymentMethod === "SNAPPPAY_INSTALLMENT" ? { policyVersion: installmentPricingPolicyVersion, markupPercent: installmentMarkupPercent.toString(), originalMerchandiseAmount: ordinaryMerchandiseSubtotal.toNumber(), adjustedMerchandiseAmount: subtotal.toNumber() } : null,
     items, fulfillmentInfo, fulfillment: [ ...(settings?.enablePickup === false ? [] : [{ type: "PICK_UP" as const, label: "Customer pickup", fee: 0 }]), ...(settings?.enableDelivery === false || !deliveryFeeConfigured || !deliveryFee.isFinite() || deliveryFee.lt(0) ? [] : [{ type: "DELIVERY" as const, label: "Delivery", fee: money(settings!.deliveryFee!).toNumber() }]) ], issues } };
 }
 

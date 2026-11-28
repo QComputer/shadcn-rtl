@@ -1,23 +1,26 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { Prisma } from "@prisma/client";
-import { isWholeTomanAmount, retailProductPriceForPaymentMethod, snappPayInstallmentProductPrice } from "@/lib/retail/snappay-installment-pricing";
+import { installmentProductPrice, isWholeTomanAmount, retailProductPriceForPaymentMethod } from "@/lib/retail/snappay-installment-pricing";
 import { retailPaymentPolicyInput, saveRetailPaymentPolicy } from "@/lib/retail/payment-policy.server";
 import { SnappPayBlockedAdapter } from "@/lib/integrations/runtime/adapters";
 
 describe("SnappPay installment price", () => {
-  it("adds exactly eleven percent with decimal arithmetic", () => {
-    assert.equal(snappPayInstallmentProductPrice(new Prisma.Decimal("1000")).toString(), "1110");
-    assert.equal(snappPayInstallmentProductPrice(new Prisma.Decimal("125.50")).toString(), "139.305");
-    assert.equal(snappPayInstallmentProductPrice(new Prisma.Decimal("0.01")).toString(), "0.0111");
+  it("applies a merchant-configured percentage exactly with decimal arithmetic", () => {
+    const akaShoesPolicy = new Prisma.Decimal("11");
+    assert.equal(installmentProductPrice(new Prisma.Decimal("1000"), akaShoesPolicy).toString(), "1110");
+    assert.equal(installmentProductPrice(new Prisma.Decimal("125.50"), akaShoesPolicy).toString(), "139.305");
+    assert.equal(installmentProductPrice(new Prisma.Decimal("0.01"), akaShoesPolicy).toString(), "0.0111");
+    assert.equal(installmentProductPrice(new Prisma.Decimal("1000"), new Prisma.Decimal("0")).toString(), "1000");
     for (const method of [undefined, "CASH", "BANK_TRANSFER", "INOTI_USSD"] as const) {
       assert.equal(retailProductPriceForPaymentMethod(new Prisma.Decimal("125.50"), method).toString(), "125.5");
     }
-    assert.equal(retailProductPriceForPaymentMethod(new Prisma.Decimal("125.50"), "SNAPPPAY_INSTALLMENT").toString(), "139.305");
+    assert.equal(retailProductPriceForPaymentMethod(new Prisma.Decimal("125.50"), "SNAPPPAY_INSTALLMENT", akaShoesPolicy).toString(), "139.305");
   });
 
   it("rejects invalid ordinary amounts and fractional SnappPay totals", () => {
-    assert.throws(() => snappPayInstallmentProductPrice(new Prisma.Decimal("-1")), RangeError);
+    assert.throws(() => installmentProductPrice(new Prisma.Decimal("-1"), new Prisma.Decimal("11")), RangeError);
+    assert.throws(() => installmentProductPrice(new Prisma.Decimal("1"), new Prisma.Decimal("-1")), RangeError);
     assert.equal(isWholeTomanAmount(new Prisma.Decimal("1110")), true);
     assert.equal(isWholeTomanAmount(new Prisma.Decimal("1110.5")), false);
     assert.equal(isWholeTomanAmount(new Prisma.Decimal("0")), false);
@@ -31,6 +34,7 @@ describe("SnappPay installment price", () => {
       paymentDeadlinesMinutes: { bankTransfer: 1440, cash: 2880, inotiUssd: 15 },
     });
     assert.equal(legacyPolicy.snappPayInstallmentsEnabled, false);
+    assert.equal(legacyPolicy.installmentMarkupPercent, "0");
     assert.equal(legacyPolicy.bankTransferEnabled, true);
     await assert.rejects(() => saveRetailPaymentPolicy("synthetic-shop", "synthetic-org", "synthetic-user", {
       ...legacyPolicy, snappPayInstallmentsEnabled: true,

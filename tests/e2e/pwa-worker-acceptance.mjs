@@ -63,7 +63,12 @@ export async function verifyWorkerAcceptance({ browser, origin, startPath, expec
       throw new Error(`Application did not register an active worker: ${JSON.stringify(diagnostic)}; browserErrors=${JSON.stringify(browserErrors.slice(0, 20))}; ${String(error?.message || error)}`);
     }
     const initialWorker = await page.evaluate(async () => {
-      const registration = await navigator.serviceWorker.getRegistration();
+      // `getRegistration()` only returns a registration matching the current
+      // document URL. Use the full same-origin list after the active-worker
+      // wait so a valid origin-scoped registration is not lost to a lookup
+      // race or a tenant route rewrite.
+      const registration = (await navigator.serviceWorker.getRegistrations())
+        .find((candidate) => Boolean(candidate.active));
       return registration ? {
         scope: registration.scope,
         active: Boolean(registration.active),

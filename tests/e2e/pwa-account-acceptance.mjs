@@ -127,7 +127,17 @@ export async function verifyRetailAccount({ browser, prisma, origin, slug, artif
       await page.locator("#username").fill(username);
       await page.locator("#password").fill(password);
       await page.locator('button[type="submit"]').click();
-      await page.waitForURL((url) => url.pathname === new URL(checkoutUrl).pathname, { waitUntil: "domcontentloaded" });
+      try {
+        await page.waitForURL((url) => url.pathname === new URL(checkoutUrl).pathname, { waitUntil: "domcontentloaded", timeout: 15_000 });
+      } catch (error) {
+        const failure = await page.evaluate(() => ({
+          url: location.href,
+          title: document.title,
+          alerts: Array.from(document.querySelectorAll('[role="alert"], [aria-invalid="true"]')).map((element) => element.textContent?.trim() || element.getAttribute("name") || element.id).filter(Boolean).slice(0, 12),
+          body: document.body.innerText.slice(0, 1200),
+        })).catch(() => ({ url: page.url() }));
+        throw new Error(`customer login did not return to checkout: ${JSON.stringify(failure)}; ${String(error?.message || error)}`);
+      }
 
       const ownProfile = await getJson(page, appUrl("/api/users/me"));
       assert.equal(ownProfile.status, 200);

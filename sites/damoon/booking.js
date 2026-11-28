@@ -223,7 +223,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   let holdAttempt = { key: "", fingerprint: "", payload: null };
   let coordinationAttempt = savedCoordination?.pendingAttempt || null;
   function clearHoldAttempt() { holdAttempt = { key: "", fingerprint: "", payload: null }; }
-  fetch("/api/auth/customer/config", { cache: "no-store" }).then(response => response.ok ? response.json() : null).then(data => {
+  if (!requestOnly && !demoModeActive) fetch("/api/auth/customer/config", { cache: "no-store" }).then(response => response.ok ? response.json() : null).then(data => {
     recoveryIssuanceAvailable = data?.hotelGuestRecoveryIssuance === true;
     if (flow.step === "details") renderFlow();
   }).catch(() => {});

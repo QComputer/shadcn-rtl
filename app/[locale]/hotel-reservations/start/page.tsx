@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { HotelOperationalReservations } from "@/components/hotel-operations/hotel-operational-reservations";
@@ -81,6 +82,7 @@ export default async function HotelReservationStartPage({ params, searchParams }
       : "Hotel Damoon preview: room, rate, inventory, and policy data are examples until confirmed by the hotel owner. A submission here is not a reception confirmation.";
   return <main className="mx-auto min-w-0 w-full max-w-5xl p-4 sm:p-6" dir={locale === "en" ? "ltr" : "rtl"}>
     <aside role="note" className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">{previewNotice}</aside>
+    {process.env.HOTEL_GUEST_RESERVATION_CLAIM_ENABLED === "1" && <Link className="mb-4 inline-flex rounded-md border px-4 py-2" href={`/${locale}/hotel-reservations/claims`}>{locale === "fa" ? "اتصال اقامت مهمان به حساب" : locale === "ar" ? "ربط إقامة الضيف بالحساب" : "Attach a guest stay to your account"}</Link>}
     <HotelOperationalReservations key={`${tenant.organizationId}:${property.id}:${session.user.id}`} organizationId={tenant.organizationId} propertyId={property.id} locale={locale} mode="guest" canConfigure={false} initialStay={initialStay(search)} />
   </main>;
 }

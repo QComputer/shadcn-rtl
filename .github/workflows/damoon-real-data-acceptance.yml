@@ -1,0 +1,56 @@
+name: Damoon real data isolated acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/hotel/damoon-real-data-import.mjs'
+      - 'scripts/hotel/verify-damoon-local-e2e-db.mjs'
+      - 'tests/unit/damoon-real-data-*.test.mjs'
+      - 'tests/integration/damoon-real-data-*.local.test.mjs'
+      - 'tests/fixtures/damoon-real-data-synthetic/**'
+      - 'prisma/**'
+      - '.github/workflows/damoon-real-data-acceptance.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: damoon_a19f52c63d048b71
+          POSTGRES_USER: damoon_test_a19f52c63d048b71
+          POSTGRES_PASSWORD: local_fixture_a19f52c63d048b71
+        ports: ['55439:5432']
+        options: >-
+          --health-cmd "pg_isready -U damoon_test_a19f52c63d048b71 -d damoon_a19f52c63d048b71"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://damoon_test_a19f52c63d048b71:local_fixture_a19f52c63d048b71@127.0.0.1:55439/damoon_a19f52c63d048b71?schema=public
+      DIRECT_URL: postgresql://damoon_test_a19f52c63d048b71:local_fixture_a19f52c63d048b71@127.0.0.1:55439/damoon_a19f52c63d048b71?schema=public
+      LOCAL_PRISMA_EXPECTED_PORT: '55439'
+      DAMOON_LOCAL_E2E: '1'
+      DAMOON_E2E_ENABLED: '1'
+      DAMOON_CI_DATABASE_NAME: damoon_a19f52c63d048b71
+      DAMOON_E2E_DATABASE_USER: damoon_test_a19f52c63d048b71
+      DAMOON_SOURCE_DIR: tests/fixtures/damoon-real-data-synthetic
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma validate && pnpm exec prisma generate
+      - run: pnpm exec prisma migrate deploy
+      - name: Check mapping, rollback, isolation and replay
+        run: pnpm exec node --test tests/unit/damoon-real-data-mapping.test.mjs tests/unit/damoon-real-data-source.test.mjs tests/integration/damoon-real-data-dry-run.local.test.mjs tests/integration/damoon-real-data-apply.local.test.mjs
+      - name: Lint import and fixtures
+        run: pnpm exec eslint scripts/hotel/damoon-real-data-import.mjs tests/unit/damoon-real-data-mapping.test.mjs tests/unit/damoon-real-data-source.test.mjs tests/integration/damoon-real-data-dry-run.local.test.mjs tests/integration/damoon-real-data-apply.local.test.mjs

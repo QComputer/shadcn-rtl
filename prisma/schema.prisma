@@ -1919,6 +1919,7 @@ model Notification {
 }
 
 model User {
+  hotelReservationOwnerships HotelReservationOwnership[]
   customerSsoTickets CustomerSsoTicket[]
   customerPhoneIdentity CustomerPhoneIdentity?
   customerPhoneSessions CustomerPhoneSession[]
@@ -5220,6 +5221,7 @@ model HotelProperty {
   roomTypes            HotelRoomType[]
   rooms                HotelRoom[]
   draftAccommodations  HotelDraftAccommodation[]
+  damoonDataImports    HotelDamoonDataImport[]
   amenities            HotelAmenity[]
   ratePlans            HotelRatePlan[]
   cancellationPolicies HotelCancellationPolicy[]
@@ -5240,6 +5242,22 @@ model HotelProperty {
   @@unique([organizationId, slug])
   @@unique([id, organizationId])
   @@index([organizationId, isActive])
+}
+
+/// Internal, non-published staging record. Amounts remain in their source IRR units.
+model HotelDamoonDataImport {
+  id String @id @default(cuid())
+  organizationId String
+  propertyId String
+  sourceDigest String @db.VarChar(64)
+  units Json
+  tariffs Json
+  mapping Json
+  createdAt DateTime @default(now())
+  property HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "HotelDamoonDataImport_property_fkey")
+
+  @@unique([organizationId, propertyId, sourceDigest], map: "HotelDamoonDataImport_scope_digest_key")
+  @@index([organizationId, propertyId, createdAt], map: "HotelDamoonDataImport_scope_created_idx")
 }
 
 /// An internal accommodation worksheet with no link to sellable inventory.
@@ -5852,6 +5870,9 @@ model HotelReservation {
   allocations HotelPaymentAllocation[]
   offlinePayments HotelOfflinePayment[]
   guestProfileLinks HotelGuestProfileLink[]
+  guestClaimProof HotelGuestReservationProof?
+  guestRecoveryCredential HotelGuestRecoveryCredential?
+  customerOwnership HotelReservationOwnership?
 
   @@unique([organizationId, reference])
   @@unique([organizationId, idempotencyKey])
@@ -5860,6 +5881,55 @@ model HotelReservation {
   @@index([organizationId, status, createdAt])
   @@index([organizationId, propertyId, checkIn, checkOut])
   @@index([organizationId, holdId])
+}
+
+/// Browser provenance for a newly created anonymous reservation. This is NOT
+/// account ownership, a guest dossier link, a payment permission or a bearer token.
+/// Never backfill from contact fields, references or idempotency keys.
+model HotelGuestRecoveryCredential {
+  reservationId String @id
+  organizationId String
+  propertyId String
+  origin String
+  secretDigest String
+  contactDigest String
+  createdAt DateTime
+  expiresAt DateTime
+  redeemedAt DateTime?
+
+  reservation HotelReservation @relation(fields: [reservationId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Cascade, map: "HotelGuestRecoveryCredential_reservation_fkey")
+
+  @@unique([reservationId, organizationId, propertyId], map: "HotelGuestRecoveryCredential_scope_key")
+  @@index([organizationId, propertyId, expiresAt], map: "HotelGuestRecoveryCredential_expiry_idx")
+}
+
+model HotelGuestReservationProof {
+  reservationId  String @id
+  organizationId String
+  propertyId     String
+  origin         String @db.VarChar(256)
+  browserDigest  String @db.VarChar(64)
+  contactDigest  String @db.VarChar(64)
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+
+  reservation HotelReservation @relation(fields: [reservationId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Cascade, map: "HotelGuestReservationProof_reservation_fkey")
+
+  @@unique([reservationId, organizationId, propertyId], map: "HotelGuestReservationProof_scope_key")
+  @@index([organizationId, propertyId, expiresAt], map: "HotelGuestReservationProof_expiry_idx")
+}
+
+/// Explicit individual account ownership; booking contact and guest snapshots remain unchanged.
+model HotelReservationOwnership {
+  reservationId String @id
+  organizationId String
+  propertyId String
+  userId String
+  claimedAt DateTime @default(now())
+  reservation HotelReservation @relation(fields: [reservationId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Restrict, map: "HotelReservationOwnership_reservation_fkey")
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  @@unique([reservationId, organizationId, propertyId], map: "HotelReservationOwnership_scope_key")
+  @@index([organizationId, userId, claimedAt])
 }
 
 /// An offline collection or an unverified bank-transfer claim.

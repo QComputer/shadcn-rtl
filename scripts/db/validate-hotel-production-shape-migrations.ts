@@ -198,7 +198,7 @@ async function main(): Promise<void> {
       "A payment referencing another tenant's reservation",
     );
     assertionsPassed = true;
-    console.log("PASS: exactly five ordered migrations apply to the disposable Production-shaped affected tables.");
+    console.log("PASS: exactly six ordered migrations apply to the disposable Production-shaped affected tables.");
     console.log("PASS: legacy property and reservation data persist; existing bookings receive only a NULL paymentMethod; public/manual modes stay DISABLED.");
     console.log("PASS: same-tenant quote succeeds; cross-tenant property quote and reservation payment are rejected by composite foreign keys.");
   } finally {

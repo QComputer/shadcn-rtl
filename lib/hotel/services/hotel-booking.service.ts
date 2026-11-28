@@ -146,6 +146,8 @@ export type ConfirmHoldCommand = {
   readonly scope: TenantScope
   readonly holdId: string
   readonly reservationId: string
+  readonly guestRecoveryCredential?: ReservationRecord["guestRecoveryCredential"]
+  readonly guestClaimProof?: ReservationRecord["guestClaimProof"]
   readonly ratePlanId: string
   readonly guests: readonly ReservationGuest[]
   readonly occupancy?: Occupancy
@@ -211,6 +213,8 @@ export async function confirmBookingHold(
     currency: command.currency ?? "TOMAN",
     cancellationPolicySnapshot: command.policySnapshot,
     holdId: hold.id,
+    ...(command.guestClaimProof ? { guestClaimProof: command.guestClaimProof } : {}),
+    ...(command.guestRecoveryCredential ? { guestRecoveryCredential: command.guestRecoveryCredential } : {}),
     createdAt: now,
     updatedAt: now,
   });

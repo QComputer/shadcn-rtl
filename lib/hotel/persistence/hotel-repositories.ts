@@ -1,3 +1,4 @@
+import type { HotelRecoveryEvidence } from "../domain/guest-recovery-secret";
 /**
  * Hotel persistence contracts (H2).
  *
@@ -32,6 +33,8 @@ import type {
   StayDate,
   TomanAmount,
 } from "@/lib/hotel/domain/types";
+
+import type { HotelGuestReservationProof } from "../domain/guest-reservation-proof";
 
 export type TenantScope = {
   readonly organizationId: string
@@ -107,6 +110,9 @@ export type ReservationRecord = {
   readonly totalAmount: TomanAmount
   readonly currency: string
   readonly cancellationPolicySnapshot: ReservationCancellationPolicySnapshot | null
+  /** Write-only provenance, never returned by persistence reads. */
+  readonly guestRecoveryCredential?: HotelRecoveryEvidence
+  readonly guestClaimProof?: HotelGuestReservationProof
   readonly paymentRequestPublicId?: string
   readonly holdId?: string
   readonly createdAt: Date

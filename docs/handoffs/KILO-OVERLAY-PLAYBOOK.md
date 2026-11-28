@@ -1,6 +1,6 @@
 # Kilo Code overlay delivery playbook
 
-Version: 1.6 (2026-11-27) — repository delivery standard; includes G3-B1 detached execution, diagnostic CI and owner deployment decisions.
+Version: 1.7 (2026-11-27) — repository delivery standard; includes G3-B1 detached execution, diagnostic CI and owner deployment decisions.
 Scope: BazarBaaz platform, QComputer/shadcn-rtl. Hotel-specific gates below are the current PMS profile, not universal rules for every platform change.
 
 ## 1. Delivery contract
@@ -186,3 +186,11 @@ Not applied to tracked Playbook in this recovery (candidate must remain unchange
 - HOTEL-QA-001 remains OPEN: intermittent empty check-in date in hotel manual reception browser form. PR191 Hotel run 45920832895 attempt 1 failed, pinned baseline 45921366712 passed, attempt 2 on exact candidate passed without edits. Root cause unconfirmed. Keep failure history; separate hotel stabilization work when authorized.
 - Runflare: service and linked Git pages established exact project/service, repo/branch, visible Git commit and active v167 for PR190; direct SHA-to-version mapping owner-confirmed. Do not infer deployment from CLI cached target. PR191 production deployment not independently verified.
 - G3-B2 begins a NEW Kilo session; use same free model. No production flag activation. The public claim HTTP route requires all three explicit auth/progressive/guest-claim gates, a validated domain-bound CUSTOMER session, verified identity and original host-only guest cookie; scope never accepted from client. Discovery is bounded to 20 candidate rows per requested kind and exact core eligibility. Browser tests seed synthetic original-browser cookies and use real NextAuth and claim APIs; issuance alone uses an isolated fixture with no provider contact. Separate public order/appointment record claims from hotel, cross-browser recovery and real SMS readiness.
+
+## G3-B2 execution lessons — v1.7
+
+- Detached one-shot launcher; asynchronous long gates, watchdog, monotonic timing, log files and incremental evidence. A shell timeout, process sleep or lost heartbeat is not a failed test. Never kill resources without proven task ownership. If child exit is unconfirmed retain snapshot/resources and stop.
+- Prior 93/93 accepted on tree `5096cc9e93888127a00fb32c13fd838555eb7c0f`; TypeScript initial ETIMEDOUT, selective recovery PASS (193460 ms). Only carry prior gates after exact candidate, verified evidence/log hashes and unchanged relevant runtime/dependencies. No repeat to satisfy a fixed count.
+- Kilo monitors the detached runner with bounded calls until terminal state or documented monitoring limit, never relaunches on ACTIVE.
+- HOTEL-QA-001 intermittent manual reception missing check-in date: retain failed attempts and diagnose; do not weaken form or tests.
+- Schema additions: isolated fixture migration allowed only by task scope; production migration, activation and any deployment that would apply a pending migration require separate review/authorization.

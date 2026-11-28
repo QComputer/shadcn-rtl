@@ -193,3 +193,20 @@ PR189 squash `dbf10793715a06a02361ce009e700d4d7f35497c`, tree `8381f25486f904f7c
 
 ### G3-B2 candidate — explicit guest record claim HTTP and WEB (2026-11-27)
 PR191 core merged at 3d3feff6f429ab704c2be51b0a2da694aa6dafe7; accepted 86/86 and 4/4 hosted gates (Hotel diagnostic attempt 2; HOTEL-QA-001 open). Candidate adds private LIST/REQUEST/CLAIM API and FA/EN/AR panels on existing shop profile/appointment tracking. It preserves G3-B1 record eligibility/transactional ownership transfer, original guest row and financial state. Only exact tenant session, verified phone, original browser cookie and explicit record consent authorize transfer with record-bound OTP. Discovery limited to 20 rows per kind, no phone-only lookup. Default OFF flags unchanged; no migrations. New HTTP/browser and regression acceptance pending. No real delivery, hotel claim, cross-browser recovery, legacy claim, club/marketing consent or activation accepted.
+
+### G3-B3.1a candidate — proof capture only
+
+New hotel anonymous reservations can capture record-bound browser provenance when the dedicated flag `HOTEL_GUEST_CLAIM_PROOF_ENABLED=1` is explicitly enabled in an approved environment. No flag is enabled by this change. No legacy backfill, account attachment, claim discovery, UI, access grants, real SMS, payment or customer club effect. Proof expiry is 180 days; a lost or expired browser credential requires a separately reviewed recovery workflow, never automatic linking. The later claim must validate the original verified host, reservation/property/tenant, contact, current authenticated account and one-time OTP and preserve financial and companion data. Migration is additive and must not run in production under this task.
+
+### G3-B3.1a migration rehearsal hardening — pending review
+
+PR193 head 0545a9d934fa20c0ef12de6895812940532fc367 passed the four hosted execution gates; the production-gap rehearsal failed on its fixed migration-tail assertion. This candidate pins the historical and PR192 lineages, discovers later migrations in order, retains the six-migration Production-shape fixture, and adds an isolated PR192-to-proof upgrade with existing tenant and reservation records. Local results and the candidate tree require independent review; no hosted result is claimed for this correction. Next: review the staged correction, then rerun affected hosted gates. Runflare's live migration/startup configuration and Production migration state remain unverified; AUTH-QA-001 and HOTEL-QA-001 remain open with root causes unconfirmed. No feature activation is authorized.
+
+### G3-B3.1b — hotel guest ownership claim candidate
+
+Explicit completed-stay ownership uses the original reservation-bound browser proof, a verified tenant customer session, matching verified contact, explicit consent and a record-bound OTP. The new tenant-scoped ownership relation and audit are written atomically with OTP consumption; existing guest and reservation snapshots are retained. The HOTEL_GUEST_RESERVATION_CLAIM_ENABLED gate is default OFF and requires the existing customer claim gates. This candidate requires local and hosted acceptance, migration release review and a separate activation decision. No phone-only or cross-browser recovery is provided; G3-B3.2 remains open. AUTH-QA-001 and HOTEL-QA-001 remain open.
+
+
+### G3-B3.2 — independent hotel recovery candidate
+
+New opt-in bookings can issue a one-time recovery credential whose scoped digests expire 180 days after booked checkout. A verified customer with matching contact, explicit consent and record-bound OTP can recover a completed stay without the original browser; OTP, digest deletion, ownership and audit commit together. The separately gated retention job targets expired digests after seven days in bounded batches. Both issuance and redemption are default off. This candidate depends on PR194 and an additive migration; production migration, monitored retention throughput, distributed ingress limiting and activation remain separate release gates. Local acceptance is not hosted or deployment evidence. AUTH-QA-001 and HOTEL-QA-001 remain open.

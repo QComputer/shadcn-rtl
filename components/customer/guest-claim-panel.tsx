@@ -14,7 +14,12 @@ type Item = { recordId: string; reference: string | null; date: string };
 export function GuestClaimPanel({ locale, slug, kind }: { locale: string; slug: string; kind: GuestClaimKind }) {
   const t = copy[locale === "en" || locale === "ar" ? locale : "fa"];
   const [enabled, setEnabled] = useState(false);
+  const [recoveryEnabled, setRecoveryEnabled] = useState(false);
+  const [recoveryCredential, setRecoveryCredential] = useState("");
   const [items, setItems] = useState<Item[] | null>(null);
+  const [history, setHistory] = useState<Array<{reference:string;checkIn:string;checkOut:string;status:string}>>([]);
+  async function refreshHotelHistory() { if (kind !== "HOTEL") return; const r = await appFetch("/api/auth/customer/guest-claim", { cache: "no-store" }); if (r.ok) { const data = await r.json(); if (Array.isArray(data.items)) setHistory(data.items); } }
+  const [reference, setReference] = useState("");
   const [selected, setSelected] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [challenge, setChallenge] = useState("");
@@ -24,30 +29,34 @@ export function GuestClaimPanel({ locale, slug, kind }: { locale: string; slug: 
   useEffect(() => {
     const controller = new AbortController();
     appFetch(`/api/auth/customer/config?organization=${encodeURIComponent(slug)}`, { cache: "no-store", signal: controller.signal })
-      .then(r => r.ok ? r.json() : null).then(data => { if (!controller.signal.aborted) setEnabled(data?.guestClaim === true); }).catch(() => {});
+      .then(r => r.ok ? r.json() : null).then(data => { if (!controller.signal.aborted) { setEnabled(kind === "HOTEL" ? data?.hotelGuestClaim === true : data?.guestClaim === true); setRecoveryEnabled(kind === "HOTEL" && data?.hotelGuestRecovery === true); } }).catch(() => {});
+    if (kind === "HOTEL") void refreshHotelHistory().catch(() => {});
     return () => controller.abort();
-  }, [slug]);
+  }, [slug, kind]);
   function reset() { setSelected(""); setConfirmed(false); setChallenge(""); setOtp(""); }
   async function act(action: "LIST" | "REQUEST" | "CLAIM") {
-    if (busy || (action !== "LIST" && (!selected || !confirmed)) || (action === "CLAIM" && (!challenge || !/^\d{4}$/.test(otp)))) return;
+    if (busy || (action === "LIST" && kind === "HOTEL" && !/^[A-Za-z0-9_-]{1,128}$/.test(reference)) || (action !== "LIST" && (!selected || !confirmed)) || (action === "CLAIM" && (!challenge || !/^\d{4}$/.test(otp)))) return;
     setBusy(true); setMessage("");
     try {
-      const response = await appFetch("/api/auth/customer/guest-claim", { method: "POST", cache: "no-store", headers: { "Content-Type": "application/json" }, body: JSON.stringify(action === "LIST" ? { action, kind } : { action, kind, recordId: selected, claimConfirmed: true, ...(action === "CLAIM" ? { challengeId: challenge, otp } : {}) }) });
+      const response = await appFetch("/api/auth/customer/guest-claim", { method: "POST", cache: "no-store", headers: { "Content-Type": "application/json" }, body: JSON.stringify(action === "LIST" ? { action, kind, ...(kind === "HOTEL" ? { reference } : {}), ...(recoveryEnabled && recoveryCredential ? { recoveryCredential } : {}) } : { action, kind, recordId: selected, claimConfirmed: true, ...(recoveryEnabled && recoveryCredential ? { recoveryCredential } : {}), ...(action === "CLAIM" ? { challengeId: challenge, otp } : {}) }) });
       if (!response.ok) throw Error("unavailable");
       const data = await response.json();
       if (action === "LIST") { if (!Array.isArray(data.items)) throw Error("unavailable"); reset(); setItems(data.items); }
       else if (action === "REQUEST") { if (data.accepted !== true || typeof data.challengeId !== "string") throw Error("unavailable"); setChallenge(data.challengeId); setOtp(""); setMessage(t.sent); }
-      else { if (data.outcome !== "CLAIMED" || data.kind !== kind || data.recordId !== selected) throw Error("unavailable"); setItems(old => old?.filter(x => x.recordId !== selected) ?? null); reset(); setMessage(t.done); }
+      else { if (data.outcome !== "CLAIMED" || data.kind !== kind || data.recordId !== selected) throw Error("unavailable"); setItems(old => old?.filter(x => x.recordId !== selected) ?? null); reset(); setRecoveryCredential(""); setMessage(t.done); if (kind === "HOTEL") void refreshHotelHistory().catch(() => {}); }
     } catch { setMessage(t.error); } finally { setBusy(false); }
   }
   if (!enabled) return null;
   return <section data-testid="guest-claim-panel" className="space-y-3 rounded-lg border bg-card p-4" dir={locale === "en" ? "ltr" : "rtl"}>
-    <h2 className="font-semibold">{t.title}</h2><p className="text-sm text-muted-foreground">{t.note}</p>
-    <Button type="button" disabled={busy} data-testid="guest-claim-load" onClick={() => void act("LIST")}>{t.load}</Button>
+    <h2 className="font-semibold">{t.title}</h2><p className="text-sm text-muted-foreground">{kind === "HOTEL" ? (locale === "fa" ? "شماره همان رزرو را وارد کنید. مرورگر اصلی و تأیید جداگانه لازم است." : locale === "ar" ? "أدخل رقم الحجز. يلزم المتصفح الأصلي وتأكيد منفصل." : "Enter the reservation reference. The original browser and separate confirmation are required.") : t.note}</p>
+    {kind === "HOTEL" && <label className="block">{locale === "fa" ? "شماره رزرو" : locale === "ar" ? "رقم الحجز" : "Reservation reference"}<Input data-testid="hotel-claim-reference" dir="ltr" maxLength={128} value={reference} disabled={busy || !!challenge} onChange={e => { setReference(normalizeDigits(e.target.value).trim()); reset(); setItems(null); }} /></label>}
+    {recoveryEnabled && <label className="block">{locale === "fa" ? "کد بازیابی (در صورت نداشتن مرورگر اصلی)" : locale === "ar" ? "رمز الاسترداد (عند فقدان المتصفح الأصلي)" : "Recovery credential (if the original browser is unavailable)"}<Input data-testid="hotel-recovery-credential" type="password" autoComplete="off" dir="ltr" maxLength={43} value={recoveryCredential} disabled={busy || !!challenge} onChange={e => { setRecoveryCredential(e.target.value.trim()); reset(); setItems(null); }} /></label>}
+    <Button type="button" disabled={busy || (kind === "HOTEL" && !/^[A-Za-z0-9_-]{1,128}$/.test(reference))} data-testid="guest-claim-load" onClick={() => void act("LIST")}>{t.load}</Button>
     {items && (items.length ? <ul className="space-y-2">{items.map(item => <li key={item.recordId}><label className="flex items-center gap-2"><input type="radio" name={`guest-claim-${kind}`} disabled={busy || !!challenge} checked={selected === item.recordId} onChange={() => { reset(); setSelected(item.recordId); setMessage(""); }} data-testid="guest-claim-record" /><span>{item.reference ?? "—"} · {new Intl.DateTimeFormat(locale === "en" || locale === "ar" ? locale : "fa", { dateStyle: "medium" }).format(new Date(item.date))}</span></label></li>)}</ul> : <p>{t.none}</p>)}
     {selected && <div className="space-y-2"><label className="flex items-start gap-2"><input type="checkbox" data-testid="guest-claim-consent" checked={confirmed} disabled={busy || !!challenge} onChange={e => setConfirmed(e.target.checked)} />{t.consent}</label>
       {!challenge ? <Button type="button" data-testid="guest-claim-request" disabled={!confirmed || busy} onClick={() => void act("REQUEST")}>{t.request}</Button> : <><label className="block">{t.code}<Input data-testid="guest-claim-otp" dir="ltr" inputMode="numeric" autoComplete="one-time-code" maxLength={4} value={otp} disabled={busy} onChange={e => setOtp(normalizeDigits(e.target.value).replace(/[^0-9]/g, "").slice(0,4))} /></label><Button type="button" data-testid="guest-claim-verify" disabled={busy || !/^\d{4}$/.test(otp)} onClick={() => void act("CLAIM")}>{t.verify}</Button></>}
       <Button type="button" variant="outline" disabled={busy} onClick={() => { reset(); setMessage(""); }}>{t.reset}</Button></div>}
+    {kind === "HOTEL" && history.length > 0 && <ul data-testid="hotel-owned-history">{history.map(item => <li key={item.reference}>{item.reference} · {new Intl.DateTimeFormat(locale === "en" || locale === "ar" ? locale : "fa", { dateStyle: "medium" }).format(new Date(item.checkIn))} – {new Intl.DateTimeFormat(locale === "en" || locale === "ar" ? locale : "fa", { dateStyle: "medium" }).format(new Date(item.checkOut))}</li>)}</ul>}
     {message && <p role="status" data-testid="guest-claim-message">{message}</p>}
   </section>;
 }

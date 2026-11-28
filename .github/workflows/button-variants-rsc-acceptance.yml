@@ -1,0 +1,92 @@
+name: Server-safe button variants production acceptance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "components/ui/button.tsx"
+      - "components/ui/button-variants.ts"
+      - "app/[locale]/[slug]/shop/category/[categoryId]/page.tsx"
+      - "app/[locale]/[slug]/appointment/services/category/[categoryId]/page.tsx"
+      - "tests/unit/button-variants.test.ts"
+      - "scripts/e2e/seed-button-variants-rsc-fixtures.mjs"
+      - "scripts/e2e/button-variants-rsc-browser.mjs"
+      - ".github/workflows/button-variants-rsc-acceptance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production-http-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: bb_button_variants_rsc
+          POSTGRES_USER: bb_rsc_test
+          POSTGRES_PASSWORD: disposable_only
+        ports: ["55439:5432"]
+        options: >-
+          --health-cmd "pg_isready -U bb_rsc_test -d bb_button_variants_rsc"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      NODE_ENV: test
+      CI: "true"
+      DATABASE_RUNTIME_ADAPTER: postgresql
+      DATABASE_URL: postgresql://bb_rsc_test:disposable_only@127.0.0.1:55439/bb_button_variants_rsc?schema=public
+      DIRECT_URL: postgresql://bb_rsc_test:disposable_only@127.0.0.1:55439/bb_button_variants_rsc?schema=public
+      LOCAL_PRISMA_EXPECTED_PORT: "55439"
+      BUTTON_VARIANTS_EXPECTED_DATABASE: bb_button_variants_rsc
+      NEXTAUTH_SECRET: isolated-rsc-test-only-secret-32-characters-minimum
+      NEXT_TELEMETRY_DISABLED: "1"
+      AUTH_TRUST_HOST: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Generate Prisma client and migrate disposable PostgreSQL
+        run: pnpm exec prisma validate && pnpm exec prisma generate && pnpm exec prisma migrate deploy
+      - name: Verify server-safe variant contracts
+        run: node --import tsx --test tests/unit/button-variants.test.ts
+      - name: Seed synthetic pagination routes
+        run: node scripts/e2e/seed-button-variants-rsc-fixtures.mjs seed
+      - name: Build production application
+        run: pnpm run build
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Start production server
+        run: |
+          pnpm exec next start --port 3000 > /tmp/button-variants-next.log 2>&1 &
+          echo $! > /tmp/button-variants-next.pid
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/fa/login >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/button-variants-next.log
+          exit 1
+      - name: Exercise real production HTTP and browser routes
+        env:
+          BUTTON_VARIANTS_BASE_URL: http://127.0.0.1:3000
+          BUTTON_VARIANTS_PLAYWRIGHT_ENTRY: ${{ github.workspace }}/node_modules/playwright/index.mjs
+        run: node scripts/e2e/button-variants-rsc-browser.mjs
+      - name: Assert production logs contain no buttonVariants server-call failure
+        run: |
+          if rg -n "Attempted to call buttonVariants\\(\\) from the server" /tmp/button-variants-next.log; then
+            cat /tmp/button-variants-next.log
+            exit 1
+          fi
+      - name: Stop server and clean synthetic fixtures
+        if: always()
+        run: |
+          if [ -f /tmp/button-variants-next.pid ]; then kill "$(cat /tmp/button-variants-next.pid)" || true; fi
+          if [ -f /tmp/button-variants-next.log ]; then cat /tmp/button-variants-next.log; fi
+          if [ -f node_modules/.prisma/client/index.js ]; then node scripts/e2e/seed-button-variants-rsc-fixtures.mjs cleanup || true; fi

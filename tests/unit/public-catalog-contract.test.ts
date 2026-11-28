@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { NextRequest } from "next/server";
 import {
   PUBLIC_CATALOG_MAX_PAGE_SIZE,
+  PUBLIC_CATALOG_MAX_TAG_FILTERS,
   PUBLIC_CATALOG_PRIVATE_FIELD_DENYLIST,
   publicCatalogListQuerySchema,
 } from "@/lib/public-catalog/contracts";
@@ -101,7 +102,10 @@ describe("Public Catalog API v1 contract", () => {
     const attributeFilters = publicCatalogListQuerySchema.parse({ filter: ["ram:12", "storage:256"] });
     assert.deepEqual("filter" in attributeFilters ? attributeFilters.filter : [], ["ram:12", "storage:256"]);
     assert.equal(publicCatalogListQuerySchema.parse({ tag: "کفش روزمره" }).tag, "کفش روزمره");
+    assert.deepEqual(publicCatalogListQuerySchema.parse({ tag: ["کفش روزمره", "زمستان"] }).tag, ["کفش روزمره", "زمستان"]);
     assert.throws(() => publicCatalogListQuerySchema.parse({ tag: "x".repeat(65) }));
+    assert.throws(() => publicCatalogListQuerySchema.parse({ tag: Array(PUBLIC_CATALOG_MAX_TAG_FILTERS + 1).fill("کفش") }));
+    assert.throws(() => publicCatalogListQuerySchema.parse({ tag: ["کفش", ""] }));
     assert.throws(() => publicCatalogListQuerySchema.parse({ filter: ["ram:12", ...Array.from({ length: 12 }, (_, index) => `key${index}:value`)] }));
     assert.throws(() => publicCatalogListQuerySchema.parse({ page: "0" }));
     assert.throws(() => publicCatalogListQuerySchema.parse({ limit: "51" }));

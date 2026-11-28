@@ -12,7 +12,7 @@ import { PUBLIC_CATALOG_PRICE_UNIT, publicCatalogProductsPageSchema, publicCatal
 import { serializePublicCatalogCategory, serializePublicCatalogProduct } from "@/lib/public-catalog/serializers";
 import { filterTenantPublicProductImages, isSafePublicMediaUrl } from "@/lib/public-catalog/media-policy";
 import { Prisma, RetailAttributeScope, type Prisma as PrismaTypes } from "@prisma/client";
-import { tagIdentityKey } from "@/lib/retail/product-taxonomy-utils";
+import { MAX_PRODUCT_TAGS, MAX_TAG_NAME_LENGTH, tagIdentityKey } from "@/lib/retail/product-taxonomy-utils";
 import { isSyntheticRetailLabel, normalizeRetailSearch } from "@/lib/retail/discovery";
 
 const publicVariantSelect = {
@@ -334,7 +334,7 @@ export async function getPublicCatalogCategory(organizationIdentifier: string, c
 }
 
 export async function listPublicCatalogProducts(input: {
-  organizationIdentifier: string; page: number; limit: number; category?: string; tag?: string; q?: string; filter?: string[];
+  organizationIdentifier: string; page: number; limit: number; category?: string; tag?: string | readonly string[]; q?: string; filter?: string[];
   minPrice?: number; maxPrice?: number; brand?: string; available?: boolean; productIds?: readonly string[];
   sort?: "featured" | "price-asc" | "price-desc" | "name-asc" | "newest" | "relevance";
 }) {
@@ -358,12 +358,17 @@ export async function listPublicCatalogProducts(input: {
         AND assignedCategory."isActive" = true AND assignedCategory."deletedAt" IS NULL
     )
   )`);
-  if (input.tag) {
-    const normalizedTag = tagIdentityKey(input.tag);
+  const rawTags = input.tag === undefined ? [] : Array.isArray(input.tag) ? [...input.tag] : [input.tag];
+  if (rawTags.length > MAX_PRODUCT_TAGS || rawTags.some((tag) => typeof tag !== "string" || !tag.trim() || tag.trim().length > MAX_TAG_NAME_LENGTH)) {
+    throw new ApiError(400, "Invalid product tag filters");
+  }
+  const normalizedTags = [...new Set(rawTags.map(tagIdentityKey))];
+  if (normalizedTags.some((tag) => !tag)) throw new ApiError(400, "Invalid product tag filters");
+  if (normalizedTags.length) {
     predicates.push(Prisma.sql`EXISTS (
       SELECT 1 FROM "ProductTagAssignment" pta JOIN "ProductTag" pt ON pt."id" = pta."tagId"
       WHERE pta."productId" = p."id" AND pta."organizationId" = ${organization.id}
-        AND pt."organizationId" = ${organization.id} AND pt."normalizedName" = ${normalizedTag}
+        AND pt."organizationId" = ${organization.id} AND pt."normalizedName" IN (${Prisma.join(normalizedTags)})
     )`);
   }
   if (input.productIds) {
@@ -516,7 +521,7 @@ export async function listPublicCatalogProducts(input: {
 
 export async function getPublicCatalogFacets(organizationIdentifier: string) {
   const organization = await requirePublicShop(organizationIdentifier);
-  const [categories, brands, attributes] = await Promise.all([
+  const [categories, brands, attributes, tags] = await Promise.all([
     prisma.$queryRaw<Array<{ id: string; slug: string | null; name: string; count: number }>>(Prisma.sql`
       SELECT c."id", c."slug", c."name", COUNT(DISTINCT p."id")::int AS "count"
       FROM "ProductCategory" c
@@ -563,6 +568,17 @@ export async function getPublicCatalogFacets(organizationIdentifier: string) {
         AND av."value" IS NOT NULL
       GROUP BY av."key", av."label", av."scope", av."value"
       ORDER BY av."key" ASC, av."value" ASC`),
+    prisma.$queryRaw<Array<{ value: string; count: number }>>(Prisma.sql`
+      SELECT pt."name" AS "value", COUNT(DISTINCT p."id")::int AS "count"
+      FROM "ProductTag" pt
+      JOIN "ProductTagAssignment" pta ON pta."tagId" = pt."id" AND pta."organizationId" = ${organization.id}
+      JOIN "Product" p ON p."id" = pta."productId" AND p."organizationId" = pta."organizationId"
+      JOIN "ProductCategory" c ON c."id" = p."categoryId"
+      WHERE pt."organizationId" = ${organization.id}
+        AND p."isActive" = true AND p."deletedAt" IS NULL
+        AND c."organizationId" = ${organization.id} AND c."isActive" = true AND c."deletedAt" IS NULL
+      GROUP BY pt."id", pt."name", pt."normalizedName"
+      ORDER BY pt."normalizedName" ASC, pt."id" ASC`),
   ]);
   const attributesByKey = new Map<string, { key: string; label: string; scope: "PRODUCT" | "VARIANT_OPTION"; values: Array<{ value: string; count: number }> }>();
   for (const row of attributes) {
@@ -574,6 +590,7 @@ export async function getPublicCatalogFacets(organizationIdentifier: string) {
     categories: categories.map((category) => ({ ...category, count: Number(category.count) })),
     brands: brands.map((brand) => ({ ...brand, count: Number(brand.count) })),
     attributes: [...attributesByKey.values()],
+    tags: tags.map((tag) => ({ ...tag, count: Number(tag.count) })),
   };
 }
 

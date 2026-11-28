@@ -1,16 +1,19 @@
 import { z } from "zod";
+import { MAX_PRODUCT_TAGS } from "@/lib/retail/product-taxonomy-utils";
 
 export const PUBLIC_CATALOG_VERSION = "v1" as const;
 export const PUBLIC_CATALOG_PRICE_UNIT = "TOMAN" as const;
 export const PUBLIC_CATALOG_DEFAULT_PAGE_SIZE = 20;
 export const PUBLIC_CATALOG_MAX_PAGE_SIZE = 50;
+export const PUBLIC_CATALOG_MAX_TAG_FILTERS = MAX_PRODUCT_TAGS;
 export const publicCatalogAttributeFilterSchema = z.string().trim().min(3).max(200).regex(/^[a-zA-Z0-9._-]+:.+$/);
+const publicCatalogTagFilterSchema = z.string().trim().min(1).max(64);
 
 export const publicCatalogListQuerySchema = z.object({
   page: z.coerce.number().int().positive().max(1_000_000).default(1),
   limit: z.coerce.number().int().positive().max(PUBLIC_CATALOG_MAX_PAGE_SIZE).default(PUBLIC_CATALOG_DEFAULT_PAGE_SIZE),
   category: z.string().trim().min(1).max(160).optional(),
-  tag: z.string().trim().min(1).max(64).optional(),
+  tag: z.union([publicCatalogTagFilterSchema, z.array(publicCatalogTagFilterSchema).min(1).max(PUBLIC_CATALOG_MAX_TAG_FILTERS)]).optional(),
   q: z.string().trim().min(1).max(100).optional(),
   brand: z.string().trim().min(1).max(120).optional(),
   saved: z.literal("1").optional(),

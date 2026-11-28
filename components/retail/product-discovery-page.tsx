@@ -32,6 +32,7 @@ const loadDiscoveryData = cache(async (locale: string, organizationSlug: string,
     const parsed = publicCatalogListQuerySchema.safeParse({
       ...Object.fromEntries(Object.entries(query).filter(([key]) => key !== "filter")),
       filter: getValues(query, "filter"),
+      ...(getValues(query, "tag").length ? { tag: getValues(query, "tag") } : {}),
       limit: 24,
       sort: getValue(query, "sort") || "newest",
     });
@@ -47,6 +48,7 @@ const loadDiscoveryData = cache(async (locale: string, organizationSlug: string,
       minPrice: parsed.data.minPrice,
       maxPrice: parsed.data.maxPrice,
       available: parsed.data.available,
+      tag: parsed.data.tag,
       filter: "filter" in parsed.data ? parsed.data.filter : undefined,
       sort: parsed.data.sort,
     });

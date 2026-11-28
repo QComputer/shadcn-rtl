@@ -14,6 +14,10 @@ const defaultSource = "C:/Users/disso/damoon-real-data";
 export function validateSources(sourceDir) {
   const units = JSON.parse(fs.readFileSync(path.join(sourceDir, "05-Units-Staging.json"), "utf8"));
   const tariffs = JSON.parse(fs.readFileSync(path.join(sourceDir, "06-Tariffs-Staging.json"), "utf8"));
+  return validateSourceDocuments(units, tariffs);
+}
+
+function validateSourceDocuments(units, tariffs) {
   assert.equal(units.schema_version, "staging-1.0");
   assert.equal(units.status, "STAGING_REVIEW_NOT_FOR_PRODUCTION");
   assert.equal(units.null_meaning, "unknown or unstated; not false or zero");
@@ -98,6 +102,7 @@ async function scopedInventory(tx, scope) {
 }
 /** Persist an exact staging snapshot and reconcile only explicitly verified, dependency-free physical rooms. */
 export async function applyReviewedImport(prisma, scope, source, verifications = []) {
+  source = validateSourceDocuments(source.units, source.tariffs);
   const target = validateLocalDamoonTarget();
   if (!target.ok) throw new Error(target.errors.join(" "));
   const canonical = [...verifications].sort((a,b) => a.sourceCode.localeCompare(b.sourceCode));

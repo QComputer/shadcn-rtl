@@ -77,13 +77,16 @@ jobs:
       - name: Review image size, layers, runtime files, and secret boundaries
         run: |
           docker image inspect bazarbaaz-runflare-ci:${GITHUB_SHA} --format '{{json .}}' > /tmp/runflare-docker-image.json
-          node -e "const assert=require('node:assert/strict');const i=require('/tmp/runflare-docker-image.json');assert.equal(i.Config.User,'node');assert.ok(i.Size>0);assert.ok(!JSON.stringify(i.Config.Env).includes('docker-runtime-ci-only-secret-not-for-production'));console.log(JSON.stringify({image:i.Id,size_bytes:i.Size,user:i.Config.User,env:i.Config.Env}))"
+          node -e "const assert=require('node:assert/strict');const i=require('/tmp/runflare-docker-image.json');assert.equal(i.Config.User,'node');assert.ok(i.Size>0);assert.ok(!JSON.stringify(i.Config.Env).includes('docker-runtime-ci-only-secret-not-for-production'));assert.ok(!i.Config.Env.some(x=>x.startsWith('CUSTOM_DOMAIN_RESOLVER_SECRET=')||x.startsWith('INTERNAL_API_SECRET=')));console.log(JSON.stringify({image:i.Id,size_bytes:i.Size,user:i.Config.User,env:i.Config.Env}))"
           docker history --no-trunc bazarbaaz-runflare-ci:${GITHUB_SHA} | tee /tmp/runflare-docker-history.txt
           if grep -nE 'docker-runtime-ci-only-secret-not-for-production|local-ci-compilation-only-secret' /tmp/runflare-docker-history.txt; then exit 1; fi
           docker run --rm --entrypoint node bazarbaaz-runflare-ci:${GITHUB_SHA} -e "const fs=require('node:fs'); const assert=require('node:assert/strict'); assert.equal(require('xlsx').version,'0.20.3'); require('@prisma/client'); assert.ok(fs.existsSync('.next/server')); assert.ok(fs.existsSync('public')); assert.ok(!fs.existsSync('.env')); assert.ok(!fs.existsSync('.git')); console.log('runtime dependency and image-boundary checks passed')"
       - name: Start the actual production container on isolated PostgreSQL
         run: |
           psql "$PSQL_DATABASE_URL" -X -At -c 'SELECT count(*) FROM "_prisma_migrations"' > /tmp/migrations-before-runtime.txt
+          testInternalSecret="$(openssl rand -hex 32)"
+          echo "::add-mask::$testInternalSecret"
+          printf 'CUSTOM_DOMAIN_RESOLVER_SECRET=%s\n' "$testInternalSecret" >> "$GITHUB_ENV"
           docker volume create bazarbaaz-runflare-runtime-storage
           docker run --detach --name bazarbaaz-runflare-runtime --network host \
             --mount source=bazarbaaz-runflare-runtime-storage,target=/var/lib/bazarbaaz/storage \
@@ -91,6 +94,7 @@ jobs:
             --env DATABASE_RUNTIME_ADAPTER \
             --env DATABASE_URL --env DIRECT_URL \
             --env NEXTAUTH_SECRET --env AUTH_TRUST_HOST \
+            --env "CUSTOM_DOMAIN_RESOLVER_SECRET=$testInternalSecret" \
             --env NEXT_PUBLIC_APP_URL --env NEXT_PUBLIC_DEPLOYED_APP_URL \
             --env NEXTAUTH_URL=http://127.0.0.1:3000 \
             --env RETAIL_GUEST_CHECKOUT_ENABLED=1 \

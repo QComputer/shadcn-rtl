@@ -24,7 +24,6 @@ jobs:
     env:
       DATABASE_URL: postgresql://fixture:fixture@127.0.0.1:5432/fixture
       DIRECT_URL: postgresql://fixture:fixture@127.0.0.1:5432/fixture
-      NEXTAUTH_SECRET: local-ci-compilation-only-secret-not-for-production
       NEXT_TELEMETRY_DISABLED: '1'
     steps:
       - uses: actions/checkout@v4
@@ -34,5 +33,5 @@ jobs:
         run: >-
           docker buildx build --load --tag bazarbaaz-runflare-ci:${GITHUB_SHA}
           --build-arg DATABASE_URL --build-arg DIRECT_URL
-          --build-arg NEXTAUTH_SECRET --build-arg NEXT_TELEMETRY_DISABLED
+          --build-arg NEXT_TELEMETRY_DISABLED
           --file Dockerfile .

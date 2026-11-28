@@ -7,6 +7,7 @@ WORKDIR /app
 FROM base AS dependencies
 RUN corepack enable && corepack prepare pnpm@10.15.0 --activate
 COPY package.json pnpm-lock.yaml ./
+COPY vendor/ ./vendor/
 RUN pnpm install --frozen-lockfile
 
 FROM dependencies AS build
@@ -14,9 +15,8 @@ FROM dependencies AS build
 COPY . .
 ARG DATABASE_URL
 ARG DIRECT_URL
-ARG NEXTAUTH_SECRET
 ARG NEXT_TELEMETRY_DISABLED=1
-RUN RUNFLARE_ENFORCE_LOCKFILE=1 pnpm run build
+RUN RUNFLARE_ENFORCE_LOCKFILE=1 NEXTAUTH_SECRET=local-ci-compilation-only-secret-not-for-production pnpm run build
 RUN pnpm prune --prod
 
 FROM base AS runtime

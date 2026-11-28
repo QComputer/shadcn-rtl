@@ -83,10 +83,12 @@ export async function verifyRetailAccount({ browser, prisma, origin, slug, artif
       });
 
       await page.goto(appUrl(storefrontPath), { waitUntil: "domcontentloaded" });
-      await page.locator("main h1").first().waitFor();
       const accountLink = viewport.width < 640
         ? page.locator('nav[aria-label="پیمایش موبایل فروشگاه"] a[href$="/account"]')
         : page.getByRole("link", { name: "حساب من", exact: true });
+      // The current published catalog uses section headings rather than a
+      // single main h1. Wait for its visible account navigation contract,
+      // which is also the control this acceptance is about to exercise.
       await accountLink.waitFor({ state: "visible" });
       await accountLink.click();
       await page.waitForURL((url) => url.pathname === new URL(accountUrl).pathname);

@@ -29,14 +29,14 @@ assert.ok(!externalRuntime || Number.isInteger(externalRuntimePort) && externalR
   "PWA_EXTERNAL_RUNTIME_PORT must be a valid TCP port when testing an external runtime");
 const port = externalRuntime ? externalRuntimePort : await reservePort();
 const hosts = {
-  alpha: "tenant-alpha.pwa-ci.test",
-  beta: "tenant-beta.pwa-ci.test",
-  gamma: "tenant-gamma.pwa-ci.test",
-  inactive: "tenant-inactive.pwa-ci.test",
-  unverified: "tenant-unverified.pwa-ci.test",
-  incomplete: "tenant-incomplete.pwa-ci.test",
-  unknown: "tenant-unknown.pwa-ci.test",
-  broken: "tenant-broken.pwa-ci.test",
+  alpha: "tenant-alpha.pwa-ci.localhost",
+  beta: "tenant-beta.pwa-ci.localhost",
+  gamma: "tenant-gamma.pwa-ci.localhost",
+  inactive: "tenant-inactive.pwa-ci.localhost",
+  unverified: "tenant-unverified.pwa-ci.localhost",
+  incomplete: "tenant-incomplete.pwa-ci.localhost",
+  unknown: "tenant-unknown.pwa-ci.localhost",
+  broken: "tenant-broken.pwa-ci.localhost",
 };
 const organizations = [];
 let server;
@@ -517,11 +517,10 @@ try {
   await waitForServer();
 
   const chromeExecutable = process.env.CHROME_EXECUTABLE_PATH || process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || process.env.CHROME_EXECUTABLE || process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe";
-  const insecureFixtureOrigins = [...Object.values(hosts).map((host) => `http://${host}:${port}`), `http://localhost:${port}`].join(",");
   const launchOptions = {
     headless: process.env.PWA_HEADED !== "1",
     ...(existsSync(chromeExecutable) ? { executablePath: chromeExecutable } : {}),
-    args: ["--no-proxy-server", "--host-resolver-rules=MAP *.pwa-ci.test 127.0.0.1, EXCLUDE localhost", `--unsafely-treat-insecure-origin-as-secure=${insecureFixtureOrigins}`],
+    args: ["--no-proxy-server"],
   };
   if (localPwaAcceptance && process.env.PWA_HEADED === "1") {
     nativeProfileDirectory = path.resolve(os.tmpdir(), `bb-pwa-r6-${runId}`);

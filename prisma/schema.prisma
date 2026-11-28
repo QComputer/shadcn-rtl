@@ -1247,6 +1247,9 @@ model Organization {
   paymentRequests              PaymentRequest[]
     retailPaymentReports         RetailPaymentReport[]
   paymentProviderAttempts      PaymentProviderAttempt[]
+  retailInstallmentPricingPolicy RetailInstallmentPricingPolicy?
+  retailInstallmentQuoteSnapshots RetailInstallmentQuoteSnapshot[]
+  paymentProviderEvents PaymentProviderEvent[]
   paymentVerificationJobs      UssdPaymentVerificationJob[]
   ownedCollaborations          OrganizationCollaboration[]   @relation("CollaborationOwner")
   partnerCollaborations        OrganizationCollaboration[]   @relation("CollaborationPartner")
@@ -1541,6 +1544,7 @@ model OrganizationIntegration {
   paymentVerificationJobs UssdPaymentVerificationJob[]
   paymentRequests PaymentRequest[]      @relation("PaymentRequestProviderIntegration")
   paymentProviderAttempts PaymentProviderAttempt[]
+  paymentProviderEvents PaymentProviderEvent[]
 
   @@unique([organizationId, provider])
   @@unique([id, organizationId])
@@ -2801,6 +2805,7 @@ model Order {
   paymentEvents      PaymentEvent[]
   ussdPaymentIntents UssdPaymentIntent[]
   paymentRequests    PaymentRequest[]
+  installmentQuoteSnapshot RetailInstallmentQuoteSnapshot?
   retailPaymentReports RetailPaymentReport[]
   statusHistory      OrderStatusHistory[]
   readyTimeHistory   OrderReadyTimeHistory[]
@@ -2840,6 +2845,7 @@ model Order {
   @@index([orderNumber])
   @@index([publicTrackingToken])
   @@index([promotionId])
+  @@unique([id, organizationSlug])
 }
 
 model OrderReadyTimeHistory {
@@ -2906,6 +2912,51 @@ model OrderItem {
   @@index([orderId])
   @@index([productId])
   @@index([variantId])
+}
+
+/// Immutable merchant pricing and payable amount captured for an installment order.
+model RetailInstallmentQuoteSnapshot {
+  id                         String   @id @default(cuid())
+  organizationId             String
+  organizationSlug           String
+  orderId                    String   @unique
+  paymentRequestId            String?  @unique
+  policyVersion              Int
+  appliedMarkupPercent       Decimal  @db.Decimal(8, 4)
+  originalMerchandiseAmount  Decimal  @db.Decimal(20, 4)
+  adjustedMerchandiseAmount  Decimal  @db.Decimal(20, 4)
+  deliveryAmount             Decimal  @db.Decimal(20, 4)
+  discountAmount             Decimal  @db.Decimal(20, 4)
+  finalPayableAmountToman    BigInt
+  currency                   String   @default("TOMAN")
+  createdAt                  DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId, organizationSlug], references: [id, slug], onDelete: Cascade)
+  order        Order        @relation(fields: [orderId, organizationSlug], references: [id, organizationSlug], onDelete: Cascade)
+  paymentRequest PaymentRequest? @relation(fields: [paymentRequestId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  lines RetailInstallmentQuoteSnapshotLine[]
+
+  @@unique([id, organizationSlug])
+  @@unique([orderId, organizationSlug])
+  @@unique([paymentRequestId, organizationId])
+  @@index([organizationSlug, createdAt])
+}
+
+model RetailInstallmentQuoteSnapshotLine {
+  id                    String  @id @default(cuid())
+  snapshotId            String
+  organizationSlug      String
+  productIdSnapshot     String
+  variantIdSnapshot     String?
+  quantity              Int
+  originalUnitAmount    Decimal @db.Decimal(20, 4)
+  adjustedUnitAmount    Decimal @db.Decimal(20, 4)
+  originalLineAmount    Decimal @db.Decimal(20, 4)
+  adjustedLineAmount    Decimal @db.Decimal(20, 4)
+
+  snapshot RetailInstallmentQuoteSnapshot @relation(fields: [snapshotId, organizationSlug], references: [id, organizationSlug], onDelete: Cascade)
+
+  @@index([organizationSlug, snapshotId])
 }
 
 model InventoryMovement {
@@ -3033,6 +3084,8 @@ model PaymentRequest {
   providerIntegration OrganizationIntegration? @relation("PaymentRequestProviderIntegration", fields: [providerIntegrationId, organizationId], references: [id, organizationId], onDelete: NoAction)
   attempts            PaymentProviderAttempt[]
   ussdPaymentIntent   UssdPaymentIntent?
+  installmentQuoteSnapshot RetailInstallmentQuoteSnapshot?
+  providerEvents PaymentProviderEvent[]
 
   @@unique([id, organizationId])
   @@index([organizationId, status, createdAt])
@@ -3072,6 +3125,7 @@ model PaymentProviderAttempt {
   providerIntegration OrganizationIntegration? @relation(fields: [providerIntegrationId, organizationId], references: [id, organizationId], onDelete: NoAction)
   ussdPaymentIntent   UssdPaymentIntent?
   verificationJobs   UssdPaymentVerificationJob[]
+  providerEvents PaymentProviderEvent[]
 
   @@unique([id, organizationId])
   @@unique([organizationId, idempotencyKey])
@@ -3082,6 +3136,48 @@ model PaymentProviderAttempt {
   @@index([organizationId, status, createdAt])
   @@index([paymentRequestId, status])
   @@index([providerIntegrationId, status])
+}
+
+/// Tenant-owned merchant pricing policy for installment merchandise amounts.
+/// This percentage is independent of provider protocol configuration.
+model RetailInstallmentPricingPolicy {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+  markupPercent  Decimal  @default(0) @db.Decimal(8, 4)
+  version        Int      @default(1)
+  updatedByUserId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, version])
+}
+
+/// Digest-only provider event deduplication ledger; callback payloads are never stored.
+model PaymentProviderEvent {
+  id                       String   @id @default(cuid())
+  organizationId           String
+  providerIntegrationId    String
+  paymentRequestId         String?
+  providerAttemptId        String?
+  deduplicationKeyHash     String   @db.Char(64)
+  payloadDigest            String   @db.Char(64)
+  eventKind                String   @db.VarChar(48)
+  sanitizedProviderCode    String?  @db.VarChar(80)
+  disposition              String   @db.VarChar(32)
+  receivedAt               DateTime @default(now())
+  processedAt              DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  providerIntegration OrganizationIntegration @relation(fields: [providerIntegrationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  paymentRequest PaymentRequest? @relation(fields: [paymentRequestId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  providerAttempt PaymentProviderAttempt? @relation(fields: [providerAttemptId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([organizationId, providerIntegrationId, deduplicationKeyHash])
+  @@index([organizationId, receivedAt])
+  @@index([paymentRequestId, receivedAt])
+  @@index([providerAttemptId, receivedAt])
 }
 
 model UssdSession {

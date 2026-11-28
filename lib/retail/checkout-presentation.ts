@@ -11,6 +11,7 @@ export type CheckoutCartItem = {
 export type CheckoutCart = { id?: string; items: CheckoutCartItem[]; subtotal: number; itemCount: number };
 export type CheckoutQuote = {
   reviewToken: string; subtotal: number; discount: number; deliveryFee: number; total: number; currency: "TOMAN";
+  installmentPricing?: { policyVersion: number; markupPercent: string; originalMerchandiseAmount: number; adjustedMerchandiseAmount: number } | null;
   items: Array<{ id: string; variantId: string; quantity: number; unitPrice: number; lineTotal: number; orderable: boolean; reason: string | null }>;
   fulfillmentInfo?: FulfillmentDetails & {contact: string | null};
   fulfillment: Array<{ type: "PICK_UP" | "DELIVERY"; label: string; fee: number }>;

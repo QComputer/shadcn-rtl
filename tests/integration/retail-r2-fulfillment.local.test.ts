@@ -81,7 +81,7 @@ test("Retail R2 fulfillment settings, quote, handover history, and owner trackin
     await db.organizationSettings.create({ data: { organizationSlug: slug, enablePickup: true, enableDelivery: true, deliveryFee: 300,
       settings: { unrelatedConfiguration: { keep: true }, anotherFeature: "unchanged" } } });
     await paymentPolicyModule.saveRetailPaymentPolicy(slug, organization.id, admin.id, {
-      bankTransferEnabled: false, cashEnabled: true, inotiUssdEnabled: false, snappPayInstallmentsEnabled: false, bankCardNumber: null, bankAccountOwner: null,
+      bankTransferEnabled: false, cashEnabled: true, inotiUssdEnabled: false, snappPayInstallmentsEnabled: false, installmentMarkupPercent: "0", installmentPricingPolicyVersion: 0, bankCardNumber: null, bankAccountOwner: null,
       cashModes: ["COUNTER"], cashBeforeConfirmation: true,
       paymentDeadlinesMinutes: paymentPolicyModule.defaultRetailPaymentDeadlinesMinutes,
     });

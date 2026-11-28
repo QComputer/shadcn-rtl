@@ -2463,6 +2463,15 @@ async function upsertPilotOrganization(input: {
     update: {},
     create: { organizationSlug: organization.slug },
   });
+  if (input.slug === "aka-shoes") {
+    // Seed only the initial merchant policy; repeated seed runs preserve any
+    // manager-configured percentage. This is not run as part of migrations.
+    await prisma.retailInstallmentPricingPolicy.upsert({
+      where: { organizationId: organization.id },
+      update: {},
+      create: { organizationId: organization.id, markupPercent: "11" },
+    });
+  }
   await prisma.organizationAcquisition.upsert({
     where: { organizationId: organization.id },
     update: { industryKey: input.industryKey, createdByUserId: input.operatorUserId },

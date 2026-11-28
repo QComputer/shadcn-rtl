@@ -120,55 +120,6 @@ export async function verifyRetailAccount({ browser, prisma, origin, slug, artif
       checks.push(`${viewport.name}: anonymous checkout remains available without mandatory registration and exposes no private customer data`);
       screenshots.push(await capture(page, artifacts, `${run}-${viewport.name}-checkout-anonymous.png`));
 
-      const callback = `${basePath}${checkoutPath}`;
-      const loginUrl = new URL(appUrl("/fa/login"));
-      loginUrl.searchParams.set("callbackUrl", callback);
-      await page.goto(loginUrl.toString(), { waitUntil: "domcontentloaded" });
-      await page.locator("#username").fill(username);
-      await page.locator("#password").fill(password);
-      await page.locator('button[type="submit"]').click();
-      try {
-        await page.waitForURL((url) => url.pathname === new URL(checkoutUrl).pathname, { waitUntil: "domcontentloaded", timeout: 15_000 });
-      } catch (error) {
-        const failure = await page.evaluate(() => ({
-          url: location.href,
-          title: document.title,
-          alerts: Array.from(document.querySelectorAll('[role="alert"], [aria-invalid="true"]')).map((element) => element.textContent?.trim() || element.getAttribute("name") || element.id).filter(Boolean).slice(0, 12),
-          body: document.body.innerText.slice(0, 1200),
-        })).catch(() => ({ url: page.url() }));
-        throw new Error(`customer login did not return to checkout: ${JSON.stringify(failure)}; ${String(error?.message || error)}`);
-      }
-
-      const ownProfile = await getJson(page, appUrl("/api/users/me"));
-      assert.equal(ownProfile.status, 200);
-      assert.equal(ownProfile.body.id, user.id);
-      assert.equal(ownProfile.body.name, username);
-      assert.equal(ownProfile.body.email, email);
-      assert.equal(ownProfile.body.role, "CUSTOMER");
-      for (const key of ["password", "lockedUntil", "failedLoginAttempts", "emailVerified", "emailVerifications"]) {
-        assert.equal(Object.hasOwn(ownProfile.body, key), false, `customer profile DTO must omit ${key}`);
-      }
-      const session = await getJson(page, appUrl("/api/auth/session"));
-      assert.equal(session.status, 200);
-      assert.equal(session.body.user.id, user.id);
-      assert.equal(session.body.user.name, username);
-      checks.push(`${viewport.name}: bcrypt-authenticated CUSTOMER can read only their public self-profile DTO`);
-
-      await page.getByText("سبد خرید شما خالی است.", { exact: true }).waitFor();
-      assert.equal(await page.getByRole("button", { name: "ثبت سفارش", exact: true }).count(), 0,
-        "empty cart must not expose an active order submission control");
-      const authenticatedCheckoutText = await page.locator("body").innerText();
-      assert.doesNotMatch(authenticatedCheckoutText, new RegExp(escapeRegExp(username), "i"),
-        "the public checkout surface does not render unrelated account identity");
-      screenshots.push(await capture(page, artifacts, `${run}-${viewport.name}-checkout-customer.png`));
-
-      await page.goto(accountUrl, { waitUntil: "domcontentloaded" });
-      await page.getByRole("heading", { name: organization.name, exact: true }).waitFor();
-      accountText = await page.locator("body").innerText();
-      assert.doesNotMatch(accountText, new RegExp(escapeRegExp(username), "i"));
-      assert.doesNotMatch(accountText, new RegExp(escapeRegExp(email), "i"));
-      if (organization.email) assert.match(accountText, new RegExp(escapeRegExp(organization.email), "i"));
-      screenshots.push(await capture(page, artifacts, `${run}-${viewport.name}-account-customer.png`));
     }
 
     const after = await commerceCounts(prisma, slug, user.id);

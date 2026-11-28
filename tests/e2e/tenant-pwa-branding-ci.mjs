@@ -307,6 +307,23 @@ async function verifySameOriginPathCustomerAccess({ browser, first, second, orig
       assert.equal(organization.slug, tenant.slug);
       assert.equal(organization.name, tenant.name);
       checks.push({ slug: tenant.slug, profilePath, renderedOrganization: tenant.name, authenticatedUserId: ownProfile.body.id, customerDtoSafe: !Object.hasOwn(ownProfile.body, "password") });
+      if (tenant === first) {
+        const checkoutPath = `/fa/${tenant.slug}/shop/checkout`;
+        await page.goto(new URL(checkoutPath, origin).toString(), { waitUntil: "domcontentloaded" });
+        await page.locator("[data-empty-cart]").waitFor({ state: "visible" });
+        const checkoutBody = await page.locator("body").innerText();
+        assert.doesNotMatch(checkoutBody, /برای ثبت نهایی سفارش در این نسخه وارد حساب شوید/,
+          "authenticated Shop checkout remains available without a mandatory login gate");
+        assert.equal(await page.getByRole("button", { name: "ثبت سفارش", exact: true }).count(), 0,
+          "an empty signed-in cart cannot submit an order");
+        const checkoutSession = await page.evaluate(async () => {
+          const response = await fetch("/api/users/me", { credentials: "same-origin", cache: "no-store" });
+          return { status: response.status, body: await response.json().catch(() => ({})) };
+        });
+        assert.equal(checkoutSession.status, 200, "the signed-in customer session is preserved through checkout");
+        assert.equal(checkoutSession.body.id, user.id);
+        checks.push({ slug: tenant.slug, checkoutPath, authenticatedCheckout: "PASSED", noOrderSubmission: true });
+      }
     }
     const cookieMetadata = (await context.cookies(origin)).map(({ name, domain, path, httpOnly, secure, sameSite }) => ({ name, domain, path, httpOnly, secure, sameSite }));
     assert.ok(cookieMetadata.some(({ name }) => /(?:auth|session)/i.test(name)), "the same-origin profile carries an authentication cookie");
